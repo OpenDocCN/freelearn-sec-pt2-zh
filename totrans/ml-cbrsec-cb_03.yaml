@@ -1,173 +1,258 @@
 - en: Advanced Malware Detection
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 高级恶意软件检测
 - en: In this chapter, we will be covering more advanced concepts for malware analysis.
     In the previous chapter, we covered general methods for attacking malware classification.
     Here, we will discuss more specific approaches and cutting-edge technologies.
     In particular, we will cover how to approach obfuscated and packed malware, how
     to scale up the collection of N-gram features, and how to use deep learning to
     detect and even create malware.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖更高级的恶意软件分析概念。在上一章中，我们讨论了恶意软件分类的一般方法。这里，我们将讨论更具体的方法和前沿技术，特别是我们将讨论如何处理混淆和打包的恶意软件，如何扩大N-gram特征的收集规模，以及如何使用深度学习来检测甚至创建恶意软件。
 - en: 'This chapter comprises the following recipes:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章包括以下内容：
 - en: Detecting obfuscated JavaScript
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 检测混淆的JavaScript
 - en: Featurizing PDF files
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 特征化PDF文件
 - en: Extracting N-grams quickly using the hash-gram algorithm
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用哈希图算法快速提取N-grams
 - en: Building a dynamic malware classifier
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建动态恶意软件分类器
 - en: MalConv – end-to-end deep learning for malicious PE detection
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: MalConv – 用于恶意PE检测的端到端深度学习
 - en: Using packers
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用打包器
 - en: Assembling a packed sample dataset
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 组装一个打包的示例数据集
 - en: Building a classifier for packers
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 构建打包器分类器
 - en: MalGAN – creating evasive malware
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: MalGAN – 创建规避型恶意软件
 - en: Tracking malware drift
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 跟踪恶意软件漂移
 - en: Technical requirements
+  id: totrans-13
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: 'The following are the technical prerequisites for this chapter:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是本章的技术前提：
 - en: Keras
+  id: totrans-15
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Keras
 - en: TensorFlow
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: TensorFlow
 - en: XGBoost
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: XGBoost
 - en: UPX
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: UPX
 - en: Statsmodels
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Statsmodels
 - en: Code and datasets may be found at [https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03](https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03).
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码和数据集可以在[https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03](https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03)找到。
 - en: Detecting obfuscated JavaScript
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 检测混淆的JavaScript
 - en: In this section, we will see how to use machine learning to detect when a JavaScript
     file is obfuscated. Doing so can serve to create a binary feature, obfuscated
     or not, to be used in benign/malicious classification, and can serve also as a
     prerequisite step to deobfuscating the scripts.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将看到如何使用机器学习来检测JavaScript文件是否被混淆。这样做可以创建一个二进制特征，标识文件是否被混淆，以用于良性/恶性分类，也可以作为解混淆脚本的前置步骤。
 - en: Getting ready
+  id: totrans-23
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 准备工作
 - en: 'Preparation for this recipe involves installing the `scikit-learn` package
     in `pip`. The command is as follows:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 本教程的准备工作包括在`pip`中安装`scikit-learn`包。命令如下：
 - en: '[PRE0]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: In addition, obfuscated and non-obfuscated JavaScript files have been provided
     for you in the repository. Extract `JavascriptSamplesNotObfuscated.7z` to a folder
     named `JavaScript Samples`. Extract `JavascriptSamplesObfuscated.7z` to a folder
     named `JavaScript Samples Obfuscated`.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，混淆和非混淆的JavaScript文件已经在仓库中提供。请将`JavascriptSamplesNotObfuscated.7z`解压到名为`JavaScript
+    Samples`的文件夹中，将`JavascriptSamplesObfuscated.7z`解压到名为`JavaScript Samples Obfuscated`的文件夹中。
 - en: How to do it...
+  id: totrans-27
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何实现...
 - en: 'In the following steps, we will demonstrate how a binary classifier can detect
     obfuscated JavaScript files:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的步骤中，我们将演示如何使用二分类器来检测混淆的JavaScript文件：
 - en: 'Begin by importing the libraries we will be needing to process the JavaScript''s
     content, prepare the dataset, classify it, and measure the performance of our
     classifier:'
+  id: totrans-29
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 首先导入我们将用来处理JavaScript内容、准备数据集、分类以及衡量分类器性能所需的库：
 - en: '[PRE1]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'We specify the paths of our obfuscated and non-obfuscated JavaScript files and
     assign the two types of file different labels:'
+  id: totrans-31
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们指定了混淆和非混淆JavaScript文件的路径，并为这两种文件分配了不同的标签：
 - en: '[PRE2]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'We then read our files into a corpus and prepare labels:'
+  id: totrans-33
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们将文件读入语料库并准备标签：
 - en: '[PRE3]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'We split our dataset into a training and testing set, and prepare a pipeline
     to perform basic NLP, followed by a random forest classifier:'
+  id: totrans-35
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们将数据集分为训练集和测试集，并准备一个管道来执行基本的NLP，随后是一个随机森林分类器：
 - en: '[PRE4]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Finally, we fit our pipeline to the training data, predict the testing data,
     and then print out our results:'
+  id: totrans-37
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最后，我们将我们的管道拟合到训练数据，预测测试数据，然后输出结果：
 - en: '[PRE5]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The accuracy and confusion matrix is shown here:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 准确率和混淆矩阵如下所示：
 - en: '![](assets/93e19b60-0a56-4f9c-b550-f3c1de40da7d.png)'
+  id: totrans-40
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/93e19b60-0a56-4f9c-b550-f3c1de40da7d.png)'
 - en: How it works…
+  id: totrans-41
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 它是如何工作的...
 - en: We begin by importing standard Python libraries to analyze the files and set
     up machine learning pipelines (*Step 1*). In *Steps 2* and *3*, we collect the
     non-obfuscated and obfuscated JavaScript files into arrays and assign them their
@@ -182,12 +267,16 @@
     of our classifier in *Step 5*. You will notice that besides the challenge of constructing
     an appropriate dataset, the recipe is similar to the one we used to detect the
     file type.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先导入标准的Python库以分析文件并设置机器学习管道（*第1步*）。在*第2步*和*第3步*中，我们将非混淆和混淆的JavaScript文件收集到数组中，并为它们分配相应的标签。这是我们二分类问题的准备工作。请注意，生成这个分类器的主要挑战是如何获取一个大而有用的数据集。解决这个难题的思路包括收集大量JavaScript样本，然后使用不同的工具对这些样本进行混淆。这样，分类器就有可能避免过拟合某一种混淆方式。收集完数据后，我们将其分为训练集和测试集（*第4步*）。此外，我们设置一个管道来应用自然语言处理（NLP）方法处理JavaScript代码，然后训练一个分类器（*第4步*）。最后，我们在*第5步*中评估分类器的性能。你会注意到，除了构建合适数据集的挑战之外，这个教程与我们用于检测文件类型的教程类似。
 - en: Featurizing PDF files
+  id: totrans-43
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 对PDF文件进行特征提取
 - en: In this section, we will see how to featurize PDF files in order to use them
     for machine learning. The tool we will be utilizing is the `PDFiD` Python script
     designed by *Didier Stevens* ([https://blog.didierstevens.com/](https://blog.didierstevens.com/)).
@@ -195,84 +284,126 @@
     including whether the PDF file contains JavaScript or launches an automatic action.
     It is suspicious to find these features in a file, hence, the appearance of these
     can be indicative of malicious behavior.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将学习如何对PDF文件进行特征提取，以便用于机器学习。我们将使用的工具是由*Didier Stevens*设计的`PDFiD` Python脚本（[https://blog.didierstevens.com/](https://blog.didierstevens.com/)）。Stevens选择了20个常见的特征，这些特征通常出现在恶意文件中，包括PDF文件是否包含JavaScript或启动自动操作。在文件中发现这些特征是可疑的，因此它们的出现可能表明存在恶意行为。
 - en: 'Essentially, the tool scans through a PDF file, and counts the number of occurrences
     of each of the ~20 features. A run of the tool appears as follows:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 本质上，该工具扫描PDF文件，并统计每个约20个特征的出现次数。工具运行的输出如下所示：
 - en: '[PRE6]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Getting ready
+  id: totrans-47
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 准备工作
 - en: The requisite files for this recipe are in the `pdfid` and `PDFSamples` folders
     included in the repository.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个教程所需的文件位于仓库中`pdfid`和`PDFSamples`文件夹内。
 - en: How to do it...
+  id: totrans-49
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何操作...
 - en: 'In the following steps, you will featurize a collection of PDF files using
     the `PDFiD` script:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的步骤中，你将使用`PDFiD`脚本对一批PDF文件进行特征提取：
 - en: Download the tool and place all accompanying code in the same directory as featurizing
     PDF `Files.ipynb`.
+  id: totrans-51
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 下载工具并将所有相关代码与特征提取PDF的`Files.ipynb`放在同一目录下。
 - en: 'Import IPython''s `io` module so as to capture the output of an external script:'
+  id: totrans-52
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 导入IPython的`io`模块，以便捕获外部脚本的输出：
 - en: '[PRE7]'
+  id: totrans-53
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Define a function to featurize a PDF:'
+  id: totrans-54
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 定义一个函数来对PDF进行特征提取：
 - en: '[PRE8]'
+  id: totrans-55
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'Run `pdfid` against a file and capture the output of the operation:'
+  id: totrans-56
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 运行`pdfid`工具并捕获操作的输出：
 - en: '[PRE9]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Next, parse the output so that it is a numerical vector:'
+  id: totrans-58
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 接下来，解析输出，使其成为一个数值向量：
 - en: '[PRE10]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Import `listdir` to enumerate the files of a folder and specify where you have
     placed your collection of PDFs:'
+  id: totrans-60
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 导入`listdir`以列举文件夹中的文件，并指定存放PDF集合的目录：
 - en: '[PRE11]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Iterate through each file in the directory, featurize it, and then collect
     all the feature vectors into `X`:'
+  id: totrans-62
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 遍历目录中的每个文件，对其进行特征提取，然后将所有特征向量收集到`X`中：
 - en: '[PRE12]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: How it works…
+  id: totrans-64
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 工作原理…
 - en: 'We start our preparation by downloading the `PDFiD` tool and placing our PDF
     files in a convenient location for analysis (*Step 1*). Note that the tool is
     free and simple to use. Continuing, we import the very useful IPython''s `io`
@@ -282,128 +413,191 @@
     the `PDFiD` tool, and then parses its output into a convenient form. When we run
     on the `PDFSamples`\`PythonBrochure.pdf` file, our functions output the following
     vector:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们通过下载`PDFiD`工具并将我们的PDF文件放在一个方便的位置进行分析（*步骤1*）来开始我们的准备工作。请注意，该工具是免费且易于使用。接着，我们导入非常有用的IPython的`io`模块，以便捕获外部程序`PDFiD`的结果（*步骤2*）。在接下来的步骤中，*步骤3*和*步骤5*，我们定义了一个将PDF文件转换为特征向量的函数PDF
+    to FV。特别地，它利用了`PDFiD`工具，然后将其输出解析成方便的形式。当我们在`PDFSamples\PythonBrochure.pdf`文件上运行时，我们的函数输出以下向量：
 - en: '[PRE13]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Now that we are able to featurize a single PDF file, why not featurize all of
     our PDF files to make these amenable to machine learning (*Steps 6* and *7*).
     In particular, in *Step 6*, we provide a path containing the PDF files we would
     like to featurize, and, in *Step 7*, we perform the actual featurization of the
     files.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们能够对单个PDF文件进行特征化，为什么不对所有的PDF文件进行特征化，以便使其适用于机器学习（*步骤6*和*步骤7*）。特别是在*步骤6*中，我们提供包含我们想要进行特征化的PDF文件的路径，在*步骤7*中，我们执行文件的实际特征化。
 - en: Extracting N-grams quickly using the hash-gram algorithm
+  id: totrans-68
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用哈希-gram算法快速提取N-gram
 - en: In this section, we demonstrate a technique for extracting the most frequent
     N-grams quickly and memory-efficiently. This allows us to make the challenges
     that come with the immense number of N-grams easier. The technique is called **Hash-Grams**,
     and relies on hashing the N-grams as they are extracted. A property of N-grams
     is that they follow a power law that ensures that hash collisions have an insignificant
     impact on the quality of the features thus obtained.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们演示了一种快速和内存高效提取最频繁N-gram的技术。这使得处理大量N-gram带来的挑战变得更加容易。这种技术称为**Hash-Grams**，并依赖于在提取时对N-gram进行哈希处理。N-gram的一个特性是它们遵循幂律，这确保了哈希碰撞对所获得特征的质量几乎没有影响。
 - en: Getting ready
+  id: totrans-70
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 准备工作
 - en: 'Preparation for this recipe involves installing `nltk` in `pip`. The command
     is as follows:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 准备这个步骤涉及在`pip`中安装`nltk`。命令如下：
 - en: '[PRE14]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: In addition, benign and malicious files have been provided for you in the `PE
     Samples Dataset` folder in the root of the repository. Extract all archives named
     `Benign PE Samples*.7z` to a folder named `Benign PE Samples`, and extract all
     archives named `Malicious PE Samples*.7z` to a folder named `Malicious PE Samples`.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 另外，在存储库的根目录中为您提供了良性和恶意文件，将所有名为`Benign PE Samples*.7z`的存档解压缩到名为`Benign PE Samples`的文件夹中，并将所有名为`Malicious
+    PE Samples*.7z`的存档解压缩到名为`Malicious PE Samples`的文件夹中。
 - en: How to do it...
+  id: totrans-74
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何操作...
 - en: 'In the following steps, we will demonstrate how the hash-gram algorithm works:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的步骤中，我们将演示哈希-gram算法的工作原理：
 - en: 'Begin by specifying the folders containing our samples, the parameter N, and
     importing a library for hashing and a library to extract N-grams from a string:'
+  id: totrans-76
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 首先指定包含我们样本的文件夹，参数N，并导入一个用于哈希处理和从字符串中提取N-gram的库：
 - en: '[PRE15]'
+  id: totrans-77
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'We create a function to read in the bytes of a file and turn these into N-grams:'
+  id: totrans-78
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们创建一个函数来读取文件的字节并将其转换为N-gram：
 - en: '[PRE16]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'Now, we will want to hash the N-grams:'
+  id: totrans-80
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，我们将要对N-gram进行哈希处理：
 - en: '[PRE17]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'The `hash_file_Ngrams_into_dictionary` function takes an N-gram, hashes it,
     and then increments the count in the dictionary for the hash. The reduction module
     B (%B) ensures that there can be no more than `B` keys in the dictionary:'
+  id: totrans-82
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '`hash_file_Ngrams_into_dictionary`函数接受一个N-gram，对其进行哈希处理，然后增加字典中哈希的计数。减少模块B（%B）确保字典中的键不超过`B`个：'
 - en: '[PRE18]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'We specify a value for B, the largest prime number smaller than 2^16, and create
     an empty dictionary:'
+  id: totrans-84
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们为B指定一个值，即小于2^16的最大素数，并创建一个空字典：
 - en: '[PRE19]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'We iterate over our files and count their hashed N-grams:'
+  id: totrans-86
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们遍历我们的文件并计算它们的哈希N-gram：
 - en: '[PRE20]'
+  id: totrans-87
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'We select the most frequent `K1=1000` using `heapq`:'
+  id: totrans-88
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们使用`heapq`选择最频繁的`K1=1000`：
 - en: '[PRE21]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'Once the top-hashed N-grams have been selected, these make up the feature set.
     In order to featurize a sample, one iterates over its N-grams, hashes, and reduces
     them, and, if the result is one of the selected top-hashed N-grams, increments
     the feature vector at that index:'
+  id: totrans-90
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦选择了哈希后的 N-grams，这些将构成特征集。为了特征化一个样本，我们遍历它的 N-grams，进行哈希并取模，如果结果是选中的哈希后的 N-grams
+    之一，则在该索引位置增加特征向量的值：
 - en: '[PRE22]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Finally, we featurize our dataset:'
+  id: totrans-92
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最后，我们对数据集进行特征化：
 - en: '[PRE23]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: How it works…
+  id: totrans-94
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 工作原理…
 - en: The initial steps in the hash-gram recipe are similar to the ordinary extraction
     of N-grams. First, we prepare by specifying the folders containing our samples,
     our value of N (as in N-grams). In addition, we import a hashing library, which
@@ -413,8 +607,13 @@
     function to compute the MD5 hash of an N-gram and return the result as a hexadecimal
     number. Additionally, we define a function to convert an N-gram to its byte constituents
     in order to be able to hash it (*Step 3*).
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 哈希 N-gram 配方的初始步骤与普通的 N-gram 提取类似。首先，我们通过指定包含样本的文件夹以及我们的 N 值（如 N-grams）来进行准备。此外，我们导入一个哈希库，这与普通的
+    N-gram 提取操作不同（*步骤 1*）。继续我们的准备工作，我们定义一个函数来读取文件的所有字节（与读取其内容不同），并将这些字节转化为 N-grams（*步骤
+    2*）。我们定义一个函数来计算 N-gram 的 MD5 哈希，并将结果以十六进制数返回。此外，我们还定义一个函数，将 N-gram 转换为其字节构成，以便能够进行哈希处理（*步骤
+    3*）。
 - en: Next, we define a function to iterate through the hashed N-grams of a file,
     reduce these to modulo B, and then increase the count in the dictionary for the
     reduced hash (*Step 4*). The parameter B controls the limit on how many different
@@ -422,8 +621,11 @@
     that count the N-grams. Now, as we are about to run our functions, it's time to
     specify the value of B. We select the value for B to be the largest prime number
     smaller than 2^16 (*Step 5*).
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们定义一个函数来遍历文件的哈希 N-grams，将其对 B 取模，然后增加字典中对应哈希值的计数（*步骤 4*）。参数 B 控制字典中不同键的数量上限。通过哈希，我们能够随机化计数
+    N-grams 的桶。现在，在我们即将运行函数时，是时候指定 B 的值了。我们选择 B 的值为小于 2^16 的最大素数（*步骤 5*）。
 - en: It is standard to select a prime to ensure that the number of hash collisions
     is minimal. We now iterate through our directory of files and apply the functions
     we have defined previously to each file (*Step 6*). The result is a large dictionary, *T*,
@@ -436,25 +638,40 @@
     In particular, we iterate through our files, computing their N-grams. If an N-gram
     has a reduced hash that is one of the K1 selected ones, we consider it to be a
     frequent N-gram, and use it as part of our feature set.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常选择一个素数，以确保哈希碰撞的数量最小。我们现在遍历文件目录，并对每个文件应用我们之前定义的函数（*步骤 6*）。结果是一个包含哈希 N-grams
+    计数的大字典，*T*。这个字典不大，我们很容易从中选择最常见的 K1 个哈希后的 N-grams（*步骤 7*）。通过这样做，选择到最频繁的 N-grams
+    的概率很高，尽管由于哈希碰撞，可能会多于 K1 个。此时，我们得到了特征集，即通过哈希映射到我们选择的 K1 个哈希 N-grams 的 N-grams。接下来，我们对数据集进行特征化（*步骤
+    8* 和 *步骤 9*）。特别地，我们遍历文件，计算它们的 N-grams。如果一个 N-gram 的哈希值是 K1 个选中值之一，我们认为它是一个频繁的
+    N-gram，并将其作为特征集的一部分。
 - en: It is important to note that the hash-grams algorithm will not always be faster,
     but it is expected to be whenever the datasets under consideration are large.
     In many cases, in a situation where a naive approach to extracting N-grams leads
     to memory error, hash-grams is able to terminate successfully.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要注意的是，哈希 N-grams 算法并不总是更快，但当所考虑的数据集较大时，通常会更快。在许多情况下，当使用朴素的方法提取 N-grams 导致内存错误时，哈希
+    N-grams 能够成功终止。
 - en: See also
+  id: totrans-99
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 另见
 - en: For additional details on the hash-gram algorithm, see [https://www.edwardraff.com/publications/hash-grams-faster.pdf](https://www.edwardraff.com/publications/hash-grams-faster.pdf)[.](https://www.edwardraff.com/publications/hash-grams-faster.pdf)
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于哈希N-gram算法的更多细节，请参见[https://www.edwardraff.com/publications/hash-grams-faster.pdf](https://www.edwardraff.com/publications/hash-grams-faster.pdf)[.](https://www.edwardraff.com/publications/hash-grams-faster.pdf)
 - en: Building a dynamic malware classifier
+  id: totrans-101
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 构建一个动态恶意软件分类器
 - en: In certain situations, there is a considerable advantage to being able to detect
     malware based on its behavior. In particular, it is much more difficult for a
     malware to hide its intentions when it is being analyzed in a dynamic situation.
@@ -466,141 +683,218 @@
     were dynamically analyzed on the LG Nexus 5 device farm (API 23), and over 4,300
     benign apps were dynamically analyzed on the LG Nexus 5 device farm (API 23) by
     goorax, used under CC BY / unmodified from the original).
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在某些情况下，能够基于行为检测恶意软件具有相当大的优势。特别是，当恶意软件在动态环境中进行分析时，隐藏其意图变得更加困难。因此，基于动态信息的分类器比基于静态信息的分类器更准确。在本节中，我们提供了一个动态恶意软件分类器的教程。我们使用的数据集来自VirusShare仓库中的Android应用程序。动态分析由Johannes
+    Thon在多台LG Nexus 5设备（Android API 23）上进行，（在LG Nexus 5设备农场（API 23）上动态分析了4000多个恶意应用，goorax在LG
+    Nexus 5设备农场（API 23）上动态分析了4300多个良性应用，原始内容未修改，使用的是CC BY许可证）。
 - en: Our approach will be to use N-grams on the sequence of API calls.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的方法是使用N-gram对API调用序列进行处理。
 - en: Getting ready
+  id: totrans-104
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 准备工作
 - en: 'Preparation for this recipe involves installing `scikit-learn`, `nltk`, and
     `xgboost` in `pip`. The command is as follows:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 该教程的准备工作包括在`pip`中安装`scikit-learn`、`nltk`和`xgboost`。命令如下：
 - en: '[PRE24]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: In addition, benign and malicious dynamic analysis files have been provided
     for you in the repository. Extract all archives named `DA Logs Benign*.7z` to
     a folder named `DA Logs Benign`, and extract all archives named `DA Logs Malware*.7z`
     to a folder named `DA Logs Malicious`.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，您可以在仓库中找到良性和恶意的动态分析文件。将所有名为`DA Logs Benign*.7z`的压缩包解压到一个名为`DA Logs Benign`的文件夹中，将所有名为`DA
+    Logs Malware*.7z`的压缩包解压到一个名为`DA Logs Malicious`的文件夹中。
 - en: How to do it...
+  id: totrans-108
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何操作…
 - en: In the following steps, we demonstrate how a classifier can detect malware based
     on an observed sequence of API calls.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的步骤中，我们展示了如何根据观察到的API调用序列检测恶意软件。
 - en: Our logs are in JSON format, so we begin by importing the JSON library.
+  id: totrans-110
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们的日志是JSON格式，因此我们首先导入JSON库。
 - en: '[PRE25]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'Write a function to parse the JSON logs:'
+  id: totrans-112
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 编写一个函数来解析JSON日志：
 - en: '[PRE26]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'We choose to extract the class, method, and type of the API call:'
+  id: totrans-114
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们选择提取API调用的类、方法和类型：
 - en: '[PRE27]'
+  id: totrans-115
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'We read our logs into a corpus and collect their labels:'
+  id: totrans-116
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们将日志读取到一个语料库中，并收集它们的标签：
 - en: '[PRE28]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'Now, let''s take a look at what the data in our corpus looks like:'
+  id: totrans-118
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，让我们看看我们语料库中的数据是什么样的：
 - en: '[PRE29]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'We proceed to perform a train-test split:'
+  id: totrans-120
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们继续进行训练集和测试集的划分：
 - en: '[PRE30]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'Our approach is to use N-grams, so we load our N-gram extraction functions,
     with a slight modification for the current data format:'
+  id: totrans-122
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们的方法是使用N-gram，所以我们加载我们的N-gram提取函数，并根据当前数据格式进行轻微修改：
 - en: '[PRE31]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'We specify N=4 and collect all N-grams:'
+  id: totrans-124
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们指定N=4并收集所有N-gram：
 - en: '[PRE32]'
+  id: totrans-125
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'Next, we narrow down to the `K1 = 3000` most frequent N-grams:'
+  id: totrans-126
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 接下来，我们将范围缩小到`K1 = 3000`个最常见的N-gram：
 - en: '[PRE33]'
+  id: totrans-127
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'We then write a method to featurize a sample into a vector of N-gram counts:'
+  id: totrans-128
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后我们编写一个方法，将样本转换为N-gram计数的向量：
 - en: '[PRE34]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: 'We apply this function to featurize our training and testing samples:'
+  id: totrans-130
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们应用这个函数来提取我们的训练和测试样本特征：
 - en: '[PRE35]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'We use mutual information to further narrow the K1=3000 most frequent N-grams
     to K2=500 most informative N-grams. We then set up a pipeline to subsequently
     run an XGBoost classifier:'
+  id: totrans-132
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们使用互信息来进一步缩小K1=3000个最常见的N-gram，筛选出K2=500个最有信息量的N-gram。然后，我们设置一个管道，接着运行XGBoost分类器：
 - en: '[PRE36]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'We train our pipeline and evaluate its accuracy on the training and testing
     sets:'
+  id: totrans-134
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们训练我们的管道并评估其在训练集和测试集上的准确性：
 - en: '[PRE37]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'The following output gives us the training and testing accuracies:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下输出给出了我们的训练和测试准确率：
 - en: '[PRE38]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: How it works…
+  id: totrans-138
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 它是如何工作的……
 - en: In this recipe, we perform something exciting, namely, classification of malware
     and benign samples based on their runtime behavior. Our first three steps are
     to define a function to read in and parse the JSON logs that contain information
@@ -611,8 +905,12 @@
     were called. The trade-off is that the dataset will be larger and these features
     might cause a slowdown or overfit. Investigation is recommended as regards selecting
     additional features for a classifier.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本食谱中，我们执行了一项令人兴奋的任务，即基于样本的运行时行为对恶意软件和良性样本进行分类。我们的前三个步骤是定义一个函数来读取和解析包含样本运行时行为信息的
+    JSON 日志。顺便说一句，JSON 是一个非常有用的文件格式，当你的数据可能包含可变数量的属性时非常适用。我们战略性地选择提取 API 调用的类别、方法和内容。还可以使用其他特征，如
+    API 调用发生的时间和调用的参数。权衡是数据集将更大，这些特征可能会导致性能下降或过拟合。建议调查选择其他特征来为分类器提供更多信息。
 - en: With our function defined, we proceed with performing parsing and collecting
     all of our parsed data in one place (*Step 4*). In *Step 5*, we take a peek at
     our corpus. We see a sample of the quadruples of API calls that make up our data.
@@ -629,18 +927,30 @@
     We choose to use mutual information to select the K2=500 most informative N-grams
     from the `K1=3000` most frequent ones (*Step 12*)—there are many options, as discussed
     in the recipe on selecting the best N-grams.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义了我们的函数后，我们继续执行解析并将所有解析的数据收集到一个地方（*步骤 4*）。在*步骤 5*中，我们查看我们的语料库。我们看到了构成我们数据的
+    API 调用的四元组样本。接下来是进行训练-测试分割的标准步骤。在*步骤 7*和*步骤 8*中，我们加载我们的 N-gram 提取函数，并使用这些函数从我们的数据集中提取
+    N-gram。这些提取方法类似于用于二进制文件的方法，但针对手头的文本格式进行了调整。最初，我们收集了 K1=3000 个最常见的 N-gram，以减少计算负载。通过增加
+    K1 和稍后的 K2 数量，我们可以期望分类器的准确性得到提高，但内存和计算需求也会增加（*步骤 9*）。在*步骤 10*中，我们定义了一个函数，将样本特征化为它们的
+    N-gram 特征向量，然后，在*步骤 11*中，我们应用这个函数来特征化我们的训练和测试样本。我们希望进一步缩小特征集。我们选择使用互信息从`K1=3000`个最常见的
+    N-gram 中选择 K2=500 个最具信息量的 N-gram（*步骤 12*）——正如在选择最佳 N-gram 的食谱中所讨论的那样，有很多选项。
 - en: For instance, an alternative choice would have been to use chi-squared. In addition,
     other classifiers aside from XGBoost can be chosen. Finally, we see that the accuracy
     obtained suggests that the approach of using N-grams on the sequence of API calls
     to be promising.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，另一种选择是使用卡方检验。此外，除了 XGBoost 之外，还可以选择其他分类器。最后，我们看到获得的准确度表明，使用 N-gram 对 API
+    调用序列进行处理的方法是有前景的。
 - en: MalConv – end-to-end deep learning for malicious PE detection
+  id: totrans-142
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: MalConv – 用于恶意 PE 检测的端到端深度学习
 - en: 'One of the new developments in static malware detection has been the use of
     deep learning for end-to-end machine learning for malware detection. In this setting,
     we completely skip all feature engineering; we need not have any knowledge of
@@ -649,104 +959,160 @@
     suggested in [https://arxiv.org/pdf/1710.09435.pdf](https://arxiv.org/pdf/1710.09435.pdf).
     This architecture has come to be known as **MalConv**, as shown in the following
     screenshot:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 静态恶意软件检测领域的一项新发展是使用深度学习进行端到端机器学习的恶意软件检测。在这种情况下，我们完全跳过所有特征工程；我们无需了解 PE 头或其他可能表明
+    PE 恶意软件的特征。我们只需将原始字节流输入到我们的神经网络中并进行训练。这个想法最早在[https://arxiv.org/pdf/1710.09435.pdf](https://arxiv.org/pdf/1710.09435.pdf)中提出。这个架构被称为**MalConv**，如下图所示：
 - en: '![](assets/c9386f51-629c-45b5-90e8-3a6dbd951146.png)'
+  id: totrans-144
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/c9386f51-629c-45b5-90e8-3a6dbd951146.png)'
 - en: Getting ready
+  id: totrans-145
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 准备就绪
 - en: 'Preparation for this recipe involves installing a number of packages in `pip`,
     namely, `keras`, `tensorflow`, and `tqdm`. The command is as follows:'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 本食谱的准备工作涉及在`pip`中安装多个包，具体包括`keras`、`tensorflow`和`tqdm`。安装命令如下：
 - en: '[PRE39]'
+  id: totrans-147
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: In addition, benign and malicious files have been provided for you in the `PE
     Samples Dataset` folder in the root of the repository. Extract all archives named
     `Benign PE Samples*.7z` to a folder named `Benign PE Samples`, and extract all
     archives named `Malicious PE Samples*.7z` to a folder named `Malicious PE Samples`.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，良性和恶意文件已提供给你，在仓库根目录下的`PE Samples Dataset`文件夹中。将所有名为`Benign PE Samples*.7z`的压缩包提取到名为`Benign
+    PE Samples`的文件夹中，并将所有名为`Malicious PE Samples*.7z`的压缩包提取到名为`Malicious PE Samples`的文件夹中。
 - en: How to do it...
+  id: totrans-149
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何操作...
 - en: 'In this recipe, we detail how to train MalConv on raw PE files:'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本食谱中，我们详细讲解了如何在原始PE文件上训练MalConv：
 - en: 'We import `numpy` for vector operations and `tqdm` to keep track of progress
     in our loops:'
+  id: totrans-151
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们导入`numpy`进行向量运算，并导入`tqdm`来跟踪循环中的进度：
 - en: '[PRE40]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'Define a function to embed a byte as a vector:'
+  id: totrans-153
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 定义一个函数将字节嵌入为向量：
 - en: '[PRE41]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: 'Read in the locations of your raw PE samples and create a list of their labels:'
+  id: totrans-155
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 读取原始PE样本的位置，并创建它们的标签列表：
 - en: '[PRE42]'
+  id: totrans-156
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'Define a convenience function to read in the byte sequence of a file:'
+  id: totrans-157
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 定义一个便捷函数来读取文件的字节序列：
 - en: '[PRE43]'
+  id: totrans-158
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: 'Set a maximum length, `maxSize`, of bytes to read in per sample, embed all
     the bytes of the samples, and gather the result in X:'
+  id: totrans-159
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 设置每个样本读取的最大字节长度`maxSize`，将所有样本的字节嵌入，并将结果收集到X中：
 - en: '[PRE44]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'Prepare an optimizer:'
+  id: totrans-161
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 准备优化器：
 - en: '[PRE45]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: 'Utilize the Keras functional API to set up the deep neural network architecture:'
+  id: totrans-163
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 利用Keras函数式API设置深度神经网络架构：
 - en: '[PRE46]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'Compile the model and choose a batch size:'
+  id: totrans-165
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 编译模型并选择批次大小：
 - en: '[PRE47]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: 'Train the model on batches:'
+  id: totrans-167
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在批次上训练模型：
 - en: '[PRE48]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: How it works…
+  id: totrans-169
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 它是如何工作的…
 - en: We begin by importing `numpy` and `tqdm` (*Step 1*), a package that allows you
     to keep track of progress in a loop by showing a percentage progress bar. As part
     of feeding the raw bytes of a file into our deep neural network, we use a simple
@@ -756,8 +1122,11 @@
     equal to -1/16\. For example, 10010001 is embedded as the vector (1/16, -1/16,
     -1/16, 1/16, -1/16, -1/16, -1/16, 1/16). Other ways to perform embeddings, such
     as ones that are trained along with the neural network, are possible.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先导入`numpy`和`tqdm`（*步骤1*），`tqdm`是一个可以通过显示百分比进度条来跟踪循环进度的包。作为将文件的原始字节输入到我们的深度神经网络的一部分，我们使用一种简单的字节嵌入方式，将字节嵌入到一个8维空间中，其中每个字节的位对应于向量的一个坐标（*步骤2*）。一个值为1的位表示对应的坐标被设置为1/16，而位值为0对应的坐标则为-1/16。例如，10010001被嵌入为向量(1/16,
+    -1/16, -1/16, 1/16, -1/16, -1/16, -1/16, 1/16)。也可以采用其他嵌入方式，例如那些与神经网络一起训练的方式。
 - en: The MalConv architecture makes a simple, but computationally fast, choice. In
     *Step 3*, we list our samples and their labels, and, in *Step 4*, we define a
     function to read the bytes of a file. Note the `rb` setting in place of `r`, so
@@ -773,90 +1142,122 @@
     of our neural network to match closely with that of MalConv. Note that we have
     used the Keras functional API here, which allows us to create non-trivial, input-output
     relations in our model.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: MalConv 架构做出了一个简单但计算上快速的选择。在 *步骤 3* 中，我们列出我们的样本及其标签，在 *步骤 4* 中，我们定义了一个函数来读取文件的字节。注意
+    `rb` 设置替代了 `r`，以便将文件读取为字节序列。在 *步骤 5* 中，我们使用 `tqdm` 来跟踪循环的进度。对于每个文件，我们读取字节序列并将每个字节嵌入到一个
+    8 维空间中。然后，我们将这些字节聚集到 *X* 中。如果字节数超过 `maxSize=15000`，则停止。如果字节数小于 `maxSize`，则假定字节为
+    0。`maxSize` 参数控制每个文件读取多少字节，可以根据内存容量、可用计算量和样本大小进行调整。在接下来的步骤（*步骤 6* 和 *步骤 7*）中，我们定义了一个标准优化器，即随机梯度下降，并选择了相应的参数，同时定义了与
+    MalConv 非常接近的神经网络架构。注意，我们在这里使用了 Keras 函数式 API，它使我们能够在模型中创建复杂的输入输出关系。
 - en: Finally, note that better architectures and choices of parameters are an open
     area of research. Continuing, we are now free to select a batch size and begin
     training (*Steps 8* and *9*). The batch size is an important parameter that can
     affect both speed and stability of the learning process. For our purposes, we
     have made a simple choice. We feed in a batch at a time, and train our neural
     network.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，需要注意的是，更好的架构和参数选择是一个开放的研究领域。接下来，我们可以自由选择批次大小并开始训练（*步骤 8* 和 *步骤 9*）。批次大小是一个重要的参数，它会影响学习过程的速度和稳定性。为了我们的目的，我们做出了一个简单的选择。我们一次输入一个批次，并训练我们的神经网络。
 - en: Tackling packed malware
+  id: totrans-173
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 应对打包恶意软件
 - en: Packing is the compression or encryption of an executable file, distinguished
     from ordinary compression in that it is typically decompressed during runtime,
     in memory, as opposed to being decompressed to disk, prior to execution. Packers
     pose an obfuscation challenge to analysts.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 打包是可执行文件的压缩或加密，与普通压缩不同的是，它通常在运行时内存中解压，而不是在执行前解压到磁盘上。打包工具给分析人员带来了混淆挑战。
 - en: A packer called VMProtect, for example, protects its content from analyst eyes
     by executing in a virtual environment with a unique architecture, making it a
     great challenge for anyone to analyze the software.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，VMProtect 这种打包工具通过在具有独特架构的虚拟环境中执行，来保护其内容免受分析人员的窥视，这使得分析该软件成为一个巨大的挑战。
 - en: Amber is a reflective PE packer for bypassing security products and mitigations.
     It can pack regularly compiled PE files into reflective payloads that can load
     and execute themselves like a shellcode. It enables stealthy in-memory payload
     deployment that can be used to bypass anti-virus, firewall, IDS, IPS products,
     and application whitelisting mitigations. The most commonly used packer is UPX.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: Amber 是一个用于绕过安全产品和防护措施的反射型 PE 打包工具。它可以将常规编译的 PE 文件打包成反射型有效载荷，这些有效载荷可以像 shellcode
+    一样自我加载和执行。它实现了隐蔽的内存中有效载荷部署，可用于绕过杀毒软件、防火墙、IDS、IPS 产品以及应用程序白名单的防护措施。最常用的打包工具是 UPX。
 - en: Since packing obfuscates code, it can often result in a decrease in the performance
     of a machine learning classifier. By determining which packer was used to pack
     an executable, we can then utilize the same packer to unpack the code, that is,
     revert the code to its original, non-obfuscated version. Then, it becomes simpler
     for both antivirus and machine learning to detect whether the file is malicious.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于打包会混淆代码，它往往会导致机器学习分类器性能的下降。通过确定用于打包可执行文件的打包工具，我们可以使用相同的打包工具来解包代码，即恢复到原始的、未混淆的版本。然后，杀毒软件和机器学习检测是否为恶意文件就变得更加简单。
 - en: Using packers
+  id: totrans-178
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用打包工具
 - en: In this recipe, we will show how to obtain a packer, namely UPX, and how to
     use it. The purpose of having a collection of packers is, firstly, to perform
     data augmentation as will be detailed in the remainder of the recipe, and, secondly,
     to be able to unpack a sample once the packer used to pack it is determined.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
 - en: Getting ready
+  id: totrans-180
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: There are no packages required for the following recipe. You may find `upx.exe`
     in the `Packers` folder of the repository for this book.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
 - en: How to do it...
+  id: totrans-182
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'In this recipe, you will utilize the UPX packer to pack a file:'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
 - en: Download and unarchive the latest version of UPX from [https://github.com/upx/upx/releases/](https://github.com/upx/upx/releases/)
+  id: totrans-184
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '![](assets/b1b91e18-66dd-4bf4-bb13-75826c3680b8.png)'
+  id: totrans-185
   prefs: []
   type: TYPE_IMG
 - en: 'Execute `upx.exe` against the file you wish to pack by running `upx.exe` and
     `foofile.exe`. The result of a successful packing appears as follows:'
+  id: totrans-186
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '![](assets/6695ad88-cfd4-4a68-8887-e3b997d847ca.png)'
+  id: totrans-187
   prefs: []
   type: TYPE_IMG
 - en: The file remains an executable, unlike in the case of archives, which become
     zipped.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: How it works…
+  id: totrans-189
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -865,9 +1266,11 @@
     Many hackers utilize custom-made packers. The advantage of these is that they
     are difficult to unpack. From the standpoint of detecting malicious files, a file
     that is packed using a custom packer is highly suspicious.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: Assembling a packed sample dataset
+  id: totrans-191
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -875,50 +1278,66 @@
     collect samples that have been packed and whose packing has been labeled. Another
     fruitful way in which to assemble packed samples is to collect a large dataset
     of files and then pack these yourself.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: Getting ready
+  id: totrans-193
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: There are no packages required for the following recipe. You may find `upx.exe`
     in the `Packers` folder of the repository for this book.
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
 - en: How to do it...
+  id: totrans-195
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: In this recipe, you will use UPX to pack a directory of files.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
 - en: Place `upx.exe` in a directory, `A`, and place a collection of samples in a
     directory, `B`, in `A`. For this example, `B` is Benign PE Samples UPX.
+  id: totrans-197
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: 'List the files of directory `B`:'
+  id: totrans-198
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE49]'
+  id: totrans-199
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: 'Run `upx` against each file in `B`:'
+  id: totrans-200
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE50]'
+  id: totrans-201
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: 'Whenever an error occurs in packing, remove the original sample:'
+  id: totrans-202
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE51]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: How it works…
+  id: totrans-204
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -927,28 +1346,36 @@
     pack our samples (*Step 4*), whenever an error occurs, we remove the sample, as
     it cannot be packed successfully. This ensures that our directory contains nothing
     but packed samples, so that we can feed in clean and organized data to our classifier.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
 - en: Building a classifier for packers
+  id: totrans-206
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Having assembled the labeled data, consisting of packed samples in directories
     labeled according to the packer, we are ready to train a classifier to determine
     whether a sample was packed, and, if so, by which packer.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
 - en: Getting ready
+  id: totrans-208
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'Preparation for this recipe involves installing `scikit-learn` and `nltk` in
     `pip`. The command is as follows:'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 本食谱的准备工作包括在 `pip` 中安装 `scikit-learn` 和 `nltk`。命令如下：
 - en: '[PRE52]'
+  id: totrans-210
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: 'In addition, packed and non-packed files have been provided for you in the
     repository. In this recipe, three types of samples are used: unpacked, UPX packed,
     and Amber packed. Extract all archives named `Benign PE Samples*.7z` from `PE
@@ -956,91 +1383,142 @@
     extract `Benign PE Samples UPX.7z` to a folder named `Benign PE Samples UPX`,
     and extract `Benign PE Samples Amber.7z` to a folder named `Benign PE Samples
     Amber`.'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，仓库中已为您提供了打包和非打包文件。在这个食谱中，使用了三种类型的样本：未打包、UPX 打包和 Amber 打包。从仓库根目录中的 `PE Samples
+    Dataset` 中提取所有名为 `Benign PE Samples*.7z` 的归档文件到名为 `Benign PE Samples` 的文件夹，提取
+    `Benign PE Samples UPX.7z` 到名为 `Benign PE Samples UPX` 的文件夹，并提取 `Benign PE Samples
+    Amber.7z` 到名为 `Benign PE Samples Amber` 的文件夹。
 - en: How to do it...
+  id: totrans-212
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 如何操作……
 - en: 'In this recipe, you will build a classifier to determine which packer was used
     to pack a file:'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个食谱中，您将构建一个分类器来确定用于打包文件的打包器：
 - en: 'Read in the names of the files to be analyzed along with their labels, corresponding
     to the packer used:'
+  id: totrans-214
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 读取要分析的文件名称及其对应的标签，标签对应所使用的打包器：
 - en: '[PRE53]'
+  id: totrans-215
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: 'Create a train-test split:'
+  id: totrans-216
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建训练测试集划分：
 - en: '[PRE54]'
+  id: totrans-217
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: 'Define the imports needed to extract N-grams:'
+  id: totrans-218
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 定义提取 N-gram 所需的导入：
 - en: '[PRE55]'
+  id: totrans-219
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: 'Define the functions to be used in extracting N-grams:'
+  id: totrans-220
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 定义用于提取 N-gram 的函数：
 - en: '[PRE56]'
+  id: totrans-221
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: 'Pass through the data, and select the N-grams you wish to utilize as your features:'
+  id: totrans-222
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 遍历数据，选择您希望用作特征的 N-gram：
 - en: '[PRE57]'
+  id: totrans-223
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: 'Featurize the training set:'
+  id: totrans-224
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 对训练集进行特征化：
 - en: '[PRE58]'
+  id: totrans-225
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: 'Train a random forest model on the training data:'
+  id: totrans-226
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在训练数据上训练随机森林模型：
 - en: '[PRE59]'
+  id: totrans-227
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: 'Featurize the testing set:'
+  id: totrans-228
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 对测试集进行特征化：
 - en: '[PRE60]'
+  id: totrans-229
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'Utilize the trained classifier to predict on the testing set, and assess the
     performance using a confusion matrix:'
+  id: totrans-230
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 利用训练好的分类器在测试集上进行预测，并使用混淆矩阵评估性能：
 - en: '[PRE61]'
+  id: totrans-231
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE61]'
 - en: 'The output is as follows:'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出结果如下：
 - en: '![](assets/9f4cfd98-7261-4d18-b696-8831f90b68f6.png)'
+  id: totrans-233
   prefs: []
   type: TYPE_IMG
+  zh: '![](assets/9f4cfd98-7261-4d18-b696-8831f90b68f6.png)'
 - en: How it works…
+  id: totrans-234
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 它是如何工作的……
 - en: We start simply by organizing our data and labels into arrays (*Step 1*). In
     particular, we read in our samples and give them the label corresponding to the
     packer with which they have been packed. In *Step 2*, we train-test split our
@@ -1054,12 +1532,20 @@
     train a random forest classifier (a simple first choice) on the data (*Step 8*).
     Judging by the confusion matrix in *Step 9*, we see that a machine learning classifier
     performs very accurately on this type of problem.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们从简单的步骤开始，将数据和标签组织成数组（*第 1 步*）。特别地，我们读取样本并为其分配相应的标签，标签对应它们被打包的打包器。在 *第 2 步*
+    中，我们进行训练测试集划分。现在我们准备好对数据进行特征化，因此我们导入提取 N-gram 所需的库，并定义我们的 N-gram 函数（*第 3 步* 和
+    *第 4 步*），这些内容将在其他食谱中讨论，并且，我们简化地选择 *N=2* 和 *K1=100* 个最常见的 N-gram 作为特征，进行数据的特征化（*第
+    5 步* 和 *第 6 步*）。不同的 N 值和选择最有信息量的 N-gram 的其他方法可以获得更好的结果，但同时也会增加对计算资源的需求。特征化数据后，我们进行训练测试集划分（*第
+    7 步*），然后在数据上训练一个随机森林分类器（一个简单的首选）（*第 8 步*）。根据 *第 9 步* 中的混淆矩阵，我们可以看到，机器学习分类器在此类问题上表现得非常准确。
 - en: MalGAN – creating evasive malware
+  id: totrans-236
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: MalGAN – 创建规避型恶意软件
 - en: Using **Generative Adversarial Networks** (**GANs**), we can create adversarial
     malware samples to train and improve our detection methodology, as well as to
     identify gaps before an adversary does. The code here is based on **j40903272/MalConv-keras**.
@@ -1067,89 +1553,125 @@
     padding them with a small, but carefully calculated, sequence of bytes, selected
     so as to fool the neural network (in this case, MalConv) being used to classify
     the samples.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用**生成对抗网络**（**GANs**），我们可以创建对抗性恶意软件样本，用于训练和改进我们的检测方法，并在对手之前识别出漏洞。这里的代码基于**j40903272/MalConv-keras**。对抗性恶意软件样本是通过向恶意软件样本中添加一小段经过精心计算的字节序列进行修改的，选择这些字节序列是为了欺骗用于分类样本的神经网络（在此情况下是
+    MalConv）。
 - en: Getting ready
+  id: totrans-238
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 做好准备
 - en: 'Preparation for this recipe involves installing the `pandas`, `keras`, `tensorflow`,
     and `scikit-learn` packages in `pip`. The command is as follows:'
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE62]'
+  id: totrans-240
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE62]'
 - en: 'The associated code and resource files for `MalGan` have been included in the
     repository for this book, in the `MalGan` directory. In addition, assemble a collection
     of PE samples and then place their paths in the first column of the file:'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE63]'
+  id: totrans-242
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE63]'
 - en: In the second column, type in these samples' verdicts (1 for benign and 0 for
     malicious).
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
 - en: How to do it...
+  id: totrans-244
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'In this recipe, you will learn how to create adversarial malware:'
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
 - en: Begin by importing the code for MalGAN, as well as some utility libraries.
+  id: totrans-246
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE64]'
+  id: totrans-247
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE64]'
 - en: 'Specify the input and output paths:'
+  id: totrans-248
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE65]'
+  id: totrans-249
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE65]'
 - en: 'Set whether you''d like to use a GPU for adversarial sample generation:'
+  id: totrans-250
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE66]'
+  id: totrans-251
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE66]'
 - en: 'Read in the csv file containing the names and labels of your samples into a
     data frame:'
+  id: totrans-252
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE67]'
+  id: totrans-253
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE67]'
 - en: 'Load the pre-computed MalConv model:'
+  id: totrans-254
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE68]'
+  id: totrans-255
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE68]'
 - en: 'Use the **Fast Gradient Step Method** (**FGSM**) to generate adversarial malware:'
+  id: totrans-256
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE69]'
+  id: totrans-257
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE69]'
 - en: 'Save a log of the results and write the samples to disk:'
+  id: totrans-258
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE70]'
+  id: totrans-259
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE70]'
 - en: How it works…
+  id: totrans-260
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1160,13 +1682,16 @@
     parameter is where data pertaining to the application of the **Fast Gradient Signed
     Method** (**FGSM**) to the sample is recorded. For example, a log file may appear
     as follows:'
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
 - en: '| **filename** | **original score** | **file length** | **pad length** | **loss**
     | **predict score** |'
+  id: totrans-262
   prefs: []
   type: TYPE_TB
 - en: '| 0778...b916 | 0.001140 | 235 | 23 | 1 | 0.912 |'
+  id: totrans-263
   prefs: []
   type: TYPE_TB
 - en: 'Observe that the original score is close to `0`, indicating that the original
@@ -1182,21 +1707,26 @@
     `limit` parameter here indicates how much GPU to use in the computation, and is
     set to `0`. In the next step, *Step 4*, we read in the `.csv` file pointed to
     by the `inputSamples` parameter. This input log takes a format such as the following:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
 - en: '| 2b5137a1658c...8 | 1 |'
+  id: totrans-265
   prefs: []
   type: TYPE_TB
 - en: '| 0778a070b28...6 | 0 |'
+  id: totrans-266
   prefs: []
   type: TYPE_TB
 - en: Here, in the first column, the path of a sample is given, and, in the second
     column, a label is provided (`1` for benign and `0` for malicious). We now load
     the precomputed MalGAN model (*Step 5*), generate adversarial malware samples
     (*Step 6*), and then save them onto disk (*Step 7*).
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
 - en: Tracking malware drift
+  id: totrans-268
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1208,128 +1738,178 @@
     drift**. To be more specific, a 15 year-old virus is likely no longer executable
     in the systems currently in use. Consequently, it cannot harm a user, and is therefore
     no longer an instance of malware.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
 - en: By tracking the drift of malware, and even predicting it, an organization is
     better able to channel its resources to the correct type of defense, inoculating
     itself from future threats.
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
 - en: Getting ready
+  id: totrans-271
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'Preparation for this recipe involves installing the `matplotlib`, `statsmodels`,
     and `scipy` packages in `pip`. The command is as follows:'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE71]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE71]'
 - en: How to do it...
+  id: totrans-274
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'In this recipe, you will use a regression on time series to predict the distribution
     of malware based on historical data:'
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
 - en: 'Collect historical data on the distribution of malware in your domain of interest:'
+  id: totrans-276
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE72]'
+  id: totrans-277
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE72]'
 - en: 'Convert the data into a separate time series for each class of malware:'
+  id: totrans-278
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE73]'
+  id: totrans-279
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE73]'
 - en: 'The following graph shows the time series for Trojan:'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
 - en: '![](assets/61629ac3-ea5d-45c7-b8d7-ffe33e2b62fd.png)'
+  id: totrans-281
   prefs: []
   type: TYPE_IMG
 - en: 'The following graph shows the time series for CryptoMiners:'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
 - en: '![](assets/f79a4bd3-3510-4acd-bab4-aeb75c6987cc.png)'
+  id: totrans-283
   prefs: []
   type: TYPE_IMG
 - en: 'The following graph shows the time series for Worms:'
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
 - en: '![](assets/db09ce4d-c553-465a-8b5c-d3e482b2c8c4.png)'
+  id: totrans-285
   prefs: []
   type: TYPE_IMG
 - en: 'The following graph shows the time series for other types of malware:'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
 - en: '![](assets/8980a23c-40c6-49c7-bbb8-43fbf12e4af7.png)'
+  id: totrans-287
   prefs: []
   type: TYPE_IMG
 - en: 'Import the moving average from `statsmodels`:'
+  id: totrans-288
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE74]'
+  id: totrans-289
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE74]'
 - en: Predict the following month's distribution based on the time series using the
     moving average.
+  id: totrans-290
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE75]'
+  id: totrans-291
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE75]'
 - en: 'The result for Trojans is as follows:'
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE76]'
+  id: totrans-293
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE76]'
 - en: 'We run the same method for Cryptominers:'
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE77]'
+  id: totrans-295
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE77]'
 - en: 'We obtain the following prediction:'
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE78]'
+  id: totrans-297
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE78]'
 - en: 'In the case of Worms, use the following code:'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE79]'
+  id: totrans-299
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE79]'
 - en: 'We obtain the following prediction:'
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE80]'
+  id: totrans-301
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE80]'
 - en: 'For other types of Malware, we use the following code:'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE81]'
+  id: totrans-303
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE81]'
 - en: 'We obtain the following prediction:'
+  id: totrans-304
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE82]'
+  id: totrans-305
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE82]'
 - en: How it works…
+  id: totrans-306
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1345,5 +1925,9 @@
     to attempt different models, as well as create a train-test split that accounts
     for time. This will allow you to find the most explanatory model, in other words,
     the model that produces the most accurate time forecasts.
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了教学目的，我们生成了一个玩具数据集，表示每种类型的恶意软件在时间上的百分比（*步骤 1*）。通过更多的历史数据，这样的数据集可以指示你在安全领域应该将资源投入到何处。我们将数据收集在一个地方并生成可视化图表（*步骤
+    2*）。我们希望进行简单的预测，因此我们导入ARMA模型，ARMA代表*自回归滑动平均模型*，它是滑动平均模型的一个推广。为了简化起见，我们将ARMA专门化为**移动平均**（**MA**）。在*步骤
+    4*中，我们使用MA来预测恶意软件百分比在下一个时间段内的变化情况。随着数据集的增大，尝试不同的模型并创建考虑时间因素的训练-测试集是明智的做法。这将帮助你找到最具解释性的模型，换句话说，找到最能准确预测时间的模型。
