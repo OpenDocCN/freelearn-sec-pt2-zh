@@ -671,6 +671,9 @@
   id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows 实施了各种安全机制，旨在防止内核空间中未经授权的代码执行。这使得 rootkit 难以安装内核驱动程序。在 64 位 Windows 上，微软实施了*内核模式代码签名（KMCS）*，要求内核模式驱动程序在加载到内存中时必须经过数字签名。另一个安全机制是*内核补丁保护（KPP）*，也称为*PatchGuard*，它防止对核心系统组件、数据结构和调用表（如
+    SSDT、IDT 等）的修改。这些安全机制对大多数 rootkit 有效，但同时迫使攻击者提出先进技术，使他们能够安装未签名驱动程序并绕过这些安全机制。一种方法是安装*Bootkit*。Bootkit
+    感染系统启动过程的早期阶段，甚至在操作系统完全加载之前。另一种方法是利用内核或第三方驱动程序的漏洞来安装未签名驱动程序。在本章的其余部分，我们将假设攻击者已经成功安装了内核模式驱动程序（使用*Bootkit*或利用内核级漏洞），并且我们将专注于内核内存取证，这涉及识别恶意驱动程序。
 - en: On a clean windows system, you will find hundreds of kernel modules, so finding
     the malicious kernel module requires some work. In the following sections, we
     will look at some of the common techniques to locate and extract malicious kernel
@@ -678,11 +681,13 @@
   id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 在一个干净的 Windows 系统上，你会发现数百个内核模块，因此找到恶意内核模块需要一些工作。在接下来的章节中，我们将看一些常见的定位和提取恶意内核模块的技术。我们将从列出内核模块开始。
 - en: 5\. Listing Kernel Modules
   id: totrans-75
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 5\. 列出内核模块
 - en: To list the kernel modules, you can use the `modules` plugin. This plugin relies
     on walking the doubly linked list of metadata structures (`KLDR_DATA_TABLE_ENTRY`)
     pointed to by `PsLoadedModuleList` (this technique is similar to walking the doubly
@@ -699,6 +704,10 @@
   id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 要列出内核模块，你可以使用`modules`插件。该插件依赖于遍历由`PsLoadedModuleList`指向的元数据结构（`KLDR_DATA_TABLE_ENTRY`）的双向链表（这种技术类似于遍历`_EPROCESS`结构的双向链表，如[第
+    10 章](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)*，使用内存取证猎杀恶意软件*，在*理解
+    ActiveProcessLinks*部分中描述）。列出内核模块可能并不总是帮助你从加载的数百个内核模块中识别出恶意内核驱动程序，但它可以用于发现可疑指标，例如内核驱动程序具有奇怪的名称，或者内核模块从非标准路径或临时路径加载。`modules`插件按照加载顺序列出内核模块，这意味着如果最近安装了
+    rootkit 驱动程序，你很可能会在列表的末尾找到该模块，前提是该模块没有被隐藏并且在获取内存镜像之前系统没有重新启动。
 - en: 'In the following example of a memory image infected with the *Laqma* rootkit,
     the module listing shows the malicious driver of *Laqma,* `lanmandrv.sys`, at
     the end of the list running from the `C:\Windows\System32` directory, whereas
@@ -710,6 +719,7 @@
   id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的受*Laqma* rootkit感染的内存映像示例中，模块列表显示了位于列表末尾的恶意驱动程序*Laqma*的`lanmandrv.sys`，该驱动程序来自`C:\Windows\System32`目录，而大多数其他内核驱动程序则加载自`*S*ystemRoot\System32\DRIVERS\`*。从列表中还可以看到，核心操作系统组件，如NT内核模块（`ntkrnlpa.exe`或`ntoskrnl.exe`）和硬件抽象层（`hal.dll`）最先加载，然后是启动驱动程序（如`kdcom.dll`），它们会在启动时自动启动，接着是其他驱动程序：
 - en: '[PRE16]'
   id: totrans-78
   prefs: []
@@ -733,6 +743,10 @@
   id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于遍历双向链表容易受到DKOM攻击（详见[第10章](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)*，《使用内存取证狩猎恶意软件》第4.2.1节
+    直接内核对象操作（DKOM）*），因此可以通过解除链接来隐藏内核驱动程序。为了解决这个问题，可以使用另一个名为`modscan`的插件。`modscan`插件依赖于池标签扫描方法（详见[第10章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=1250&action=edit#post_1143)*，《使用内存取证狩猎恶意软件》**第4.2.2节
+    理解池标签扫描*）。换句话说，它扫描物理地址空间，寻找与内核模块相关的池标签（`MmLd`）。通过池标签扫描，它可以检测到未链接的模块和先前加载的模块。`modscan`插件按照在物理地址空间中找到的顺序显示内核模块，而不是按加载顺序显示。在下面的*Necurs*
+    rootkit示例中，`modscan`插件显示了恶意内核驱动程序（`2683608180e436a1.sys`），其名称完全由十六进制字符组成：
 - en: '[PRE17]'
   id: totrans-80
   prefs: []
@@ -743,6 +757,7 @@
   id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你运行`modules`插件来检查受*Necurs* rootkit感染的内存映像时，它不会显示那个恶意驱动程序（`2683608180e436a1.sys`）：
 - en: '[PRE18]'
   id: totrans-82
   prefs: []
@@ -764,6 +779,7 @@
   id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于`modscan`使用池标签扫描方法，可以检测已卸载的模块（前提是内存没有被覆盖），因此恶意驱动程序`2683608180e436a1.sys`可能已经被快速加载和卸载，或者它被隐藏了。为了确认驱动程序是否已卸载或隐藏，你可以使用`unloadedmodules`插件，它会显示已卸载模块的列表以及每个模块被卸载的时间。在以下输出中，恶意驱动程序`2683608180e436a1.sys`的缺失表明该驱动程序未被卸载，它被隐藏了。从以下输出中，你可以看到另一个恶意驱动程序`2b9fb.sys`，它曾被快速加载和卸载（在`modules`和`modscan`列出的模块中没有显示，如以下代码所示）。`unloadedmodules`插件在调查过程中可以证明有用，帮助检测rootkit快速加载和卸载驱动程序的尝试，以使其不出现在模块列表中：
 - en: '[PRE19]'
   id: totrans-84
   prefs: []
@@ -774,6 +790,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 5.1 使用driverscan列出内核模块
 - en: 'Another method for listing the kernel modules is to use the `driverscan` plugin,
     as shown in the following code. The `driverscan` plugin gets the information related
     to kernel modules from a structure named `DRIVER_OBJECT.` To be specific, the `driverscan`
@@ -789,6 +806,8 @@
   id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 列出内核模块的另一种方法是使用`driverscan`插件，如以下代码所示。`driverscan`插件从名为`DRIVER_OBJECT`的结构中获取与内核模块相关的信息。具体来说，`driverscan`插件通过池标签扫描来查找物理地址空间中的驱动程序对象。第一列`Offset(P)`指定了找到`DRIVER_OBJECT`结构的物理地址，第二列`Start`包含模块的基地址，`Driver
+    Name`列显示驱动程序的名称。例如，驱动程序名称`\Driver\Beep`与`Beep.sys`相同，最后一行显示与*Necurs* rootkit相关的恶意驱动程序`\Driver\2683608180e436a1`。`driverscan`插件是列出内核模块的另一种方法，当rootkit试图隐藏在`modules`和`modscan`插件下时，这种方法非常有用：
 - en: '[PRE20]'
   id: totrans-87
   prefs: []
@@ -799,6 +818,7 @@
   id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用内核调试器（Windbg）列出内核模块，使用`lm k`命令，如下所示。要获取详细输出，可以使用`lm kv`命令：
 - en: '[PRE21]'
   id: totrans-89
   prefs: []
@@ -812,6 +832,8 @@
   id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦你识别出恶意内核模块，你可以使用`moddump`插件将其从内存转储到磁盘。要将模块转储到磁盘，你需要指定模块的基地址，可以通过`modules`、`modscan`或`driverscan`插件获取。以下示例中，*Necurs
+    rootkit*的恶意驱动程序通过其基地址转储到磁盘，如下所示：
 - en: '[PRE22]'
   id: totrans-91
   prefs: []
@@ -822,6 +844,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6. I/O处理
 - en: While discussing the `driverscan` plugin, I had mentioned that `driverscan`
     gets module information from the `DRIVER_OBJECT` structure. Are you wondering
     what the `DRIVER_OBJECT` structure is? This will become clear soon. In this section,
@@ -836,6 +859,7 @@
   id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 在讨论`driverscan`插件时，我曾提到`driverscan`从`DRIVER_OBJECT`结构中获取模块信息。你是不是在想`DRIVER_OBJECT`结构是什么？这个问题很快就会清楚。在本节中，你将理解用户模式与内核模式组件之间的交互、设备驱动程序的作用以及它与I/O管理器的交互。通常，rootkit包括一个用户模式组件（EXE或DLL）和一个内核模式组件（设备驱动程序）。rootkit的用户模式组件通过特定机制与内核模式组件进行通信。从取证角度来看，理解这些通信是如何工作的以及涉及的组件非常重要。本节将帮助你理解这种通信机制，并为接下来的主题打下基础。
 - en: 'Let''s try to understand what happens when a user-mode application performs
     input/output (I/O) operations, and how it is processed at a high level. While
     discussing the API call flow in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485), *Code
@@ -851,15 +875,19 @@
   id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们尝试理解当用户模式应用程序执行输入/输出（I/O）操作时发生了什么，以及它在高层次上是如何处理的。在讨论[第8章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)中的API调用流程时，*代码注入与钩取*（在*Windows
+    API调用流程*部分），我用一个用户模式应用程序通过`WriteFile()` API执行写操作的例子，这最终会调用内核执行中的`NtWriteFile()`系统服务例程`(ntoskrnl.exe)`，然后将请求指引给I/O管理器，接着I/O管理器请求设备驱动程序执行I/O操作。在这里，我将再次回顾这个话题，提供更多细节，并重点强调内核空间组件（主要是设备驱动程序和I/O管理器）。以下图示说明了写请求的流程（其他类型的I/O请求，如读取，也类似；它们只使用不同的API）：
 - en: '![](../images/00349.jpeg)'
   id: totrans-95
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00349.jpeg)'
 - en: 'The following points discuss the role of the device driver and the I/O manager
     at a high level:'
   id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下几点讨论了设备驱动程序和I/O管理器在高层次的作用：
 - en: The device driver typically creates a device or multiple devices and specifies
     what type of operations (open, read, and write) it can handle for the device.
     It also specifies the address of routines that handle these operations. These
@@ -868,12 +896,14 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 设备驱动程序通常会创建一个或多个设备，并指定它可以处理的操作类型（打开、读取和写入）。它还指定了处理这些操作的例程地址。这些例程被称为分发例程或IRP处理程序。
 - en: After creating the device, the driver advertises that device so that it is accessible
     to user-mode applications.
   id: totrans-98
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建设备后，驱动程序会发布该设备，以便用户模式应用程序可以访问。
 - en: The user mode application can use API calls, such as `CreateFile`, to open handle
     the advertised device and perform I/O operations such as read, and write on the
     device using the `ReadFile` and `WriteFile` APIs. APIs, such as `CreateFile`,
@@ -883,6 +913,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 用户模式的应用程序可以使用API调用，如`CreateFile`，打开已公开的设备句柄，并使用`ReadFile`和`WriteFile` API在设备上执行I/O操作，如读取和写入。用于执行文件I/O操作的API，如`CreateFile`、`ReadWrite`和`WriteFile`，也适用于设备。这是因为设备被视为虚拟文件。
 - en: When the I/O operation is performed on the advertised device by the user mode
     application, the request is routed to the I/O manager. The I/O manager determines
     the driver that handles the device and requests the driver to complete the operation
@@ -892,12 +923,15 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 当用户模式应用程序在广告设备上执行I/O操作时，请求将被路由到I/O管理器。 I/O管理器确定处理设备的驱动程序，并请求驱动程序通过传递IRP（I/O请求数据包）来完成操作。
+    IRP是一个包含执行操作和I/O操作所需缓冲区信息的数据结构。
 - en: The driver reads the IRP, verifies it, and completes the requested operation
     before notifying the I/O manager about the status of the operation. The I/O manager
     then returns the status and the data back to the user application.
   id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 驱动程序读取IRP，验证它，并在通知I/O管理器有关操作状态之前完成请求的操作。 然后，I/O管理器将状态和数据返回给用户应用程序。
 - en: 'At this stage, the preceding points might seem foreign to you, but don''t let
     it discourage you: it will be clear by the time you complete this section. Next,
     we will look at the role of the device driver, followed by the role of the I/O
@@ -905,11 +939,13 @@
   id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个阶段，前面的内容可能对您来说很陌生，但不要让它让您灰心：当您完成本节时，一切将变得清晰。 接下来，我们将看一下设备驱动程序的作用，然后是I/O管理器的作用。
 - en: 6.1 The Role Of The Device Driver
   id: totrans-103
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.1 设备驱动程序的作用
 - en: 'When the driver is loaded into the system, the I/O manager creates a driver
     object (`DRIVER_OBJECT` structure). The I/O manager then calls the driver''s initialization
     routine, `DriverEntry` (which is analogous to the `main()` or `WinMain()` functions),
@@ -932,6 +968,12 @@
   id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 当驱动程序加载到系统中时，I/O管理器会创建一个驱动程序对象（`DRIVER_OBJECT`结构）。 然后，I/O管理器通过将指向`DRIVER_OBJECT`结构的指针作为参数调用驱动程序的初始化例程`DriverEntry`（类似于`main()`或`WinMain()`函数）。
+    驱动程序对象（`DRIVER_OBJECT`结构）代表系统上的一个驱动程序。 `DriverEntry`例程将使用`DRIVER_OBJECT`来填充具有处理特定I/O请求的驱动程序各种入口点的结构。
+    通常，在`DriverEntry`例程中，驱动程序会使用一个名为`IoCreateDevice`或`IoCreateDevice-Secure`的API创建代表逻辑或物理设备的设备对象（`DEVICE_OBJECT`结构）。
+    当驱动程序创建设备对象时，可以选择为设备分配名称，也可以创建多个设备。 创建设备后，将更新指向第一个创建的设备的指针在驱动程序对象中。 为了帮助您更好地理解这一点，让我们列出加载的内核模块，并查看一个简单内核模块的驱动程序对象。
+    作为示例，我们将检查`null.sys`内核驱动程序。 根据微软文档，Null设备驱动程序提供了Unix环境中`\dev\null`的功能等效物。 当系统在内核初始化阶段启动时，`null.sys`被加载到系统中。
+    在内核模块列表中，您可以看到`null.sys`加载在基地址`8bcde000`处：
 - en: '[PRE23]'
   id: totrans-105
   prefs: []
@@ -948,6 +990,9 @@
   id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于`null.sys`已经加载，在驱动程序初始化过程中，它的驱动对象（`DRIVER_OBJECT`结构）将会填充元数据。在驱动程序对象中查看它包含什么信息。你可以使用`!drvobj`扩展命令显示驱动程序对象信息。从以下输出可以看到，表示`null.sys`的驱动对象位于地址`86a33180`。`Device
+    Object list`下的`86aa2750`是指向由`null.sys`创建的设备对象的指针。如果驱动程序创建了多个设备，你将会在`Device Object
+    list`下看到多个条目：
 - en: '[PRE24]'
   id: totrans-107
   prefs: []
@@ -970,6 +1015,7 @@
   id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用驱动程序对象地址`86a33180`来通过`dt (display type)`命令检查`null.sys`的`_DRIVER_OBJECT`结构。从以下输出可以看到，`DriverStart`字段包含驱动程序的基地址（`0x8bcde000`），`DriverSize`字段包含`driver(0x7000)`的大小，`Drivername`是驱动对象的名称（`\Driver\Null`）。`DriverInit`字段保存指向*驱动初始化例程*（`DriverEntry`）的指针。`DriverUnload`字段包含指向驱动程序卸载例程的指针，该例程通常会在卸载过程中释放驱动程序创建的资源。`MajorFunction`字段是最重要的字段之一，它指向一个包含28个主要功能指针的表。这个表将会填充调度例程的地址，我们将在本节稍后查看`MajorFunction`表。前面讲到的`driverscan`插件会对驱动程序对象执行池标签扫描，并通过读取这些字段中的某些信息获取与内核模块相关的信息，如基地址、大小和驱动程序名称：
 - en: '[PRE25]'
   id: totrans-109
   prefs: []
@@ -982,6 +1028,7 @@
   id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: '`DRIVER_OBJECT`结构中的`DeviceObject`字段包含指向驱动程序（`null.sys`）创建的设备对象的指针。你可以使用设备对象地址`0x86aa2750`来确定驱动程序创建的设备的名称。在本例中，`Null`是由驱动程序`null.sys`创建的设备名称：'
 - en: '[PRE26]'
   id: totrans-111
   prefs: []
@@ -996,6 +1043,7 @@
   id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以通过在`display type (dt)`命令后面指定设备对象地址来查看实际的`DEVICE_OBJECT`结构，如下所示的代码。如果驱动程序创建了多个设备，那么`DEVICE_OBJECT`结构中的`NextDevice`字段将指向下一个设备对象。由于`null.sys`驱动程序只创建了一个设备，`NextDevice`字段被设置为`null`：
 - en: '[PRE27]'
   id: totrans-113
   prefs: []
@@ -1009,20 +1057,25 @@
   id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 从上面的输出可以看到，`DEVICE_OBJECT`包含一个`DriverObject`字段，它指向回驱动程序对象。换句话说，可以通过设备对象确定相关联的驱动程序。这就是I/O管理器如何在收到特定设备的I/O请求时，确定关联的驱动程序的方式。这个概念可以通过以下图示来可视化：
 - en: '![](../images/00350.jpeg)'
   id: totrans-115
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00350.jpeg)'
 - en: 'You can use a GUI tool such as *DeviceTree* ([http://www.osronline.com/article.cfm?article=97](http://www.osronline.com/article.cfm?article=97))
     to look at the devices created by the driver. The following is a screenshot of
     the tool showing the `Null` device created by the `null.sys` driver:'
   id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用像 *DeviceTree* ([http://www.osronline.com/article.cfm?article=97](http://www.osronline.com/article.cfm?article=97))
+    这样的图形界面工具来查看驱动程序创建的设备。以下是该工具显示 `null.sys` 驱动程序创建的 `Null` 设备的截图：
 - en: '![](../images/00351.jpeg)'
   id: totrans-117
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00351.jpeg)'
 - en: 'When a driver creates a device, the device objects are placed in the `\Device`
     directory in the Windows object manager''s namespace. To view the object manager''s
     namespace information, you can use the  *WinObj* tool ([https://docs.microsoft.com/en-us/sysinternals/downloads/winobj](https://docs.microsoft.com/en-us/sysinternals/downloads/winobj)).
@@ -1032,10 +1085,14 @@
   id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 当驱动程序创建一个设备时，设备对象会被放置在 Windows 对象管理器的命名空间中的 `\Device` 目录下。要查看对象管理器的命名空间信息，可以使用
+    *WinObj* 工具 ([https://docs.microsoft.com/en-us/sysinternals/downloads/winobj](https://docs.microsoft.com/en-us/sysinternals/downloads/winobj))。以下截图显示了由
+    `null.sys` 在 `\Device` 目录下创建的设备（`Null`）。你还可以看到其他驱动程序创建的设备：
 - en: '![](../images/00352.jpeg)'
   id: totrans-119
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00352.jpeg)'
 - en: 'The device created under the `\Device` directory is not accessible to the applications
     running in the user mode. In other words, if a user mode application wants to
     perform I/O operations on the device, it cannot directly open a handle to the
@@ -1054,10 +1111,16 @@
   id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建在 `\Device` 目录下的设备对于用户模式下运行的应用程序是不可访问的。换句话说，如果一个用户模式应用程序想要对设备执行 I/O 操作，它不能通过将设备名称（如
+    `\Device\Null`）作为参数传递给 `CreateFile` 函数来直接打开设备句柄。`CreateFile` 函数不仅用于创建或打开文件，还可以用于打开设备句柄。如果用户模式应用程序无法访问设备，那它如何执行
+    I/O 操作呢？为了使设备对用户模式应用程序可访问，驱动程序需要宣传该设备。这可以通过为设备创建一个符号链接来实现。驱动程序可以使用内核 API `IoCreateSymbolicLink`
+    来创建符号链接。当为设备（如 `\Device\Null`）创建符号链接时，你可以在对象管理器命名空间中的 `\GLOBAL??` 目录下找到它，也可以使用
+    *WinObj* 工具查看。以下截图中，你可以看到 `NUL` 是由 `null.sys` 驱动程序为 `\Device\Null` 设备创建的符号链接名称：
 - en: '![](../images/00353.jpeg)'
   id: totrans-121
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00353.jpeg)'
 - en: 'The symbolic link is also referred to as an MS-DOS device name. A user mode
     application can simply use the name of the symbolic link (MS-DOS device name)
     to open the handle to the device using the convention `\\.\<symboliclink name>`.
@@ -1073,10 +1136,16 @@
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 符号链接也被称为 MS-DOS 设备名称。用户模式应用程序可以直接使用符号链接的名称（MS-DOS 设备名称）来通过约定 `\\.\<symboliclink
+    name>` 打开设备的句柄。例如，要打开 `\Device\Null` 的句柄，用户模式应用程序只需将 `\\.\NUL` 作为第一个参数（`lpFilename`）传递给
+    `CreateFile` 函数，该函数会返回设备的文件句柄。具体来说，在对象管理器的 `GLOBAL??` 目录下的任何符号链接都可以通过 `CreateFile`
+    函数打开。如下面的截图所示，`C:` 盘符仅仅是 `\Device\HarddiskVolume1` 的符号链接。在 Windows 中，I/O 操作是在虚拟文件上执行的。换句话说，设备、目录、管道和文件都被视为虚拟文件（可以通过
+    `CreateFile` 函数打开）：
 - en: '![](../images/00354.jpeg)'
   id: totrans-123
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00354.jpeg)'
 - en: At this point, you know that the driver, during its initialization, creates
     the device and advertises it to be used by the user application using symbolic
     links. Now, the question is, how does the driver tell the I/O manager what type
@@ -1099,6 +1168,8 @@
   id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 此时，你已经知道驱动程序在初始化过程中会创建设备，并通过符号链接向用户应用程序宣传它。现在，问题是，驱动程序如何告诉I/O管理器它支持哪些类型的操作（如打开、读取、写入等）？在初始化过程中，驱动程序通常会做的另一件事是更新`Major
+    function table（分派例程数组）`，并将分派例程的地址填充到`DRIVER_OBJECT`结构中。检查主要功能表将帮助你了解驱动程序支持哪些操作（如打开、读取、写入等）以及与特定操作相关的分派例程地址。主要功能表是一个包含`28`个函数指针的数组；索引值`0`到`27`表示特定操作。例如，索引值`0`对应于主要功能代码`IRP_MJ_CREATE`，索引值`3`对应于主要功能代码`IRP_MJ_READ`，依此类推。换句话说，如果应用程序想要打开文件或设备对象的句柄，请求将被发送给I/O管理器，然后I/O管理器使用`IRP_MJ_CREATE`主要功能代码作为索引查找主要功能表中的分派例程地址，来处理该请求。对于读取操作，也是同样的方式，使用`IRP_MJ_READ`作为索引来确定分派例程的地址。
 - en: 'The following `!drvobj` commands displays the dispatch routine array populated
     by the `null.sys` driver. The operations that are not supported by the driver
     point to `IopInvalidDeviceRequest` in the `ntoskrnl.exe` (`nt`). Based on this
@@ -1115,6 +1186,7 @@
   id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下`!drvobj`命令显示由`null.sys`驱动程序填充的分派例程数组。对于驱动程序不支持的操作，会指向`ntoskrnl.exe`（`nt`）中的`IopInvalidDeviceRequest`。根据这些信息，你可以知道`null.sys`仅支持`IRP_MJ_CREATE`（打开）、`IRP_MJ_CLOSE`（关闭）、`IRP_MJ_READ`（读取）、`IRP_MJ_WRITE`（写入）、`IRP_MJ_QUERY_INFORMATION`（查询信息）和`IRP_MJ_LOCK_CONTROL`（锁控制）操作。任何请求执行这些支持的操作将会被分派到适当的分派例程。例如，当用户应用程序执行`write`操作时，写入设备的请求会被分派到`null.sys`驱动程序卸载例程中的`MajorFunction[IRP_MJ_WRITE]`函数，该函数位于地址`8bce107c`。在`null.sys`的情况下，所有支持的操作都被分派到相同的地址`8bce107c`。通常情况下，情况并非如此；你会看到处理不同操作的不同例程地址：
 - en: '[PRE28]'
   id: totrans-126
   prefs: []
@@ -1125,10 +1197,12 @@
   id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以在*DeviceTree*工具中查看支持的操作，如以下截图所示：
 - en: '![](../images/00355.jpeg)'
   id: totrans-128
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00355.jpeg)'
 - en: At this point, you know that the driver creates the device, advertises it to
     be used by the user applications, and it also updates the dispatch routine array
     (major function table) to tell the I/O manager what operation it supports. Now,
@@ -1137,11 +1211,14 @@
   id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 到此为止，你已经知道驱动程序创建设备，将其广告宣传以供用户应用程序使用，并且还更新了调度例程数组（主要功能表），告知 I/O 管理器它支持的操作。现在，让我们来看一下
+    I/O 管理器的作用，并了解从用户应用程序接收到的 I/O 请求是如何调度到驱动程序的。
 - en: 6.2 The Role Of The I/O Manager
   id: totrans-130
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.2 I/O 管理器的作用
 - en: When the I/O request reaches the I/O manager, the I/O manager locates the driver
     and creates an `IRP (I/O request packet)`, that is a data structure which contains
     information describing an I/O request. For an operation such as read, write, and
@@ -1164,6 +1241,12 @@
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 当 I/O 请求到达 I/O 管理器时，I/O 管理器定位驱动程序并创建一个 `IRP（I/O 请求包）`，它是一个包含描述 I/O 请求信息的数据结构。对于读取、写入等操作，I/O
+    管理器创建的 IRP 还包含一个内核内存中的缓冲区，用于驱动程序存储从设备读取的数据或写入设备的数据。I/O 管理器创建的 IRP 随后传递给正确的驱动程序调度例程。驱动程序接收
+    IRP，IRP 中包含描述要执行的操作（如打开、读取或写入）的主要功能代码（`IRP_MJ_XXX`）。在启动 I/O 操作之前，驱动程序会进行检查，以确保一切正常（例如，提供的读取或写入操作的缓冲区足够大），然后启动
+    I/O 操作。如果需要对硬件设备执行 I/O 操作，驱动程序通常会经过 HAL 例程。工作完成后，驱动程序将 IRP 返回给 I/O 管理器，告诉它请求的
+    I/O 操作已完成，或者因为 IRP 必须传递给驱动程序堆栈中的另一个驱动程序进行进一步处理。I/O 管理器在任务完成时释放 IRP，或者将 IRP 传递给设备堆栈中的下一个驱动程序以完成
+    IRP。任务完成后，I/O 管理器将状态和数据返回给用户模式应用程序。
 - en: 'At this point, you should have an understanding of the role of the I/O manager.
     For detailed information on the I/O system and device drivers, refer to the book
     *"Windows Internals, Part 1: 7th Edition"* by Pavel Yosifovich, Alex Ionescu,
@@ -1171,11 +1254,14 @@
   id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: '到此为止，你应该已经理解了 I/O 管理器的作用。有关 I/O 系统和设备驱动程序的详细信息，请参考 Pavel Yosifovich、Alex Ionescu、Mark
+    E. Russinovich 和 David A. Solomon 所著的《*Windows Internals, Part 1: 第七版*》一书。'
 - en: 6.3 Communicating With The Device Driver
   id: totrans-133
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.3 与设备驱动程序的通信
 - en: 'Now, let''s revisit the interaction between the user-mode component and the
     kernel-mode component. We will get back to our example of the `null.sys` driver
     and trigger a write operation to it''s device (`\Device\Null`) from the user-mode
@@ -1187,10 +1273,14 @@
   id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们重新审视用户模式组件和内核模式组件之间的交互。我们将回到 `null.sys` 驱动程序的例子，并从用户模式触发一个写入操作到它的设备（`\Device\Null`），并监控发送到
+    `null.sys` 驱动程序的 IRP。为了监控发送到驱动程序的 IRP 包，我们可以使用 `IrpTracker` 工具（[https://www.osronline.com/article.cfm?article=199](https://www.osronline.com/article.cfm?article=199)）。要启动
+    `IrpTracker`，请以管理员身份启动，点击文件 | 选择驱动程序，输入驱动程序的名称（在此例中为 `null`），如以下截图所示，然后点击确认按钮：
 - en: '![](../images/00356.jpeg)'
   id: totrans-135
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00356.jpeg)'
 - en: 'Now, to trigger the I/O operation, you can open the Command Prompt and type
     the following command. This will write the string `"hello"` to the null device.
     As mentioned earlier, the symbolic link name is what a user-mode application (such
@@ -1199,6 +1289,8 @@
   id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，要触发 I/O 操作，你可以打开命令提示符并输入以下命令。这将把字符串 `"hello"` 写入空设备。正如之前提到的，符号链接名称是用户模式应用程序（如
+    `cmd.exe`）可以使用的；这就是我指定设备符号链接名称（NUL）来写入内容的原因：
 - en: '[PRE29]'
   id: totrans-137
   prefs: []
@@ -1219,10 +1311,16 @@
   id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 设备被视为虚拟文件，在写入设备之前，会通过 `CreateFile()` 打开设备的句柄（`CreateFile()` 是一个用于创建/打开文件或设备的
+    API）。`CreateFile()` API 最终会调用 `ntoskrnl.exe` 中的 `NtCreateFile()`，该函数将请求发送给 I/O
+    管理器。I/O 管理器根据符号链接名称查找与设备关联的驱动程序，并调用其与 `IRP_MJ_CREATE` 主功能代码对应的分派例程。在设备的句柄被打开后，写入操作将使用
+    `WriteFile()` 执行，该操作将调用 `NtWriteFile`。该请求将被 I/O 管理器分派到与 `IRP_MJ_WRITE` 主功能代码对应的驱动程序例程。以下截图显示了与
+    `IRP_MJ_CREATE` 和 `IRP_MJ_WRITE` 对应的驱动程序分派例程调用及其完成状态：
 - en: '![](../images/00357.jpeg)'
   id: totrans-139
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00357.jpeg)'
 - en: 'At this point, you should have an understanding of how the user-mode code that
     performs I/O operations communicates with the kernel mode driver. Windows supports
     another mechanism, which allows the user-mode code to communicate directly with
@@ -1248,15 +1346,20 @@
   id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这一点上，你应该已经理解了执行I/O操作的用户模式代码如何与内核模式驱动程序进行通信。Windows还支持另一种机制，允许用户模式代码直接与内核模式设备驱动程序通信。这是通过使用通用API
+    `DeviceIoControl`（由`kernel32.dll`导出）来完成的。该API接受设备的句柄作为其中一个参数。它接受的另一个参数是控制代码，称为`IOCTL`（I/O控制）代码，它是一个32位的整数值。每个控制代码标识一个要执行的特定操作以及在哪个设备上执行该操作。用户模式应用程序可以打开设备句柄（使用`CreateFile`），调用`DeviceIoControl`，并传递Windows操作系统提供的标准控制代码来直接对设备执行输入输出操作，例如硬盘驱动器、磁带驱动器或CD-ROM驱动器。此外，设备驱动程序（例如rootkit驱动程序）可以定义自己的设备特定控制代码，用户模式的rootkit组件可以通过`DeviceIoControl`
+    API与驱动程序进行通信。当用户模式组件通过传递`IOCTL`代码调用`DeviceIoControl`时，它会调用`ntdll.dll`中的`NtDeviceIoControlFile`，该函数将线程切换到内核模式，并调用Windows执行系统`ntoskrnl.exe`中的系统服务例程`NtDeviceIoControlFile`。Windows执行系统调用I/O管理器，I/O管理器构建包含IOCTL代码的IRP数据包，然后将其路由到由`IRP_MJ_DEVICE_CONTROL`标识的内核调度例程。以下图示展示了用户模式代码与内核模式驱动程序之间的通信概念：
 - en: '![](../images/00358.jpeg)'
   id: totrans-141
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00358.jpeg)'
 - en: 6.4 I/O Requests To Layered Drivers
   id: totrans-142
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.4 I/O 请求到分层驱动程序
 - en: 'So far, you have understood how an I/O request is handled by a simple device
     controlled by a single driver. The I/O request can go through multiple layers
     of drivers; I/O processing for the layered drivers happens in much the same way.
@@ -1265,16 +1368,19 @@
   id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，你已经理解了如何通过一个由单一驱动程序控制的简单设备来处理I/O请求；I/O请求可以经过多个驱动程序层次；这些层次的I/O处理方式基本相同。以下截图展示了I/O请求如何在达到硬件设备之前通过多个驱动程序层的一个例子：
 - en: '![](../images/00359.jpeg)'
   id: totrans-144
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00359.jpeg)'
 - en: 'This concept is better understood with an example, so let''s trigger a write
     operation to `c:\abc.txt` using the following command. When this command is executed,
     `netstat` will open the handle to `abc.txt` and write to it:'
   id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个概念通过一个例子来更好地理解，因此我们通过以下命令触发对`c:\abc.txt`的写操作。当该命令执行时，`netstat`将打开`abc.txt`的句柄并写入其中：
 - en: '[PRE30]'
   id: totrans-146
   prefs: []
@@ -1293,10 +1399,12 @@
   id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里需要注意的一点是，文件名*（*`C:\abc.txt`*）*也包含了文件所在设备的名称，即，`C:`驱动器是设备`\Device\HarddiskVolume1`的符号链接名称（你可以使用之前提到的`WinObj`工具进行验证）。这意味着写操作将被路由到与设备`\Device\HarddiskVolume1`相关联的驱动程序。当`netstat.exe`打开`abc.txt`时，I/O管理器创建一个文件对象（`FILE_OBJECT`结构）并在文件对象中存储指向设备对象的指针，然后将句柄返回给`netstat.exe.`。以下是来自`ProcessHacker`工具的截图，显示了已由`netstat.exe.`打开的`C:\abc.txt`句柄。对象地址`0x85f78ce8`代表文件对象：
 - en: '![](../images/00360.jpeg)'
   id: totrans-148
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00360.jpeg)'
 - en: 'You can examine the file object (`FILE_OBJECT`) using the object address as
     follows. From the output, you can see that the `FileName` field contains the name
     of the file, and the `DeviceObject` field contains the pointer to the device object
@@ -1304,6 +1412,7 @@
   id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过以下方式使用对象地址检查文件对象（`FILE_OBJECT`）。从输出中，你可以看到`FileName`字段包含了文件的名称，而`DeviceObject`字段包含了指向设备对象（`DEVICE_OBJECT`）的指针：
 - en: '[PRE31]'
   id: totrans-150
   prefs: []
@@ -1319,6 +1428,7 @@
   id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，通过设备对象，可以确定设备的名称和相关的驱动程序。这是I/O管理器决定将I/O请求传递给哪个驱动程序的方式。以下输出显示了设备的名称`HarddiskVolume1`及其相关的驱动程序`volmgr.sys.`。`AttachedDevice`字段告诉你，`fvevol.sys`驱动程序下有一个没有命名的设备对象（`868e7b28`），它位于设备对象`HarddiskVolume1`之上，在设备栈中：
 - en: '[PRE32]'
   id: totrans-152
   prefs: []
@@ -1338,6 +1448,7 @@
   id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 要确定I/O请求经过的驱动程序层级，你可以使用`!devstack`内核调试命令并传递设备对象地址，以显示与特定设备对象相关的设备栈（分层设备对象）。以下输出显示了与`\Device\HarddiskVolume1`相关的设备栈，该设备由`volmgr.sys.`拥有。第四列中的`>`字符表示该条目与设备`HarddiskVolume1`相关，且该行之上的条目是位于`volmgr.sys.`之上的驱动程序列表。这意味着I/O请求将首先传递给`volsnap.sys`，根据请求的类型，`volsnap.sys`可以处理IRP请求并将请求传递给栈中的其他驱动程序，最终到达`volmgr.sys`：
 - en: '[PRE33]'
   id: totrans-154
   prefs: []
@@ -1351,10 +1462,12 @@
   id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查看设备树，你可以使用我们之前提到的GUI工具*DeviceTree*。该工具将驱动程序显示在树的外侧，而它们的设备则缩进一级。附加设备会进一步缩进，如下图所示。你可以将以下截图与之前的`!devstack`输出进行对比，从而了解如何解读这些信息：
 - en: '![](../images/00361.jpeg)'
   id: totrans-156
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00361.jpeg)'
 - en: It is important to understand this layered approach, because sometimes, a rookit
     driver can insert or attach below or above the target device's stack to receive
     `IRP`. Using this technique, a rootkit driver can log or modify the `IRP` before
@@ -1363,17 +1476,20 @@
   id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解这种分层方法很重要，因为有时，rootkit 驱动程序可以插入或附加到目标设备的堆栈上方或下方以接收`IRP`。通过这种技术，rootkit 驱动程序可以在将`IRP`传递给合法驱动程序之前，记录或修改`IRP`。例如，键盘记录器可以通过插入一个恶意驱动程序（该驱动程序位于键盘功能驱动程序上方）来记录按键。
 - en: 7\. Displaying Device Trees
   id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 7. 显示设备树
 - en: 'You can use the `devicetree` plugin in Volatility to display the device tree
     in the same format as the *DeviceTree* tool. The following highlighted entries
     show the device stack of `HarddiskVolume1` that is associated with `volmgr.sys`:'
   id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用Volatility中的`devicetree`插件，以与*DeviceTree*工具相同的格式显示设备树。以下高亮的条目显示了与`volmgr.sys`相关联的`HarddiskVolume1`设备堆栈：
 - en: '[PRE34]'
   id: totrans-160
   prefs: []
@@ -1389,6 +1505,8 @@
   id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了帮助你理解`devicetree`插件在取证调查中的使用，下面我们来看一个创建自己设备来存储恶意二进制文件的恶意软件。在接下来的 Z*eroAccess*
+    *rootkit* 示例中，我使用了`cmdline`插件，它显示进程的命令行参数。这对于确定进程的完整路径非常有用（你也可以使用`dlllist`插件）。从输出中，你可以看到最后一个`svchost.exe`进程是从一个可疑的命名空间中运行的：
 - en: '[PRE35]'
   id: totrans-162
   prefs: []
@@ -1410,6 +1528,8 @@
   id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 从之前的讨论中，如果你还记得，`\\.\<symbolic link name>` 是从用户模式使用符号链接名称访问设备的约定。当驱动程序为设备创建符号链接时，它会被添加到`\GLOBAL??`目录中，该目录位于对象管理器命名空间中（可以使用*WinObj*工具查看，正如我们之前讨论的）。在这种情况下，`globalroot`是符号链接的名称。那么，问题是，`\\.\globalroot`是什么？事实证明，`\\.\globalroot`指的是`\GLOBAL??`命名空间。换句话说，`\\.\globalroot\Device\svchost.exe\svchost.exe`路径与`\Device\svchost.exe\svchost.exe`路径是相同的。此时，你知道
+    Z*eroAccess* rootkit 创建了自己的设备（`svchost.exe`）来隐藏其恶意二进制文件`svchost.exe`。要识别创建此设备的驱动程序，你可以使用`devicetree`插件。从以下输出中，你可以看出`svchost.exe`设备是由`00015300.sys`驱动程序创建的：
 - en: '[PRE36]'
   id: totrans-164
   prefs: []
@@ -1426,6 +1546,8 @@
   id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的*BlackEnergy*恶意软件示例中，它将磁盘上的合法`aliide.sys`驱动程序替换为恶意驱动程序，以劫持现有服务（如在[第10章](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)，*使用内存取证猎杀恶意软件*部分中所述）。当服务启动时，恶意驱动程序创建一个设备与恶意用户模式组件（注入到合法`svchost.exe`中的
+    DLL）进程进行通信。以下`devicetree`输出显示了恶意驱动程序创建的设备：
 - en: '[PRE37]'
   id: totrans-166
   prefs: []
@@ -1443,6 +1565,11 @@
   id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了了解恶意驱动程序支持的操作类型，您可以使用 Volatility 的 `driverirp` 插件，因为它可以显示与特定驱动程序或所有驱动程序相关的主要
+    IRP 函数。从以下输出中，您可以看出恶意 `aliide` 驱动程序支持 `IRP_MJ_CREATE (打开)`、`IRP_MJ_CLOSE (关闭)`
+    和 `IRP_MJ_DEVICE_CONTROL (DeviceIoControl)` 操作。驱动程序不支持的操作通常指向 `ntoskrnl.exe` 中的
+    `IopInvalidDeviceRequest`，这也是您看到所有其他不受支持的操作指向 `0xfffff80002a5865c` 在 `ntoskrnl.exe`
+    中的原因：
 - en: '[PRE38]'
   id: totrans-168
   prefs: []
@@ -1453,6 +1580,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8. 检测内核空间劫持
 - en: When discussing hooking techniques (In case [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485), *Code
     Injection and Hooking,* in the* Hooking Techniques* section), we saw how some
     malware programs modify the call table (*IAT Hooking*) and some modify the API
@@ -1472,11 +1600,15 @@
   id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 在讨论劫持技术时（参见[第8章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)，*代码注入与劫持*部分），我们看到一些恶意软件通过修改调用表（*IAT
+    劫持*）以及一些修改 API 函数（*内联劫持*）来控制程序的执行路径，并将其重定向到恶意代码。其目标是阻止对 API 的调用，监控传递给 API 的输入参数，或过滤从
+    API 返回的输出参数。[第8章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=1250&action=edit#post_985)中涉及的*代码注入与劫持*技术主要集中在用户空间的劫持技术。如果攻击者能够安装一个内核驱动程序，类似的功能也可以在内核空间实现。内核空间中的劫持是一种比用户空间更强大的方法，因为内核组件在整个系统的运作中扮演着非常重要的角色。这使得攻击者能够以高权限执行代码，从而具备隐藏恶意组件、绕过安全软件或拦截执行路径的能力。在本节中，我们将了解内核空间中的不同劫持技术，以及如何使用内存取证来检测这些技术。
 - en: 8.1 Detecting SSDT Hooking
   id: totrans-171
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.1 检测 SSDT 劫持
 - en: 'The **System Service Descriptor Table** (**SSDT**) in kernel space contains
     the pointers to the system service routines (kernel functions) exported by the
     kernel executive (`ntoskrnl.exe, ntkrnlpa.exe` and so on). When an application
@@ -1488,10 +1620,14 @@
   id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 内核空间中的**系统服务描述符表**（**SSDT**）包含指向由内核执行文件（`ntoskrnl.exe`、`ntkrnlpa.exe`等）导出的系统服务例程（内核函数）的指针。当应用程序调用像
+    `WriteFile()`、`ReadFile()` 或 `CreateProcess()` 等 API 时，它会调用 `ntdll.dll` 中的存根，从而将线程切换到内核模式。运行在内核模式中的线程会查询*SSDT*以确定要调用的内核函数的地址。下图通过
+    `WriteFile()` 示例展示了这一概念（对于其他 API，概念类似）：
 - en: '![](../images/00362.jpeg)'
   id: totrans-173
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00362.jpeg)'
 - en: 'In general, `ntoskrnl.exe` exports core kernel API functions such as `NtReadFile()`, `NtWrite()File`,
     and so on. In the x86 platform, the pointers to these kernel functions are stored
     directly in the SSDT, whereas on the x64 platforms,  SSDT does not contain the
@@ -1505,6 +1641,8 @@
   id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 一般来说，`ntoskrnl.exe`导出核心内核API函数，如`NtReadFile()`、`NtWriteFile()`等。在x86平台中，这些内核函数的指针直接存储在SSDT中，而在x64平台中，SSDT不包含指针。相反，它存储一个编码的整数，通过解码该整数来确定内核函数的地址。无论实现方式如何，概念都是相同的，SSDT被查询以确定特定内核函数的地址。以下是`Windows7
+    x86`平台上的*WinDbg*命令，用于显示SSDT的内容。表格中的条目包含指向`ntoskrnl.exe`（`nt`）实现的函数的指针。条目的顺序和数量会因操作系统版本而异：
 - en: '[PRE39]'
   id: totrans-175
   prefs: []
@@ -1518,6 +1656,8 @@
   id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有第二个表格，类似于SSDT，称为*SSDT shadow*。此表格存储由`win32k.sys`导出的与GUI相关的函数指针。要显示这两个表格的条目，可以使用`ssdt`
+    volatility插件，如下所示。`SSDT[0]`表示原生的*SSDT表格*，而`SSDT[1]`表示*SSDT shadow*：
 - en: '[PRE40]'
   id: totrans-177
   prefs: []
@@ -1531,10 +1671,12 @@
   id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 在SSDT hooking的情况下，攻击者将特定函数的指针替换为恶意函数的地址。例如，如果攻击者希望拦截写入文件的数据，可以将`NtWriteFile()`的指针更改为指向攻击者选择的恶意函数的地址。如下图所示：
 - en: '![](../images/00363.jpeg)'
   id: totrans-179
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00363.jpeg)'
 - en: 'To detect SSDT hooking, you can look for the entries in the SSDT table that
     do not point to addresses in `ntoskrnl.exe` or `win32k.sys.` The following code
     is an example of the *Mader* rootkit, which hooks various-registry related functions
@@ -1544,6 +1686,8 @@
   id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了检测SSDT hooking，可以查看SSDT表格中不指向`ntoskrnl.exe`或`win32k.sys`地址的条目。以下代码是*Mader*
+    rootkit的示例，它hook了多个与注册表相关的函数，并将它们指向恶意驱动程序`core.sys`。在此阶段，您可以使用`modules`、`modscan`或`driverscan`确定`core.sys`的基址，然后使用`moddump`插件将其转储到磁盘以供进一步分析：
 - en: '[PRE41]'
   id: totrans-181
   prefs: []
@@ -1558,11 +1702,14 @@
   id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用SSDT hooking对攻击者的缺点在于它很容易被检测到，而且Windows的64位版本由于**内核补丁保护**（**KPP**）机制，也被称为*PatchGuard*，会阻止SSDT
+    hooking（[https://en.wikipedia.org/wiki/Kernel_Patch_Protection](https://en.wikipedia.org/wiki/Kernel_Patch_Protection)）。由于SSDT中的条目在不同版本的Windows中有所不同，并且在新版本中可能会发生变化，因此恶意软件作者很难编写一个可靠的rootkit。
 - en: 8.2 Detecting IDT Hooking
   id: totrans-183
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.2 检测IDT Hooking
 - en: 'The **Interrupt Descriptor Table** (**IDT**) stores the addresses of functions
     known as *ISR (Interrupt Service Routines or Interrupt handlers).* These functions
     handle interrupts and processor exceptions. Like hooking an SSDT, an attacker
@@ -1576,6 +1723,10 @@
   id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: '**中断描述符表**（**IDT**）存储着被称为*ISR（中断服务例程或中断处理程序）*的函数地址。这些函数处理中断和处理器异常。就像挂钩 SSDT
+    一样，攻击者可能会挂钩 IDT 中的条目，以将控制权重定向到恶意代码。要显示 IDT 条目，可以使用 `idt` Volatility 插件。一个挂钩 IDT
+    的恶意软件示例是*Uroburos (Turla) rootkit*。该 rootkit 挂钩了位于 `0xc3 (INT C3)` 索引的中断处理程序。在干净的系统中，`0xC3`
+    处的中断处理程序指向的地址位于 `ntoskrnl.exe` 的内存中。以下输出显示了来自干净系统的条目：'
 - en: '[PRE42]'
   id: totrans-185
   prefs: []
@@ -1587,6 +1738,8 @@
   id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下输出显示了挂钩条目。您可以看到 IDT 中的 `0xC3` 条目指向一个 `UNKNOWN` 模块中的地址。换句话说，挂钩条目位于 `ntoskrnl.exe`
+    模块的范围之外：
 - en: '[PRE43]'
   id: totrans-187
   prefs: []
@@ -1598,11 +1751,13 @@
   id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 要详细分析 Uroburos rootkit，并了解 rootkit 用于触发挂钩中断处理程序的技术，请参阅以下博客文章：[https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg](https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg)。
 - en: 8.3 Identifying Inline Kernel Hooks
   id: totrans-189
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.3 识别内核空间内联钩取
 - en: 'Instead of replacing the pointers in the SSDT, which makes it easy to recognize,
     an attacker can modify the kernel function or function in an existing kernel driver
     with a `jmp` instruction to reroute the execution flow to the malicious code.
@@ -1617,6 +1772,11 @@
   id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者可以通过修改内核函数或现有内核驱动程序中的函数，使用 `jmp` 指令将执行流重新路由到恶意代码，而不是替换 SSDT 中的指针，这样更容易被识别。如本章前面所述，您可以使用
+    `apihooks` 插件来检测内核空间中的内联钩取。通过指定 `-P` 参数，您可以告诉 `apihooks` 插件仅扫描内核空间中的钩取。在以下 *TDL3
+    rootkit* 的示例中，`apihooks` 检测到了内核函数 `IofCallDriver` 和 `IofCompleteRequest` 中的钩取。被挂钩的
+    API 函数被重定向到 `0xb878dfb2` 和 `0xb878e6bb` 这些地址，位于一个名称未知的恶意模块中（可能是因为它通过解除链接 `KLDR_DATA_TABLE_ENTRY`
+    结构来隐藏自己）：
 - en: '[PRE44]'
   id: totrans-191
   prefs: []
@@ -1637,6 +1797,7 @@
   id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使钩子模块的名称未知，仍然可以检测到恶意的内核模块。在这种情况下，我们知道API函数被重定向到恶意模块中以`0xb87`开头的地址，这意味着恶意模块一定驻留在以`0xb87`开头的某个地址处。运行`modules`插件并未检测到该地址范围内的任何模块（因为它被隐藏），而`modscan`插件则检测到一个名为`TDSSserv.sys`的内核模块，该模块加载在基地址`0xb878c000`，大小为`0x11000`。换句话说，内核模块`TDSSserv.sys`的起始地址是`0xb878c000`，结束地址是`0xb879d000（0xb878c000+0x11000）`。你可以清楚地看到钩子地址`0xb878dfb2`和`0xb878e6bb`落在`TDSSserv.sys`的地址范围内。此时，我们已经成功识别出恶意驱动程序。你现在可以将驱动程序转储到磁盘以便进一步分析：
 - en: '[PRE45]'
   id: totrans-193
   prefs: []
@@ -1647,6 +1808,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 8.4 检测IRP函数钩子
 - en: 'Instead of hooking the kernel API functions, a rootkit can modify the entries
     in the major function table (dispatch routine array) to point to a routine in
     the malicious module. For example, a rookit can inspect the data buffer that is
@@ -1655,10 +1817,12 @@
   id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: rootkit可以通过修改主功能表（调度例程数组）中的条目，而不是钩住内核API函数，将它们指向恶意模块中的某个例程。例如，rootkit可以通过覆盖驱动程序主功能表中与`IRP_MJ_WRITE`相关的地址，来检查写入磁盘或网络的数据缓冲区。以下图示说明了这一概念：
 - en: '![](../images/00364.jpeg)'
   id: totrans-196
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00364.jpeg)'
 - en: 'Normally, the IRP handler functions of a driver point within their own module.
     For instance, the routine associated with `IRP_MJ_WRITE` of `null.sys` points
     to an address in `null.sys`, however, sometimes a driver will forward the handler
@@ -1667,6 +1831,7 @@
   id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，驱动程序的IRP处理程序函数会指向它们自己模块中的某个位置。例如，`null.sys`的`IRP_MJ_WRITE`相关例程指向`null.sys`中的一个地址，但有时驱动程序会将处理程序函数转发到另一个驱动程序。以下是磁盘驱动程序将处理程序函数转发到`CLASSPNP.SYS`（存储类设备驱动程序）的示例：
 - en: '[PRE46]'
   id: totrans-198
   prefs: []
@@ -1683,6 +1848,8 @@
   id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检测IRP钩子，可以关注指向另一个驱动程序的IRP处理程序函数，并且由于驱动程序可以将IRP处理程序转发到另一个驱动程序，你需要进一步调查以确认钩子。如果你在实验室环境中分析rootkit，则可以从干净的内存映像中列出所有驱动程序的IRP函数，并将其与受感染的内存映像中的IRP函数进行比较，以查找任何修改。在以下示例中，*ZeroAccess
+    rootkit*钩住了磁盘驱动程序的IRP函数，并将它们重定向到一个恶意模块中的函数，而该模块的地址未知（因为该模块被隐藏）：
 - en: '[PRE47]'
   id: totrans-200
   prefs: []
@@ -1694,6 +1861,7 @@
   id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是`modscan`的输出，显示与*ZeroAccess*相关的恶意驱动程序（具有可疑名称）及其在内存中加载的基地址（该地址可用于将驱动程序转储到磁盘）：
 - en: '[PRE48]'
   id: totrans-202
   prefs: []
@@ -1711,6 +1879,11 @@
   id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些 rootkit 使用间接 IRP 钩子来避免引起怀疑。在以下示例中，*Gapz* Bootkit 钩住了 `null.sys` 的 `IRP_MJ_DEVICE_CONTROL`。乍一看，一切似乎正常，因为对应于
+    `IRP_MJ_DEVICE_CONTROL` 的 IRP 处理程序地址指向 `null.sys` 内部。然而，仔细观察会发现差异；在一个干净的系统上，`IRP_MJ_DEVICE_CONTROL`
+    会指向 `ntoskrnl.exe` 中的地址（`nt!IopInvalidDeviceRequest`）。在这种情况下，它指向了 `null.sys` 中的
+    `0x880ee040`。通过反汇编地址 `0x880ee040`（使用 `volshell` 插件），您可以看到它跳转到 `0x8518cad9`，这个地址位于
+    `null.sys` 的范围之外：
 - en: '[PRE49]'
   id: totrans-204
   prefs: []
@@ -1723,6 +1896,8 @@
   id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 有关 Gapz Bootkit 使用的隐身技术的详细信息，请阅读 Eugene Rodionov 和 Aleksandr Matrosov 所写的白皮书（[https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf](https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf)），标题为“*留意
+    Gapz：有史以来最复杂的 Bootkit 分析*”。
 - en: As discussed so far, detecting standard hooking techniques is fairly straightforward.
     For instance, you can look for signs such as SSDT entries not pointing to `ntoskrnl.exe`/`win32k.sys`
     or IRP functions pointing to somewhere else, or jump instructions at the start
@@ -1741,11 +1916,16 @@
   id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，检测标准的钩子技术相对简单。例如，您可以查看一些迹象，如 SSDT 条目未指向`ntoskrnl.exe`/`win32k.sys`，或者 IRP
+    函数指向其他地方，或者函数开始处存在跳转指令。为了避免这种检测，攻击者可以在保持调用表条目在范围内的同时实现钩子，或者将跳转指令放置在代码深处。为此，他们需要依赖于修补系统模块或第三方驱动程序。修补系统模块的问题在于，*Windows
+    内核补丁保护（PatchGuard）* 会阻止修补调用表（如 SSDT 或 IDT）以及 64 位系统上的核心系统模块。由于这些原因，攻击者要么使用依赖绕过这些保护机制的技术（如安装*Bootkit*/*利用内核模式漏洞*），要么使用受支持的方式（这些方式同样适用于
+    64 位系统）执行恶意代码，以便与其他合法驱动程序融合并减少被检测的风险。在接下来的章节中，我们将探讨 rootkit 使用的一些受支持的技术。
 - en: 9\. Kernel Callbacks And Timers
   id: totrans-207
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 9\. 内核回调和定时器
 - en: The Windows operating system allows a driver to register a callback routine,
     which will be called when a particular event occurs. For instance, if a rootkit
     driver wants to monitor the execution and termination of all processes running
@@ -1768,6 +1948,11 @@
   id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows 操作系统允许驱动程序注册回调例程，当特定事件发生时，该例程会被调用。例如，如果一个 rootkit 驱动程序希望监控系统上所有进程的执行和终止，它可以通过调用内核函数`PsSetCreateProcessNotifyRoutine`、`PsSetCreateProcessNotifyRoutineEx`或`PsSetCreateProcessNotifyRoutineEx2`来为进程事件注册回调例程。当进程事件发生（启动或退出）时，rootkit
+    的回调例程将被调用，从而采取必要的措施，例如防止进程启动。以同样的方式，rootkit 驱动程序可以注册回调例程，在映像（EXE 或 DLL）被加载到内存中、文件和注册表操作执行时，或系统即将关闭时接收通知。换句话说，回调功能使
+    rootkit 驱动程序能够监控系统活动，并根据活动采取必要的行动。你可以通过以下链接获取一些 rootkit 可能用来注册回调例程的已记录和未记录的内核函数列表：[https://www.codemachine.com/article_kernel_callback_functions.html](https://www.codemachine.com/article_kernel_callback_functions.html)。这些内核函数在不同的头文件（`ntddk.h`、`Wdm.h`
+    等）中定义，位于*Windows 驱动程序工具包 (WDK)* 中。获取已记录内核函数详细信息的最快方法是进行快速的 Google 搜索，这将引导你到 WDK
+    在线文档中的相应链接。
 - en: The way callbacks work is that a particular driver creates a callback object,
     which is a structure that contains the list of function pointers. The created
     callback object is advertised so that it can be used by other drivers. The other
@@ -1782,6 +1967,9 @@
   id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 回调的工作方式是，特定的驱动程序创建一个回调对象，该对象是一个包含函数指针列表的结构。创建的回调对象会被发布，以便其他驱动程序可以使用。其他驱动程序随后可以将它们的回调例程注册到创建回调对象的驱动程序中
+    ([https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/callback-objects](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/callback-objects))。创建回调的驱动程序可以与注册回调的内核驱动程序相同，也可以不同。要查看系统范围的回调例程，可以使用`callbacks`
+    Volatility 插件。在一个干净的 Windows 系统中，通常可以看到由各种驱动程序安装的许多回调，这意味着并非所有`callbacks`输出中的条目都是恶意的；需要进一步分析以从可疑的内存镜像中识别恶意驱动程序。
 - en: 'In the following example, the *Mader rootkit* as which performed *SSDT hooking*
     (discussed in the* Detecting SSDT Hooking* section of this chapter), also installed
     a process creation callback routine to monitor the execution or termination of
@@ -1796,6 +1984,9 @@
   id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，*Mader rootkit* 执行了*SSDT hooking*（在本章的*检测 SSDT hooking* 部分讨论），并安装了一个进程创建回调例程，以监控系统上所有进程的执行或终止。特别地，当进程事件发生时，位于恶意模块
+    `core.sys` 中地址 `0xf66eb050` 的回调例程将被调用。`Module` 列指定实现回调函数的内核模块的名称。`Details` 列提供安装回调的内核对象的名称或描述。在识别出恶意驱动程序后，您可以进一步调查它，或将其转储到磁盘以进行进一步分析（反汇编、AV
+    扫描、字符串提取等），如下所示的 `moddump` 命令：
 - en: '[PRE50]'
   id: totrans-211
   prefs: []
@@ -1823,6 +2014,9 @@
   id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，*TDL3 rootkit* 安装了进程回调和映像加载回调通知。这使得 rootkit 能够监控进程事件，并在可执行映像（EXE、DLL
+    或内核模块）映射到内存时收到通知。条目中的模块名称设置为 `UNKNOWN`；这告诉您回调例程存在于一个未知模块中，这种情况发生在 rootkit 驱动程序通过取消链接
+    `KLDR_DATA_TABLE_ENTRY` 结构或运行一个孤立线程（隐藏或与内核模块分离的线程）来尝试隐藏自己时。在这种情况下，`UNKNOWN` 条目使您更容易发现可疑条目：
 - en: '[PRE53]'
   id: totrans-215
   prefs: []
@@ -1839,6 +2033,9 @@
   id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使模块名称为 `UNKNOWN`，通过回调例程地址，我们也可以推断出恶意模块应该位于从地址 `0xb878` 开始的内存区域中。从 `modules`
+    插件的输出中，您可以看到该模块已经取消链接，但 `modscan` 插件仍然能够检测到加载在 `0xb878c000` 并大小为 `0x11000` 的内核模块。显然，所有回调例程地址都位于该模块的范围内。现在，已知内核模块的基地址，您可以使用
+    `moddump` 插件将其转储以进行进一步分析：
 - en: '[PRE54]'
   id: totrans-217
   prefs: []
@@ -1855,6 +2052,9 @@
   id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 像回调函数一样，rootkit 驱动程序可能会创建一个定时器，并在指定时间到期时获得通知。rootkit 驱动程序可以利用此功能来调度定期执行的操作。其工作原理是，rootkit
+    创建一个定时器并提供一个称为*DPC（延迟过程调用）*的回调例程，当定时器过期时，该回调例程会被调用。当回调例程被调用时，rootkit 可以执行恶意操作。换句话说，定时器是
+    rootkit 执行其恶意代码的另一种方式。有关内核定时器如何工作的详细信息，请参阅以下 Microsoft 文档：[https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs)。
 - en: 'To list the kernel timers, you can use the `timers` Volatility plugin. A point
     to note out is that timers are not malicious, as such; it is a Windows functionality,
     so on a clean system you will see some of the legitimate drivers installing timers.
@@ -1869,6 +2069,7 @@
   id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 要列出内核定时器，你可以使用`timers` Volatility插件。需要注意的是，定时器本身并不具有恶意性质，它只是Windows的一项功能，因此在干净的系统上，你会看到一些合法的驱动程序安装了定时器。像回调一样，可能需要进一步分析才能识别恶意模块。由于大多数根工具尝试隐藏它们的驱动程序，结果就会生成一些明显的痕迹，帮助你快速识别恶意模块。在以下示例中，*ZeroAccess根工具*安装了一个6000毫秒的定时器。当时间到期时，`UNKNOWN`模块中的`0x814f9db0`地址的例程被调用。`Module`列中的`UNKNOWN`表明该模块可能被隐藏，但例程地址指向了恶意代码所在的内存范围：
 - en: '[PRE55]'
   id: totrans-220
   prefs: []
@@ -1880,6 +2081,7 @@
   id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了定时器，*ZeroAccess*还安装了回调以监控注册表操作。同样，回调例程的地址指向相同的内存范围（以`0x814f`开头）：
 - en: '[PRE56]'
   id: totrans-222
   prefs: []
@@ -1890,6 +2092,7 @@
   id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 尝试使用`modules`、`modscan`和`driverscan`插件查找`UNKNOWN`模块并没有返回任何结果：
 - en: '[PRE57]'
   id: totrans-224
   prefs: []
@@ -1903,6 +2106,7 @@
   id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 检查`driverscan`列出的内容时，发现了可疑的条目，其中基址和大小被清零（这不正常，可能是一种绕过技巧）。基址清零解释了为什么`modules`、`modscan`和`driverscan`没有返回任何结果。输出还显示，恶意驱动程序的名称仅由数字组成，这进一步引发了怀疑：
 - en: '[PRE58]'
   id: totrans-226
   prefs: []
@@ -1929,6 +2133,8 @@
   id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过将基址清零，根工具使得取证分析师很难确定内核模块的起始地址，这也阻止了我们导出恶意模块。我们仍然知道恶意代码的驻留位置（地址以`0x814f`开头）。一个引人注目的问题是，我们如何利用这些信息来确定基址？一种方法是取一个地址，减去一定字节数（比如倒着减），直到找到`MZ`签名，但这种方法的问题在于很难确定需要减去多少字节。最快的方法是使用`yarascan`插件，因为这个插件允许你在内存中扫描模式（字符串、十六进制字节或正则表达式）。由于我们正在寻找驻留在内核内存中并以`0x814f`开头的模块，可以使用带有`-K`选项的`yarascan`（该选项只扫描内核内存）来查找`MZ`签名。通过输出结果，你可以看到在地址`0x814f1b80`处有一个可执行文件。你可以将这个地址指定为基址，通过`moddump`插件将恶意模块导出到磁盘。导出的模块大小约为53.2
+    KB，对应的十六进制为`0xd000`字节。换句话说，模块从地址`0x814f1b80`开始，到`0x814feb80`结束。所有的回调地址都在这个模块的地址范围内：
 - en: '[PRE59]'
   id: totrans-228
   prefs: []
@@ -1945,15 +2151,18 @@
   id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确认该转储模块是否为恶意模块，它被提交到*VirusTotal*。来自AV厂商的结果确认它是*ZeroAccess Rootkit*（也被称为*Sirefef*）：
 - en: '![](../images/00365.jpeg)'
   id: totrans-231
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00365.jpeg)'
 - en: Summary
   id: totrans-232
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 概要
 - en: Malware authors use various advanced techniques to install their kernel driver
     and to bypass Windows security mechanisms. Once the kernel driver is installed,
     it can modify the system components or third-party drivers to bypass, deflect,
@@ -1968,3 +2177,4 @@
   id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意软件作者使用各种先进技术来安装其内核驱动程序，并绕过Windows安全机制。一旦内核驱动程序安装完成，它可以修改系统组件或第三方驱动程序，从而绕过、偏转并转移你的取证分析。在本章中，你了解了一些最常见的rootkit技术，并且我们看到了如何通过内存取证来检测这些技术。内存取证是一项强大的技术，将其作为恶意软件分析的一部分，能极大地帮助你理解对手的战术。恶意软件作者经常想出新的方法来隐藏其恶意组件，因此，仅仅知道如何使用工具是不够的；理解其背后的概念也变得至关重要，以识别攻击者绕过取证工具的努力。
