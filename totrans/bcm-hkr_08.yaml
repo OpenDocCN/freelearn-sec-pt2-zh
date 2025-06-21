@@ -1,7 +1,9 @@
 - en: Chapter 8. Bad Serialization
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第8章：错误的序列化
 - en: '**Object serialization** is an interesting programming concept that aims to
     take structured live data from memory and make it transmittable over the wire
     or easily stored somewhere for later use. An object, such as a memory structure
@@ -14,147 +16,212 @@
     web application can recreate the memory structure by deserializing the string
     of bytes. Serialization is also referred to as marshalling, pickling, or flattening,
     and it is provided by many languages, including Java, PHP, Python, and Ruby.'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: '**对象序列化**是一个有趣的编程概念，旨在将内存中的结构化实时数据转换为可通过网络传输或方便存储的格式。举个例子，一个对象，比如应用程序的数据库连接详细信息的内存结构，可以被序列化，或转换为易于传输的字节流，如人类可读的字符串。此内存结构的字符串表示现在可以轻松写入文本文件，或通过HTTP发送到另一个Web应用程序。序列化后的数据字符串可以用来在内存中实例化数据库对象，并预先填充属性，例如数据库名称或凭据。接收的Web应用程序可以通过反序列化字节串来重建内存结构。序列化也被称为编组、腌制或扁平化，许多编程语言都提供了此功能，包括Java、PHP、Python和Ruby。'
 - en: Depending on the language, the serialized data may be represented as human-readable
     text, binary stream, or a combination of both. There are many uses for object serialization,
     such as inter-process communication, inter-system communication, data caching,
     or persistence.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据语言的不同，序列化的数据可能表示为人类可读的文本、二进制流或二者的组合。对象序列化有许多用途，例如进程间通信、系统间通信、数据缓存或持久化。
 - en: 'In this chapter, we will be looking at the following:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论以下内容：
 - en: Understanding the deserialization process
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 理解反序列化过程
 - en: Analyzing vulnerable application code
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 分析易受攻击的应用程序代码
 - en: Exploiting deserialization to achieve code execution
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用反序列化实现代码执行
 - en: Abusing deserialization
+  id: totrans-7
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 滥用反序列化
 - en: 'Exploiting deserialization relies on built-in methods, which execute automatically
     when an object is instantiated or destroyed. PHP, for example, provides several
     of these methods for every object:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 利用反序列化依赖于内建方法，这些方法在对象被实例化或销毁时会自动执行。例如，PHP为每个对象提供了多个此类方法：
 - en: '`__construct()`'
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`__construct()`'
 - en: '`__destruct()`'
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`__destruct()`'
 - en: '`__toString()`'
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`__toString()`'
 - en: '`__wakeup()`'
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`__wakeup()`'
 - en: …and more!
+  id: totrans-13
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: ……以及更多！
 - en: When a new object is instantiated, `__construct()` is called; whereas when a
     new object is destroyed or during garbage collection, `__destruct()` is automatically
     executed. The `__toString()` method provides a way to represent the object in
     string format. This is different to serialization, as there is no `__fromString()`
     equivalent to read the data back. The `__wakeup()` method is executed when an object is
     deserialized and instantiated in memory.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 当一个新对象被实例化时，`__construct()`会被调用；而当一个新对象被销毁或在垃圾回收过程中，`__destruct()`会自动执行。`__toString()`方法提供了一种将对象表示为字符串格式的方式。这与序列化不同，因为没有类似`__fromString()`的方法可以读取回数据。`__wakeup()`方法会在对象被反序列化并实例化到内存中时执行。
 - en: PHP provides serialization capabilities via the `serialize()` and `unserialize()`
     functions. The output is a human-readable string that can be easily transferred
     over HTTP or other protocols. The string output describes the object, its properties,
     and the values. PHP can serialize boolean, array, integer, double, and string
     variables, and even instantiated classes (objects).
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: PHP通过`serialize()`和`unserialize()`函数提供序列化功能。输出是一个人类可读的字符串，可以轻松通过HTTP或其他协议传输。字符串输出描述了对象、其属性及值。PHP可以序列化布尔值、数组、整数、浮点数、字符串变量，甚至实例化的类（对象）。
 - en: 'In the following example, we attempt to serialize a simple array object containing
     two key-value pairs: `database` with the value `users`, and `host` with the value
     `127.0.0.1`. The PHP source code to create this array structure in memory looks
     like this:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，我们尝试序列化一个包含两个键值对的简单数组对象：`database`的值为`users`，`host`的值为`127.0.0.1`。创建此数组结构的PHP源代码如下：
 - en: '[PRE0]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: When the source code is compiled and executed by the PHP engine, the `array`
     object is stored in a memory structure somewhere in RAM that only the processor
     knows how to access. If we wish to transfer `array` to another machine through
     a medium such as HTTP, we have to find all the bytes in memory that represent
     it, package them, and send them using a `GET` request or similar. This is where
     serialization comes into play.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 当源代码被编译并由 PHP 引擎执行时，`array` 对象会被存储在某个只有处理器知道如何访问的 RAM 内存结构中。如果我们希望通过 HTTP 等媒介将
+    `array` 传输到另一台机器，我们必须找到内存中表示它的所有字节，将它们打包并使用 `GET` 请求或类似方法发送出去。这就是序列化派上用场的地方。
 - en: 'The `serialize()` function in PHP will do just that for us: find the array
     structure in memory and return a string representation of it. We can test this
     by using the `php` binary on our Linux machine, and with the `-r` switch we can
     ask it to serialize our array, and return a representative string. The PHP code
     will echo the results to the screen:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: PHP 中的 `serialize()` 函数将为我们完成这项工作：找到内存中的数组结构并返回它的字符串表示。我们可以通过在 Linux 机器上使用 `php`
+    二进制文件，并加上 `-r` 开关来让它序列化我们的数组，并返回一个代表性的字符串。PHP 代码将把结果回显到屏幕上：
 - en: '[PRE1]'
+  id: totrans-20
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The colon-separated output reads like this:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用冒号分隔的输出格式如下：
 - en: The serialized data that follows is an array (`a`)
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 接下来的序列化数据是一个数组（`a`）
 - en: There are `2` elements in the array
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 数组中有 `2` 个元素
 - en: The elements are wrapped in curly brackets (`{}`) and separated by semicolons
     (`;`)
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 元素被包裹在大括号（`{}`）中，并且用分号（`；`）分隔
 - en: 'The first element key is a string (`s`) of length `8` called `database`. Its
     value is a string (`s`) of length `5`: `users`'
+  id: totrans-25
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 第一个元素的键是一个长度为 `8` 的字符串（`s`），称为 `database`。它的值是一个长度为 `5` 的字符串（`s`）：`users`
 - en: 'The second key is a string (`s`) of length `4` called `host`. Its value is
     a string (`s`) of length `9`: `127.0.0.1`'
+  id: totrans-26
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 第二个关键是一个长度为 `4` 的字符串（`s`），称为 `host`。它的值是一个长度为 `9` 的字符串（`s`）：`127.0.0.1`
 - en: This serialized data can be shared across systems or over the network, or stored
     in a database. When it is retrieved, the array structure can be rebuilt (unserialized)
     with the values already populated. Serialized objects instantiated from classes
     are no different to array objects; they simply contain a few more fields in the
     serialized result.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些序列化数据可以跨系统或通过网络共享，或者存储在数据库中。当它被检索时，数组结构可以被重建（反序列化），并且值已经填充好。从类实例化的序列化对象与数组对象没有什么不同；它们只是包含了一些额外的字段。
 - en: Take the sample class `WriteLock`, whose purpose it is to create a lock file
     in the `/tmp` directory when it is deserialized. This application will be stored
     in the `/var/www/html/lockapp` directory.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 以 `WriteLock` 类为例，它的作用是在反序列化时在 `/tmp` 目录下创建一个锁文件。这个应用程序将存储在 `/var/www/html/lockapp`
+    目录下。
 - en: 'The following shows the `WriteLock` class PHP code:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是 `WriteLock` 类的 PHP 代码：
 - en: '![Abusing deserialization](graphics/B09238_08_01.jpg)'
+  id: totrans-30
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_01.jpg)'
 - en: 'Figure 8.1: The WriteLock class definition source code'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 8.1：WriteLock 类定义的源代码
 - en: 'The code can be a bit daunting to non-developers, but it''s not very complicated
     at all. The `WriteLock` class has two public functions (or methods) available:
     `write()` and `__wakeup()`. The `write()` function will write the string `app_in_use`
@@ -163,82 +230,120 @@
     execute the `write()` function in the current object (`$this`). The idea here
     is that the lock file, `/tmp/lockfile`, will automatically be created when the
     `WriteLock` object is recreated in memory by deserialization.'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 代码对于非开发者来说可能有点让人畏惧，但其实并不复杂。`WriteLock` 类有两个公共函数（或方法）：`write()` 和 `__wakeup()`。`write()`
+    函数将使用 PHP 内置的 `file_put_contents` 函数把字符串 `app_in_use` 写入磁盘上的 `/tmp/lockfile` 文件中。`__wakeup()`
+    方法则只是对属性进行完整性检查，并在当前对象（`$this`）上执行 `write()` 函数。这里的想法是，当 `WriteLock` 对象通过反序列化在内存中被重新创建时，锁文件
+    `/tmp/lockfile` 会自动被创建。
 - en: First, we can see how the `WriteLock` object looks when it is serialized and
     ready for transmission. Remember that `__wakeup()` will only execute on deserialization,
     not when the object is instantiated.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们可以看到当 `WriteLock` 对象被序列化并准备传输时的样子。记住，`__wakeup()` 只有在反序列化时才会执行，而不是在对象实例化时。
 - en: The following code will include the `WriteLock` definition so that we can instantiate
     a `$lock` object from the `WriteLock` class using the `new` PHP keyword. The last
     line of the code will echo or return the serialized `$lock` object to the screen
     for inspection.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码将包含`WriteLock`定义，以便我们可以使用PHP的`new`关键字从`WriteLock`类实例化一个`$lock`对象。代码的最后一行将回显或返回序列化后的`$lock`对象，以供检查。
 - en: 'The following is the contents of the `serialize.php` file used for testing:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是用于测试的`serialize.php`文件内容：
 - en: '![Abusing deserialization](graphics/B09238_08_02.jpg)'
+  id: totrans-36
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_02.jpg)'
 - en: 'Figure 8.2: Source code to serialize a WriteLock object'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 图8.2：序列化WriteLock对象的源代码
 - en: The output of the serialized `$lock` object looks similar to the preceding array
     example. For clarity's sake, the following has been cleaned up and indented, but
     a typical serialized object will not contain formatting, such as indents and newlines.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 序列化后的`$lock`对象的输出类似于前面的数组示例。为了清晰起见，以下内容已经清理并缩进，但典型的序列化对象不会包含格式化内容，如缩进和换行符。
 - en: 'Let''s execute the `serialize.php` file using the `php` interpreter and observe
     the result:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们使用`php`解释器执行`serialize.php`文件，并观察结果：
 - en: '[PRE2]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'The first few bytes denote an object (`o`) instantiated from the `WriteLock`
     class, which contains two properties, along with their respective values and lengths.
     There is one thing to note: for private class members, the names are prepended
     with the class name wrapped in null bytes. If the `WriteLock` properties `$file`
     and `$contents` were private, the serialized object would look like this:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 前几个字节表示一个从`WriteLock`类实例化的对象（`o`），它包含两个属性，以及它们各自的值和长度。有一点需要注意：对于私有类成员，名称会以类名开头，并用空字节包裹。如果`WriteLock`的属性`$file`和`$contents`是私有的，序列化对象将如下所示：
 - en: '[PRE3]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Note
+  id: totrans-43
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Null bytes are not normally visible in standard output. In the preceding example,
     the bytes were replaced by their hex equivalent `\x00` for clarity. If our payload
     includes private members, we may need to account for these bytes when transmitting
     payloads over mediums that interpret null bytes as string terminators. Typically,
     with HTTP we can escape null bytes using the percent sign preceding the hex representation
     of null, `00`. Instead of `\x00`, for HTTP, we'd simply use `%00`.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 空字节通常在标准输出中不可见。在前面的示例中，为了清晰起见，这些字节被替换成了它们的十六进制表示形式`\x00`。如果我们的负载包含私有成员，我们可能需要在通过将空字节解释为字符串终止符的媒介传输负载时考虑这些字节。通常，在HTTP中，我们可以使用百分号`%`前缀加上空字节的十六进制表示`00`来转义空字节。也就是说，在HTTP中，我们会用`%00`代替`\x00`。
 - en: The following is a sample vulnerable implementation of the `WriteLock` class.
     The code receives a `WriteLock` serialized object via the `$_GET` PHP superglobal.
     The URL `GET` parameter containing the serialized object is `lock`, which is stored
     in a variable called `$data`. This serialized object is then deserialized using
     PHP's `unserialize()` in an attempt to restore the `WriteLock` object state in
     memory.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是`WriteLock`类的一个易受攻击的示例实现。该代码通过PHP的`$_GET`超级全局接收一个`WriteLock`序列化对象。包含序列化对象的URL
+    `GET`参数是`lock`，该参数存储在一个名为`$data`的变量中。然后，使用PHP的`unserialize()`函数反序列化该对象，以尝试恢复`WriteLock`对象的内存状态。
 - en: 'The following code will be stored in `index.php` and it illustrates a vulnerable
     implementation of object deserialization, which we will try to exploit. Data in
     the `$_GET` variable comes directly from user input and is passed as is to the
     `unserialize()` function:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码将存储在`index.php`中，演示了一个易受攻击的对象反序列化实现，我们将尝试利用它。`$_GET`变量中的数据直接来自用户输入，并原样传递给`unserialize()`函数：
 - en: '![Abusing deserialization](graphics/B09238_08_03.jpg)'
+  id: totrans-47
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_03.jpg)'
 - en: 'Figure 8.3: The object deserialization source code'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 图8.3：对象反序列化源代码
 - en: 'We cannot actually call the `write()` method provided by the `WriteLock` class
     when exploiting deserialization. We only really have control over the new object''s
     properties. Thanks to PHP''s **magic methods**, however, we don''t need to call
@@ -246,26 +351,38 @@
     methods are called automatically at different stages in the object life cycle:
     on creation, on destruction, on restoration from a flat state (aka wakeup), or
     the serialization of live data (aka sleep).'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 在利用反序列化时，我们实际上无法调用`WriteLock`类提供的`write()`方法。我们实际上只能控制新对象的属性。然而，得益于PHP的**魔术方法**，我们不需要直接调用`write()`，因为你应该记得，`__wakeup()`方法会为我们执行这一步。魔术方法会在对象生命周期的不同阶段自动调用：在创建时、销毁时、从平面状态恢复时（即唤醒），或在序列化实时数据时（即休眠）。
 - en: In **property-oriented programming** (**POP**), a **gadget chain** is the sequence
     of methods from existing code required to successfully hijack the application
     execution flow and do bad things. In our very simple example, the gadget chain
     we are triggering is just a quick hop from the `__wakeup()` magic method to `write()`.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 在**面向属性编程**（**POP**）中，**工具链**是指从现有代码中调用的方法序列，用于成功劫持应用程序的执行流并执行恶意操作。在我们这个非常简单的示例中，我们触发的工具链只是一个从`__wakeup()`魔术方法到`write()`的快速跳跃。
 - en: 'The following shows the execution flow once the object is deserialized by `unserialize()`:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下显示了对象通过`unserialize()`反序列化后的执行流程：
 - en: '![Abusing deserialization](graphics/B09238_08_04.jpg)'
+  id: totrans-52
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_04.jpg)'
 - en: 'Figure 8.4: POP gadget in the WriteLock class'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 图8.4：`WriteLock`类中的POP工具链
 - en: It's not very dramatic, but technically, it is a gadget chain.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 这虽然不那么戏剧化，但从技术上讲，它是一个工具链。
 - en: If we only control the object properties, `$file` and `$contents`, how could
     we exploit this vulnerability? What if we try to write the `$contents` into another
     directory and file other than `/tmp`? Since we control both of these values, we
@@ -274,93 +391,138 @@
     and set its contents to a simple web shell. When our malicious object is deserialized,
     the `__wakeup()` method will force a `write()` of our PHP shell to `/var/www/html/lockapp/shell.php`,
     instead of `/tmp/lockfile`.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们只控制对象属性`$file`和`$contents`，我们如何利用这个漏洞呢？如果我们尝试将`$contents`写入`/tmp`以外的其他目录和文件怎么办？由于我们控制这两个值，我们可以构造我们的序列化对象，使其指向应用程序Web根目录中的文件，例如`/var/www/html/lockapp/shell.php`，而不是临时文件夹，并将其内容设置为一个简单的Web
+    Shell。当我们的恶意对象被反序列化时，`__wakeup()`方法将强制执行将PHP Shell写入`/var/www/html/lockapp/shell.php`，而不是`/tmp/lockfile`。
 - en: Let's run a simple web server and bring the `WriteLock` application to life.
     The `php` interpreter can function as a standalone development server with the
     `-S` parameter, similar to Python's `SimpleHTTPServer`, with the added benefit
     of processing `.php` files before serving them.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们运行一个简单的Web服务器并使`WriteLock`应用程序生效。`php`解释器可以作为独立的开发服务器，使用`-S`参数，类似于Python的`SimpleHTTPServer`，并且在提供文件之前可以处理`.php`文件。
 - en: 'We can use the `php` command to listen on the local system on port `8181`,
     as follows:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用`php`命令在本地系统的`8181`端口监听，如下所示：
 - en: '[PRE4]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: We can use the serialized object from our previous `serialize.php` test and
     just modify it slightly to weaponize it. We will change the `file` property value
     to `/var/www/html/lockapp/shell.php` and the `contents` property value to PHP
     shell code.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用之前在`serialize.php`测试中的序列化对象，并稍作修改以进行武器化。我们将把`file`属性的值更改为`/var/www/html/lockapp/shell.php`，并将`contents`属性的值更改为PHP
+    Shell代码。
 - en: 'As before, we will use the following code with a simple password protection
     mechanism:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 和之前一样，我们将使用以下代码，并带有简单的密码保护机制：
 - en: '![Abusing deserialization](graphics/B09238_08_05.jpg)'
+  id: totrans-61
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_05.jpg)'
 - en: 'Figure 8.5: Web shell source code'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 图8.5：Web Shell源代码
 - en: 'The MD5 value we''re looking for is the hash of `WriteLockTest1`, as confirmed
     by the `md5sum` Linux command:'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们要查找的MD5值是`WriteLockTest1`的哈希值，通过Linux命令`md5sum`确认：
 - en: '[PRE5]'
+  id: totrans-64
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The serialized payload will look like this, again indented to make it more
     readable:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 序列化的负载将如下所示，再次缩进以提高可读性：
 - en: '[PRE6]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Note
+  id: totrans-67
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: We've updated the value for `file` and `contents`, along with the appropriate
     string length, `31` and `100` respectively, as shown in the preceding code block.
     If the length specified does not match the actual length of the property value,
     the attack will fail.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们已更新了`file`和`contents`的值，以及适当的字符串长度，分别为`31`和`100`，如前面的代码块所示。如果指定的长度与属性值的实际长度不匹配，攻击将失败。
 - en: To exploit the deserialization vulnerability and hopefully write a PHP shell
     to the web root, we can use `curl` to pass our payload through a `GET` request.
     This will force the application to deserialize untrusted data and to create an
     object with dangerous property values.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了利用反序列化漏洞并希望将PHP Shell写入网页根目录，我们可以使用`curl`通过`GET`请求传递我们的负载。这将迫使应用程序反序列化不可信数据，并创建一个具有危险属性值的对象。
 - en: We can call `curl` with the `-G` parameter, which instructs it to make a `GET`
     request, specify the URL of the vulnerable application, and also pass the URL
     encoded value for `lock` using the `--data-urlencode` switch.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用`curl`命令并指定`-G`参数，这会指示它发起一个`GET`请求，指定易受攻击应用程序的URL，同时使用`--data-urlencode`开关传递URL编码的`lock`值。
 - en: 'Our serialized data contains single quotes, which can interfere with the execution
     of `curl` through the bash prompt. We should take care to escape them using a backslash
     (`\''`) as follows:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的序列化数据包含单引号，这可能会干扰通过bash提示符执行`curl`。我们应该小心使用反斜杠（`\'`）来转义它们，如下所示：
 - en: '[PRE7]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: The application responds with a `Lock initiated` message as expected. If the
     exploit was successful, we should be able to access the shell through a web browser,
     since the `shell.php` would have been written by the `__wakeup() -> write()` POP
     gadget in the `/var/www/html/lockapp` directory.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序按预期返回了`Lock initiated`消息。如果攻击成功，我们应该能够通过Web浏览器访问shell，因为`__wakeup() -> write()`
+    POP gadget会在`/var/www/html/lockapp`目录下写入`shell.php`。
 - en: '![Abusing deserialization](graphics/B09238_08_06.jpg)'
+  id: totrans-74
   prefs: []
   type: TYPE_IMG
+  zh: '![滥用反序列化](graphics/B09238_08_06.jpg)'
 - en: 'Figure 8.6: The shell successfully executing the id program and displaying
     its result'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 图8.6：Shell成功执行id程序并显示其结果
 - en: Exploiting deserialization vulnerabilities in black-box PHP applications is
     difficult because it requires some knowledge of the source code. We need to have
     a proper gadget chain to execute our code. For this reason, attacks against applications
@@ -368,33 +530,48 @@
     developers, which have their source code more readily available. This allows us
     to trace the code and build a gadget chain that will help us to take advantage
     of the vulnerability.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 在黑盒PHP应用程序中利用反序列化漏洞较为困难，因为它需要一定的源代码知识。我们需要一个合适的工具链来执行我们的代码。由于这一点，针对应用程序的攻击通常涉及第三方库中的工具，这些库的源代码更易获取。这使得我们可以追踪代码并构建一个工具链，帮助我们利用该漏洞。
 - en: Note
+  id: totrans-77
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**Packagist** is a repository for PHP libraries and frameworks commonly used
     by application developers: [https://packagist.org/](https://packagist.org/).'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Packagist**是一个PHP库和框架的仓库，应用开发者常用：[https://packagist.org/](https://packagist.org/)。'
 - en: To make development easier, the **Composer** PHP framework provides a way for applications
     to automatically load libraries with a simple one-liner. This means that applications
     may have library code available, and therefore POP gadgets, when a vulnerable
     `unserialize()` method executes.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了简化开发，**Composer** PHP框架提供了一种方式，让应用程序可以通过一行代码自动加载库。这意味着，当`unserialize()`方法执行时，应用程序可能会有可用的库代码，因此也会有POP
+    gadget。
 - en: Note
+  id: totrans-80
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Composer can be found at [https://getcomposer.org/](https://getcomposer.org/).
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: Composer可以在[https://getcomposer.org/](https://getcomposer.org/)找到。
 - en: Attacking custom protocols
+  id: totrans-82
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 攻击自定义协议
 - en: Not unlike PHP, Java also provides the ability to flatten objects for easy transmission
     or storage. Where PHP-serialized data is simple strings, Java uses a slightly
     different approach. A serialized Java object is a stream of bytes with a header
@@ -402,29 +579,41 @@
     out in packet captures or proxy logs as Base64-encoded values. Since this is a
     structured header, the first few bytes of the Base64 equivalent will be the same
     for every stream.
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 与PHP类似，Java也提供了将对象扁平化以便于传输或存储的能力。在PHP序列化数据是简单字符串的情况下，Java使用了稍微不同的方法。一个序列化的Java对象是一个字节流，包含一个头部，并且内容被分成块。虽然它不容易阅读，但在数据包捕获或代理日志中，它作为Base64编码的值会很突出。由于这是一个结构化的头部，Base64等效的前几个字节对于每个流来说都是相同的。
 - en: 'A Java-serialized object stream always starts with the magic bytes: `0xAC 0xED`,
     followed by a two byte version number: `0x00 0x05`. The rest of the bytes in the
     stream will describe the object and its contents. All we really need to spot this
     in the wild is the first two hex bytes, `ac ed`, and we''d know the rest of the
     stream is likely to be a Java-serialized object.'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: Java序列化对象流总是以魔法字节开始：`0xAC 0xED`，后跟一个两字节版本号：`0x00 0x05`。流中的其余字节将描述对象及其内容。实际上，我们只需要在野外看到这两个十六进制字节`ac
+    ed`，就可以知道后续的字节流很可能是一个Java序列化对象。
 - en: Researcher Nick Bloor has developed a wonderfully vulnerable application called
     **DeserLab**, which showcases deserialization issues in applications that implement
     custom TCP protocols. DeserLab is not a typical application in that it may not
     be exposed to the web directly, but it may be used by web applications. DeserLab
     helps to showcase how Java-deserialization bugs can be exploited to wreak havoc.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 研究员Nick Bloor开发了一款名为**DeserLab**的极具脆弱性的应用程序，该应用展示了在实现自定义TCP协议的应用中反序列化问题。DeserLab并不是一个典型的应用程序，因为它可能不会直接暴露在网页上，但它可以被Web应用使用。DeserLab帮助展示了Java反序列化漏洞是如何被利用来造成严重破坏的。
 - en: Note
+  id: totrans-86
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: DeserLab and Nick Bloor's research can be found on [https://github.com/NickstaDB/](https://github.com/NickstaDB/).
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: DeserLab 和 Nick Bloor 的研究可以在 [https://github.com/NickstaDB/](https://github.com/NickstaDB/)
+    上找到。
 - en: The attack technique we will go over translates very easily to HTTP-based attacks.
     It's not unusual for applications to read serialized Java objects from cookies
     or URL parameters. After all, facilitating inter-process or inter-server communication
@@ -433,65 +622,99 @@
     logs. Base64-encoded Java-serialized objects usually begin with the string `rO0ABX`,
     which decodes to `0xACED0005`, or the magic bytes and version number mentioned
     earlier.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将介绍的攻击技巧非常容易迁移到基于 HTTP 的攻击。应用程序从 cookies 或 URL 参数中读取序列化的 Java 对象并不罕见。毕竟，促进进程间或服务器间通信是序列化的主要优势之一。对于
+    Web 应用程序，这些数据通常在传输之前进行 Base64 编码，使其在代理日志中易于被发现。Base64 编码的 Java 序列化对象通常以字符串 `rO0ABX`
+    开头，解码后为 `0xACED0005`，即前面提到的魔法字节和版本号。
 - en: To start a new instance of DeserLab, we can call the JAR file with the `-server`
     parameter, and specify the IP and port to listen on. For simplicity, we will be
     using `deserlab.app.internal` to connect to the vulnerable application once it
     is up and running. We will use the `java` binary to launch the DeserLab server
     component on the DeserLab target machine.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 要启动一个新的 DeserLab 实例，我们可以调用带有 `-server` 参数的 JAR 文件，并指定要监听的 IP 和端口。为简便起见，一旦应用程序启动并运行，我们将使用
+    `deserlab.app.internal` 连接到这个易受攻击的应用程序。我们将使用 `java` 二进制文件在 DeserLab 目标机器上启动 DeserLab
+    服务器组件。
 - en: '[PRE8]'
+  id: totrans-90
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Protocol analysis
+  id: totrans-91
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 协议分析
 - en: 'DeserLab is a straightforward application that provides string hashing services
     and is accessible by a custom client, built-in to the `DeserLab.jar` application
     file. With the DeserLab server component running on the target machine, we can launch the
     client component on our attacker machine, `kali`, with the `-client` switch, as follows:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: DeserLab 是一个简单的应用程序，提供字符串哈希服务，并通过 `DeserLab.jar` 应用程序文件中的内置客户端访问。随着 DeserLab
+    服务器组件在目标机器上运行，我们可以在攻击者机器 `kali` 上启动客户端组件，并使用 `-client` 开关，如下所示：
 - en: '[PRE9]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Once connected and the client-server `hello` handshake has completed, the client
     will prompt us for data to send to the server for processing. We can enter some
     test data and observe the response:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦连接并且客户端-服务器的 `hello` 握手完成，客户端将提示我们输入要发送给服务器进行处理的数据。我们可以输入一些测试数据并观察响应：
 - en: '[PRE10]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The application server component terminal log echoes the other side of the interaction.
     Notice the client-server hello and name message exchange; this will be important
     when we craft our exploit.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用服务器组件终端日志回显了交互的另一方。请注意客户端-服务器的 hello 和名称消息交换；当我们制作我们的漏洞利用时，这一点非常重要。
 - en: '[PRE11]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Since this is a custom TCP protocol, we have to intercept the traffic using
     **Wireshark** or **tcpdump**, as opposed to Burp or ZAP. With Wireshark running,
     we can capture and inspect the TCP stream of data of our interaction with the
     DeserLab server, as the following figure shows:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这是一个自定义的 TCP 协议，我们必须使用 **Wireshark** 或 **tcpdump** 来拦截流量，而不是使用 Burp 或 ZAP。启动
+    Wireshark 后，我们可以捕获并检查与 DeserLab 服务器交互的数据的 TCP 流，如下图所示：
 - en: '![Protocol analysis](graphics/B09238_08_07.jpg)'
+  id: totrans-99
   prefs: []
   type: TYPE_IMG
+  zh: '![协议分析](graphics/B09238_08_07.jpg)'
 - en: 'Figure 8.7: TCP stream of data'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 8.7：数据的 TCP 流
 - en: We can see the entire conversation in a hex dump format by analyzing the **packet
     capture** (**pcap**) generated by our packet sniffer. In the preceding figure,
     the data sent is the stream printed in light gray, while the darker parts represents
     the server response.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过分析由数据包嗅探器生成的 **数据包捕获**（**pcap**）文件，以十六进制转储格式查看整个对话。在前面的图中，发送的数据是浅灰色打印的流，而较暗的部分表示服务器的响应。
 - en: 'While the data may be a bit hard to read, each byte has a purpose. We can see
     the familiar `ac ed` header and the various inputs the client has sent, such as
     `name` and `string`. You''ll also notice that the string value is a serialized
@@ -501,20 +724,28 @@
     just captured are the serialized representation of this object being transmitted
     from the client to the server and vice versa. The server-serialized object also
     contains an extra property: the generated hash.'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管数据可能有些难以阅读，但每个字节都有其作用。我们可以看到熟悉的`ac ed`头部和客户端发送的各种输入，如`name`和`string`。你还会注意到，字符串值是一个序列化的`HashRequest`对象。这是一个由服务器和客户端都实现的Java类。序列化用于实例化一个对象，该对象将计算给定输入的哈希值并将其存储在其属性中。我们刚刚捕获的数据包是这个对象的序列化表示，正在从客户端传输到服务器，反之亦然。服务器序列化的对象还包含一个额外的属性：生成的哈希值。
 - en: When the server receives the client-generated serialized object, containing
     the inputted string to be hashed, it will deserialize the bytes coming in over
     the wire and attempt to cast them to the `HashRequest` class.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 当服务器接收到客户端生成的序列化对象时，该对象包含了要哈希的输入字符串，服务器会反序列化通过网络传输过来的字节，并尝试将其转换为`HashRequest`类。
 - en: 'Since DeserLab is open-source, we can inspect the deserialization process on the server
     component by looking at its source code hosted on GitHub:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于DeserLab是开源的，我们可以通过查看托管在GitHub上的源代码来检查服务器组件上的反序列化过程：
 - en: '[PRE12]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: We see that the data is read in from the client using the `ObjectInputStream`
     (`ois`) object. This is just a fancy term for the data coming in from the client,
     which we've observed in the Wireshark packet capture to be the serialized `HashRequest`
@@ -526,67 +757,96 @@
     object using `setHash()`. The `setHash` method is made available by the `HashRequest`
     class and all it does is populate a hash property within the object. The data
     is then serialized and written back to the network stream using `writeObject()`.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们看到，数据是通过`ObjectInputStream`（`ois`）对象从客户端读取的。这只是一个 fancy 的术语，用于指代从客户端传入的数据，我们在Wireshark包捕获中观察到的就是序列化的`HashRequest`对象。下一步是尝试将从`ois`读取的数据转换为`HashRequest`数据结构。这个新`HashRequest`对象的引用随后会存储在`request`变量中，之后可以像普通对象一样在内存中使用。服务器将通过调用`request`的`getData()`方法获取需要反序列化的字符串输入值，计算哈希值，并通过`setHash()`方法将其存回对象中。`setHash`方法是`HashRequest`类提供的，它的作用只是填充对象中的哈希属性。然后，数据会被序列化，并通过`writeObject()`写回到网络流中。
 - en: This works fine, but the code makes dangerous assumptions. It assumes that the
     data coming in from an untrusted source (the attacker) is actually a `HashRequest`
     object. If the data is anything other than something that can be safely cast to
     `HashRequest`, Java will throw an exception and as we will find out, by then it'll
     be too late.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样做没问题，但代码做出了危险的假设。它假设来自不可信来源（攻击者）的数据实际上是一个`HashRequest`对象。如果数据不是可以安全转换为`HashRequest`的类型，Java会抛出异常，正如我们将要发现的那样，届时已为时过晚。
 - en: Deserialization exploit
+  id: totrans-108
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 反序列化利用
 - en: Java deserialization attacks are possible because Java will execute a variety
     of methods in its quest to deserialize an object. If we control what properties
     these methods reference, we can control the execution flow of the application.
     This is POP and it is a code reuse attack similar to **return-oriented programming**
     (**ROP**). ROP is used in exploit development to execute code by referencing existing
     bytes in memory and taking advantage of the side effect of the x86 `return` instruction.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: Java反序列化攻击之所以可能，是因为Java会在反序列化对象的过程中执行多种方法。如果我们控制这些方法所引用的属性，就能控制应用程序的执行流程。这就是POP，它是一种类似于**面向返回编程**（**ROP**）的代码重用攻击。ROP在漏洞开发中用于通过引用内存中的现有字节并利用x86`return`指令的副作用来执行代码。
 - en: 'If we pass in a serialized object with the right properties, we can create
     an execution chain that eventually leads to code execution on the application
     server. This sounds like a tall order for the non-Java developer. After all, you
     have to be familiar with the inner workings of various libraries provided by Java
     or third-parties. Thankfully, a great tool exists to do the heavy lifting: **ysoserial**.'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们传入具有正确属性的序列化对象，我们可以创建一个执行链，最终导致在应用程序服务器上执行代码。对于非 Java 开发人员来说，这听起来像是一个艰巨的任务。毕竟，你必须熟悉
+    Java 或第三方库的内部工作原理。幸运的是，有一个很棒的工具可以做重活：**ysoserial**。
 - en: 'The ysoserial tool was created by researcher Chris Frohoff to facilitate building
     serialized objects and weaponizing them to attack applications. It can build code
     execution payloads (POP chains) for many third-party libraries frequently used
     by Java applications:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: ysoserial 工具由研究员 Chris Frohoff 创建，旨在帮助构建序列化对象并将其武器化以攻击应用程序。它可以为许多 Java 应用程序中常用的第三方库构建代码执行有效载荷（POP
+    链）：
 - en: '`Spring`'
+  id: totrans-112
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Spring`'
 - en: '`Groovy`'
+  id: totrans-113
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Groovy`'
 - en: '`Commons Collections`'
+  id: totrans-114
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Commons Collections`'
 - en: '`Jython`'
+  id: totrans-115
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Jython`'
 - en: '...and many more!'
+  id: totrans-116
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '...以及更多！'
 - en: Note
+  id: totrans-117
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: ysoserial's source code and JAR files can be downloaded from [https://github.com/frohoff/ysoserial](https://github.com/frohoff/ysoserial).
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以从 [https://github.com/frohoff/ysoserial](https://github.com/frohoff/ysoserial)
+    下载 ysoserial 的源代码和 JAR 文件。
 - en: We know that the target application uses the `Groovy` library because we have
     access to the JAR file and its source. This isn't always true with enterprise
     applications, however, and we may not always have access to the source code during
@@ -596,33 +856,49 @@
     chain generation. Of course, the alternative is to simply try each known POP gadget chain
     until one succeeds. This is not as elegant and it is very noisy, but it may do
     the trick.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们知道目标应用程序使用了 `Groovy` 库，因为我们有该 JAR 文件及其源代码。然而，这并非所有企业应用程序都适用，并且在评估过程中我们可能无法始终访问源代码。如果易受攻击的应用程序运行在服务器端，而我们与它的唯一交互是通过
+    HTTP `GET` 请求，那么我们必须依赖另一个信息泄漏漏洞来确定应该针对哪个库生成 POP 小工具链。当然，另一种选择是简单地尝试每个已知的 POP 小工具链，直到其中一个成功。这虽然不太优雅，且非常嘈杂，但也许能够奏效。
 - en: 'For this particular application, ysoserial can quickly generate a serialized
     object with the proper POP gadgets to execute code on applications implementing
     the `Groovy` library:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于这个特定的应用程序，ysoserial 可以快速生成一个带有适当 POP 小工具的序列化对象，用于在实现 `Groovy` 库的应用程序上执行代码：
 - en: '[PRE13]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'In our case, the payload will be `Groovy1` and the command to execute is a
     netcat reverse shell back to our C2 server, `c2.spider.ml`, as shown:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的案例中，有效载荷将是 `Groovy1`，并且执行的命令是一个 netcat 反向 Shell，连接回我们的 C2 服务器 `c2.spider.ml`，如下所示：
 - en: '[PRE14]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The bytes are printed to the console by default, so we have to pipe them to
     a file, `deserlab_payload.bin`, for use in our exploit. A hex dump of the generated
     payload shows the four familiar Java serialization magic bytes and version sequence,
     followed by the `0x73 0x72` flags, which further describe what data was serialized.
     We can observe the hex dump of the payload file using `xxd`, as shown:'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，字节会打印到控制台，因此我们必须将它们通过管道传输到文件 `deserlab_payload.bin`，以便在我们的漏洞利用中使用。生成的有效载荷的十六进制转储显示了四个熟悉的
+    Java 序列化魔术字节和版本序列，后面跟着 `0x73 0x72` 标志，进一步描述了序列化的数据。我们可以使用 `xxd` 来查看有效载荷文件的十六进制转储，如下所示：
 - en: '![Deserialization exploit](graphics/B09238_08_08.jpg)'
+  id: totrans-125
   prefs: []
   type: TYPE_IMG
+  zh: '![反序列化漏洞利用](graphics/B09238_08_08.jpg)'
 - en: The preceding output was truncated because in order to generate a POP gadget
     that results in code execution, ysoserial creates a fairly large serialized object.
     By itself, this payload is not enough to attack DeserLab. We can't just connect
@@ -633,196 +909,291 @@
     packet capture, we can find at what point in the communication stream we can inject
     our payload. We know that the server expects a serialized `HashRequest` object
     after the `name` string has been sent.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 之前的输出被截断了，因为为了生成一个导致代码执行的POP小工具，ysoserial会创建一个相当大的序列化对象。单独的这个负载不足以攻击DeserLab。我们不能仅仅连接到服务器，发送负载字节，然后启动一个Shell。DeserLab实现的自定义协议期望在尝试转换负载之前发送几个额外的字节。你还记得我们在测试数据包捕获中看到的，在哈希功能之前有一个客户端-服务器的握手。如果我们检查那个数据包捕获，我们可以找到在通信流中可以注入负载的时刻。我们知道，服务器期望在发送`name`字符串后接收到一个序列化的`HashRequest`对象。
 - en: 'The indented lines are the packets received from the server and everything
     else is what we''ve sent with our client:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 缩进的行是从服务器接收到的数据包，其他的则是我们通过客户端发送的：
 - en: '![Deserialization exploit](graphics/B09238_08_09.jpg)'
+  id: totrans-128
   prefs: []
   type: TYPE_IMG
+  zh: '![反序列化利用](graphics/B09238_08_09.jpg)'
 - en: 'Once again, we can see the `ac ed` magic bytes starting the stream, followed
     by the protocol hello packets: `0xF0 0x00 0xBA 0xAA`, and finally the protocol
     version `0x01 0x01`. Each packet sent by either the server or the client will
     be preceded by `0x77`, indicating a block of data is coming in and the length
     of that block (`0x02` in the case of the protocol version).'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次，我们可以看到`ac ed`的魔术字节启动了数据流，接着是协议Hello数据包：`0xF0 0x00 0xBA 0xAA`，最后是协议版本`0x01
+    0x01`。服务器或客户端发送的每个数据包都将以`0x77`为前缀，表示有一块数据即将到来，并且该块的长度（在协议版本的情况下是`0x02`）。
 - en: 'It''s not terribly important that we understand what each byte means because
     we can clearly see where the serialized payload begins. The `0x73` and `0x72`
     bytes (which are the equivalent of the lowercase letters `s` and `r` respectively)
     represent the start of the serialized object, as shown in the following output:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 了解每个字节的具体含义并不是特别重要，因为我们可以清楚地看到序列化负载的开始。`0x73`和`0x72`字节（分别是小写字母`s`和`r`的等价物）代表了序列化对象的开始，如下输出所示：
 - en: '![Deserialization exploit](graphics/B09238_08_10.jpg)'
+  id: totrans-131
   prefs: []
   type: TYPE_IMG
+  zh: '![反序列化利用](graphics/B09238_08_10.jpg)'
 - en: 'To feed a custom payload and exploit the application, we will write a Python
     script that will connect to the DeserLab application and:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了传递一个自定义负载并利用应用程序漏洞，我们将编写一个Python脚本，连接到DeserLab应用并：
 - en: Send the hello packets
+  id: totrans-133
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 发送Hello数据包
 - en: Send the version number
+  id: totrans-134
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 发送版本号
 - en: 'Send a name for the client: `test`'
+  id: totrans-135
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 发送客户端名称：`test`
 - en: Send the exploit code generated with ysoserial
+  id: totrans-136
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 发送通过ysoserial生成的利用代码
 - en: To build our exploit code, we will use Python, as it makes sending data over
     the network simple. The beginning of the script will setup the environment and
     create a socket to the target host and port.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了构建我们的利用代码，我们将使用Python，因为它使得通过网络发送数据变得简单。脚本的开头将设置环境，并创建一个连接目标主机和端口的socket。
 - en: 'First, we will import the Python `socket` library and set a couple of variables
     that describe our target:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们将导入Python的`socket`库，并设置一些描述目标的变量：
 - en: '[PRE15]'
+  id: totrans-139
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'We will reference these variables shortly. Next, we will read the `deserlab_payload.bin`
     file into a variable called `payload` using `open()`, `read()`, and finally `close()`,
     as shown in the following snippet:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们稍后会引用这些变量。接下来，我们将使用`open()`、`read()`和最后的`close()`将`deserlab_payload.bin`文件读取到一个名为`payload`的变量中，如下代码所示：
 - en: '[PRE16]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: The `payload` variable now contains the raw bytes generated by ysoserial, which
     we will use to exploit the target host. The next step is to create a socket to
     the DeserLab server application and store the reference object in a variable called
     `target`. We will use this reference variable to send and receive data from the
     connection.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: '`payload`变量现在包含了ysoserial生成的原始字节，我们将使用这些字节来利用目标主机。下一步是创建一个到DeserLab服务器应用的socket，并将引用对象存储在一个名为`target`的变量中。我们将使用这个引用变量来发送和接收来自连接的数据。'
 - en: '[PRE17]'
+  id: totrans-143
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: At this point, our script will emulate the DeserLab client, and in order to
     successfully connect and be able to send our exploit code, we have to perform
     a few steps first. Recall that the client sends a few required bytes, including
     the hello packet and client version.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 此时，我们的脚本将模拟DeserLab客户端，并且为了成功连接并能够发送我们的漏洞利用代码，我们需要首先执行几个步骤。回想一下，客户端发送了一些必要的字节，包括hello数据包和客户端版本。
 - en: We will use the `send()` and `recv()` methods to send and read the responses,
     so that the communication can move along. Since some bytes can be outside of the
     ASCII readable range, we should escape them using their hex equivalent. Python
     allows us to do this using a backslash (`\`) and `x` prefix to the hex bytes.
     For example, the character `A` can be represented in Python (and other languages)
     using `\x41`.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将使用`send()`和`recv()`方法来发送和读取响应，以便通信能够继续进行。由于某些字节可能超出ASCII可读范围，我们应使用它们的十六进制表示来转义。Python允许我们使用反斜杠（`\`）和`x`前缀来表示十六进制字节。例如，字符`A`可以在Python（以及其他语言）中表示为`\x41`。
 - en: After we perform a send, we should also receive any data sent from the server.
     We don't need to store the server response, but we do have to receive it to clear
     the buffer and allow the socket communication to continue.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们执行发送操作后，我们还应该接收来自服务器的任何数据。我们不需要存储服务器的响应，但必须接收它以清除缓冲区并允许套接字通信继续进行。
 - en: First, we will send the `0xAC 0xED` magic bytes, followed by the hello packet,
     and finally the expected client version. We have to prefix the hello and version
     packets with the `0x77` byte, followed immediately by the data length. For example,
     the client version being `0x01 0x01` would need to be prefixed by `0x77` (indicating
     a data packet), and by `0x02` (the data packet length).
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们将发送`0xAC 0xED`魔术字节，接着是hello数据包，最后是期望的客户端版本。我们必须为hello和版本数据包加上`0x77`字节，并紧跟数据长度。例如，客户端版本`0x01
+    0x01`需要由`0x77`（表示数据包）和`0x02`（数据包长度）前缀。
 - en: 'The following code will send the magic bytes, hello packet, and client version:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码将发送魔术字节、hello数据包和客户端版本：
 - en: '[PRE18]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'We also have to send the client name, which can be arbitrary, but it is required.
     We just have to make sure the `0x77` prefix and the data length are accurate:'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还必须发送客户端名称，可以是任意的，但这是必需的。我们只需确保`0x77`前缀和数据长度是准确的：
 - en: '[PRE19]'
+  id: totrans-151
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Finally, we have to strip the magic bytes from the payload itself, as we''ve
     already sent these. The server expects the object without this data. Python allows
     us to remove the first four bytes using the `[4:]` array notation:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们必须从有效负载中去除魔术字节，因为我们已经发送了这些字节。服务器期望接收到不包含这些数据的对象。Python允许我们使用`[4:]`数组表示法去除前四个字节：
 - en: '[PRE20]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'The final step is to send the ysoserial payload which, when deserialized, will hopefully
     execute our reverse shell:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后一步是发送ysoserial有效负载，当反序列化时，希望能够执行我们的反向Shell：
 - en: '[PRE21]'
+  id: totrans-155
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The final exploit script, `exploit_deserlab.py`, should look like the following:'
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终的漏洞利用脚本`exploit_deserlab.py`应如下所示：
 - en: '[PRE22]'
+  id: totrans-157
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Before launching the exploit, we have to make sure a netcat listener is running
     on our C2 server `c2.spider.ml` on port `443`. If the exploit is successful, we
     should get shell access to the DeserLab server.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 在启动漏洞利用之前，我们必须确保在我们的C2服务器`c2.spider.ml`上的端口`443`上运行着netcat监听器。如果漏洞利用成功，我们应该能够获取DeserLab服务器的Shell访问权限。
 - en: 'We can start a netcat server on port `443` using the following command:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用以下命令在端口`443`上启动一个netcat服务器：
 - en: '[PRE23]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'All that''s left to do is to run the Python script on our attacker machine
     and hope for the best:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 剩下的就是在我们的攻击机上运行Python脚本，并期待最佳结果：
 - en: '[PRE24]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'If we inspect the generated traffic, we can see the protocol initiation and
     the test string packets, followed immediately by the serialized object generated
     with ysoserial, indicated by the `0x73 0x72` or `sr` bytes:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们检查生成的流量，我们可以看到协议初始化和测试字符串数据包，紧接着是由ysoserial生成的序列化对象，这些对象由`0x73 0x72`或`sr`字节标识：
 - en: '![Deserialization exploit](graphics/B09238_08_11.jpg)'
+  id: totrans-164
   prefs: []
   type: TYPE_IMG
+  zh: '![反序列化漏洞](graphics/B09238_08_11.jpg)'
 - en: '[PRE25]'
+  id: totrans-165
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'Further down into the packet capture, we notice something interesting in the
     server response:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 在进一步分析数据包捕获时，我们注意到服务器响应中有一些有趣的内容：
 - en: '![Deserialization exploit](graphics/B09238_08_12.jpg)'
+  id: totrans-167
   prefs: []
   type: TYPE_IMG
+  zh: '![反序列化漏洞](graphics/B09238_08_12.jpg)'
 - en: 'The server responds with a `java.lang.ClassCastException`, meaning that it
     attempted to cast our payload to `HashRequest` but failed. This is a good thing
     because by the time the exception is trapped, the POP gadget chain succeeded and
     we have a shell waiting on our C2 server:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器返回一个 `java.lang.ClassCastException`，这意味着它尝试将我们的有效负载转换为 `HashRequest` 但失败了。这是件好事，因为在捕获异常时，POP
+    工具链已经成功执行，我们的 C2 服务器上已经有了一个等待的 shell：
 - en: '[PRE26]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: Summary
+  id: totrans-170
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, we've looked at another way that user input can be abused to
     execute arbitrary code on vulnerable applications. Serialization is very useful
     in modern applications, especially as they become more complex and more distributed.
     Data exchange is made easy, but sometimes at the expense of security.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了另一种用户输入被滥用的方式，它可以在易受攻击的应用程序上执行任意代码。序列化在现代应用程序中非常有用，特别是随着应用程序变得更加复杂和分布式。数据交换变得容易，但有时是以牺牲安全性为代价的。
 - en: In the preceding examples, applications were compromised because assumptions
     were made about the process of deserializing data. There is no executable code
     in the object stream, not in the traditional sense, because serialized data is
@@ -832,9 +1203,14 @@
     Java virtual machine or PHP's interpreter to compromise the system. We were able
     to abuse deserialization features to take control of the application execution
     flow with the help of POP gadgets.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的示例中，由于对反序列化数据的处理过程做了假设，导致了应用程序的安全性受到威胁。对象流中没有可执行代码，至少在传统意义上是没有的，因为序列化的数据只是对象的一个状态快照。只要语言解释器安全地读取输入，它应该是安全的。也就是说，前提是没有缓冲区溢出或类似的漏洞。然而，正如我们所见，我们不需要利用
+    Java 虚拟机或 PHP 的解释器来妥协系统。我们能够利用反序列化功能，通过 POP 工具链的帮助，控制应用程序的执行流程。
 - en: In the next chapter, we will focus practical attacks specifically directed at
     the user, leveraging application vulnerabilities.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将重点关注针对用户的实际攻击，利用应用程序漏洞。
