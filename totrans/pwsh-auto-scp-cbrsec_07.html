@@ -1,0 +1,715 @@
+<html><head></head><body>
+		<div id="_idContainer191">
+			<h1 class="chapter-number" id="_idParaDest-170"><a id="_idTextAnchor179"/>7</h1>
+			<h1 id="_idParaDest-171"><a id="_idTextAnchor180"/>Hacking the Cloud – Exploiting Azure Active Directory/Entra ID</h1>
+			<p>In the last chapter, we looked at <strong class="bold">Active Directory</strong> (<strong class="bold">AD</strong>) and on-premises authentication. In this chapter, we are looking at its successor and cloud <strong class="bold">identity provider</strong> (<strong class="bold">IdP</strong>): <strong class="bold">Azure Active Directory</strong> (<span class="No-Break"><strong class="bold">AAD/Azure AD</strong></span><span class="No-Break">).</span></p>
+			<p>As of July 11, 2023, Microsoft renamed Azure AD to <strong class="bold">Entra ID</strong>. As this was just shortly announced before this book<a id="_idIndexMarker1222"/> was released, we will refer to Entra ID just as Azure Active Directory, Azure AD or AAD in <span class="No-Break">this chapter.</span></p>
+			<p>AAD is Microsoft’s cloud-based enterprise identity service. It provides <strong class="bold">single sign-on</strong> (<strong class="bold">SSO</strong>), Conditional Access, and <strong class="bold">multi-factor authentication</strong> (<strong class="bold">MFA</strong>) to protect users against various attack vectors, no matter whether they were initiated on-premises or using <span class="No-Break">cloud-based techniques.</span></p>
+			<p>AAD is a multi-tenant cloud directory and authentication service. Other services, such as Office 365 or even Azure, rely on this service for authentication and authorization, by leveraging the accounts, groups, and roles that are being provided <span class="No-Break">with AAD.</span></p>
+			<p>More and more organizations are using AAD in hybrid mode, and some are even completely abandoning the legacy on-premises AD solution <span class="No-Break">for AAD.</span></p>
+			<p>In this chapter, we will dive into AAD – especially into authentication with AAD – and explore what blue and red teamers should know when it comes to Azure AD Security from a <span class="No-Break">PowerShell context:</span></p>
+			<ul>
+				<li>Differentiating between AD <span class="No-Break">and AAD</span></li>
+				<li>Authentication <span class="No-Break">in AAD</span></li>
+				<li>Overview of the most important built-in privileged accounts <span class="No-Break">and roles</span></li>
+				<li>Accessing AAD <span class="No-Break">using PowerShell</span></li>
+				<li><span class="No-Break">Attacking AAD</span></li>
+				<li>Exploring AAD-related credential <span class="No-Break">theft attacks</span></li>
+				<li>Mitigating <span class="No-Break">cloud-based attacks</span></li>
+			</ul>
+			<h1 id="_idParaDest-172"><a id="_idTextAnchor181"/>Technical requirements</h1>
+			<p>To get the most out of this chapter, ensure that you have <span class="No-Break">the following:</span></p>
+			<ul>
+				<li>PowerShell 7.3 <span class="No-Break">and above</span></li>
+				<li>Visual Studio <span class="No-Break">Code installed</span></li>
+				<li>Access to the GitHub repository <span class="No-Break">for </span><span class="No-Break"><strong class="source-inline">Chapter07</strong></span><span class="No-Break">:</span></li>
+			</ul>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07</span></a></p>
+			<h1 id="_idParaDest-173"><a id="_idTextAnchor182"/>Differentiating between AD and AAD</h1>
+			<p>A common misconception <a id="_idIndexMarker1223"/>when comparing AD and AAD is that AAD is just AD in the cloud. This statement is <span class="No-Break">not true.</span></p>
+			<p>While AD is the directory service for on-premises domains, AAD allows users to access Office 365, the Azure portal, SaaS applications, internal resources, and other <span class="No-Break">cloud-based apps.</span></p>
+			<p>Both are identity and access management solutions, yes. But besides that, both technologies are very different, as you can see in the <span class="No-Break">following figure:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer168">
+					<img alt="Figure 7.1 – AD versus AAD" src="image/B16679_07_001.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.1 – AD versus AAD</p>
+			<p>AAD can sync<a id="_idIndexMarker1224"/> with an on-premises AD (<strong class="bold">hybrid identity</strong>) and supports <strong class="bold">federation</strong> (e.g., through <strong class="bold">Security Assertion Markup Language (SAML)</strong>) or can be used as a single identity<a id="_idIndexMarker1225"/> and access provider. It supports different types of authentication, such as <span class="No-Break">the following:</span></p>
+			<ul>
+				<li><strong class="bold">Cloud-only authentication</strong>: In this scenario, AAD acts as the sole IdP, without<a id="_idIndexMarker1226"/> any synchronization with an on-premises AD. Users authenticate directly with AAD for access <span class="No-Break">to resources.</span></li>
+				<li><strong class="bold">AAD password hash synchronization</strong>: This authentication method involves<a id="_idIndexMarker1227"/> synchronizing password hashes from an on-premises AD to AAD. When users authenticate, AAD verifies the password against the synchronized hash stored in <span class="No-Break">the cloud.</span></li>
+				<li><strong class="bold">AAD Pass-through Authentication (PTA)</strong>: With this approach, the authentication<a id="_idIndexMarker1228"/> process involves a hybrid setup. After the user’s password is validated by an on-premises authentication agent, AAD performs the final authentication step, granting access to <span class="No-Break">the user.</span></li>
+				<li><strong class="bold">Federated authentication (AD FS)</strong>: In a federated authentication scenario, authentication<a id="_idIndexMarker1229"/> takes place on-premises using <strong class="bold">Active Directory Federation Services</strong> (<strong class="bold">AD FS</strong>). AAD acts as the IdP and relies on the federated trust established with AD FS<a id="_idIndexMarker1230"/> to <span class="No-Break">authenticate users.</span></li>
+			</ul>
+			<p>In AD, groups control permissions and access for user groups, whereas in AAD, this functionality is replaced <span class="No-Break">by roles.</span></p>
+			<p>For<a id="_idIndexMarker1231"/> example, in AD, the <strong class="bold">Enterprise Administrator</strong> group, followed by the <strong class="bold">Domain Administrator</strong> group, holds the most <a id="_idIndexMarker1232"/>power. This can be compared to the <strong class="bold">Global Administrator</strong> role in AAD; if an account holds the <strong class="bold">Global Administrator</strong> role in AAD, then it has full control<a id="_idIndexMarker1233"/> over <span class="No-Break">the tenant.</span></p>
+			<p>However, the Global Administrator<a id="_idIndexMarker1234"/> role isn’t the only role that can be exploited if misconfigured. We will delve deeper into important roles in AAD in the <em class="italic">Privileged accounts and </em><span class="No-Break"><em class="italic">roles</em></span><span class="No-Break"> section.</span></p>
+			<p>Additionally, the communication and authentication methods used by AD and AAD differ significantly. Let’s first examine how authentication works <span class="No-Break">in AAD.</span></p>
+			<h1 id="_idParaDest-174"><a id="_idTextAnchor183"/>Authentication in AAD</h1>
+			<p>Before we start to dive deeper<a id="_idIndexMarker1235"/> into what protocols are used and how they work, we first need to understand what a device identity is and how devices <span class="No-Break">are joined.</span></p>
+			<h2 id="_idParaDest-175"><a id="_idTextAnchor184"/>Device identity – connecting devices to AAD</h2>
+			<p>A device identity<a id="_idIndexMarker1236"/> is simply the object that will be created<a id="_idIndexMarker1237"/> in AAD once a device is registered or joined into the AAD tenant. It is similar to a device in on-premises AD and administrators can use it to manage the actual device or to get more information on it. Device identities can be found in the AAD portal under <strong class="bold">Devices</strong> | <span class="No-Break"><strong class="bold">All devices</strong></span><span class="No-Break">.</span></p>
+			<p>There are three methods for joining or registering devices <span class="No-Break">to AAD:</span></p>
+			<ul>
+				<li><strong class="bold">AAD join</strong>: The default method for joining<a id="_idIndexMarker1238"/> modern devices, such as Windows 10 or Windows<a id="_idIndexMarker1239"/> 11, to your AAD tenant. Windows Server 2019+ <strong class="bold">virtual machines</strong> (<strong class="bold">VMs</strong>) running in your Azure tenant can be joined <span class="No-Break">as well.</span></li>
+				<li><strong class="bold">AAD registration</strong>: A method to support <strong class="bold">bring-your-own-device</strong> (<strong class="bold">BYOD</strong>) or mobile<a id="_idIndexMarker1240"/> device scenarios. This method<a id="_idIndexMarker1241"/> is also considered a modern <span class="No-Break">device scenario.</span></li>
+				<li><strong class="bold">Hybrid AAD join</strong>: This method is not considered a modern device scenario, but rather<a id="_idIndexMarker1242"/> a compromise to combine both older and modern machines in the same environment. In the long term, AAD join should be the preferred method, but organizations that are still running Windows 7+ and Windows Server 2008+ can leverage this scenario as a step in the right direction, until all machines are successfully migrated to a modern <span class="No-Break">operating system.</span></li>
+			</ul>
+			<p>All three methods<a id="_idIndexMarker1243"/> can be used in the same tenant and can coexist, but in most environments that I have seen, many devices are still joined using hybrid AAD join, and organizations still support <strong class="bold">hybrid identities</strong>. But what exactly is a <span class="No-Break">hybrid identity?</span></p>
+			<h2 id="_idParaDest-176"><a id="_idTextAnchor185"/>Hybrid identity</h2>
+			<p>Most of the time, AAD<a id="_idIndexMarker1244"/> is used in parallel with on-premises<a id="_idIndexMarker1245"/> AD. Organizations still have a lot of on-premises infrastructure, but they start to use the cloud in a <span class="No-Break">hybrid scenario.</span></p>
+			<p>Hypothetically, it is possible to use a different password when accessing cloud resources, instead of on-premises resources, but users are already overburdened with maintaining their on-premises passwords. So, to maintain a high standard for password security, it makes sense to allow users to use the same account for on-premises and <span class="No-Break">cloud resources.</span></p>
+			<p>To solve this problem, Microsoft developed AAD Connect. AAD Connect is a tool for achieving hybrid scenario goals and integrates the on-premises AD <span class="No-Break">with AAD.</span></p>
+			<p>Users can be more productive and secure by using only one common identity to access on-premises<a id="_idIndexMarker1246"/> resources as well as <span class="No-Break">cloud resources.</span></p>
+			<p>Administrators regularly connect one or more on-premises AD forest(s) and can choose between<a id="_idIndexMarker1247"/> the <span class="No-Break">following concepts:</span></p>
+			<ul>
+				<li><strong class="bold">Password hash synchronization</strong>: With the password hash synchronization concept, all on-premises<a id="_idIndexMarker1248"/> passwords are synchronized to AAD to ensure that the same password can be used both on-premises and in the cloud. More information<a id="_idIndexMarker1249"/> on password hash synchronization can be found <span class="No-Break">here: </span><a href="https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs</span></a><span class="No-Break">.</span></li>
+				<li><strong class="bold">PTA</strong>: Using PTA, no credentials need to be synchronized<a id="_idIndexMarker1250"/> to the cloud. When a user authenticates to AAD, the credentials are passed through to on-premises AD, which then validates the credentials before the authentication<a id="_idIndexMarker1251"/> is successful. More information on PTA can be found <span class="No-Break">at </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta</span></a><span class="No-Break">.</span></li>
+				<li><strong class="bold">Federation</strong>: When connecting AD to AAD, administrators<a id="_idIndexMarker1252"/> can also choose to configure a federation – either a federation using AD FS or PingFederate (a third-party provider) can be selected. A federation is a collection of organizations that trust each other, and therefore typically, the same authentication and authorization methods can <span class="No-Break">be used.</span></li>
+			</ul>
+			<p>When it comes to AAD, a federation serves as a mechanism to provide a seamless SSO experience by issuing tokens<a id="_idIndexMarker1253"/> after verifying the user’s credentials against on-premises <strong class="bold">domain controllers</strong> (<strong class="bold">DCs</strong>). This approach ensures that users can access AAD resources without the need for repetitive authentication, enhancing the overall user experience <span class="No-Break">and productivity.</span></p>
+			<p>Learn more<a id="_idIndexMarker1254"/> about federations <span class="No-Break">here: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed</span></a><span class="No-Break">.</span></p>
+			<p>The following screenshot shows all the available sign-on methods when connecting your AD <span class="No-Break">to AAD:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer169">
+					<img alt="Figure 7.2 – Selecting the sign-on method" src="image/B16679_07_002.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.2 – Selecting the sign-on method</p>
+			<p>So that users do not always have to enter their credentials over and over again, SSO can also be enabled during <span class="No-Break">this step.</span></p>
+			<p>Every sign-in concept<a id="_idIndexMarker1255"/> has its advantages<a id="_idIndexMarker1256"/> as well as disadvantages, and we will explore later in this chapter how some scenarios can be approached. But for now, let’s first look into how authentication works for users and devices connecting <span class="No-Break">to AAD.</span></p>
+			<h2 id="_idParaDest-177"><a id="_idTextAnchor186"/>Protocols and concepts</h2>
+			<p>Depending on how the device<a id="_idIndexMarker1257"/> was joined and to which resource a user wants<a id="_idIndexMarker1258"/> to connect, the authentication<a id="_idIndexMarker1259"/> and authorization flows<a id="_idIndexMarker1260"/> differ from each other. When it comes to AAD, the main protocols and standards that are used are <strong class="bold">Open Authorization</strong> (<strong class="bold">OAuth</strong>) 2.0, <strong class="bold">OpenID Connect</strong> (<strong class="bold">OIDC</strong>), <span class="No-Break">and SAML.</span></p>
+			<p>SAML, as well as OAuth in combination with OIDC, is a very popular protocol and can be used to implement SSO. The protocol that is used really depends on the application. Both protocols use token artifacts to communicate secrets, but work differently when it comes to authorization <span class="No-Break">and authentication.</span></p>
+			<p>Let’s explore how these protocols work in the following sections, and how the flow differs depending on <span class="No-Break">the scenario.</span></p>
+			<h3>OAuth 2.0</h3>
+			<p><strong class="bold">OAuth 2.0</strong> is an open standard for access delegation<a id="_idIndexMarker1261"/> that facilitates token-based <strong class="bold">authorization</strong> to securely access resources<a id="_idIndexMarker1262"/> on the internet. It is important<a id="_idIndexMarker1263"/> to note that OAuth 2.0 is not an authentication protocol but rather focuses on authorization and secure resource sharing between different applications and services. OAuth 2.0 was published in 2012 and has since become widely adopted in modern web and API authentication and <span class="No-Break">authorization scenarios.</span></p>
+			<p>OAuth 2.0 is completely different from the OAuth 1.0 version, which was released in 2007. When using the term <em class="italic">OAuth</em> in this book, I will always refer to <span class="No-Break">OAuth 2.0.</span></p>
+			<p>Using OAuth, third parties can easily access external resources without the need to access the username or password of <span class="No-Break">the user.</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer170">
+					<img alt="Figure 7.3 – Login options with existing accounts" src="image/B16679_07_003.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.3 – Login options with existing accounts</p>
+			<p>For example, if you were to log in to a website, but do not have a login for this resource yet, many providers would allow you to use existing accounts (such as a Microsoft, Google, Facebook, or Twitter account) to identify<a id="_idIndexMarker1264"/> yourself and log in, as shown in the <span class="No-Break">preceding screenshot.</span></p>
+			<h4>OAuth vocabulary</h4>
+			<p>But before we dive into how OAuth works, we first need to clarify <span class="No-Break">some vocabulary:</span></p>
+			<ul>
+				<li><strong class="bold">Resource owner</strong>: This is the person who grants <a id="_idIndexMarker1265"/>access to a resource, which is typically their own <span class="No-Break">user account.</span></li>
+				<li><strong class="bold">Client</strong>: The application requesting to perform<a id="_idIndexMarker1266"/> actions on behalf of the <span class="No-Break">resource owner.</span></li>
+				<li><strong class="bold">Authorization server</strong>: This server knows the resource owner<a id="_idIndexMarker1267"/> and is able to authorize that this user is legit. Therefore, the resource owner usually has an existing account on the <span class="No-Break">authorization server.</span></li>
+				<li><strong class="bold">Resource server</strong>: This is the resource/API that the client<a id="_idIndexMarker1268"/> wants to access on behalf of the resource owner. Sometimes, the authorization and the resource server are the same servers, but they don’t need to be; sometimes, the authorization server is only a server that the resource <span class="No-Break">server trusts.</span></li>
+				<li><strong class="bold">Redirect URI/callback URL</strong>: The URL that the auth server redirects<a id="_idIndexMarker1269"/> the resource owner to after granting permission to <span class="No-Break">the client.</span></li>
+				<li><strong class="bold">Response type</strong>: This indicates the kind of information<a id="_idIndexMarker1270"/> that the client expects to receive. A code is the most common response type; in this case, an authorization code will be sent to <span class="No-Break">the client.</span></li>
+				<li><strong class="bold">Authorization code</strong>: This is a short-lived, temporary<a id="_idIndexMarker1271"/> code. It is sent by the auth server to the client. The client sends it to the authorization server with the client secret and receives an access token. It’s important to note that the requirement to send a client secret may vary depending on the specific OAuth<a id="_idIndexMarker1272"/> flow <span class="No-Break">being used.</span></li>
+				<li><strong class="bold">Access token</strong>: This is the token that the client utilizes<a id="_idIndexMarker1273"/> to gain access to the desired resource. It serves as a credential that allows the client to communicate and interact with the <span class="No-Break">resource server.</span></li>
+				<li><strong class="bold">Refresh token</strong>: This is a long-lived token that can<a id="_idIndexMarker1274"/> be used to request and obtain a new access token, once the access token <span class="No-Break">has expired.</span></li>
+				<li><strong class="bold">Scope</strong>: This refers to granular permissions<a id="_idIndexMarker1275"/> that the client requests (e.g., read, write, <span class="No-Break">or delete).</span></li>
+				<li><strong class="bold">Consent</strong>: The user can review what<a id="_idIndexMarker1276"/> permissions (scope) the client requested and grants consent by allowing the <span class="No-Break">requested permissions.</span></li>
+				<li><strong class="bold">Client ID</strong>: The client ID is used to uniquely<a id="_idIndexMarker1277"/> identify the client when interacting with the authorization server. It serves as a means of identification for the client within the <span class="No-Break">authorization process.</span></li>
+				<li><strong class="bold">Client secret</strong>: A confidential password known exclusively<a id="_idIndexMarker1278"/> by the client and the authorization server. It serves as a shared secret for authenticating the client’s identity during the <span class="No-Break">authorization process.</span></li>
+			</ul>
+			<p>Now that you are familiar with the necessary vocabulary, let’s look at how the OAuth flow <span class="No-Break">works next.</span></p>
+			<h4>OAuth authorization code grant flow</h4>
+			<p>The following screenshot shows how the OAuth authorization code grant <span class="No-Break">flow</span><span class="No-Break"><a id="_idIndexMarker1279"/></span><span class="No-Break"> works:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer171">
+					<img alt="Figure 7.4 – OAuth flow" src="image/B16679_07_004.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.4 – OAuth flow</p>
+			<p>In order to provide<a id="_idIndexMarker1280"/> a clear understanding of how the OAuth flow works, the following is an example with detailed descriptions of each <span class="No-Break">step involved:</span></p>
+			<ol>
+				<li>The user, also called the <strong class="bold">resource owner</strong>, wants to allow a newsletter service to send a newsletter<a id="_idIndexMarker1281"/> to specified recipients on their behalf and therefore navigates to the newsletter service, the client – for example, <strong class="source-inline">www.1337newsletters.com</strong>. Please note that this is just an imaginary <span class="No-Break">newsletter URL.</span></li>
+				<li>The <strong class="bold">client</strong> redirects the user to the authorization<a id="_idIndexMarker1282"/> server – in our case, this is AAD. It also includes the client ID, redirect URL, response type, and one or more scope(s) <span class="No-Break">if necessary.</span></li>
+				<li>The <strong class="bold">authorization server</strong> (AAD) verifies the identity of the user and prompts them to log<a id="_idIndexMarker1283"/> in if they aren’t logged in already. It also<a id="_idIndexMarker1284"/> prompts the user for <strong class="bold">consent</strong>, ensuring they are fully informed about the scope of actions the client is requesting to perform on their behalf with the specified resource server. The user can now agree or decline and grant or deny permission. It’s important to note that consent only needs to be granted once by the user, and not during <span class="No-Break">every sign-in.</span></li>
+			</ol>
+			<p>In our newsletter example, a possible scope could be to <em class="italic">read contacts</em> and <em class="italic">write and send emails</em> on behalf of <span class="No-Break">the user.</span></p>
+			<ol>
+				<li value="4">The <strong class="bold">redirect URL</strong> is put in as the location: part of the HTTP<a id="_idIndexMarker1285"/> header<a id="_idIndexMarker1286"/> and a response, including the authorization code, is sent to the client by AAD. When the client retrieves a response with such a header, the client will be redirected to the designated location and sends the authorization code it retrieved from the <span class="No-Break">authorization server.</span></li>
+				<li>The <strong class="bold">client</strong> sends its client ID, the client secret, and the authorization code to the authorization<a id="_idIndexMarker1287"/> server, and receives an <strong class="bold">access token</strong> once the data is verified to be legit. A <strong class="bold">refresh token</strong> is also sent within this step to ensure that the client<a id="_idIndexMarker1288"/> can request a new access token once the old <span class="No-Break">one expires.</span></li>
+				<li>The client can now use the access token, which contains the hardcoded scope assigned by the authorization server, to access the resource server. With the appropriate scope, the client can perform actions on the user’s behalf, such as reading contacts and sending <span class="No-Break">out emails.</span></li>
+			</ol>
+			<p>Usually, the <strong class="bold">client ID</strong> as well as the <strong class="bold">client secret</strong> is generated by the <strong class="bold">authorization server</strong>, long before this OAuth authorization <a id="_idIndexMarker1289"/>flow takes<a id="_idIndexMarker1290"/> place. Once the client<a id="_idIndexMarker1291"/> and the authorization server establish a working relationship, the authorization server generates and shares the client ID and client secret with the client. The secret is not to be shared, so that it’s only known by the client and the authorization server. In this way, the identity of the client is ensured and can be verified by the <span class="No-Break">authorization server.</span></p>
+			<p>In addition to the Authorization Code Grant flow, there<a id="_idIndexMarker1292"/> are also other OAuth flows specified in <strong class="bold">RFC 6749</strong>, such as the Implicit Grant, Resource Owner Password Credentials Grant, Client Credentials Grant, and Extension Grant flows. We will not look into these flows further in this book, but<a id="_idIndexMarker1293"/> if you are interested in learning more<a id="_idIndexMarker1294"/> about those different OAuth flows, refer to <strong class="bold">RFC </strong><span class="No-Break"><strong class="bold">6749</strong></span><span class="No-Break">: </span><a href="https://datatracker.ietf.org/doc/html/rfc6749"><span class="No-Break">https://datatracker.ietf.org/doc/html/rfc6749</span></a><span class="No-Break">.</span></p>
+			<h4>OpenID Connect</h4>
+			<p>OIDC is an additional layer <a id="_idIndexMarker1295"/>built on the OAuth framework. It adds login and profile information about the identity of the user (that is, the resource owner) that is logged in. When an authorization server supports OIDC, it provides the client with information about the resource owner. OIDC authenticates the user and enables the user to <span class="No-Break">use SSO.</span></p>
+			<p>If an authorization<a id="_idIndexMarker1296"/> server supports<a id="_idIndexMarker1297"/> OIDC, we can also call it an <strong class="bold">IdP</strong>, which can be used for <strong class="bold">authentication</strong> <span class="No-Break">as well.</span></p>
+			<p>The authorization flow with OIDC is almost exactly the same as the regular OAuth flow; the only differences occur within <em class="italic">steps 2</em> and <em class="italic">5</em>, which are <span class="No-Break">as follows:</span></p>
+			<p>   2.   The scope that is sent contains the information that OIDC should be <span class="No-Break">used: </span><span class="No-Break"><strong class="source-inline">Scope=OpenID</strong></span><span class="No-Break">.</span></p>
+			<p>   5.   As well as the access token and the refresh<a id="_idIndexMarker1298"/> token that are sent, an <strong class="bold">ID token</strong> is <span class="No-Break">also sent.</span></p>
+			<p>The access token is a <strong class="bold">JSON Web Token</strong> (<strong class="bold">JWT</strong>) that can be decoded, but that does not make much sense<a id="_idIndexMarker1299"/> to the client and should not be used by the app to make any decisions. It needs to be sent every time to access the desired resources. An ID token is also a JWT and contains information about <span class="No-Break">the user.</span></p>
+			<p>Within the ID token, all user claims are available once the information is extracted. Claims are information such as the user’s name, their ID, when the user logged in, and the token’s expiration date. This token is signed so that it cannot be easily tampered with by a <span class="No-Break">man-in-the-middle attack.</span></p>
+			<h3>SAML</h3>
+			<p><strong class="bold">SAML</strong> is an open standard, used by <strong class="bold">IdPs</strong> to transfer<a id="_idIndexMarker1300"/> authorization<a id="_idIndexMarker1301"/> information to <strong class="bold">service providers</strong> (<strong class="bold">SPs</strong>). Using SAML, it is<a id="_idIndexMarker1302"/> possible to use SSO directly without any other additional protocol – so that users can enter their login<a id="_idIndexMarker1303"/> credentials only once and can use a variety of services without the need to authenticate over and <span class="No-Break">over again.</span></p>
+			<p>The following figure should help you to understand<a id="_idIndexMarker1304"/> the SAML <span class="No-Break">authentication flow:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer172">
+					<img alt="Figure 7.5 – SAML authentication flow" src="image/B16679_07_005.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.5 – SAML authentication flow</p>
+			<p>To provide a comprehensive understanding of the SAML authentication flow when using AAD as the IdP, the following list outlines each action involved in authenticating a user <span class="No-Break">through SAML:</span></p>
+			<ol>
+				<li>The user opens the browser and attempts to access a resource and therefore requests access from <span class="No-Break">the SP.</span></li>
+				<li>The SP generates a <strong class="bold">SAML authorization request</strong> and redirects the user to the IdP, AAD. AAD<a id="_idIndexMarker1305"/> authenticates <span class="No-Break">the user.</span></li>
+				<li>AAD generates the <strong class="bold">SAML tokens</strong> and sends them back to the<a id="_idIndexMarker1306"/> user. Along with the SAML tokens, the session key is returned <span class="No-Break">as well.</span></li>
+				<li>The user presents the SAML tokens to <span class="No-Break">the SP.</span></li>
+				<li>The SP validates the SAML response<a id="_idIndexMarker1307"/> as well as the SAML tokens and completes the sign-in if everything seems to be in order. The user is logged in and is forwarded to the secured <span class="No-Break">web application.</span></li>
+			</ol>
+			<h3>Primary Refresh Token</h3>
+			<p>Regardless of whether OAuth or SAML is used, in both cases, <strong class="bold">Primary Refresh Tokens</strong> (<strong class="bold">PRTs</strong>) are generated by AAD and used to extend<a id="_idIndexMarker1308"/> the user session. A PRT can be compared to a Ticket Granting Ticket <span class="No-Break">in AD.</span></p>
+			<p>It doesn’t just refresh the OAuth or SAML authentication; it is a master key that can be used to authenticate <em class="italic">any</em> application. PRTs were originally introduced to provide SSO across applications. This is also the reason why Microsoft applied extra protection to PRTs and recommends having devices equipped with a TPM – if a TPM is available, the cryptographic keys are stored within the TPM, which makes it almost impossible to retrieve them and obtain access to <span class="No-Break">the PRT.</span></p>
+			<p>However, if no TPM chip is present, the PRT can be extracted and can <span class="No-Break">be abused.</span></p>
+			<p>The PRT itself is a JWT that contains the user’s authentication information. It is encrypted with a transport key and tied to the specific device it was issued to. It also resides<a id="_idIndexMarker1309"/> in the memory of the device it was issued to and can be extracted from <strong class="bold">LSA CloudAP</strong> using tools such as <strong class="source-inline">mimikatz</strong>. We discussed the <strong class="bold">Local Security Authority </strong>(<strong class="bold">LSA</strong>) earlier in <a href="B16679_06_Final_PD.xhtml#_idTextAnchor150"><span class="No-Break"><em class="italic">Chapter 6</em></span></a>, <em class="italic">Active Directory – Attacks and Mitigation</em>; please refer to this chapter<a id="_idIndexMarker1310"/> if you want to understand what the LSA is. <strong class="bold">CloudAP</strong> is the part of the LSA that protects cloud-related tokens, such as <span class="No-Break">the PRT.</span></p>
+			<p>In this book, you just need to know that a PRT is the authentication artifact, and if it’s stolen, it opens up the possibility of impersonation. If you want to learn more about how a PRT is issued<a id="_idIndexMarker1311"/> or refreshed, please refer to the Microsoft <span class="No-Break">documentation: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token</span></a><span class="No-Break">.</span></p>
+			<p>Understanding the importance<a id="_idIndexMarker1312"/> of protecting the PRT is crucial, especially when it comes to privileged accounts and roles, which we will explore in the <span class="No-Break">next section.</span></p>
+			<h1 id="_idParaDest-178"><a id="_idTextAnchor187"/>Privileged accounts and roles</h1>
+			<p>Privileged accounts and roles<a id="_idIndexMarker1313"/> are the heart of any directory service and are the most powerful accounts/roles. Therefore, they are of special interest to adversaries and need an extra level <span class="No-Break">of protection.</span></p>
+			<p>There are lots of built-in roles available in AAD. In this chapter, I won’t describe all of them, but will give you an overview of some important roles that have permissions that could be easily abused. Therefore, it makes sense to regularly check and audit which accounts do have those <span class="No-Break">roles assigned:</span></p>
+			<ul>
+				<li><strong class="bold">Global Administrator</strong>: This is the most powerful role<a id="_idIndexMarker1314"/> in AAD. It is allowed to perform every administrative task that is possible <span class="No-Break">within AAD.</span></li>
+				<li><strong class="bold">Privileged Role Administrator</strong>: This role can manage and assign all AAD roles, including<a id="_idIndexMarker1315"/> the Global Administrator role. This role can also create and manage groups that can be assigned to AAD roles, as well as manage Privileged Identity Management and <span class="No-Break">administrative units.</span></li>
+				<li><strong class="bold">Global Reader</strong>: This role can read all information, but cannot<a id="_idIndexMarker1316"/> perform any action. Nevertheless, it could be useful to attackers for <span class="No-Break">enumeration purposes.</span></li>
+				<li><strong class="bold">Application Administrator/Cloud Application Administrator</strong>: These roles<a id="_idIndexMarker1317"/> can manage or create everything related to applications. They can also add credentials to an application, so they could be also used to impersonate an application, which could lead<a id="_idIndexMarker1318"/> to a <span class="No-Break">privilege escalation.</span></li>
+				<li><strong class="bold">Intune Administrator</strong>: This role can manage everything<a id="_idIndexMarker1319"/> within Intune, as well as create and manage all <span class="No-Break">security groups.</span></li>
+				<li><strong class="bold">Authentication Administrator</strong>: This role can (re)set any authentication method<a id="_idIndexMarker1320"/> and can manage credentials for non-administrative users, as well as for <span class="No-Break">some roles.</span></li>
+				<li><strong class="bold">Privileged Authentication Administrator</strong>: This role has similar rights to the Authentication Administrator, but can also<a id="_idIndexMarker1321"/> set the authentication method policy for the <span class="No-Break">entire tenant.</span></li>
+				<li><strong class="bold">Conditional Access Administrator</strong>: This role can manage Conditional<a id="_idIndexMarker1322"/> <span class="No-Break">Access settings.</span></li>
+				<li><strong class="bold">Exchange Administrator</strong>: This role has global permissions<a id="_idIndexMarker1323"/> within Exchange Online, which allows this role to create and manage all Microsoft <span class="No-Break">365 groups.</span></li>
+				<li><strong class="bold">Security Administrator</strong>: This role can manage all security-related<a id="_idIndexMarker1324"/> Microsoft 365 features (such as Microsoft 365 Defender or <span class="No-Break">Identity Protection).</span></li>
+			</ul>
+			<p>Those are the most important built-in roles in AAD, but there are still many other roles that can be abused<a id="_idIndexMarker1325"/> by attackers. A complete overview of all built-in AAD roles can be found <span class="No-Break">here: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference</span></a><span class="No-Break">.</span></p>
+			<p>Besides built-in<a id="_idIndexMarker1326"/> roles, it is also important to keep track of your <strong class="bold">Hypervisor Administrator</strong> or <strong class="bold">Subscription Administrators</strong>, or privileged roles in general<a id="_idIndexMarker1327"/> that are <em class="italic">able to access sensitive VMs</em>; such a role could easily get access to the hosted VMs and reset passwords. Once access to a machine is gained, the user can do everything with the VM and even obtain the credentials of users and administrators that log on to <span class="No-Break">that VM.</span></p>
+			<p>Also monitor other roles<a id="_idIndexMarker1328"/> that can manage<a id="_idIndexMarker1329"/> group membership, such as <strong class="bold">Security Group</strong> and <strong class="bold">Microsoft 365 </strong><span class="No-Break"><strong class="bold">group owners</strong></span><span class="No-Break">.</span></p>
+			<p>Please refer to the AAD role best practices<a id="_idIndexMarker1330"/> to learn what you can do to protect your AAD<a id="_idIndexMarker1331"/> roles in the best <span class="No-Break">way: </span><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/roles/best-practices</span><span class="No-Break">.</span></p>
+			<h1 id="_idParaDest-179"><a id="_idTextAnchor188"/>Accessing AAD using PowerShell</h1>
+			<p>Of course, we all know the Azure<a id="_idIndexMarker1332"/> portal; surely attackers<a id="_idIndexMarker1333"/> can also take advantage of seamless SSO and access the portal using the user’s browser. There’s even a way to run code directly from the Azure portal using Azure Cloud Shell. But these methods are hard to automate and attackers would struggle to stay undetected. The following screenshot shows how Azure Cloud Shell can be run from the <span class="No-Break">Azure portal:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer173">
+					<img alt="Figure 7.6 – Using Azure Cloud Shell from the Azure portal" src="image/B16679_07_006.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.6 – Using Azure Cloud Shell from the Azure portal</p>
+			<p>But there are also some ways to access AAD using code or the command line directly from <span class="No-Break">your computer:</span></p>
+			<ul>
+				<li>The <span class="No-Break">Azure CLI</span></li>
+				<li><span class="No-Break">Azure PowerShell</span></li>
+				<li>Azure<a id="_idIndexMarker1334"/> .<span class="No-Break">NET: </span><a href="https://docs.microsoft.com/en-us/dotnet/azure/"><span class="No-Break">https://docs.microsoft.com/en-us/dotnet/azure/</span></a></li>
+			</ul>
+			<p>Originally, these methods were developed to support automation and simplify administration tasks, but as usual, they can also be abused <span class="No-Break">by attackers.</span></p>
+			<p>We will not dive deeper into Azure .NET in this chapter. Azure .NET is a set of libraries for .NET developers to use to interact with Azure resources, including AAD. These libraries are available in various languages, such as C#, F#, and Visual Basic. They do not provide a direct interface for PowerShell, but they can be used<a id="_idIndexMarker1335"/> from PowerShell to automate various tasks, similar<a id="_idIndexMarker1336"/> to how the <strong class="source-inline">System.DirectoryServices</strong> namespace from .NET Framework can be used from PowerShell as well (see <a href="B16679_06_Final_PD.xhtml#_idTextAnchor150"><span class="No-Break"><em class="italic">Chapter 6</em></span></a>, <em class="italic">Active Directory – Attacks and Mitigation</em>). For more information, please<a id="_idIndexMarker1337"/> refer to this Azure .NET <span class="No-Break">reference: </span><a href="https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet"><span class="No-Break">https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet</span></a><span class="No-Break">.</span></p>
+			<p>In the following sections, let’s look more closely at the PowerShell-related Azure CLI and Azure PowerShell, which you can use not only exclusively from Azure Cloud Shell but also from your <span class="No-Break">local computer.</span></p>
+			<h2 id="_idParaDest-180"><a id="_idTextAnchor189"/>The Azure CLI</h2>
+			<p>The Azure CLI is a cross-platform<a id="_idIndexMarker1338"/> command-line tool to connect and administer AAD. It also authenticates using the <span class="No-Break">OAuth protocol.</span></p>
+			<p>Before you can run the Azure CLI, you need to install it. Use the documentation that corresponds<a id="_idIndexMarker1339"/> with your operation <span class="No-Break">system: </span><a href="https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"><span class="No-Break">https://docs.microsoft.com/en-us/cli/azure/install-azure-cli</span></a><span class="No-Break">.</span></p>
+			<p>Once you’ve installed the Azure CLI successfully, you can get started and log in to the <span class="No-Break">Azure CLI:</span></p>
+			<pre class="source-code">
+&gt; az login</pre>
+			<p>A new window opens in your browser that prompts you to log in or to select the account to log in – if you are already logged in to an account in your <span class="No-Break">browser session.</span></p>
+			<p>If you are using the <strong class="source-inline">--use-device-code</strong> parameter, you will not be prompted with a new browser window; instead, you will be presented with a code that you can use on a device of your choice to authenticate this session by using the <span class="No-Break">other device.</span></p>
+			<p>Once you are logged in, you can use<a id="_idIndexMarker1340"/> the typical Azure CLI syntax to interact with Azure. A complete overview of all available <strong class="source-inline">Az</strong> commands<a id="_idIndexMarker1341"/> can be found <span class="No-Break">here: </span><a href="https://docs.microsoft.com/en-us/cli/azure/reference-index"><span class="No-Break">https://docs.microsoft.com/en-us/cli/azure/reference-index</span></a><span class="No-Break">.</span></p>
+			<p>When interacting<a id="_idIndexMarker1342"/> with AAD, you might find the <strong class="source-inline">az ad</strong> overview <span class="No-Break">helpful: </span><a href="https://docs.microsoft.com/en-us/cli/azure/ad"><span class="No-Break">https://docs.microsoft.com/en-us/cli/azure/ad</span></a><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-181"><a id="_idTextAnchor190"/>Azure PowerShell</h2>
+			<p>When working with PowerShell<a id="_idIndexMarker1343"/> and AAD, you can use the <strong class="source-inline">Az</strong> module. There's also the <strong class="source-inline">AzureAD</strong> module, but that module will be deprecated on March 30, 2024, and superseded by Microsoft Graph PowerShell. Although at the time of writing Microsoft plans for the <strong class="source-inline">AzureAD</strong> module to still work until six months after the announced deprecation date, Microsoft recommends migrating to Microsoft Graph PowerShell from now. So, we will not look into <strong class="source-inline">AzureAD</strong> cmdlets in <span class="No-Break">this chapter.</span></p>
+			<h3>The Az module</h3>
+			<p>You can install the <strong class="source-inline">Az</strong> module<a id="_idIndexMarker1344"/> via either an MSI installation file or <strong class="source-inline">PowerShellGet</strong>. The following example shows the installation <span class="No-Break">via </span><span class="No-Break"><strong class="source-inline">PowerShellGet</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+&gt; Install-Module -Name Az -Scope CurrentUser -Force</pre>
+			<p>Azure PowerShell is part of the <strong class="source-inline">Az</strong> module and it is recommended to only install it for the <span class="No-Break">current user.</span></p>
+			<p>For other installation<a id="_idIndexMarker1345"/> modes and troubleshooting, refer to the official <span class="No-Break">documentation: </span><a href="https://docs.microsoft.com/en-us/powershell/azure/install-az-ps"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/azure/install-az-ps</span></a><span class="No-Break">.</span></p>
+			<p>Once the module is installed, you can get started by importing it into your current session and <span class="No-Break">logging in:</span></p>
+			<pre class="source-code">
+&gt; Import-Module Az
+&gt; Connect-AzAccount</pre>
+			<p>Similar to the Azure CLI, a new window opens in your browser and prompts you to log in. Once the login is successful, this is also shown on your PowerShell <span class="No-Break">command line:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer174">
+					<img alt="Figure 7.7 – Connect-AzAccount was successfully executed" src="image/B16679_07_007.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.7 – Connect-AzAccount was successfully executed</p>
+			<p>Similar to the Azure CLI, you can also request a code to sign in and authenticate from another device using the <strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">UseDeviceAuthentication</strong></span><span class="No-Break"> parameter.</span></p>
+			<p>But it is also possible to script<a id="_idIndexMarker1346"/> the authentication using <strong class="source-inline">Connect-AzAccount</strong> – in the following example, you will be prompted by PowerShell to enter your credentials, which will then be used <span class="No-Break">to authenticate:</span></p>
+			<pre class="source-code">
+&gt; $cred = Get-Credential
+&gt; Connect-AzAccount -ServicePrincipal -Credential $cred -Tenant $tenantId</pre>
+			<p>Az PowerShell is quite extensive and consists of multiple modules. You can get an overview of all the currently existing modules by running the <strong class="source-inline">Get-Module -Name </strong><span class="No-Break"><strong class="source-inline">Az.*</strong></span><span class="No-Break"> command.</span></p>
+			<p>Once you have found the module, you want to know what commands are available. You can use <strong class="source-inline">Get-Command</strong> as usual, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer175">
+					<img alt="Figure 7.8 – Finding out which cmdlets the Az.Accounts module provides" src="image/B16679_07_008.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.8 – Finding out which cmdlets the Az.Accounts module provides</p>
+			<p>For more information<a id="_idIndexMarker1347"/> about Azure PowerShell, please refer<a id="_idIndexMarker1348"/> to the <span class="No-Break">documentation: </span><a href="https://learn.microsoft.com/en-us/powershell/azure/"><span class="No-Break">https://learn.microsoft.com/en-us/powershell/azure/</span></a><span class="No-Break">.</span></p>
+			<h3>Microsoft Graph</h3>
+			<p>Microsoft Graph<a id="_idIndexMarker1349"/> can be installed<a id="_idIndexMarker1350"/> using <strong class="source-inline">PowerShellGet</strong>, as it is available in the <span class="No-Break">PowerShell Gallery:</span></p>
+			<pre class="source-code">
+&gt; Install-Module Microsoft.Graph -Scope CurrentUser -Force</pre>
+			<p>Once it is installed, you will need to connect <span class="No-Break">to AAD:</span></p>
+			<pre class="source-code">
+&gt; Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All"</pre>
+			<p>A new window opens in your browser and prompts you to log in and grant consent, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer176">
+					<img alt="Figure 7.9 – Granting consent to Microsoft Graph" src="image/B16679_07_009.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.9 – Granting consent to Microsoft Graph</p>
+			<p>Once the login<a id="_idIndexMarker1351"/> is successful, a welcome message is shown<a id="_idIndexMarker1352"/> on your PowerShell <span class="No-Break">command line:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer177">
+					<img alt="Figure 7.10 – Welcome message after logging in to Microsoft Graph" src="image/B16679_07_010.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.10 – Welcome message after logging in to Microsoft Graph</p>
+			<p>Now you can use Microsoft Graph to interact with your AAD instance. You can find more information<a id="_idIndexMarker1353"/> about Microsoft Graph<a id="_idIndexMarker1354"/> in the official <span class="No-Break">documentation: </span><a href="https://learn.microsoft.com/en-us/powershell/microsoftgraph/"><span class="No-Break">https://learn.microsoft.com/en-us/powershell/microsoftgraph/</span></a><span class="No-Break">.</span></p>
+			<p>Now that you have learned the basics about AAD, let’s look into how red teamers could attack it in the <span class="No-Break">next sections.</span></p>
+			<h1 id="_idParaDest-182"><a id="_idTextAnchor191"/>Attacking AAD</h1>
+			<p>During an attack, enumeration<a id="_idIndexMarker1355"/> is always one of the first steps (and repeated several times, depending on what the adversary can access) taken to get more details about an environment. Enumeration helps to find out what resources are available and what access rights can <span class="No-Break">be abused.</span></p>
+			<p>While in AD, every user who has access to the corporate network can enumerate all user accounts, as well as admin membership, in AAD, every user who has access to Office 365 services via the internet can enumerate them, but <span class="No-Break">for AAD.</span></p>
+			<h2 id="_idParaDest-183"><a id="_idTextAnchor192"/>Anonymous enumeration</h2>
+			<p>There is even<a id="_idIndexMarker1356"/> a way to find out more about the current AAD tenant anonymously. For an adversary, this has huge advantages, as they do not need to trick a user into providing their credentials through a phishing attack or similar. Also, the risk of being detected is <span class="No-Break">massively decreased.</span></p>
+			<p>There are numerous APIs that do have a legit purpose, but can also be abused for <span class="No-Break">anonymous enumeration.</span></p>
+			<p>One of those APIs is <span class="No-Break">the following:</span></p>
+			<pre class="source-code">
+https://login.microsoftonline.com/getuserrealm.srf?login=&lt;username@domain.tld&gt;&amp;xml=1</pre>
+			<p>Just replace <strong class="source-inline">&lt;username@domain.tld&gt;</strong> with the user sign-in you want to get more information about and navigate to this URL in your browser. If you wanted to learn more about the environment the <strong class="source-inline">PSSec-User@PSSec-Demo.onmicrosoft.com</strong> user is part of, you could use the <span class="No-Break">following URL:</span></p>
+			<p><a href="https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&amp;xml=1"><span class="No-Break">https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&amp;xml=1</span></a></p>
+			<p>The following screenshot shows what the output would look like if the <span class="No-Break">user existed:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer178">
+					<img alt="Figure 7.11 – Enumerating an existing AAD user" src="image/B16679_07_011.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.11 – Enumerating an existing AAD user</p>
+			<p>This way, you can verify<a id="_idIndexMarker1357"/> that the user exists. You can also tell that the company is using AAD (Office 365) and that this account is managed by AAD as indicated <span class="No-Break">by </span><span class="No-Break"><strong class="source-inline">&lt;NameSpaceType&gt;Managed&lt;/NameSpaceType&gt;</strong></span><span class="No-Break">.</span></p>
+			<p>Possible values for <strong class="source-inline">NameSpaceType</strong> are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li><strong class="bold">Federated</strong>: Federated AD is used by this company and the queried <span class="No-Break">account exists.</span></li>
+			</ul>
+			<p>Prior to obtaining refresh and access tokens from AAD, the client must verify the user’s credentials against the on-premises AD or another identity management solution. It’s important to note that AAD does not perform credential validation. AAD will issue the necessary tokens to access cloud resources only after the client has received a SAML token as proof of the user’s verified credentials <span class="No-Break">and identity.</span></p>
+			<ul>
+				<li><strong class="bold">Managed</strong>: Office 365 is in use and the account, which is managed by <span class="No-Break">AAD, exists.</span></li>
+			</ul>
+			<p>Thus can refer to an account that is synced from an on-premises AD but is not federated, or it can be a cloud-only account created directly in AAD. For managed accounts, user authentication is performed exclusively in the cloud, and on-premises infrastructure is not involved in <span class="No-Break">credential validation.</span></p>
+			<ul>
+				<li><strong class="bold">Unknown</strong>: No record with this <span class="No-Break">username exists.</span></li>
+			</ul>
+			<p>If a queried account does not exist, <strong class="source-inline">NameSpaceType</strong> will show <strong class="source-inline">Unknown</strong> and you will get less information back, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer179">
+					<img alt="Figure 7.12 – Account does not exist" src="image/B16679_07_012.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.12 – Account does not exist</p>
+			<p>For attackers, accounts whose names indicate that the account has elevated privileges and are a valuable target could be of special interest, such as <strong class="source-inline">admin@company.com</strong> <span class="No-Break">or </span><span class="No-Break"><strong class="source-inline">administrator@company.onmicrosoft.com</strong></span><span class="No-Break">.</span></p>
+			<p>There are also other open source scripts, such as <strong class="source-inline">o365creeper</strong>, that rely on public APIs to anonymously enumerate Office 365 <span class="No-Break">environments: </span><span class="No-Break">https://github.com/LMGsec/o365creeper</span><span class="No-Break">.</span></p>
+			<p>Using anonymous enumeration<a id="_idIndexMarker1358"/> methods allows attackers to get a list of verified user accounts within an organization. The next objective is to get access by finding out at least the credentials of <span class="No-Break">one account.</span></p>
+			<h2 id="_idParaDest-184"><a id="_idTextAnchor193"/>Password spraying</h2>
+			<p>Not every user uses a super-secure<a id="_idIndexMarker1359"/> password that is hard<a id="_idIndexMarker1360"/> to guess; therefore, password spraying is one of the most popular methods for gaining access to <span class="No-Break">an environment.</span></p>
+			<p>Surprisingly, the top 10 most common passwords in 2022 were very easy <span class="No-Break">to guess:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="source-inline">123456</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">123456789</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">qwerty</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">password</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">1234567</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">12345678</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">12345</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">iloveyou</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">111111</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">123123</strong></span></li>
+			</ul>
+			<p>Many companies<a id="_idIndexMarker1361"/> don’t enforce MFA for all users, while other companies<a id="_idIndexMarker1362"/> have MFA in place but they may not effectively configure Conditional Access policies to enforce MFA during specific risky events or under risky conditions. It is also very common for many high-privileged accounts to not have MFA configured at all. This makes it very easy for adversaries to log in using guessed passwords and gain <span class="No-Break">unauthorized access.</span></p>
+			<p>Password spraying is an attack used by attackers to just brute-force into a formerly verified account; by trying to authenticate against multiple user accounts and trying out several common passwords, the chance of finding an account that has a weak password in place <span class="No-Break">is high.</span></p>
+			<p>AAD provides some mitigations against password spraying, but this attack is <span class="No-Break">still possible.</span></p>
+			<p>Usually, attacks in AAD are very focused (such as sending spear-phishing emails); therefore, password spraying is less likely, but it is still a common attack and still occurs, usually launched by adversaries that are trying to find an <span class="No-Break">entry point.</span></p>
+			<p>There are several open source tools that can help attackers to achieve their goal of discovering and enumerating accounts in AAD environments, as well as performing password-spraying attacks <span class="No-Break">against them:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">LyncSniper</strong></span><span class="No-Break">: </span><a href="https://github.com/mdsecresearch/LyncSniper"><span class="No-Break">https://github.com/mdsecresearch/LyncSniper</span></a></li>
+				<li><span class="No-Break"><strong class="bold">MailSniper</strong></span><span class="No-Break">: </span><a href="https://github.com/dafthack/MailSniper"><span class="No-Break">https://github.com/dafthack/MailSniper</span></a></li>
+				<li><span class="No-Break"><strong class="bold">Ruler</strong></span><span class="No-Break">: </span><a href="https://github.com/sensepost/ruler/wiki/Brute-Force"><span class="No-Break">https://github.com/sensepost/ruler/wiki/Brute-Force</span></a></li>
+				<li><span class="No-Break"><strong class="bold">SprayingToolkit</strong></span><span class="No-Break">: </span><a href="https://github.com/byt3bl33d3r/SprayingToolkit"><span class="No-Break">https://github.com/byt3bl33d3r/SprayingToolkit</span></a></li>
+			</ul>
+			<p>Once an attacker achieves access to an account – for example, through password spraying or phishing – they can use<a id="_idIndexMarker1363"/> this account for further enumeration<a id="_idIndexMarker1364"/> and privilege escalation or further <span class="No-Break">phishing campaigns.</span></p>
+			<h2 id="_idParaDest-185"><a id="_idTextAnchor194"/>Authenticated enumeration</h2>
+			<p>In AAD, every user who has access<a id="_idIndexMarker1365"/> to Office 365 is able to enumerate<a id="_idIndexMarker1366"/> users and group memberships by default. That means if a user account that is part of an AAD infrastructure is compromised, it can be used as a starting point to gather more information about other users <span class="No-Break">and groups.</span></p>
+			<p>This information can be very useful for attackers to understand the organization structure in a better way and launch more effective attacks. It could also reveal valuable accounts <span class="No-Break">to target.</span></p>
+			<p>Once you are logged in, authenticated enumeration using available scripting interfaces is very easy. We will look at how enumeration works using the Azure CLI and Azure PowerShell in the <span class="No-Break">next subsections.</span></p>
+			<h3>Session, tenant, and subscription details</h3>
+			<p>You can get more information<a id="_idIndexMarker1367"/> on the current session as well as on the tenant using either Microsoft Graph or the Az module. This can be useful to learn which account you are logged in to and to get more details on the AAD environment itself (such as the <span class="No-Break">tenant ID).</span></p>
+			<p>These are the relevant Microsoft Graph <span class="No-Break">module commands:</span></p>
+			<pre class="source-code">
+&gt; Get-MgContext
+&gt; Get-MgOrganization</pre>
+			<p>Using the Az PowerShell module, you can retrieve information not only on the current session and tenant but also<a id="_idIndexMarker1368"/> on <span class="No-Break">the subscription:</span></p>
+			<pre class="source-code">
+&gt; Get-AzContext
+&gt; Get-AzSubscription
+&gt; Get-AzResource</pre>
+			<h3>Enumerating users</h3>
+			<p>Using the Microsoft Graph<a id="_idIndexMarker1369"/> module, you can enumerate users using the <span class="No-Break"><strong class="source-inline">Get-MgUser</strong></span><span class="No-Break"> cmdlet:</span></p>
+			<pre class="source-code">
+&gt; Get-MgUser -All | select UserPrincipalName</pre>
+			<p>To retrieve the details<a id="_idIndexMarker1370"/> of only one user, use the <strong class="source-inline">-UserId</strong> parameter, followed by the <strong class="bold">User Principal </strong><span class="No-Break"><strong class="bold">Name</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">UPN</strong></span><span class="No-Break">):</span></p>
+			<pre class="source-code">
+&gt; Get-MgUser -UserId PSSec-User@PSSec-Demo.onmicrosoft.com</pre>
+			<p>There’s also a very interesting attribute available, called <strong class="source-inline">OnPremisesSecurityIdentifier</strong>. With this attribute, you can find out whether an account<a id="_idIndexMarker1371"/> was created and synced on-premises or from AAD. If it contains a <strong class="bold">security identifier</strong> (<strong class="bold">SID</strong>), it was created and synced on-premises; if not, the account was directly created <span class="No-Break">in AAD:</span></p>
+			<pre class="source-code">
+&gt; Get-MgUser -All | Select-Object DisplayName, UserPrincipalName, OnPremisesSecurityIdentifier | fl</pre>
+			<p>Some other very interesting cmdlets are <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li><strong class="source-inline">Get-MgUserCreatedObject</strong>: Gets all objects that were created by the <span class="No-Break">specified user</span></li>
+				<li><strong class="source-inline">Get-MgUserOwnedObject</strong>: Gets all objects that the specified <span class="No-Break">user owns</span></li>
+			</ul>
+			<p>To enumerate users with the Az module, you can use the <strong class="source-inline">Get-AzADUser</strong> cmdlet. Enumerating one user only is also possible by using the <strong class="source-inline">-UserPrincipalName</strong> parameter, followed by <span class="No-Break">the UPN:</span></p>
+			<pre class="source-code">
+&gt; Get-AzADUser -UserPrincipalName PSSec-User@PSSec-Demo.onmicrosoft.com</pre>
+			<p>With both Microsoft Graph and the Az module, you can use the <strong class="source-inline">-Search</strong> parameter to look for special strings. This can be useful if you want to find accounts that have a certain string, such as <strong class="source-inline">admin</strong>, in <span class="No-Break">their UPN.</span></p>
+			<p>Retrieving a list of users using the Azure CLI is also <span class="No-Break">quite easy:</span></p>
+			<pre class="source-code">
+&gt; az ad user list --output=table</pre>
+			<p>As this would generate a huge list, it can also make sense to specify what columns should be returned. In the following example, we will only see details such as whether the account is enabled, the display name, the user ID, and <span class="No-Break">the UPN:</span></p>
+			<pre class="source-code">
+&gt; az ad user list --output=table --query='[].{Enabled:accountEnabled,Name:displayName,UserId:mailNickname,UPN:userPrincipalName}'</pre>
+			<p>Of course, you can also get<a id="_idIndexMarker1372"/> the details of one single user by using the <strong class="source-inline">-upn</strong> parameter, followed <span class="No-Break">by </span><span class="No-Break"><strong class="source-inline">userPrincipalName</strong></span><span class="No-Break">.</span></p>
+			<h3>Enumerating group membership</h3>
+			<p>In AAD, groups can be created<a id="_idIndexMarker1373"/> to hold a number of users. Groups can also be assigned to roles. Therefore, it might be useful to also enumerate <span class="No-Break">AAD groups.</span></p>
+			<p>With the Microsoft Graph module, you can retrieve an overview of all existing AAD groups using the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; Get-MgGroup -All</pre>
+			<p>To get a specific group, you can use the <strong class="source-inline">-UserId</strong> parameter, followed by the object ID of <span class="No-Break">the group.</span></p>
+			<p>You can also find out which groups a user is a <span class="No-Break">member of:</span></p>
+			<pre class="source-code">
+&gt; Get-MgUserMemberOf -UserId PSSec-User@PSSec-Demo.onmicrosoft.com</pre>
+			<p>If you want to enumerate a particular group and find out which users are a member, you can use the <span class="No-Break"><strong class="source-inline">Get-MgGroupMember</strong></span><span class="No-Break"> cmdlet:</span></p>
+			<pre class="source-code">
+Get-MgGroupMember -All -GroupId &lt;<strong class="bold">GroupID</strong>&gt; | ForEach-Object { $_.AdditionalProperties['userPrincipalName'] }</pre>
+			<p>Using the Az PowerShell module, you can retrieve an overview of all groups using <strong class="source-inline">Get-AzADGroup</strong>. Use the <strong class="source-inline">-ObjectId</strong> parameter to enumerate a <span class="No-Break">specific group.</span></p>
+			<p>You can use <strong class="source-inline">Get-AzADGroupMember</strong> to retrieve all group members of a group; simply specify which group to enumerate using either the <strong class="source-inline">-GroupObjectId</strong> parameter followed by the object ID of the group or by using the <strong class="source-inline">-GroupDisplayName</strong> parameter, followed by the group’s <span class="No-Break">display name.</span></p>
+			<p>Group objects are structured similarly to user objects, so you can also use the same methods we used for users, such as finding out whether a group was synced on-premises or from AAD (the <strong class="source-inline">OnPremisesSecurityIdentifier</strong> attribute), and you can also use the <strong class="source-inline">-Search</strong> parameter to find groups with specific strings in <span class="No-Break">their name.</span></p>
+			<p>You can also use the Azure CLI for <span class="No-Break">enumeration purposes:</span></p>
+			<pre class="source-code">
+&gt; az ad group list --output=json</pre>
+			<p>Similar to enumerating users, you can also specify what data the output <span class="No-Break">should show:</span></p>
+			<pre class="source-code">
+&gt; az ad group list --output=table --query='[].{Group:displayName,UPN:userPrincipalName,Description:description}'</pre>
+			<p>You can also specify a single group<a id="_idIndexMarker1374"/> by using the <strong class="source-inline">-group</strong> parameter, followed by the <span class="No-Break">group name.</span></p>
+			<h3>Enumerating roles</h3>
+			<p>You can enumerate RBAC role<a id="_idIndexMarker1375"/> assignments by using the <strong class="source-inline">Get-AzRoleAssignment</strong> cmdlet, which is part of the Az PowerShell module. If nothing else is specified, it lists all assignments within the subscription. Using the <strong class="source-inline">-Scope</strong> parameter, you can specify <span class="No-Break">a resource.</span></p>
+			<p>With the <strong class="source-inline">-SignInName</strong> parameter, followed by the UPN, you can enumerate all assignments for the specified user, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer180">
+					<img alt="Figure 7.13 – Retrieving the role assignment for a user" src="image/B16679_07_013.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.13 – Retrieving the role assignment for a user</p>
+			<p>You can also use the Azure CLI to enumerate RBAC role assignments by using the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; az role assignment list --all --output=table</pre>
+			<p>The built-in RBAC roles that are generally available are the <span class="No-Break">following ones:</span></p>
+			<ul>
+				<li><strong class="bold">Owner</strong>: Full access; can also manage access for <span class="No-Break">other users.</span></li>
+				<li><strong class="bold">Contributor</strong>: Full access, but can’t manage access for <span class="No-Break">other users.</span></li>
+				<li><strong class="bold">Reader</strong>: <span class="No-Break">Viewing access.</span></li>
+				<li><strong class="bold">User Access Administrator</strong>: Viewing access; can also manage access for <span class="No-Break">other users.</span></li>
+			</ul>
+			<p>Of course, depending<a id="_idIndexMarker1376"/> on the resource, additional built-in RBAC roles<a id="_idIndexMarker1377"/> exist. A complete overview can be found <span class="No-Break">here: </span><a href="https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles"><span class="No-Break">https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles</span></a><span class="No-Break">.</span></p>
+			<h3>Enumerating resources</h3>
+			<p>Both the Az module<a id="_idIndexMarker1378"/> and the Azure CLI offer various options for enumerating Azure resources, such as resources in general, VMs, key vaults, and storage accounts. The following table shows the most important cmdlets and commands to retrieve the <span class="No-Break">desired information:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer181">
+					<img alt="Figure 7.14 – Enumerating resources" src="image/B16679_07_014.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.14 – Enumerating resources</p>
+			<p>(Web) applications can also be considered resources. Let’s look deeper into how we can enumerate applications, function apps, and <span class="No-Break">web apps.</span></p>
+			<h3>Enumerating applications</h3>
+			<p>Using the Microsoft Graph<a id="_idIndexMarker1379"/> module, you can get a list of all available applications with the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; Get-MgApplication -All</pre>
+			<p>Using the <strong class="source-inline">-ApplicationId</strong> parameter, you can specify the object ID of an application. With the <strong class="source-inline">-Search</strong> parameter, you can search for particular strings in the display name of <span class="No-Break">an application.</span></p>
+			<p>To find out who owns an application, the <strong class="source-inline">Get-MgApplicationOwner</strong> cmdlet can <span class="No-Break">help you:</span></p>
+			<pre class="source-code">
+&gt; Get-MgApplication -ApplicationId &lt;<strong class="bold">ApplicationId</strong>&gt; | Get-MgApplicationOwner |fl</pre>
+			<p>Another very useful cmdlet is <strong class="source-inline">Get-MgUserAppRoleAssignment</strong>. To find out whether a user or a group has a role assigned for one or more applications, use the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; Get-MgUserAppRoleAssignment -UserId PSSec-User@PSSec-Demo.onmicrosoft.com | fl</pre>
+			<p>Using the Az module, you can also retrieve an overview of all available applications using the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; Get-AzADApplication</pre>
+			<p>To retrieve a specific application, you can use <strong class="source-inline">Get-AzADApplication</strong> with the <strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">ObjectId</strong></span><span class="No-Break"> parameter.</span></p>
+			<p>In AAD, you can either have a service or a function app. Use the <strong class="source-inline">Get-AzFunctionApp</strong> cmdlet to retrieve all function apps; if you want to get all service apps instead, use the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; Get-AzWebApp | ?{$_.Kind -notmatch "functionapp"}</pre>
+			<p>In the Azure CLI, using <strong class="source-inline">az ad app list --output=table</strong>, you can also enumerate applications in AAD. Use the <strong class="source-inline">--query</strong> parameter to specify the detailed output you want <span class="No-Break">to see:</span></p>
+			<pre class="source-code">
+&gt; az ad app list --output=table --query='[].{Name:displayName,URL:homepage}'</pre>
+			<p>Use the <strong class="source-inline">--identifier-uri</strong> parameter followed<a id="_idIndexMarker1380"/> by the URI to enumerate only <span class="No-Break">one application.</span></p>
+			<h3>Enumerating service principals</h3>
+			<p>A <strong class="bold">service principal</strong> is an identity that is used by services<a id="_idIndexMarker1381"/> and applications<a id="_idIndexMarker1382"/> that were created by users. Similar to normal user accounts, SPs require permissions to perform actions on objects within a directory, such as accessing<a id="_idIndexMarker1383"/> user mailboxes or updating<a id="_idIndexMarker1384"/> contacts. These permissions, known as <strong class="bold">scopes</strong>, are typically granted through a <span class="No-Break"><strong class="bold">consent</strong></span><span class="No-Break"> process.</span></p>
+			<p>In general, standard users can only grant permissions to applications for a restricted set of actions related to themselves. However, if the SP needs broader permissions over other objects in the same directory, admin consent is required. As this is not a usual user account but still has a lot of permissions, SPs are an interesting target <span class="No-Break">for adversaries.</span></p>
+			<p>Using the Microsoft Graph module, you can simply get an overview of all <span class="No-Break">existing SPs:</span></p>
+			<pre class="source-code">
+&gt; Get-MgServicePrincipal -All | fl</pre>
+			<p>By using the <strong class="source-inline">-ServicePrincipalId</strong> parameter, you can specify a single SP, and by using the <strong class="source-inline">-Search</strong> parameter, you can filter the principals by their <span class="No-Break">display names.</span></p>
+			<p>There are some useful cmdlets that can help you work <span class="No-Break">with SPs:</span></p>
+			<ul>
+				<li><strong class="source-inline">Get-MgServicePrincipalOwner</strong>: Return the owner of <span class="No-Break">an SP</span></li>
+				<li><strong class="source-inline">Get-MgServicePrincipalOwnedObject</strong>: Retrieve objects owned by a <span class="No-Break">particular SP</span></li>
+				<li><strong class="source-inline">Get-MgServicePrincipalOwnedObject</strong>: Get all objects owned by a <span class="No-Break">particular SP</span></li>
+				<li><strong class="source-inline">Get-MgServicePrincipalCreatedObject</strong>: Get all objects created by a <span class="No-Break">particular SP</span></li>
+				<li><strong class="source-inline">Get-MgServicePrincipalTransitiveMemberOf</strong>: Enumerate the group and role membership of <span class="No-Break">an SP</span></li>
+			</ul>
+			<p>Using the Az PowerShell module, you can also enumerate SPs <span class="No-Break">in AAD:</span></p>
+			<pre class="source-code">
+&gt; Get-AzADServicePrincipal</pre>
+			<p>By using the <strong class="source-inline">-ObjectId</strong> parameter, you can specify a single SP, and by using the <strong class="source-inline">-DisplayName</strong> parameter, you can filter the principals by their <span class="No-Break">display names.</span></p>
+			<p>Also with the Azure CLI, you can easily retrieve an overview of <span class="No-Break">all SPs:</span></p>
+			<pre class="source-code">
+&gt; az ad sp list --output=table --query='[].{Name:displayName,Enabled:accountEnabled,URL:homepage,Publisher:publisherName}'</pre>
+			<p>Similar to Az and the Microsoft Graph module, you can also filter by the display name using the <span class="No-Break">Azure CLI:</span></p>
+			<pre class="source-code">
+&gt; az ad sp list --output=table --display-name='&lt;display name&gt;'</pre>
+			<p>Those were some<a id="_idIndexMarker1385"/> of the methods you can use for enumeration within AAD, but they are, of course, not complete. There are also some very useful tools that you can use for enumeration purposes, such as the <span class="No-Break">following ones:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">AADInternals</strong></span><span class="No-Break">: </span><a href="https://github.com/Gerenios/AADInternals"><span class="No-Break">https://github.com/Gerenios/AADInternals</span></a></li>
+				<li><span class="No-Break"><strong class="bold">BloodHound/AzureHound</strong></span><span class="No-Break">: </span><a href="https://github.com/BloodHoundAD/BloodHound"><span class="No-Break">https://github.com/BloodHoundAD/BloodHound</span></a><span class="No-Break">/</span><a href="https://github.com/BloodHoundAD/AzureHound"><span class="No-Break">https://github.com/BloodHoundAD/AzureHound</span></a></li>
+				<li><span class="No-Break"><strong class="bold">msmailprobe</strong></span><span class="No-Break">: </span><a href="https://github.com/busterb/msmailprobe"><span class="No-Break">https://github.com/busterb/msmailprobe</span></a></li>
+				<li><span class="No-Break"><strong class="bold">o365creeper</strong></span><span class="No-Break">: </span><a href="https://github.com/LMGsec/o365creeper"><span class="No-Break">https://github.com/LMGsec/o365creeper</span></a></li>
+				<li><span class="No-Break"><strong class="bold">office365userenum</strong></span><span class="No-Break">: </span><a href="https://bitbucket.org/grimhacker/office365userenum/src"><span class="No-Break">https://bitbucket.org/grimhacker/office365userenum/src</span></a></li>
+				<li><span class="No-Break"><strong class="bold">o365recon</strong></span><span class="No-Break">: </span><a href="https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1"><span class="No-Break">https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1</span></a><a href="https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1 "/></li>
+				<li><span class="No-Break"><strong class="bold">ROADtools</strong></span><span class="No-Break">: </span><a href="https://github.com/dirkjanm/ROADtools"><span class="No-Break">https://github.com/dirkjanm/ROADtools</span></a><a href="https://github.com/dirkjanm/ROADtools "/></li>
+				<li><span class="No-Break"><strong class="bold">Stormspotter</strong></span><span class="No-Break">: </span><a href="https://github.com/Azure/Stormspotter"><span class="No-Break">https://github.com/Azure/Stormspotter</span></a><a href="https://github.com/Azure/Stormspotter "/></li>
+			</ul>
+			<p>Be aware that some methods<a id="_idIndexMarker1386"/> and/or tools generate a lot of noise and can easily <span class="No-Break">be detected.</span></p>
+			<p>Now that we’ve covered various enumeration techniques to gather information about a target environment, let’s focus on a more nefarious activity next: <span class="No-Break">credential theft.</span></p>
+			<h1 id="_idParaDest-186"><a id="_idTextAnchor195"/>Credential theft</h1>
+			<p>Similar to on-premises<a id="_idIndexMarker1387"/> AD, in AAD, identities are also the new perimeter and are very valuable to an adversary. As technology, as well as code review and secure coding processes, has drastically improved over the years, zero-day vulnerabilities are still a thing, but it is incredibly hard to spot them and to find a way to abuse them. Therefore, adversaries target the weakest link – the users, <span class="No-Break">aka identities.</span></p>
+			<p>In this section, we will explore different ways that adversaries can steal AAD users’ identities and act in <span class="No-Break">their name.</span></p>
+			<h2 id="_idParaDest-187"><a id="_idTextAnchor196"/>Token theft</h2>
+			<p>One of the most common<a id="_idIndexMarker1388"/> scenarios spotted in the wild is token theft. Token theft<a id="_idIndexMarker1389"/> is a common attack vector in AAD, and it occurs when an attacker gains access to a user’s session token, authentication token, or session cookies. These tokens, such as refresh tokens and access tokens, can then be used to gain unauthorized access to the user’s account and <span class="No-Break">sensitive information.</span></p>
+			<p>When we are talking about token theft in Azure, it is usually one of the following resources that attackers are interested in accessing through a <span class="No-Break">stolen token:</span></p>
+			<ul>
+				<li><strong class="source-inline">https://storage.azure.com</strong>: Refers to Azure Storage, which provides cloud-based storage solutions for various <span class="No-Break">data types</span></li>
+				<li><strong class="source-inline">https://vault.azure.net</strong>: Represents Azure Key Vault, a secure storage and management service for cryptographic keys, secrets, <span class="No-Break">and certificates</span></li>
+				<li><strong class="source-inline">https://graph.microsoft.com</strong>: Relates to Microsoft Graph, an API endpoint that allows access to Microsoft 365 services <span class="No-Break">and data</span></li>
+				<li><strong class="source-inline">https://management.azure.com</strong>: Corresponds to the Azure Management API, which enables the management and control of Azure resources <span class="No-Break">and services</span></li>
+			</ul>
+			<p>Token theft attacks often start with phishing attacks: the adversary sends an email or message to a user, often with a malicious file attached. When the user opens and executes the attachment, often malware is executed that tries to extract tokens out of <span class="No-Break">the memory.</span></p>
+			<p>The PRT is a crucial component in authenticating cloud-joined and hybrid devices against AAD. It has a validity<a id="_idIndexMarker1390"/> of 14 days and refreshes<a id="_idIndexMarker1391"/> every 4 hours. The PRT is protected by <strong class="bold">CloudAP</strong> in <strong class="bold">LSA</strong>, and the session key is protected by a TPM (if present). It is worth noting that a PRT will only be issued to native apps (such as the Outlook client) on AAD-registered, AAD-joined, or hybrid AAD-joined devices. Therefore, a browser session on a workgroup machine will not receive <span class="No-Break">a PRT.</span></p>
+			<p>Attackers can steal and abuse the PRT in two ways: by passing the PRT or passing the cookie generated by <span class="No-Break">the PRT.</span></p>
+			<p>To <strong class="bold">pass the PRT</strong>, attackers typically steal the PRT from the LSASS process on the victim’s computer using tools such as <strong class="source-inline">mimikatz</strong> or ProcDump. These tools dump the LSASS process and allow the attacker to extract the PRT. Once they have obtained the PRT, attackers can generate a PRT cookie on their own computer and use it to fetch an access token from AAD. This type of attack requires administrative rights on the <span class="No-Break">victim’s machine.</span></p>
+			<p>Let’s look at how a pass-the-PRT attack can be performed. You can easily access a local PRT by <span class="No-Break">using </span><span class="No-Break"><strong class="source-inline">mimikatz</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+&gt; privilege::debug
+&gt; sekurlsa::cloudap</pre>
+			<p>Credentials that were protected<a id="_idIndexMarker1392"/> by LSA CloudAP are now being displayed<a id="_idIndexMarker1393"/> as in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer182">
+					<img alt="Figure 7.15 – Displaying the PRT ﻿using mimikatz" src="image/B16679_07_015.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.15 – Displaying the PRT using mimikatz</p>
+			<p>If there was a PRT present, it is indicated by the part that is labeled <strong class="source-inline">PRT</strong> in the preceding screenshot. Now you can extract the PRT <span class="No-Break">and continue.</span></p>
+			<p class="callout-heading">Why is the PRT not shown when using mimikatz?</p>
+			<p class="callout">If you don’t see<a id="_idIndexMarker1394"/> the PRT when using <strong class="source-inline">mimikatz</strong>, make sure that your device is really AAD-joined by using the <strong class="source-inline">dsregcmd /status</strong> command. If it is joined, you should see, under <strong class="source-inline">SSO State</strong>, that <strong class="source-inline">AzureAdPrt</strong> is set <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">YES</strong></span><span class="No-Break">.</span></p>
+			<p>For better readability, I copied the output, pasted<a id="_idIndexMarker1395"/> it into Visual Studio <a id="_idIndexMarker1396"/>Code, and formatted it. Copy the value of the <strong class="source-inline">Prt</strong> label for later use. As a next step, you want to extract <strong class="source-inline">KeyValue</strong> of <strong class="source-inline">ProofOfPossessionKey</strong>, which is basically the session key, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer183">
+					<img alt="Figure 7.16 – Finding the session key" src="image/B16679_07_016.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.16 – Finding the session key</p>
+			<p>Next, we will need to decrypt<a id="_idIndexMarker1397"/> the session key with the DPAPI master key. As this step needs<a id="_idIndexMarker1398"/> to be performed in the <strong class="source-inline">SYSTEM</strong> context, we elevate our privileges in <strong class="source-inline">mimikatz</strong> first using <strong class="source-inline">token::elevate</strong> before we attempt to decrypt it. In the following example, replace <strong class="source-inline">&lt;CopiedKeyValue&gt;</strong> with the <strong class="source-inline">KeyValue</strong> of <strong class="source-inline">ProofOfPossesionKey</strong> that you <span class="No-Break">extracted earlier:</span></p>
+			<pre class="source-code">
+&gt; token::elevate
+&gt; dpapi::cloudapkd /keyvalue<strong class="bold">:&lt;CopiedKeyValue&gt;</strong> /unprotect</pre>
+			<p>The key is decrypted and you can again see multiple labels and values show up in your console; to generate PRT cookies as a next step, you will need to copy the value of <strong class="source-inline">Context</strong> as well as the value of the <strong class="source-inline">Derived Key</strong> label, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer184">
+					<img alt="Figure 7.17 – Extracting the unencrypted values to generate a PRT cookie" src="image/B16679_07_017.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.17 – Extracting the unencrypted values to generate a PRT cookie</p>
+			<p>Now you can generate a PRT<a id="_idIndexMarker1399"/> cookie, which you can then use to access AAD<a id="_idIndexMarker1400"/> on behalf of the user. In the following command, replace <strong class="source-inline">&lt;Context&gt;</strong> with the value of <strong class="source-inline">Context</strong>, <strong class="source-inline">&lt;DerivedKey&gt;</strong> with the value of <strong class="source-inline">Derived Key</strong>, and finally, <strong class="source-inline">&lt;PRT&gt;</strong> with the value of the <strong class="source-inline">Prt</strong> label that you <span class="No-Break">copied earlier:</span></p>
+			<pre class="source-code">
+&gt; Dpapi::cloudapkd /context:<strong class="bold">&lt;Context&gt;</strong> /derivedkey:<strong class="bold">&lt;DerivedKey&gt;</strong> /Prt:<strong class="bold">&lt;PRT&gt;</strong></pre>
+			<p>As you can see in the following screenshot, a new PRT cookie is generated, which you can now use in your session to <span class="No-Break">impersonate </span><span class="No-Break"><strong class="source-inline">PSSec-User</strong></span><span class="No-Break">:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer185">
+					<img alt="Figure 7.18 – A new PRT cookie was generated" src="image/B16679_07_018.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.18 – A new PRT cookie was generated</p>
+			<p>Now browse to <a href="https://login.microsoftonline.com/">https://login.microsoftonline.com/</a> – either on another client or in a private/anonymous session. You will be prompted for <span class="No-Break">your credentials:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer186">
+					<img alt="Figure 7.19 – Microsoft login prompt" src="image/B16679_07_019.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.19 – Microsoft login prompt</p>
+			<p>Now inspect the source code<a id="_idIndexMarker1401"/> of the web page. In Microsoft Edge, you can right-click<a id="_idIndexMarker1402"/> and select <strong class="bold">Inspect</strong>; there are similar options for Google Chrome or Mozilla Firefox available. Select the right one depending on which browser you are using in your <span class="No-Break">demo environment.</span></p>
+			<p>Anyways, in Microsoft Edge, you can find the cookies under <strong class="bold">Application</strong> | <strong class="bold">Cookies</strong> when using the developer tools. Clear all existing cookies and create a new cookie with the <span class="No-Break">following information:</span></p>
+			<pre class="source-code">
+Name: x-ms-RefreshTokenCredential
+Value: <strong class="bold">&lt;PRTCookie&gt;</strong>
+HttpOnly: Set to True (checked)</pre>
+			<p>To create a cookie in Microsoft Edge's developer tools, you can just double-click an empty line and add your content. Make sure to replace <strong class="source-inline">&lt;PRTCookie&gt;</strong> with the value of the cookie that you <span class="No-Break">created earlier.</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer187">
+					<img alt="Figure 7.20 – Creating your new PRT cookie in a browser session" src="image/B16679_07_020.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.20 – Creating your new PRT cookie in a browser session</p>
+			<p>After navigating once more to the <a href="https://login.microsoftonline.com/">https://login.microsoftonline.com/</a> website, it should now authenticate you automatically as the <span class="No-Break">compromised user.</span></p>
+			<p>The <strong class="bold">pass-the-PRT-cookie</strong> attack is similar to the <strong class="bold">pass-the-PRT</strong> attack; attackers steal<a id="_idIndexMarker1403"/> a newly generated PRT cookie from the victim’s computer. Once<a id="_idIndexMarker1404"/> the attacker has the PRT <a id="_idIndexMarker1405"/>cookie, they can use it to fetch an access token from AAD. Unlike<a id="_idIndexMarker1406"/> stealing the PRT, depending on the scenario and what tools you use, this type of attack does not require administrative rights on the <span class="No-Break">victim’s machine.</span></p>
+			<p>To get the PRT cookie, an adversary can either extract the cookie manually from the browser and paste it into the browser session of another computer or extract the cookie from the <span class="No-Break">browser’s database.</span></p>
+			<p>Before you begin, verify where the cookies are stored on your system. The location is usually one of the <span class="No-Break">following paths:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="source-inline">C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Cookies</strong></span></li>
+				<li><span class="No-Break"><strong class="source-inline">C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies</strong></span></li>
+			</ul>
+			<p>On my VM, Chrome’s cookies were located under the path <span class="No-Break"><strong class="source-inline">C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies</strong></span><span class="No-Break">.</span></p>
+			<p><strong class="source-inline">mimikatz.exe</strong> is one of the various tools that can help you extract the PRT cookie from Google Chrome. Please note that by using this approach, you require permission to request debug privileges. By default, administrator accounts have this particular privilege, if <span class="No-Break">not restricted.</span></p>
+			<p>First request the debug privilege, then run the corresponding <strong class="source-inline">dpapi::chrome</strong> command to extract all current <span class="No-Break">browser cookies:</span></p>
+			<pre class="source-code">
+&gt; privilege::debug
+&gt; dpapi::chrome /in:"%localappdata%\Google\Chrome\User Data\Default\Network\Cookies" /unprotect</pre>
+			<p>Now look in the output<a id="_idIndexMarker1407"/> for the <strong class="source-inline">ESTSAUTHPERSISTENT</strong> cookie. This is the cookie<a id="_idIndexMarker1408"/> that you want to extract, as it allows the user to stay permanently <span class="No-Break">signed in:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer188">
+					<img alt="Figure 7.21 – Extracting the PRT cookie with mimikatz" src="image/B16679_07_021.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.21 – Extracting the PRT cookie with mimikatz</p>
+			<p>Now that you have the extracted PRT cookie, you can reuse it on another computer to log in and to even bypass MFA. Navigate to <a href="https://portal.azure.com/">https://portal.azure.com/</a> and open the developer tools. In this example, I used Microsoft Edge. When prompted for authentication, browse, in the developer tools, to <strong class="bold">Application</strong> | <strong class="bold">Cookies</strong> | <strong class="bold">https://login.microsoftonline.com</strong> and create a new cookie, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer189">
+					<img alt="Figure 7.22 – Creating the ESTSAUTHPERSISTENT cookie in Microsoft Edge" src="image/B16679_07_022.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.22 – Creating the ESTSAUTHPERSISTENT cookie in Microsoft Edge</p>
+			<p>Create a cookie named <strong class="source-inline">ESTSAUTHPERSISTENT</strong> and enter the earlier-extracted PRT cookie as the value. Set the cookie to <strong class="source-inline">HttpOnly</strong> and reload the page. You will be logged in as the user whose cookie you <span class="No-Break">just stole.</span></p>
+			<p>You could also use tools such as <strong class="bold">ROADtools</strong> from <strong class="bold">Dirk-jan Mollema</strong> to log in via the command line to automate<a id="_idIndexMarker1409"/> your attack further. Since ROADtools is not PowerShell-based, we will not look into it in this book. You can download ROADtools from <span class="No-Break">GitHub: </span><span class="No-Break">https://github.com/dirkjanm/ROADtools</span><span class="No-Break">.</span></p>
+			<p>Another impressive<a id="_idIndexMarker1410"/> suite that can help you with AAD-related attacks of all kinds is <strong class="bold">AADInternals</strong>, which was written by Dr. Nestori Syynimaa. This tool can be easily installed via <strong class="source-inline">Install-Module AADInternals</strong> or downloaded from <span class="No-Break">GitHub: </span><span class="No-Break">https://github.com/Gerenios/AADInternals</span><span class="No-Break">.</span></p>
+			<p>Whether you want to play with PRTs<a id="_idIndexMarker1411"/> or enumerate AAD, or are looking into other AAD-related attacks, I highly<a id="_idIndexMarker1412"/> recommend looking into the huge <em class="italic">AADInternals</em> project. You can find the extensive documentation at the following <span class="No-Break">link: </span><span class="No-Break">https://aadinternals.com/aadinternals/</span><span class="No-Break">.</span></p>
+			<h2 id="_idParaDest-188"><a id="_idTextAnchor197"/>Consent grant attack – persistence through app permissions</h2>
+			<p>Getting persistence<a id="_idIndexMarker1413"/> through a consent grant attack<a id="_idIndexMarker1414"/> is not usually done using PowerShell, but you can use PowerShell to regularly monitor consent permissions. Additionally, it is also possible to turn off user application consent if you are certain that this functionality is not needed in <span class="No-Break">your tenant.</span></p>
+			<p>OAuth consent allows users to grant permissions to third-party applications to access their data in specific scopes, such as reading their emails or viewing their contacts. But also, adversaries take advantage of this by crafting phishing emails that redirect users to a fake OAuth consent page, which the user then grants access to, unknowingly giving the attacker permissions to <span class="No-Break">their account.</span></p>
+			<p>Once the attacker has gained access, they can persist control by abusing the granted permissions. One method is by registering a new application in the tenant’s AAD and assigning it a role in the AAD directory. It’s important to note that this method requires the consented application to have permission to register new AAD apps (which requires admin consent). Therefore, for this method to work, the phished user would need to have <span class="No-Break">administrative privileges.</span></p>
+			<p>The attacker can then configure their own AAD application with delegated permissions that grant them access to data from the target’s tenant. By doing so, the attacker can exfiltrate data from the tenant’s environment even if the user’s account <span class="No-Break">is removed.</span></p>
+			<p>The attacker can also leverage the access granted to modify or add new application permissions. They can modify the existing permissions to bypass existing security controls, such as MFA or Conditional Access, and maintain their access long-term. Additionally, the attacker can add new permissions to other applications, which will grant them further access to data within the tenant. Threat actors may even add a new pair of credentials to SPs, expanding their control and compromising the security of <span class="No-Break">the environment.</span></p>
+			<p>Usually, OAuth consent permissions are rarely reviewed, which allows adversaries to stay undetected for longer to abuse the <span class="No-Break">user’s account.</span></p>
+			<p>There are various ways<a id="_idIndexMarker1415"/> to audit OAuth consent, which are described <span class="No-Break">here: </span><a href="https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants"><span class="No-Break">https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants</span></a><span class="No-Break">.</span></p>
+			<p>If you want<a id="_idIndexMarker1416"/> to use PowerShell<a id="_idIndexMarker1417"/> to review OAuth consent grants, you will find the <strong class="source-inline">Get-MgOauth2PermissionGrant</strong>, <strong class="source-inline">Get-MgServicePrincipalOauth2PermissionGrant</strong>, and <strong class="source-inline">Get-MgUserOauth2PermissionGrant</strong> cmdlets <span class="No-Break">very helpful.</span></p>
+			<h2 id="_idParaDest-189"><a id="_idTextAnchor198"/>Abusing AAD SSO</h2>
+			<p>AAD seamless SSO<a id="_idIndexMarker1418"/> is a feature that allows users to sign in to AAD-connected<a id="_idIndexMarker1419"/> applications without the need to enter their login <span class="No-Break">credentials repeatedly.</span></p>
+			<p>If you want to learn more about<a id="_idIndexMarker1420"/> how AAD seamless SSO works, Microsoft has documented it in <span class="No-Break">detail: </span><a href="https://learn.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-sso-how-it-works"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-sso-how-it-works</span></a><span class="No-Break">.</span></p>
+			<p>But as with every feature, SSO can also be abused by threat actors; if attackers manage to compromise the AAD seamless SSO computer account password NTLM hash (<strong class="source-inline">AZUREADSSOACC</strong>), they can use it to generate a silver ticket for the user they want <span class="No-Break">to impersonate.</span></p>
+			<p>Since the password of the <strong class="source-inline">AZUREADSSOACC</strong> account will never change (unless an administrator enforces a password change), the NTLM hash will also stay the same – which also means that it will work forever. Having the password hash of the <strong class="source-inline">AZUREADSSOACC</strong> account enables adversaries to impersonate any user without having the need to authenticate <span class="No-Break">using MFA.</span></p>
+			<p>The silver ticket can then be injected into the local Kerberos cache, allowing the attacker to impersonate the user and gain access to AAD-connected applications and services. This is especially dangerous, as it allows adversaries to use silver tickets from <span class="No-Break">the internet.</span></p>
+			<p>Since the AAD seamless SSO computer account password does not change automatically, this attack vector is even more attractive to attackers. In order to exploit this mechanism, an adversary would need to have already gained access to a victim’s network with Domain <span class="No-Break">Administrator rights.</span></p>
+			<p>First, the adversary needs to dump the <strong class="bold">NT LAN Manager</strong> (<strong class="bold">NTLM</strong>) hash for the <strong class="source-inline">AZUREADSSOACC</strong> account. This can be<a id="_idIndexMarker1421"/> done by launching <strong class="source-inline">mimikatz.exe</strong> and running the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; lsadump::dcsync /user:AZUREADSSOACC$</pre>
+			<p>This command needs to be either executed directly on a DC or by an account that is able to replicate information (refer to the information on the DCSync attack in <a href="B16679_06_Final_PD.xhtml#_idTextAnchor150"><span class="No-Break"><em class="italic">Chapter 6</em></span></a>, <em class="italic">Active Directory – Attacks </em><span class="No-Break"><em class="italic">and Mitigation</em></span><span class="No-Break">).</span></p>
+			<p>Once we have that NTLM hash (in this example, <strong class="source-inline">a7d6e2ca8d636573871af8d4db34f236</strong>), we’ll save it in the <strong class="source-inline">$ntlmhash</strong> variable, which we will <span class="No-Break">leverage later:</span></p>
+			<pre class="source-code">
+&gt; $ntlmhash = "a7d6e2ca8d636573871af8d4db34f236"</pre>
+			<p>Next, we need the domain and the SID. If we, for example, want to impersonate the user <strong class="source-inline">PSSec-User</strong>, the following commands would help us to retrieve the <span class="No-Break">information needed:</span></p>
+			<pre class="source-code">
+$user = "PSSec-User"
+$domain = (Get-CimInstance -ClassName Win32_ComputerSystem).Domain
+$sid = ((New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier])).Value</pre>
+			<p>Now we use all the information we gathered earlier to create our silver ticket <span class="No-Break">with </span><span class="No-Break"><strong class="source-inline">mimikatz</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+&gt; .\mimikatz.exe "kerberos::golden /user:$user /sid:$sid /id:666 /domain:$domain /rc4: $ntlmhash /target:aadg.windows.net.nsatc.net /service:HTTP /ptt" exit</pre>
+			<p>Launch Mozilla Firefox and enter <strong class="source-inline">about:config</strong>. Configure <strong class="source-inline">network.negotiate-auth.trusted-uris</strong> to contain the value <span class="No-Break"><strong class="source-inline">https://aadg.windows.net.n<a id="_idTextAnchor199"/>satc.net,</strong></span><span class="No-Break"> </span><span class="No-Break"><strong class="source-inline">https://autologon.microsoftazuread-sso.com.</strong></span></p>
+			<p>You can now access<a id="_idIndexMarker1422"/> any web application that is integrated into your AAD domain<a id="_idIndexMarker1423"/> by browsing to it and leveraging <span class="No-Break">seamless SSO.</span></p>
+			<h2 id="_idParaDest-190"><a id="_idTextAnchor200"/>Exploiting Pass-through Authentication (PTA)</h2>
+			<p>Earlier, we talked briefly<a id="_idIndexMarker1424"/> about PTA, which is an authentication concept<a id="_idIndexMarker1425"/> that allows users to sign in to cloud-based resources using their <span class="No-Break">on-premises credentials.</span></p>
+			<p>Exploiting PTA is an approach that adversaries take to bypass legit authentication processes, by hooking one of the relevant <strong class="source-inline">LogonUser*</strong> functions in <strong class="source-inline">advapi32.dll</strong> that is used by the system to authenticate users via PTA. By replacing this function with their own malicious function, adversaries can not only read all passwords<a id="_idIndexMarker1426"/> used to authenticate but they can also implement their own <strong class="bold">skeleton key</strong>, which allows them to authenticate as every user without the need to reset the password of a single user account. You can imagine a skeleton key as being like a master password, enabling adversaries to authenticate as any user without having to reset individual user <span class="No-Break">account passwords.</span></p>
+			<p>In order for this attack to work, there are two requirements: first, the environment needs to have AAD Connect with PTA enabled, and second, the adversary needs to have gotten access to an account with administrative access to a server with a PTA authentication <span class="No-Break">agent installed.</span></p>
+			<p>Let’s first look<a id="_idIndexMarker1427"/> at how PTA works. The following figure shows what the PTA workflow<a id="_idIndexMarker1428"/> <span class="No-Break">looks like:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer190">
+					<img alt="Figure 7.23 – PTA workflow" src="image/B16679_07_023.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 7.23 – PTA workflow</p>
+			<p>In order to understand the PTA workflow, the following list outlines each <span class="No-Break">step involved:</span></p>
+			<ol>
+				<li>The user attempts to authenticate against AAD or Office 365 by using their username <span class="No-Break">and password.</span></li>
+				<li>Between the agent and AAD, there is a permanent connection established: the agent queue. AAD encrypts the user’s credentials by using the public key of the agent and places them into the agent queue, where the encrypted key is then collected by <span class="No-Break">the agent.</span></li>
+				<li>The agent (with the process name <strong class="source-inline">AzureADConnectAuthenticationAgentService</strong>) decrypts the user’s credentials with its private key and uses them to authenticate on the user’s behalf to the on-premises AD. One of the functions involved in this process is the <strong class="source-inline">LogonUserW</strong> function, which is part of the <strong class="source-inline">advapi32.dll</strong> <span class="No-Break">API binary.</span></li>
+				<li>The DC verifies that the user credentials are legit and returns whether the authentication was successful <span class="No-Break">or not.</span></li>
+				<li>The agent forwards the DC’s response <span class="No-Break">to AAD.</span></li>
+				<li>If the authentication was successful, the user will be <span class="No-Break">logged in.</span></li>
+			</ol>
+			<p>If an adversary gets access to a server on which a PTA agent is installed, they can now easily exploit the agent to their own advantage: for example, to log or capture all authentication attempts that are being<a id="_idIndexMarker1429"/> processed by the server or even implement a backdoor to successfully log<a id="_idIndexMarker1430"/> in with <span class="No-Break">every account.</span></p>
+			<p>Adam Chester has a great example of how this can be achieved on his blog. Make sure to check it <span class="No-Break">out: </span><a href="https://blog.xpnsec.com/azuread-connect-for-redteam/#Hooking-Azure-AD-Connect"><span class="No-Break">https://blog.xpnsec.com/azuread-connect-for-redteam/#Hooking-Azure-AD-Connect</span></a><span class="No-Break">.</span></p>
+			<p>But in order to exploit PTA, an attacker would already need to be in the network and would have established access to usually very well-protected servers. So if an attacker would have been able to exploit PTA, you probably have worse problems and should plan a <span class="No-Break">compromised recovery.</span></p>
+			<h1 id="_idParaDest-191"><a id="_idTextAnchor201"/>Mitigations</h1>
+			<p>There are several mitigations<a id="_idIndexMarker1431"/> that can be employed to improve the security of AAD and protect against attacks such as enumeration, token theft, consent grant attacks, PTA, and SSO attacks. One way to start is by enabling security defaults in your AAD tenant, which provides a baseline level of security for all users, including requiring MFA and blocking legacy authentication protocols. Please also have a look into the quick security<a id="_idIndexMarker1432"/> wins that <span class="No-Break">Microsoft recommends:</span></p>
+			<ul>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-mfa-get-started"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-mfa-get-started</span></a></li>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/identity-secure-score"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/identity-secure-score</span></a></li>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-secure-remote-workers"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-secure-remote-workers</span></a></li>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/five-steps-to-full-application-integration-with-azure-ad"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/five-steps-to-full-application-integration-with-azure-ad</span></a></li>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-security-defaults"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-security-defaults</span></a></li>
+				<li><a href="https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication</span></a></li>
+			</ul>
+			<p>Another way to control access to specific resources and limit the impact of enumeration attacks is by enforcing Conditional Access and Identity Protection policies. Enabling MFA for all users can add an extra layer of security and reduce the risk of successful <span class="No-Break">enumeration attacks.</span></p>
+			<p>To effectively monitor<a id="_idIndexMarker1433"/> and identify suspicious activity, leveraging AAD risky IP sign-in and user reports, as well as configuring Conditional Access policies based on the risk level of sign-ins and users, is highly recommended. These built-in features provide comprehensive insights into potential threats and allow for proactive mitigation. Limiting access to DCs to authorized administrators can also prevent attackers from gaining the initial access needed to <span class="No-Break">launch attacks.</span></p>
+			<p>Implementing advanced detection techniques, behavior-based anomaly detection, and threat hunting can help identify malicious activities associated with PTA attacks. Secure boot can also prevent the injection of malicious code into legit system processes, making it more difficult for attackers to launch <span class="No-Break">PTA attacks.</span></p>
+			<p>In addition to the preceding mitigations, regularly monitoring the AAD seamless SSO computer account (<strong class="source-inline">AZUREADSSOACC$</strong>) and changing its password manually can help mitigate this attack vector. Enforcing strong password policies, implementing MFA, monitoring for suspicious activity, regularly reviewing and updating security policies, and training employees on best security practices are also important steps to take to improve overall security <span class="No-Break">in AAD.</span></p>
+			<p>Consent grant attacks involve tricking users into granting permissions to malicious third-party applications. To mitigate the risk, it is essential to monitor the OAuth consent permissions granted to third-party applications in your tenant. By monitoring these permissions, you can identify and revoke any unauthorized access before it’s <span class="No-Break">too late.</span></p>
+			<p>To help you with this task, you can use Microsoft’s tutorial<a id="_idIndexMarker1434"/> on how to remediate illicit consent <span class="No-Break">grants: </span><a href="https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants"><span class="No-Break">https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants</span></a><span class="No-Break">.</span></p>
+			<p>Additionally, ensure<a id="_idIndexMarker1435"/> that your users are aware of the risks associated with granting permissions to third-party applications and educate them on how to identify and report suspicious OAuth <span class="No-Break">consent requests.</span></p>
+			<p>Also have a look at the following links to find out what else you can do to improve your <span class="No-Break">AAD Security:</span></p>
+			<ul>
+				<li><a href="http://aka.ms/AzureADSecOps"><span class="No-Break">aka.ms/AzureADSecOps</span></a></li>
+				<li><a href="http://aka.ms/IRPlaybooks"><span class="No-Break">aka.ms/IRPlaybooks</span></a></li>
+			</ul>
+			<h1 id="_idParaDest-192"><a id="_idTextAnchor202"/>Summary</h1>
+			<p>In this chapter, you learned about some basic aspects of security in AAD. AAD itself is a huge topic that we could write entire books about, so make sure that you spend more time researching AAD if you want to explore <span class="No-Break">it further.</span></p>
+			<p>We explored the differences between AAD and on-premises AD and know that AAD is not just AD in the cloud but <span class="No-Break">much more.</span></p>
+			<p>You should now be familiar with some of the protocols that are used when it comes to AAD and understand the basics of how authentication is done, as well as how adversaries try to <span class="No-Break">exploit it.</span></p>
+			<p>It’s important to have a solid understanding of privileged built-in accounts and where to find more information about them so that you can either protect your environment in a better way or use your knowledge for your next red <span class="No-Break">team exercise.</span></p>
+			<p>We explored several ways to connect to and interact with AAD via the command line and examined some of the most common attacks against AAD, such as anonymous and authenticated enumeration, password spraying, and <span class="No-Break">credential theft.</span></p>
+			<p>Last but not least, you learned how to protect your environment in a better way by implementing <span class="No-Break">mitigation mechanisms.</span></p>
+			<p>When it comes to PowerShell security, identities are very important. But if you work as a red teamer, what PowerShell snippets could come in handy for your daily tasks? Let’s discover together what PowerShell commands could be useful for your daily tasks in the <span class="No-Break">next chapter.</span></p>
+			<h1 id="_idParaDest-193"><a id="_idTextAnchor203"/>Further reading</h1>
+			<p>If you want to explore some of the topics that were mentioned in this chapter, use <span class="No-Break">these resources:</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">AAD devices</strong></span><span class="No-Break">:</span><ul><li>What is a device <span class="No-Break">identity?: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/devices/overview"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/devices/overview</span></a></li><li>Plan your hybrid Azure Active Directory join <span class="No-Break">implementation: </span><a href="https://learn.microsoft.com/en-us/azure/active-directory/devices/hybrid-azuread-join-plan"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/devices/hybrid-azuread-join-plan</span></a><a href="https://docs.microsoft.com/en-us/azure/active-directory/devices/hybrid-azuread-join-plan&#13;"/></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">AAD overview</strong></span><span class="No-Break">:</span></li>
+			</ul>
+			<p>What is Azure Active <span class="No-Break">Directory?: </span><a href="https://adsecurity.org/?p=4211"><span class="No-Break">https://adsecurity.org/?p=4211</span></a></p>
+			<ul>
+				<li><strong class="bold">Azure </strong><span class="No-Break"><strong class="bold">AD Connect</strong></span><span class="No-Break">:</span></li>
+			</ul>
+			<p>Download Azure AD <span class="No-Break">Connect: </span><span class="No-Break">https://www.microsoft.com/en-us/download/details.aspx?id=47594</span></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">Entra ID</strong></span></li>
+			</ul>
+			<p>Azure AD is Becoming Microsoft Entra <span class="No-Break">ID: </span><a href="https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436"><span class="No-Break">https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436</span></a><a href="https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436&#13;"/></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">Federation</strong></span><span class="No-Break">:</span></li>
+			</ul>
+			<p>Authenticate users with WS-Federation in ASP.NET <span class="No-Break">Core: </span><a href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/ws-federation?view=aspnetcore-5.0&#13;"><span class="No-Break">https://docs.microsoft.com/en-us/aspnet/core/security/authentication/ws-federation?view=aspnetcore-5.0</span></a></p>
+			<ul>
+				<li><span class="No-Break"><strong class="bold">OAuth</strong></span><span class="No-Break">:</span><ul><li>RFC – The OAuth 2.0 Authorization <span class="No-Break">Framework: </span><a href="https://datatracker.ietf.org/doc/html/rfc6749"><span class="No-Break">https://datatracker.ietf.org/doc/html/rfc6749</span></a></li><li>RFC – The OAuth 2.0 Authorization Framework: Bearer Token <span class="No-Break">Usage: </span><span class="No-Break">https://datatracker.ietf.org/doc/html/rfc6750</span></li></ul></li>
+				<li><strong class="bold">Other </strong><span class="No-Break"><strong class="bold">helpful resources</strong></span><span class="No-Break">:</span><ul><li>Azure Active Directory Red <span class="No-Break">Team: </span><span class="No-Break">https://github.com/rootsecdev/Azure-Red-Team</span></li><li>Abusing Azure AD SSO with the Primary Refresh <span class="No-Break">Token: </span><span class="No-Break">https://dirkjanm.io/abusing-azure-ad-sso-with-the-primary-refresh-token/</span></li><li>What is a Primary Refresh <span class="No-Break">Token?: </span><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token</span></li><li>AADInternals <span class="No-Break">documentation: </span><a href="https://aadinternals.com/aadinternals/&#13;"><span class="No-Break">https://aadinternals.com/aadinternals/</span></a></li><li>AADInternals on <span class="No-Break">GitHub: </span><a href="https://github.com/Gerenios/AADInternals"><span class="No-Break">https://github.com/Gerenios/AADInternals</span></a><a href="https://github.com/Gerenios/AADInternals&#13;"/></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">Pass-through Authentication</strong></span><span class="No-Break">:</span><ul><li>Exploiting PTA:<a href=" https://blog.xpnsec.com/azuread-connect-for-redteam/#Pass-Through-Authentication"> </a><a href="https://blog.xpnsec.com/azuread-connect-for-redteam/"/> #Pass <span class="No-Break">Through Authentication</span></li><li>The <strong class="source-inline">LogonUserW</strong> <span class="No-Break">function: </span><a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw"><span class="No-Break">https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw</span></a></li><li>PTA deep <span class="No-Break">dive: </span><a href="https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive</span></a><a href="https://learn.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta-security-deep-dive&#13;"/></li></ul></li>
+				<li><strong class="bold">Privileged accounts &amp; </strong><span class="No-Break"><strong class="bold">roles</strong></span><span class="No-Break">:</span><ul><li>Least privileged roles by task in Azure Active <span class="No-Break">Directory: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task</span></a><a href="https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task&#13;"/></li></ul></li>
+				<li><span class="No-Break"><strong class="bold">SAML</strong></span><span class="No-Break">:</span><ul><li>SAML authentication with Azure Active <span class="No-Break">Directory: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml</span></a><a href="https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml&#13;"/></li><li><span class="No-Break">SAML: </span><a href="https://developer.okta.com/docs/concepts/saml/"><span class="No-Break">https://developer.okta.com/docs/concepts/saml/</span></a><a href="https://developer.okta.com/docs/concepts/saml/&#13;"/></li><li>The Difference Between SAML 2.0 and OAuth <span class="No-Break">2.0: </span><a href="https://www.ubisecure.com/uncategorized/difference-between-saml-and-oauth/"><span class="No-Break">https://www.ubisecure.com/uncategorized/difference-between-saml-and-oauth/</span></a><a href="https://www.ubisecure.com/uncategorized/difference-between-saml-and-oauth/&#13;"/></li><li>Microsoft identity platform token exchange scenarios with SAML and <span class="No-Break">OIDC/OAuth: </span><a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-token-exchange-saml-oauth"><span class="No-Break">https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-token-exchange-saml-oauth</span></a><a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-token-exchange-saml-oauth&#13;"/></li><li>How the Microsoft identity platform uses the SAML <span class="No-Break">protocol: </span><a href="https://learn.microsoft.com/en-us/azure/active-directory/develop/saml-protocol-reference"><span class="No-Break">https://learn.microsoft.com/en-us/azure/active-directory/develop/saml-protocol-reference</span></a><a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-saml-protocol-reference&#13;"/></li></ul></li>
+			</ul>
+			<p>You can also find all links mentioned in this chapter in the GitHub repository for <a href="B16679_07_Final_PD.xhtml#_idTextAnchor179"><span class="No-Break"><em class="italic">Chapter 7</em></span></a> – there is no need to manually type in every <span class="No-Break">link: </span><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter07/Links.md"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter07/Links.md</span></a><span class="No-Break">.</span></p>
+		</div>
+	</body></html>

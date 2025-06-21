@@ -1,0 +1,1269 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Advanced Malware Detection</h1>
+                </header>
+            
+            <article>
+                
+<p><span>In this chapter, we will be covering more advanced concepts for malware analysis. In the previous chapter, we covered general methods for attacking malware classification. Here, we will discuss more specific approaches and cutting-edge technologies. In particular, we will cover how to approach obfuscated and packed malware, how to scale up the collection of N-gram features, and how to use deep learning to detect and even create malware.</span></p>
+<p class="mce-root">This chapter comprises the following recipes:</p>
+<ul>
+<li>Detecting obfuscated JavaScript</li>
+<li>Featurizing PDF files</li>
+<li>Extracting N-grams quickly using the hash-gram algorithm</li>
+<li>Building a dynamic malware classifier</li>
+<li>MalConv – end-to-end deep learning for malicious PE detection</li>
+<li>Using packers</li>
+<li>Assembling a packed sample dataset</li>
+<li>Building a classifier for packers</li>
+<li>MalGAN – creating evasive malware</li>
+<li>Tracking malware drift</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span>The following are the technical prerequisites for this chapter</span>:</p>
+<ul>
+<li>Keras</li>
+<li>TensorFlow</li>
+<li>XGBoost</li>
+<li>UPX</li>
+<li>Statsmodels</li>
+</ul>
+<p><span>Code and datasets may be found at <a href="https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03">https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter03</a>.<a href="https://github.com/emmanueltsukerman/MLforCSCookbook"/></span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Detecting obfuscated JavaScript</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this section, we will see how to use machine learning to detect when a JavaScript file is obfuscated. Doing so can serve to create a binary feature, obfuscated or not, to be used in benign/malicious classification, and can serve also as a prerequisite step to deobfuscating the scripts.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing the <kbd>scikit-learn</kbd> package in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn</strong></pre>
+<p>In addition, obfuscated and non-obfuscated JavaScript files have been provided for you in the repository. Extract <kbd>JavascriptSamplesNotObfuscated.7z</kbd> to a folder named <kbd>JavaScript Samples</kbd>. Extract <kbd>JavascriptSamplesObfuscated.7z</kbd> to a folder named <kbd>JavaScript Samples Obfuscated</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we will demonstrate how a binary classifier can detect obfuscated JavaScript files:</p>
+<ol>
+<li class="mce-root">Begin by importing the libraries we will be needing to process the JavaScript's content, prepare the dataset, classify it, and measure the performance of our classifier:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import os<br/>from sklearn.feature_extraction.text import HashingVectorizer, TfidfTransformer<br/>from sklearn.ensemble import RandomForestClassifier<br/>from sklearn.model_selection import train_test_split<br/>from sklearn.metrics import accuracy_score, confusion_matrix<br/>from sklearn.pipeline import Pipeline</pre>
+<ol start="2">
+<li class="mce-root">We specify the paths of our obfuscated and non-obfuscated <span>JavaScript files</span><span> </span>and assign the two types of file different labels:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">js_path = "path\\to\\JavascriptSamples"<br/>obfuscated_js_path = "path\\to\\ObfuscatedJavascriptSamples"<br/> <br/>corpus = []<br/>labels = []<br/>file_types_and_labels = [(js_path, 0), (obfuscated_js_path, 1)]</pre>
+<ol start="3">
+<li class="mce-root">We then read our files into a corpus and prepare labels:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">for files_path, label in file_types_and_labels:<br/>    files = os.listdir(files_path)<br/>    for file in files:<br/>        file_path = files_path + "/" + file<br/>        try:<br/>            with open(file_path, "r") as myfile:<br/>                data = myfile.read().replace("\n", "")<br/>                data = str(data)<br/>                corpus.append(data)<br/>                labels.append(label)<br/>        except:<br/>            pass</pre>
+<ol start="4">
+<li class="mce-root">We split our dataset into a training and testing set, and prepare a pipeline to perform basic NLP, followed by a random forest classifier:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X_train, X_test, y_train, y_test = train_test_split(<br/>    corpus, labels, test_size=0.33, random_state=42<br/>)<br/>text_clf = Pipeline(<br/>    [<br/>        ("vect", HashingVectorizer(input="content", ngram_range=(1, 3))),<br/>        ("tfidf", TfidfTransformer(use_idf=True,)),<br/>        ("rf", RandomForestClassifier(class_weight="balanced")),<br/>    ]<br/>)</pre>
+<ol start="5">
+<li class="mce-root">Finally, we fit our pipeline to the training data, predict the testing data, and then print out our results:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">text_clf.fit(X_train, y_train)<br/>y_test_pred = text_clf.predict(X_test)<br/><br/>print(accuracy_score(y_test, y_test_pred))<br/>print(confusion_matrix(y_test, y_test_pred))</pre>
+<p style="padding-left: 60px">The accuracy and confusion matrix is shown here:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1089 image-border" src="assets/93e19b60-0a56-4f9c-b550-f3c1de40da7d.png" style="width:9.33em;height:3.50em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We begin by importing standard Python libraries to analyze the files and set up machine learning pipelines (<em>Step 1</em>). In <em>Steps 2</em> and <em>3</em>, we collect the non-obfuscated and obfuscated <span>JavaScript files </span>into arrays and assign them their respective labels. This is preparation for our binary classification problem. Note that the main challenge in producing this classifier is producing a large and useful dataset. Ideas for solving this hurdle include collecting a large number of <span>JavaScript </span>samples and then using different tools to obfuscate these. Consequently, your classifier will likely be able to avoid overfitting to one type of obfuscation. Having collected the data, we separate it into training and testing subsets (<em>Step 4</em>). In addition, we set up a pipeline to apply NLP methods to the <span>JavaScript </span>code itself, and then train a classifier (<em>Step 4</em>). Finally, we measure the performance of our classifier in <em>Step 5</em>. You will notice that besides the challenge of constructing an appropriate dataset, the recipe is similar to the one we used to detect the file type.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Featurizing PDF files</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this section, we will see how to featurize PDF files in order to use them for machine learning. The tool we will be utilizing is the <kbd>PDFiD</kbd> Python script designed by <em>Didier Stevens</em> (<a href="https://blog.didierstevens.com/">https://blog.didierstevens.com/</a>). Stevens selected a list of 20 features that are commonly found in malicious files, including whether the PDF file contains JavaScript or launches an automatic action. It is suspicious to find these features in a file, hence, the appearance of these can be indicative of malicious behavior.</p>
+<p class="mce-root">Essentially, the tool scans through a PDF file, and counts the number of occurrences of each of the ~20 features. A run of the tool appears as follows:</p>
+<pre> PDFiD 0.2.5 PythonBrochure.pdf<br/><br/><span> PDF Header: %PDF-1.6</span><br/><span> obj                 1096</span><br/><span> endobj              1095</span><br/><span> stream              1061</span><br/><span> endstream           1061</span><br/><span> xref                   0</span><br/><span> trailer                0</span><br/><span> startxref              2</span><br/><span> /Page                 32</span><br/><span> /Encrypt               0</span><br/><span> /ObjStm               43</span><br/><span> /JS                    0</span><br/><span> /JavaScript            0</span><br/><span> /AA                    1</span><br/><span> /OpenAction            0</span><br/><span> /AcroForm              1</span><br/><span> /JBIG2Decode           0</span><br/><span> /RichMedia             0</span><br/><span> /Launch                0</span><br/><span> /EmbeddedFile          0</span><br/><span> /XFA                   0</span><br/><span> /URI                   0</span><br/><span> /Colors &gt; 2^24         0</span></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p class="a-b-r-La">The requisite files for this recipe are in the <kbd>pdfid</kbd> and <kbd>PDFSamples</kbd> folders included in the repository.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, you will featurize a collection of PDF files using the <kbd>PDFiD</kbd> script:</p>
+<ol>
+<li class="mce-root">Download the tool and place all accompanying code in the same directory as featurizing PDF <kbd>Files.ipynb</kbd>.</li>
+<li class="mce-root"> Import IPython's <kbd>io</kbd> module so as to capture the output of an external script:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from IPython.utils import io</pre>
+<ol start="3">
+<li class="mce-root">Define a function to featurize a PDF:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def PDF_to_FV(file_path):<br/>    """Featurize a PDF file using pdfid."""</pre>
+<ol start="4">
+<li class="mce-root">Run <kbd>pdfid</kbd> against a file and capture the output of the operation:</li>
+</ol>
+<pre class="mce-root">     with io.capture_output() as captured:<br/>         %run -i pdfid $file_path<br/>     out = captured.stdout</pre>
+<ol start="5">
+<li class="mce-root">Next, parse the output so that it is a numerical vector:</li>
+</ol>
+<pre class="mce-root">    out1 = out.split("\n")[2:-2]<br/>    return [int(x.split()[-1]) for x in out1]</pre>
+<ol start="6">
+<li class="mce-root">Import <kbd>listdir</kbd> to enumerate the files of a folder and specify where you have placed your collection of PDFs:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from os import listdir<br/><br/>PDFs_path = "PDFSamples\\"</pre>
+<ol start="7">
+<li class="mce-root">Iterate through each file in the directory, featurize it, and then collect all the feature vectors into <kbd>X</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X = []<br/>files = listdir(PDFs_path)<br/>for file in files:<br/>    file_path = PDFs_path + file<br/>    X.append(PDF_to_FV(file_path))</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start our preparation by downloading the <kbd>PDFiD</kbd> tool and placing our PDF files in a convenient location for analysis (<em>Step 1</em>). Note that the tool is free and simple to use. Continuing, we import the very useful IPython's <kbd>io</kbd> module in order to capture the results of an external program, namely, <kbd>PDFiD</kbd> (<em>Step 2</em>). In the following steps, <em>Step 3</em> and <em>Step 5</em>, we define a function PDF to FV that takes a PDF file and featurizes it. In particular, it utilizes the <kbd>PDFiD</kbd> tool, and then parses its output into a convenient form. When we run on the <kbd>PDFSamples</kbd>\<kbd>PythonBrochure.pdf</kbd> <span>file, </span>our functions output the following vector:</p>
+<pre class="mce-root"> [1096, 1095, 1061, 1061, 0, 0, 2, 32, 0, 43, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0]</pre>
+<p class="mce-root">Now that we are able to featurize a single PDF file, why not featurize all of our PDF files to make these amenable to machine learning (<em>Steps 6</em> and <em>7</em>). In particular, in <em>Step 6</em>, we provide a path containing the PDF files we would like to featurize, and, in <em>Step 7</em>, we perform the actual featurization of the files.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Extracting N-grams quickly using the hash-gram algorithm</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this section, we demonstrate a technique for extracting the most frequent N-grams quickly and memory-efficiently. This allows us to make the challenges that come with the immense number of N-grams easier. The technique is called <strong>Hash-Grams</strong>, and relies on hashing the N-grams as they are extracted. A property of N-grams is that they follow a power law that ensures that hash collisions have an insignificant impact on the quality of the features thus obtained.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>nltk</kbd> in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install nltk</strong></pre>
+<p>In addition, benign and malicious files have been provided for you in the <kbd>PE Samples Dataset</kbd> <span>folder </span>in the root of the repository. Extract all archives named <kbd>Benign PE Samples*.7z</kbd> to a folder named <kbd>Benign PE Samples</kbd>, and extract all archives named <kbd>Malicious PE Samples*.7z</kbd> to a folder named <kbd>Malicious PE Samples</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we will demonstrate how the hash-gram algorithm works:</p>
+<ol start="1">
+<li class="mce-root">Begin by specifying the folders containing our samples, the parameter N, and importing a library for hashing and a library to extract N-grams from a string:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from os import listdir<br/>from nltk import ngrams<br/>import hashlib<br/><br/>directories = ["Benign PE Samples", "Malicious PE Samples"]<br/>N = 2</pre>
+<ol start="2">
+<li class="mce-root">We create a function to read in the bytes of a file and turn these into N-grams:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def read_file(file_path):<br/>    """Reads in the binary sequence of a binary file."""<br/>    with open(file_path, "rb") as binary_file:<br/>        data = binary_file.read()<br/>    return data<br/><br/>def byte_sequence_to_Ngrams(byte_sequence, N):<br/>    """Creates a list of N-grams from a byte sequence."""<br/>    return ngrams(byte_sequence, N)</pre>
+<ol start="3">
+<li>Now, we will want to hash the N-grams:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def hash_input(inp):<br/>    """Compute the MD5 hash of an input."""<br/>    return int(hashlib.md5(inp).hexdigest(), 16)<br/><br/>def make_ngram_hashable(Ngram):<br/>    """Convert N-gram into bytes to be hashable."""<br/>    return bytes(Ngram)</pre>
+<ol start="4">
+<li class="mce-root">The <kbd>hash_file_Ngrams_into_dictionary</kbd> <span>function </span>takes an N-gram, hashes it, and then increments the count in the dictionary for the hash. The reduction module B (%B) ensures that there can be no more than <kbd>B</kbd> keys in the dictionary:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def hash_file_Ngrams_into_dictionary(file_Ngrams, T):<br/>    """Hashes N-grams in a list and then keeps track of the counts in a dictionary."""<br/>    for Ngram in file_Ngrams:<br/>        hashable_Ngram = make_ngram_hashable(Ngram)<br/>        hashed_and_reduced = hash_input(hashable_Ngram) % B<br/>        T[hashed_and_reduced] = T.get(hashed_and_reduced, 0) + 1</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<ol start="5">
+<li class="mce-root">We specify a value for B, the largest prime number smaller than 2^16, and create an empty dictionary:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">B = 65521<br/>T = {}</pre>
+<ol start="6">
+<li class="mce-root">We iterate over our files and count their hashed N-grams:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">for dataset_path in directories:<br/>    samples = [f for f in listdir(dataset_path)]<br/>    for file in samples:<br/>        file_path = dataset_path + "/" + file<br/>        file_byte_sequence = read_file(file_path)<br/>        file_Ngrams = byte_sequence_to_Ngrams(file_byte_sequence, N)<br/>        hash_file_Ngrams_into_dictionary(file_Ngrams, T)</pre>
+<ol start="7">
+<li class="mce-root">We select the most frequent <kbd>K1=1000</kbd> using <kbd>heapq</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">K1 = 1000<br/>import heapq<br/><br/>K1_most_common_Ngrams_Using_Hash_Grams = heapq.nlargest(K1, T)</pre>
+<ol start="8">
+<li class="mce-root">Once the top-hashed N-grams have been selected, these make up the feature set. In order to featurize a sample, one iterates over its N-grams, hashes, and reduces them, and, if the result is one of the selected top-hashed N-grams, increments the feature vector at that index:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def featurize_sample(file, K1_most_common_Ngrams_Using_Hash_Grams):<br/>    """Takes a sample and produces a feature vector.<br/>    The features are the counts of the K1 N-grams we've selected.<br/>    """<br/>    K1 = len(K1_most_common_Ngrams_Using_Hash_Grams)<br/>    fv = K1 * [0]<br/>    file_byte_sequence = read_file(file_path)<br/>    file_Ngrams = byte_sequence_to_Ngrams(file_byte_sequence, N)<br/>    for Ngram in file_Ngrams:<br/>        hashable_Ngram = make_ngram_hashable(Ngram)<br/>        hashed_and_reduced = hash_input(hashable_Ngram) % B<br/>        if hashed_and_reduced in K1_most_common_Ngrams_Using_Hash_Grams:<br/>            index = K1_most_common_Ngrams_Using_Hash_Grams.index(hashed_and_reduced)<br/>            fv[index] += 1<br/>    return fv</pre>
+<ol start="9">
+<li class="mce-root">Finally, we featurize our dataset:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X = []<br/>for dataset_path in directories:<br/>    samples = [f for f in listdir(dataset_path)]<br/>    for file in samples:<br/>        file_path = dataset_path + "/" + file<br/>        X.append(featurize_sample(file_path, K1_most_common_Ngrams_Using_Hash_Grams))</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>The initial steps in the hash-gram recipe are similar to the ordinary extraction of N-grams. First, we prepare by specifying the folders containing our samples, our value of N (as in N-grams). In addition, we import a hashing library, which is an action different from the ordinary extraction of N-grams (<em>Step 1</em>). Continuing our preparation, we define a function to read in all the bytes of a file (as opposed to reading in its content) and turn these into N-grams (<em>Step 2</em>). We define a function to compute the MD5 hash of an N-gram and return the result as a hexadecimal number. Additionally, we define a function to convert an N-gram to its byte constituents in order to be able to hash it (<em>Step 3</em>).</p>
+<p>Next, we define a function to iterate through the hashed N-grams of a file, reduce these to modulo B, and then increase the count in the dictionary for the reduced hash (<em>Step 4</em>). The parameter B controls the limit on how many different keys the dictionary will have. By hashing, we are able to randomize the buckets that count the N-grams. Now, as we are about to run our functions, it's time to specify the value of B. We select the value for B to be the largest prime number smaller than 2^16 (<em>Step 5</em>).</p>
+<p>It is standard to select a prime to ensure that the number of hash collisions is minimal. We now iterate through our directory of files and apply the functions we have defined previously to each file (<em>Step 6</em>). The result is a large dictionary, <em>T</em>, that contains counts of hashed N-grams. This dictionary is not too big, and we easily select the top K1 most common reduced hashes of N-grams from it (<em>Step 7</em>). By doing so, the probability is high that we select the top most frequent N-grams, although there may be more than K1 due to hash collisions. At this point, we have our feature set, which is N-grams that get mapped by hashing to the K1 hashed N-grams we have selected. We now featurize our dataset (<em>Steps 8</em> and <em>9</em>). In particular, we iterate through our files, computing their N-grams. If an N-gram has a reduced hash that is one of the K1 selected ones, we consider it to be a frequent N-gram, and use it as part of our feature set.</p>
+<p class="mce-root">It is important to note that the hash-grams algorithm will not always be faster, but it is expected to be whenever the datasets under consideration are large. In many cases, in a situation where a naive approach to extracting N-grams leads to memory error, hash-grams is able to terminate successfully.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">For additional details on the hash-gram algorithm, see <a href="https://www.edwardraff.com/publications/hash-grams-faster.pdf">https://www.edwardraff.com/publications/hash-grams-faster.pdf</a><a href="https://www.edwardraff.com/publications/hash-grams-faster.pdf">.</a></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building a dynamic malware classifier</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In certain situations, there is a considerable advantage to being able to detect malware based on its behavior. In particular, it is much more difficult for a malware to hide its intentions when it is being analyzed in a dynamic situation. For this reason, classifiers that operate on dynamic information can be much more accurate than their static counterparts. In this section, we provide a recipe for a dynamic malware classifier. The dataset we use is part of a VirusShare repository from android applications. The dynamic analysis was performed by Johannes Thon on several LG Nexus 5 devices with Android API 23, (over 4,000 malicious apps were dynamically analyzed on the LG Nexus 5 device farm (API 23), and over 4,300 benign apps were dynamically analyzed on the LG Nexus 5 device farm (API 23) by goorax, used under CC BY / unmodified from the original).</p>
+<p class="mce-root">Our approach will be to use N-grams on the sequence of API calls.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd>, <kbd>nltk</kbd>, and <kbd>xgboost</kbd> in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn nltk xgboost</strong></pre>
+<p>In addition, benign and malicious dynamic analysis files have been provided for you in the repository. Extract all archives named <kbd>DA Logs Benign*.7z</kbd> to a folder named <kbd>DA Logs Benign</kbd>, and extract all archives named <kbd>DA Logs Malware*.7z</kbd> to a folder named <kbd>DA Logs Malicious</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we demonstrate how a classifier can detect malware based on an observed sequence of API calls.</p>
+<ol>
+<li class="mce-root">Our logs are in JSON format, so we begin by importing the JSON library.</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import numpy as np<br/>import os<br/>import json<br/><br/>directories_with_labels = [("DA Logs Benign", 0), ("DA Logs Malware", 1)]</pre>
+<ol start="2">
+<li class="mce-root">Write a function to parse the JSON logs:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def get_API_class_method_type_from_log(log):<br/>    """Parses out API calls from behavioral logs."""<br/>    API_data_sequence = []<br/>    with open(log) as log_file:<br/>        json_log = json.load(log_file)<br/>        api_calls_array = "[" + json_log["api_calls"] + "]"</pre>
+<ol start="3">
+<li>We choose to extract the class, method, and type of the API call:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">        api_calls = json.loads(api_calls_array)<br/>        for api_call in api_calls:<br/>            data = api_call["class"] + ":" + api_call["method"] + ":" + api_call["type"]<br/>            API_data_sequence.append(data)<br/>    return API_data_sequence</pre>
+<ol start="4">
+<li class="mce-root">We read our logs into a corpus and collect their labels:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">data_corpus = []<br/>labels = []<br/>for directory, label in directories_with_labels:<br/>    logs = os.listdir(directory)<br/>    for log_path in logs:<br/>        file_path = directory + "/" + log_path<br/>        try:<br/>            data_corpus.append(get_API_class_method_type_from_log(file_path))<br/>            labels.append(label)<br/>        except:<br/>            pass</pre>
+<ol start="5">
+<li>Now, let's take a look at what the data in our corpus looks like:</li>
+</ol>
+<pre style="padding-left: 60px">print(data_corpus[0])<br/><br/><strong>['android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content', 'android.app.ContextImpl:registerReceiver:binder', 'android.app.ContextImpl:registerReceiver:binder', 'android.os.SystemProperties:get:content', 'android.os.SystemProperties:get:content']</strong></pre>
+<ol start="6">
+<li>We proceed to perform a train-test split:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from sklearn.model_selection import train_test_split<br/><br/>corpus_train, corpus_test, y_train, y_test = train_test_split(<br/>    data_corpus, labels, test_size=0.2, random_state=11<br/>)</pre>
+<ol start="7">
+<li> Our approach is to use N-grams, so we load our N-gram extraction functions, with a slight modification for the current data format:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import collections<br/>from nltk import ngrams<br/>import numpy as np<br/><br/><br/>def read_file(file_path):<br/>    """Reads in the binary sequence of a binary file."""<br/>    with open(file_path, "rb") as binary_file:<br/>        data = binary_file.read()<br/>    return data<br/><br/><br/>def text_to_Ngrams(text, n):<br/>    """Produces a list of N-grams from a text."""<br/>    Ngrams = ngrams(text, n)<br/>    return list(Ngrams)<br/><br/><br/>def get_Ngram_counts(text, N):<br/>    """Get a frequency count of N-grams in a text."""<br/>    Ngrams = text_to_Ngrams(text, N)<br/>    return collections.Counter(Ngrams)</pre>
+<ol start="8">
+<li>We specify N=4 and collect all N-grams:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">N = 4<br/>total_Ngram_count = collections.Counter([])<br/>for file in corpus_train:<br/>    total_Ngram_count += get_Ngram_counts(file, N)</pre>
+<ol start="9">
+<li>Next, we narrow down to the <kbd>K1 = 3000</kbd> most frequent N-grams:</li>
+</ol>
+<pre style="padding-left: 60px">K1 = 3000<br/>K1_most_frequent_Ngrams = total_Ngram_count.most_common(K1)<br/>K1_most_frequent_Ngrams_list = [x[0] for x in K1_most_frequent_Ngrams]<br/><br/>[('java.lang.reflect.Method:invoke:reflection', 'java.lang.reflect.Method:invoke:reflection', 'java.lang.reflect.Method:invoke:reflection', 'java.lang.reflect.Method:invoke:reflection'),<br/><br/>('java.io.FileInputStream:read:runtime', 'java.io.FileInputStream:read:runtime', 'java.io.FileInputStream:read:runtime', 'java.io.FileInputStream:read:runtime'),<br/><br/> &lt;snip&gt;<br/><br/> ('android.os.SystemProperties:get:content',   'android.os.SystemProperties:get:content',   'android.os.SystemProperties:get:content',   'javax.crypto.spec.SecretKeySpec:javax.crypto.spec.SecretKeySpec:crypto')</pre>
+<ol start="10">
+<li>We then write a method to featurize a sample into a vector of N-gram counts:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def featurize_sample(file, Ngrams_list):<br/>    """Takes a sample and produces a feature vector.<br/>    The features are the counts of the K1 N-grams we've selected.<br/>    """<br/>    K1 = len(Ngrams_list)<br/>    feature_vector = K1 * [0]<br/>    fileNgrams = get_Ngram_counts(file, N)<br/>    for i in range(K1):<br/>        feature_vector[i] = fileNgrams[Ngrams_list[i]]<br/>    return feature_vector</pre>
+<ol start="11">
+<li>We apply this function to featurize our training and testing samples:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X_train = []<br/>for sample in corpus_train:<br/>    X_train.append(featurize_sample(sample, K1_most_frequent_Ngrams_list))<br/>X_train = np.asarray(X_train)<br/>X_test = []<br/>for sample in corpus_test:<br/>    X_test.append(featurize_sample(sample, K1_most_frequent_Ngrams_list))<br/>X_test = np.asarray(X_test)</pre>
+<ol start="12">
+<li>We use mutual information to further narrow the K1=3000 most frequent N-grams to K2=500 most informative N-grams. We then set up a pipeline to subsequently run an XGBoost classifier:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from sklearn.feature_selection import SelectKBest, mutual_info_classif<br/>from sklearn.pipeline import Pipeline<br/>from xgboost import XGBClassifier<br/><br/>K2 = 500<br/>mi_pipeline = Pipeline(<br/>    [<br/>        ("mutual_information", SelectKBest(mutual_info_classif, k=K2)),<br/>        ("xgb", XGBClassifier()),<br/>    ]<br/>)</pre>
+<ol start="13">
+<li>We train our pipeline and evaluate its accuracy on the training and testing sets:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">mi_pipeline.fit(X_train, y_train)<br/>print("Training accuracy:")<br/>print(mi_pipeline.score(X_train, y_train))<br/>print("Testing accuracy:")<br/>print(mi_pipeline.score(X_test, y_test))</pre>
+<p style="padding-left: 30px">The following output gives us the training and testing accuracies:</p>
+<div class="output_subarea output_text output_stream output_stdout">
+<pre style="padding-left: 60px"><strong>Training accuracy:
+0.8149428743235118
+Testing accuracy:
+0.8033674082982561</strong></pre></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we perform something exciting, namely, classification of malware and benign samples based on their runtime behavior. Our first three steps are to define a function to read in and parse the JSON logs that contain information about the samples runtime behavior. As an aside, JSON is a useful file format whenever your data might have a variable number of attributes. We make the strategic choice to extract the API call class, method, and content. Other features are available as well, such as the time at which the API call was made and what arguments were called. The trade-off is that the dataset will be larger and these features might cause a slowdown or overfit. Investigation is recommended as regards selecting additional features for a classifier.</p>
+<p>With our function defined, we proceed with performing parsing and collecting all of our parsed data in one place (<em>Step 4</em>). In <em>Step 5</em>, we take a peek at our corpus. We see a sample of the quadruples of API calls that make up our data. Next is the standard step of performing a training-testing split. In <em>Steps 7</em> and <em>8</em>, we load our N-gram extraction functions and use these to extract N-grams from our dataset. These extraction methods are similar to the ones used for binary files, but adjusted for the text format at hand. Initially, we collect the K1=3000 most frequent N-grams in order to reduce the computational load. By increasing the numbers K1 and, later on, K2, we can expect the accuracy of our classifier to improve, but the memory and computational requirements to increase (<em>Step 9</em>). In <em>Step 10</em>, we define a function to featurize the samples into their N-gram feature vectors, and then, in <em>Step 11</em>, we apply this function to featurize our training and testing samples. We would like to narrow down our feature set further. We choose to use mutual information to select the K2=500 most informative N-grams from the <kbd>K1=3000</kbd> most frequent ones (<em>Step 12</em>)—there are many options, as discussed in the recipe on selecting the best N-grams.</p>
+<p class="mce-root"/>
+<p>For instance, an alternative choice would have been to use chi-squared. In addition, other classifiers aside from XGBoost can be chosen. Finally, we see that the accuracy obtained suggests that the approach of using N-grams on the sequence of API calls to be promising.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">MalConv – end-to-end deep learning for malicious PE detection</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">One of the new developments in static malware detection has been the use of deep learning for end-to-end machine learning for malware detection. In this setting, we completely skip all feature engineering; we need not have any knowledge of the PE header or other features that may be indicative of PE malware. We simply feed a stream of raw bytes into our neural network and train. This idea was first suggested in <a href="https://arxiv.org/pdf/1710.09435.pdf">https://arxiv.org/pdf/1710.09435.pdf</a>. This architecture has come to be known as <strong>MalConv</strong>, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1140 image-border" src="assets/c9386f51-629c-45b5-90e8-3a6dbd951146.png" style="width:33.17em;height:9.00em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing a number of packages in <kbd>pip</kbd>, namely, <kbd>keras</kbd>, <kbd>tensorflow</kbd>, and <kbd>tqdm</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install keras tensorflow tqdm</strong></pre>
+<p>In addition, benign and malicious files have been provided for you in the <kbd>PE Samples Dataset</kbd> <span>folder </span>in the root of the repository. Extract all archives named <kbd>Benign PE Samples*.7z</kbd> to a folder named <kbd>Benign PE Samples</kbd>, and extract all archives named <kbd>Malicious PE Samples*.7z</kbd> to a folder named <kbd>Malicious PE Samples</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, we detail how to train MalConv on raw PE files:</p>
+<ol>
+<li class="mce-root">We import <kbd>numpy</kbd> for vector operations and <kbd>tqdm</kbd> to keep track of progress in our loops:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import numpy as np<br/>from tqdm import tqdm</pre>
+<ol start="2">
+<li class="mce-root">Define a function to embed a byte as a vector:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def embed_bytes(byte):<br/>    binary_string = "{0:08b}".format(byte)<br/>    vec = np.zeros(8)<br/>    for i in range(8):<br/>        if binary_string[i] == "1":<br/>            vec[i] = float(1) / 16<br/>        else:<br/>            vec[i] = -float(1) / 16<br/>    return vec</pre>
+<ol start="3">
+<li class="mce-root">Read in the locations of your raw PE samples and create a list of their labels:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import os<br/>from os import listdir<br/><br/>directories_with_labels = [("Benign PE Samples", 0), ("Malicious PE Samples", 1)]<br/>list_of_samples = []<br/>labels = []<br/>for dataset_path, label in directories_with_labels:<br/>    samples = [f for f in listdir(dataset_path)]<br/>    for file in samples:<br/>        file_path = os.path.join(dataset_path, file)<br/>        list_of_samples.append(file_path)<br/>        labels.append(label)</pre>
+<ol start="4">
+<li class="mce-root">Define a convenience function to read in the byte sequence of a file:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def read_file(file_path):<br/>    """Read the binary sequence of a file."""<br/>    with open(file_path, "rb") as binary_file:<br/>        return binary_file.read()</pre>
+<ol start="5">
+<li class="mce-root">Set a maximum length, <kbd>maxSize</kbd>, of bytes to read in per sample, embed all the bytes of the samples, and gather the result in X:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">max_size = 15000<br/>num_samples = len(list_of_samples)<br/>X = np.zeros((num_samples, 8, max_size))<br/>Y = np.asarray(labels)<br/>file_num = 0<br/>for file in tqdm(list_of_samples):<br/>    sample_byte_sequence = read_file(file)<br/>    for i in range(min(max_size, len(sample_byte_sequence))):<br/>        X[file_num, :, i] = embed_bytes(sample_byte_sequence[i])<br/>    file_num += 1</pre>
+<ol start="6">
+<li class="mce-root">Prepare an optimizer:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from keras import optimizers<br/><br/>my_opt = optimizers.SGD(lr=0.01, decay=1e-5, nesterov=True)</pre>
+<ol start="7">
+<li class="mce-root">Utilize the Keras functional API to set up the deep neural network architecture:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"> from keras import Input<br/> from keras.layers import Conv1D, Activation, multiply, GlobalMaxPool1D, Dense<br/> from keras import Model<br/><br/> inputs = Input(shape=(8, maxSize))<br/> conv1 = Conv1D(kernel_size=(128), filters=32, strides=(128), padding='same')(inputs)<br/> conv2 = Conv1D(kernel_size=(128), filters=32, strides=(128), padding='same')(inputs)<br/> a = Activation('sigmoid', name='sigmoid')(conv2)<br/> mul = multiply([conv1, a])<br/> b = Activation('relu', name='relu')(mul)<br/> p = GlobalMaxPool1D()(b)<br/> d = Dense(16)(p)<br/> predictions = Dense(1, activation='sigmoid')(d)<br/> model = Model(inputs=inputs, outputs=predictions)<br/><br/></pre>
+<ol start="8">
+<li class="mce-root">Compile the model and choose a batch size:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">model.compile(optimizer=my_opt, loss="binary_crossentropy", metrics=["acc"])<br/>batch_size = 16<br/>num_batches = int(num_samples / batch_size)</pre>
+<ol start="9">
+<li class="mce-root">Train the model on batches:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">for batch_num in tqdm(range(num_batches)):<br/>    batch = X[batch_num * batch_size : (batch_num + 1) * batch_size]<br/>    model.train_on_batch(<br/>        batch, Y[batch_num * batch_size : (batch_num + 1) * batch_size]<br/>    )</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We begin by importing <kbd>numpy</kbd> and <kbd>tqdm</kbd> (<em>Step 1</em>), a package that allows you to keep track of progress in a loop by showing a percentage progress bar. As part of feeding the raw bytes of a file into our deep neural network, we use a simple embedding of bytes in an 8-dimensional space, in which each bit of the byte corresponds to a coordinate of the vector (<em>Step 2</em>). A bit equal to 1 means that the corresponding coordinate is set to 1/16, whereas a bit value of 0 corresponds to a coordinate equal to -1/16. For example, 10010001 is embedded as the vector (1/16, -1/16, -1/16, 1/16, -1/16, -1/16, -1/16, 1/16). Other ways to perform embeddings, such as ones that are trained along with the neural network, are possible.</p>
+<p>The MalConv architecture makes a simple, but computationally fast, choice. In <em>Step 3</em>, we list our samples and their labels, and, in <em>Step 4</em>, we define a function to read the bytes of a file. Note the <kbd>rb</kbd> setting in place of <kbd>r</kbd>, so as to read the file as a byte sequence. In <em>Step 5</em>, we use <kbd>tqdm</kbd> to track the progress of the loop. For each file, we read in the byte sequence and embed each byte into an 8-dimensional space. We then gather all of these into <em>X</em>. If the number of bytes exceeds <kbd>maxSize=15000</kbd>, then we stop. If the number of bytes is smaller than maxSize, then the bytes are assumed to be 0's. The <kbd>maxSize</kbd> parameter, which controls how many bytes we read per file, can be tuned according to memory capacity, the amount of computation available, and the size of the samples. In the following steps (<em>Steps 6</em> and <em>7</em>), we define a standard optimizer, namely, a stochastic gradient descent with a selection of parameters, and define the architecture of our neural network to match closely with that of MalConv. Note that we have used the Keras functional API here, which allows us to create non-trivial, input-output relations in our model.</p>
+<p>Finally, note that better architectures and choices of parameters are an open area of research. Continuing, we are now free to select a batch size and begin training (<em>Steps 8</em> and <em>9</em>). The batch size is an important parameter that can affect both speed and stability of the learning process. For our purposes, we have made a simple choice. We feed in a batch at a time, and train our neural network.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Tackling packed malware</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Packing is the compression or encryption of an executable file, distinguished from ordinary compression in that it is typically decompressed during runtime, in memory, as opposed to being decompressed to disk, prior to execution. Packers pose an obfuscation challenge to analysts.</p>
+<p class="mce-root">A packer called VMProtect, for example, protects its content from analyst eyes by executing in a virtual environment with a unique architecture, making it a great challenge for anyone to analyze the software.</p>
+<p class="mce-root">Amber is a reflective PE packer for bypassing security products and mitigations. It can pack regularly compiled PE files into reflective payloads that can load and execute themselves like a shellcode. It enables stealthy in-memory payload deployment that can be used to bypass anti-virus, firewall, IDS, IPS products, and application whitelisting mitigations. The most commonly used packer is UPX.</p>
+<p class="mce-root">Since packing obfuscates code, it can often result in a decrease in the performance of a machine learning classifier. By determining which packer was used to pack an executable, we can then utilize the same packer to unpack the code, that is, revert the code to its original, non-obfuscated version. Then, it becomes simpler for both antivirus and machine learning to detect whether the file is malicious.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using packers</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, we will show how to obtain a packer, namely UPX, and how to use it. The purpose of having a collection of packers is, firstly, to perform data augmentation as will be detailed in the remainder of the recipe, and, secondly, to be able to unpack a sample once the packer used to pack it is determined.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p class="a-b-r-La">There are no packages required for the following recipe. You may find <kbd>upx.exe</kbd> in the <kbd>Packers</kbd> folder of the repository for this book.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, you will utilize the UPX packer to pack a file:</p>
+<ol>
+<li class="mce-root"> Download and unarchive the latest version of UPX from <a href="https://github.com/upx/upx/releases/">https://github.com/upx/upx/releases/</a></li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1090 image-border" src="assets/b1b91e18-66dd-4bf4-bb13-75826c3680b8.png" style="width:160.00em;height:78.50em;"/></p>
+<ol start="2">
+<li class="mce-root">Execute <kbd>upx.exe</kbd> against the file you wish to pack by running <kbd>upx.exe</kbd> and <kbd>foofile.exe</kbd>. The result of a successful packing appears as follows:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1091 image-border" src="assets/6695ad88-cfd4-4a68-8887-e3b997d847ca.png" style="width:40.83em;height:11.67em;"/></p>
+<p>The file remains an executable, unlike in the case of archives, which become zipped.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">As you can see, using a packer is very simple. One of the benefits of most packers is that they reduce the size of the file, in addition to obfuscating its content. Many hackers utilize custom-made packers. The advantage of these is that they are difficult to unpack. From the standpoint of detecting malicious files, a file that is packed using a custom packer is highly suspicious.   </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Assembling a packed sample dataset</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">One obvious way in which to assemble a dataset for a packer classifier is to collect samples that have been packed and whose packing has been labeled. Another fruitful way in which to assemble packed samples is to collect a large dataset of files and then pack these yourself.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p class="a-b-r-La">There are no packages required for the following recipe. You may find <kbd>upx.exe</kbd> in the <kbd>Packers</kbd> folder of the repository for this book.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, you will use UPX to pack a directory of files.</p>
+<ol>
+<li class="mce-root">Place <kbd>upx.exe</kbd> in a directory, <kbd>A</kbd>, and place a collection of samples in a directory, <kbd>B</kbd>, in <kbd>A</kbd>. For this example, <kbd>B</kbd> is Benign PE Samples UPX.</li>
+<li class="mce-root"> List the files of directory <kbd>B</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import os<br/><br/>files_path = "Benign PE Samples UPX/"<br/>files = os.listdir(files_path)<br/>file_paths = [files_path+x for x in files]</pre>
+<ol start="3">
+<li class="mce-root">Run <kbd>upx</kbd> against each file in <kbd>B</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from subprocess import Popen, PIPE<br/><br/>cmd = "upx.exe"<br/>for path in file_paths:<br/>    cmd2 = cmd+" \""+path+"\""<br/>    res = Popen(cmd2, stdout=PIPE).communicate()<br/>    print(res)</pre>
+<ol start="4">
+<li class="mce-root">Whenever an error occurs in packing, remove the original sample:</li>
+</ol>
+<pre class="mce-root">    if "error" in str(res[0]):<br/>        print(path)<br/>        os.remove(path)</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>The first two steps are preparation for running our UPX packer. In <em>Step 3</em>, we use a subprocess to call an external command, namely UPX, in Python. As we pack our samples (<em>Step 4</em>), whenever an error occurs, we remove the sample, as it cannot be packed successfully. This ensures that our directory contains nothing but packed samples, so that we can feed in clean and organized data to our classifier.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building a classifier for packers</h1>
+                </header>
+            
+            <article>
+                
+<p>Having assembled the labeled data, consisting of packed samples in directories labeled according to the packer, we are ready to train a classifier to determine whether a sample was packed, and, if so, by which packer. </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> and <kbd>nltk</kbd> in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn nltk</strong></pre>
+<p>In addition, packed and non-packed files have been provided for you in the repository. In this recipe, three types of samples are used: unpacked, UPX packed, and Amber packed. Extract all archives named <kbd>Benign PE Samples*.7z</kbd> from <kbd>PE Samples Dataset</kbd> in the root of the repository to a folder named <kbd>Benign PE Samples</kbd>, extract <kbd>Benign PE Samples UPX.7z</kbd> to a folder named <kbd>Benign PE Samples UPX</kbd>, and extract <kbd>Benign PE Samples Amber.7z</kbd> to a folder named <kbd>Benign PE Samples Amber</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, you will build a classifier to determine which packer was used to pack a file:</p>
+<ol start="1">
+<li> Read in the names of the files to be analyzed along with their labels, corresponding to the packer used:</li>
+</ol>
+<pre style="padding-left: 60px" class="a-b-r-La">import os<br/>from os import listdir<br/><br/>directories_with_labels = [<br/>    ("Benign PE Samples", 0),<br/>    ("Benign PE Samples UPX", 1),<br/>    ("Benign PE Samples Amber", 2),<br/>]<br/>list_of_samples = []<br/>labels = []<br/>for dataset_path, label in directories_with_labels:<br/>    samples = [f for f in listdir(dataset_path)]<br/>    for file in samples:<br/>        file_path = os.path.join(dataset_path, file)<br/>        list_of_samples.append(file_path)<br/>        labels.append(label)</pre>
+<ol start="2">
+<li>Create a train-test split:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>samples_train, samples_test, labels_train, labels_test = train_test_split(<br/>    list_of_samples, labels, test_size=0.3, stratify=labels, random_state=11<br/>)</pre>
+<ol start="3">
+<li>Define the imports needed to extract N-grams:</li>
+</ol>
+<pre style="padding-left: 60px">import collections<br/>from nltk import ngrams<br/>import numpy as np</pre>
+<ol start="4">
+<li>Define the functions to be used in extracting N-grams:</li>
+</ol>
+<pre style="padding-left: 60px">def read_file(file_path):<br/>    """Reads in the binary sequence of a binary file."""<br/>    with open(file_path, "rb") as binary_file:<br/>        data = binary_file.read()<br/>    return data<br/><br/><br/>def byte_sequence_to_Ngrams(byte_sequence, N):<br/>    """Creates a list of N-grams from a byte sequence."""<br/>    Ngrams = ngrams(byte_sequence, N)<br/>    return list(Ngrams)<br/><br/><br/>def extract_Ngram_counts(file, N):<br/>    """Takes a binary file and outputs the N-grams counts of its binary sequence."""<br/>    filebyte_sequence = read_file(file)<br/>    file_Ngrams = byte_sequence_to_Ngrams(filebyte_sequence, N)<br/>    return collections.Counter(file_Ngrams)<br/><br/><br/>def featurize_sample(sample, K1_most_frequent_Ngrams_list):<br/>    """Takes a sample and produces a feature vector.<br/>    The features are the counts of the K1 N-grams we've selected.<br/>    """<br/>    K1 = len(K1_most_frequent_Ngrams_list)<br/>    feature_vector = K1 * [0]<br/>    file_Ngrams = extract_Ngram_counts(sample, N)<br/>    for i in range(K1):<br/>        feature_vector[i] = file_Ngrams[K1_most_frequent_Ngrams_list[i]]<br/>    return feature_vector</pre>
+<ol start="5">
+<li>Pass through the data, and select the N-grams you wish to utilize as your features:</li>
+</ol>
+<pre style="padding-left: 60px">N = 2<br/>total_Ngram_count = collections.Counter([])<br/>for file in samples_train:<br/>    total_Ngram_count += extract_Ngram_counts(file, N)<br/>K1 = 100<br/>K1_most_common_Ngrams = total_Ngram_count.most_common(K1)<br/>K1_most_common_Ngrams_list = [x[0] for x in K1_most_common_Ngrams]</pre>
+<ol start="6">
+<li>Featurize the training set:</li>
+</ol>
+<pre style="padding-left: 60px">Ngram_features_list_train = []<br/>y_train = []<br/>for i in range(len(samples_train)):<br/>    file = samples_train[i]<br/>    NGram_features = featurize_sample(file, K1_most_common_Ngrams_list)<br/>    Ngram_features_list_train.append(NGram_features)<br/>    y_train.append(labels_train[i])<br/>X_train = Ngram_features_list_train</pre>
+<ol start="7">
+<li>Train a random forest model on the training data:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier(n_estimators=100)<br/>clf = clf.fit(X_train, y_train)</pre>
+<ol start="8">
+<li>Featurize the testing set:</li>
+</ol>
+<pre style="padding-left: 60px">Ngram_features_list_test = []<br/>y_test = []<br/>for i in range(len(samples_test)):<br/>    file = samples_test[i]<br/>    NGram_features = featurize_sample(file, K1_most_common_Ngrams_list)<br/>    Ngram_features_list_test.append(NGram_features)<br/>    y_test.append(labels_test[i])<br/>X_test = Ngram_features_list_test</pre>
+<ol start="9">
+<li>Utilize the trained classifier to predict on the testing set, and assess the performance using a confusion matrix:</li>
+</ol>
+<pre style="padding-left: 60px">y_pred = clf.predict(X_test)<br/>from sklearn.metrics import confusion_matrix<br/><br/>confusion_matrix(y_test, y_pred)</pre>
+<p style="padding-left: 60px">The output is as follows:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1092 image-border" src="assets/9f4cfd98-7261-4d18-b696-8831f90b68f6.png" style="width:31.25em;height:6.42em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start simply by organizing our data and labels into arrays (<em>Step 1</em>). In particular, we read in our samples and give them the label corresponding to the packer with which they have been packed. In <em>Step 2</em>, we train-test split our data. We are now ready to featurize our data, so we import the requisite libraries for N-gram extraction, as well as define our N-gram functions (<em>Steps 3</em> and <em>4</em>), which are discussed in other recipes, and, making a simplifying choice of <em>N=2</em> and the <em>K1=100</em> most frequent N-grams as our features, featurize our data (<em>Steps 5</em> and <em>6</em>). Different values of N and other methods of selecting the most informative N-grams can yield superior results, while increasing the need for computational resources. Having featurized the data, we train-test split it (<em>Step 7</em>) and then train a random forest classifier (a simple first choice) on the data (<em>Step 8</em>). Judging by the confusion matrix in <em>Step 9</em>, we see that a machine learning classifier performs very accurately on this type of problem.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">MalGAN – creating evasive malware</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Using <strong>Generative Adversarial Networks</strong> (<strong>GANs</strong>), we can create adversarial malware samples to train and improve our detection methodology, as well as to identify gaps before an adversary does. The code here is based on <strong>j40903272/MalConv-keras</strong>. The adversarial malware samples are malware samples that have been modified by padding them with a small, but carefully calculated, sequence of bytes, selected so as to fool the neural network (in this case, MalConv) being used to classify the samples.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing the <kbd>pandas</kbd>, <kbd>keras</kbd>, <kbd>tensorflow</kbd>, and <kbd>scikit-learn</kbd> packages in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install pandas keras tensorflow sklearn</strong></pre>
+<p>The associated code and resource files for <kbd>MalGan</kbd> have been included in the repository for this book, in the <kbd>MalGan</kbd> <span>directory. </span>In addition, assemble a collection of PE samples and then place their paths in the first column of the file:</p>
+<pre class="mce-root"><strong>"MalGAN_input/samplesIn.csv"</strong> </pre>
+<p>In the second column, type in these samples' verdicts (1 for benign and 0 for malicious).</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, you will learn how to create adversarial malware:</p>
+<ol>
+<li class="mce-root"> Begin by importing the code for MalGAN, as well as some utility libraries.</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import os<br/>import pandas as pd<br/>from keras.models import load_model<br/>import MalGAN_utils<br/>import MalGAN_gen_adv_examples</pre>
+<ol start="2">
+<li class="mce-root">Specify the input and output paths:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">save_path = "MalGAN_output"<br/>model_path = "MalGAN_input/malconv.h5"<br/>log_path = "MalGAN_output/adversarial_log.csv"<br/>pad_percent = 0.1<br/>threshold = 0.6<br/>step_size = 0.01<br/>limit = 0.<br/>input_samples = "MalGAN_input/samplesIn.csv"</pre>
+<ol start="3">
+<li class="mce-root">Set whether you'd like to use a GPU for adversarial sample generation:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">MalGAN_utils.limit_gpu_memory(limit)</pre>
+<ol start="4">
+<li class="mce-root">Read in the csv file containing the names and labels of your samples into a data frame:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">df = pd.read_csv(input_samples, header=None)<br/>fn_list = df[0].values</pre>
+<ol start="5">
+<li class="mce-root">Load the pre-computed MalConv model:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">model = load_model(model_path)</pre>
+<ol start="6">
+<li class="mce-root"> Use the <strong>Fast Gradient Step Method</strong> (<strong>FGSM</strong>) to generate adversarial malware:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">adv_samples, log = MalGAN_gen_adv_examples.gen_adv_samples(model, fn_list, pad_percent, step_size, threshold)</pre>
+<ol start="7">
+<li class="mce-root">Save a log of the results and write the samples to disk:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">log.save(log_path)<br/>for fn, adv in zip(fn_list, adv_samples):<br/>    _fn = fn.split('/')[-1]<br/>    dst = os.path.join(save_path, _fn)<br/>    print(dst)<br/>    with open(dst, 'wb') as f:<br/>        f.write(adv)</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start by importing all the MalGAN code that we will be using (<em>Step 1</em>). We must specify a few arguments (<em>Step 2</em>), to be explained now. The <kbd>savePath</kbd> parameter is the location into which the adversarial examples will be saved. The <kbd>modelPath</kbd> variable is the path to the pre-computed weights of MalConv. The <kbd>logPath</kbd> parameter is where data pertaining to the application of the <strong><span class="st">Fast Gradient Signed Method</span></strong> (<strong>FGSM</strong>) to the sample is recorded. For example, a log file may appear as follows:</p>
+<table style="border-collapse: collapse;width: 697px;height: 150px;border-color: #000000" border="1">
+<tbody>
+<tr style="height: 33.2852px">
+<td style="width: 116px" class="CDPAlignCenter CDPAlign">
+<p><strong>filename</strong></p>
+</td>
+<td style="width: 138px" class="CDPAlignCenter CDPAlign">
+<p><strong>original score</strong></p>
+</td>
+<td style="width: 111px" class="CDPAlignCenter CDPAlign">
+<p><strong>file length</strong></p>
+</td>
+<td style="width: 115px" class="CDPAlignCenter CDPAlign">
+<p><strong>pad length</strong></p>
+</td>
+<td style="width: 54px" class="CDPAlignCenter CDPAlign">
+<p><strong>loss</strong></p>
+</td>
+<td style="width: 150px" class="CDPAlignCenter CDPAlign">
+<p><strong>predict score</strong></p>
+</td>
+</tr>
+<tr style="height: 74px">
+<td style="width: 116px" class="CDPAlignCenter CDPAlign">
+<p>0778...b916</p>
+</td>
+<td style="width: 138px" class="CDPAlignCenter CDPAlign">
+<p>0.001140</p>
+</td>
+<td style="width: 111px" class="CDPAlignCenter CDPAlign">
+<p>235</p>
+</td>
+<td style="width: 115px" class="CDPAlignCenter CDPAlign">
+<p>23</p>
+</td>
+<td style="width: 54px" class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td style="width: 150px" class="CDPAlignCenter CDPAlign">
+<p>0.912</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p class="mce-root">Observe that the original score is close to <kbd>0</kbd>, indicating that the original sample is considered malicious by MalConv. After selecting which bytes to use to pad, the final prediction score is close to <kbd>1</kbd>, indicating that the modified sample is now considered benign. The <kbd>padPercent</kbd> parameter determines how many bytes are appended to the end of a sample. The <kbd>threshold</kbd> parameter determines how certain the neural network should be in the adversarial example being benign for it to be written to disk. <kbd>stepSize</kbd> is a parameter used in the FGSM. That's all for parameters at this stage. We still have another choice to make, which is whether to use a CPU or GPU (<em>Step 3</em>). We make the choice of using a CPU in this recipe for simplicity. Obviously, a GPU would make computations faster. The <kbd>limit</kbd> parameter here indicates how much GPU to use in the computation, and is set to <kbd>0</kbd>. In the next step, <em>Step 4</em>, we read in the <kbd>.csv</kbd> file pointed to by the <kbd>inputSamples</kbd> parameter. This input log takes a format such as the following:</p>
+<table style="border-collapse: collapse;width: 101.358%;border-color: #000000" border="1">
+<tbody>
+<tr style="height: 26.5664px">
+<td style="width: 61.7823%" class="CDPAlignCenter CDPAlign">
+<p>2b5137a1658c...8</p>
+</td>
+<td style="width: 36.2177%" class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+</tr>
+<tr style="height: 32px">
+<td style="width: 61.7823%" class="CDPAlignCenter CDPAlign">
+<p>0778a070b28...6</p>
+</td>
+<td style="width: 36.2177%" class="CDPAlignCenter CDPAlign">
+<p>0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Here, in the first column, the path of a sample is given, and, in the second column, a label is provided (<kbd>1</kbd> for benign and <kbd>0</kbd> for malicious). We now load the precomputed MalGAN model (<em>Step 5</em>), generate adversarial malware samples (<em>Step 6</em>), and then save them onto disk (<em>Step 7</em>).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Tracking malware drift</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The distribution of malware is ever-changing. Not only are new samples released, but new types of viruses as well. For example, cryptojackers are a relatively recent breed of malware unknown until the advent of cryptocurrency. Interestingly, from a machine learning perspective, it's not only the types and distribution of malware that are evolving, but also their definitions, something known as <strong>concept drift</strong>. To be more specific, a 15 year-old virus is likely no longer executable in the systems currently in use. Consequently, it cannot harm a user, and is therefore no longer an instance of malware.</p>
+<p class="mce-root">By tracking the drift of malware, and even predicting it, an organization is better able to channel its resources to the correct type of defense, inoculating itself from future threats.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing the <kbd>matplotlib</kbd>, <kbd>statsmodels</kbd>, and <kbd>scipy</kbd> packages in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install matplotlib statsmodels scipy</strong></pre></div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, you will use a regression on time series to predict the distribution of malware based on historical data:</p>
+<ol>
+<li class="mce-root">Collect historical data on the distribution of malware in your domain of interest:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">month0 = {"Trojan": 24, "CryptoMiner": 11, "Other": 36, "Worm": 29}<br/>month1 = {"Trojan": 28, "CryptoMiner": 25, "Other": 22, "Worm": 25}<br/>month2 = {"Trojan": 18, "CryptoMiner": 36, "Other": 41, "Worm": 5}<br/>month3 = {"CryptoMiner": 18, "Trojan": 33, "Other": 44, "Worm": 5}<br/>months = [month0, month1, month2, month3]</pre>
+<ol start="2">
+<li class="mce-root">Convert the data into a separate time series for each class of malware:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">trojan_time_series = []<br/>crypto_miner_time_series = []<br/>worm_time_series = []<br/>other_time_series = []<br/>for month in months:<br/>    trojan_time_series.append(month["Trojan"])<br/>    crypto_miner_time_series.append(month["CryptoMiner"])<br/>    worm_time_series.append(month["Worm"])<br/>    other_time_series.append(month["Other"])</pre>
+<p style="padding-left: 60px" class="mce-root">The following graph shows the time series for Trojan:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1093 image-border" src="assets/61629ac3-ea5d-45c7-b8d7-ffe33e2b62fd.png" style="width:21.50em;height:15.33em;"/></p>
+<p style="padding-left: 60px" class="mce-root">The following graph shows the time series for CryptoMiners:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1094 image-border" src="assets/f79a4bd3-3510-4acd-bab4-aeb75c6987cc.png" style="width:22.08em;height:15.75em;"/></p>
+<p style="padding-left: 60px">The following graph shows the time series for Worms:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1095 image-border" src="assets/db09ce4d-c553-465a-8b5c-d3e482b2c8c4.png" style="width:22.67em;height:16.17em;"/></p>
+<p style="padding-left: 60px">The <span>following </span>graph shows the time series for other types of malware:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1096 image-border" src="assets/8980a23c-40c6-49c7-bbb8-43fbf12e4af7.png" style="width:23.42em;height:16.75em;"/></p>
+<ol start="3">
+<li class="mce-root">Import the moving average from <kbd>statsmodels</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from statsmodels.tsa.arima_model import ARMA</pre>
+<ol start="4">
+<li class="mce-root">Predict the following month's distribution based on the time series using the moving average.</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">ts_model = ARMA(trojan_time_series, order=(0, 1))<br/>model_fit_to_data = ts_model.fit(disp=True)<br/>y_Trojan = model_fit_to_data.predict(len(trojan_time_series), len(trojan_time_series))<br/>print("Trojan prediction for following month: " + str(y_Trojan[0]) + "%")</pre>
+<p style="padding-left: 60px">The result for Trojans is as follows:</p>
+<pre style="padding-left: 60px"><strong>Trojan prediction for following month: 21.699999876315772%</strong></pre>
+<p style="padding-left: 60px">We run the same method for Cryptominers:</p>
+<pre style="padding-left: 60px" class="mce-root">ts_model = ARMA(crypto_miner_time_series, order=(0, 1))<br/>model_fit_to_data = ts_model.fit(disp=True)<br/>y_CryptoMiner = model_fit_to_data.predict(<br/>    len(crypto_miner_time_series), len(crypto_miner_time_series)<br/>)<br/>print("CryptoMiner prediction for following month: " + str(y_CryptoMiner[0]) + "%")</pre>
+<p style="padding-left: 60px"><span>We obtain the following </span><span>prediction:</span></p>
+<pre style="padding-left: 60px"><strong>CryptoMiner prediction for following month: 24.09999979660618%</strong></pre>
+<p style="padding-left: 60px">In the case of Worms, use the following code:</p>
+<pre style="padding-left: 60px" class="mce-root">ts_model = ARMA(worm_time_series, order=(0, 1))<br/>model_fit_to_data = ts_model.fit(disp=True)<br/>y_Worm = model_fit_to_data.predict(len(worm_time_series), len(worm_time_series))<br/>print("Worm prediction for following month: " + str(y_Worm[0]) + "%")</pre>
+<p style="padding-left: 60px"><span>We obtain the following </span>prediction:</p>
+<pre style="padding-left: 60px"><strong>Worm prediction for following month: 14.666665384131406%</strong></pre>
+<p style="padding-left: 60px">For other types of Malware, we use the following code:</p>
+<pre style="padding-left: 60px" class="mce-root">ts_model = ARMA(other_time_series, order=(0, 1))<br/>model_fit_to_data = ts_model.fit(disp=True)<br/>y_Other = model_fit_to_data.predict(len(other_time_series), len(other_time_series))<br/>print("Other prediction for following month: " + str(y_Other[0]) + "%")</pre>
+<p style="padding-left: 60px"><span>We obtain the following </span><span>prediction:</span></p>
+<pre style="padding-left: 60px"><strong>Other prediction for following month: 27.400000645620793%</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>For instructive purposes, we produce a toy dataset representing the percentage of each type of malware in time (<em>Step 1</em>). With a larger amount of historical data, such a dataset can indicate where to channel your resources in the domain of security. We collect the data in one place and produce visualization plots (<em>Step 2</em>). We would like to perform simple forecasting, so we import ARMA, which stands for <em>autoregressive–moving-average model</em>, and is a generalization of the moving-average model. For simplicity, we specialize ARMA to <strong>moving average</strong> (<strong>MA</strong>). In <em>Step 4</em>, we employ MA to make a prediction on how the percentages of malware will evolve to the next time period. With a larger dataset, it is prudent to attempt different models, as well as create a train-test split that accounts for time. This will allow you to find the most explanatory model, in other words, the model that produces the most accurate time forecasts. </p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

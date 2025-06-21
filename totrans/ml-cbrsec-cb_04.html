@@ -1,0 +1,1482 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Machine Learning for Social Engineering</h1>
+                </header>
+            
+            <article>
+                
+<p><span>There are a lot of cool new applications of <strong>machine learning</strong> (<strong>ML</strong>), and nowhere do these shine as much as they do in social engineering. ML has enabled hugely successful automated spear phishing, as we will learn via a Twitter spear phishing bot recipe. It has also been used to generate fake, but realistic, videos and, at the same time, to discover when these are fake. It offers the ability to voice transfer, detect lies, and many other handy tools that you will see in this chapter's recipes, designed to step up your social engineering game.</span></p>
+<p class="mce-root">This chapter covers the following recipes:</p>
+<ul>
+<li class="mce-root">Twitter spear phishing bot</li>
+<li class="mce-root">Voice impersonation</li>
+<li class="mce-root">Speech recognition for <strong>Open Source Intelligence</strong> (<strong>OSINT</strong>)</li>
+<li>Facial recognition</li>
+<li class="mce-root">Deepfake</li>
+<li class="mce-root">Deepfake recognition</li>
+<li class="mce-root">Lie detection using ML</li>
+<li class="mce-root">Personality analysis</li>
+<li class="mce-root">Social Mapper</li>
+<li class="mce-root">Training a fake review generator</li>
+<li>Generating fake reviews</li>
+<li>Fake news</li>
+</ul>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will be using the following:</p>
+<ul>
+<li>Markovify</li>
+<li>Twitter developer account</li>
+<li>Tweepy</li>
+<li>PyTorch</li>
+<li>OpenCV</li>
+<li>Keras</li>
+<li>TensorFlow</li>
+<li>IBM's Watson</li>
+</ul>
+<p><span>The code and datasets may be found at <a href="https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter04">https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter04</a>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Twitter spear phishing bot</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we are going to use machine learning to build a Twitter spear phishing bot. The bot will utilize artificial intelligence to mimic its targets' tweets, hence creating interesting and enticing content for its own tweets. Also, the tweets will contain embedded links, resulting in targets clicking these phishing links. Of course, we will not be utilizing this bot for malicious purpose, and our links will be dummy links. The links themselves will be obfuscated, so a target will not be able to tell what is really hidden behind them until after they click.</p>
+<p>Experimentally, it has been shown that this form of attack has a high percentage success rate, and by simulating this form of attack, you can test and improve the security posture of your client or organization.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing the <kbd>tweepy</kbd> and <kbd>markovify</kbd> <span>packages</span><span> </span><span>in</span> <kbd>pip</kbd><span>. The instructions are as follows:</span></p>
+<pre><strong>pip install tweepy markovify</strong></pre>
+<p>Also, you will need to set up a developer account on Twitter. The process is relatively simple and account creation is free.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we demonstrate how to use machine learning to create a spear phishing Twitter bot:</p>
+<ol>
+<li class="mce-root">Set up a developer account on Twitter.</li>
+<li class="mce-root">Create a new app and obtain your consumer API keys, access token, and access token secret.</li>
+<li class="mce-root">Import the <kbd>tweepy</kbd> library and fill in your credentials to access the Twitter API:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import json<br/>import tweepy<br/><br/>CONSUMER_API_KEY = "fill me in"<br/>CONSUMER_API_SECRET_KEY = "fill me in"<br/>ACCESS_TOKEN = "fill me in"<br/>ACCESS_TOKEN_SECRET = "fill me in"<br/><br/>auth = tweepy.OAuthHandler(CONSUMER_API_KEY, CONSUMER_API_SECRET_KEY)<br/>auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)<br/><br/>api = tweepy.API(<br/>    auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, compression=True<br/>)</pre>
+<ol start="4">
+<li class="mce-root">We select a user we would like to target or imitate. In this case, I chose a prominent figure in technology, active on Twitter:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">user_id = "elonmusk"</pre>
+<ol start="5">
+<li class="mce-root">Collect the user's latest <kbd>count = 200</kbd> tweets:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">count = 200<br/>user_tweets = api.user_timeline(screen_name=user_id, count=count, tweet_mode="extended")</pre>
+<ol start="6">
+<li class="mce-root">Collect all of the user's Tweets into one large text:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">tweet_corpus = []<br/>for tweet in user_tweets:<br/>    tweet_corpus.append(tweet.full_text)<br/>tweets_text = ". ".join(tweet_corpus)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="7">
+<li>We now proceed to process the text. We define a function that will replace any found instance of a URL with a new URL:</li>
+</ol>
+<pre style="padding-left: 60px">import re<br/><br/>def replace_URLs(string, new_URL):<br/>    """Replaces all URLs in a string with a custom URL."""<br/>    modified_string = re.sub(<br/>        "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&amp;+]|[!*\(\), ]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",<br/>        " " + new_URL + " ",<br/>        string,<br/>    )<br/>    return modified_string</pre>
+<ol start="8">
+<li>Create a phishing link and insert it into the tweets. In our case, we used a URL shortener to obfuscate the fact that the link takes a user to <a href="http://google.com">google.com</a>:</li>
+</ol>
+<pre style="padding-left: 60px">phishing_link = "https://urlzs.com/u8ZB"<br/>processed_tweets_text = replace_URLs(tweets_text, phishing_link)</pre>
+<ol start="9">
+<li>Train a Markov model on the processed text and generate tweets:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import markovify<br/><br/>markov_model = markovify.Text(processed_tweets_text)</pre>
+<ol start="10">
+<li>Generate the desired number of tweets that contains the phishing link:</li>
+</ol>
+<pre style="padding-left: 60px">num_phishing_tweets_desired = 5<br/>num_phishing_tweets_so_far = 0<br/>generated_tweets = []<br/>while num_phishing_tweets_so_far &lt; num_phishing_tweets_desired:<br/>    tweet = markov_model.make_short_sentence(140)<br/>    if phishing_link in tweet and tweet not in generated_tweets:<br/>        generated_tweets.append(tweet)<br/>        num_phishing_tweets_so_far += 1</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p style="padding-left: 60px">We will see the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1173 image-border" src="assets/3e7aedd3-3037-46ce-b1d1-73ed514502ef.png" style="width:73.33em;height:8.17em;"/></p>
+<ol start="11">
+<li>Publish your tweets and target either the user, followers of the user, or friends of the user. For instance, this code obtains the user's friends:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">user = api.get_user(user_id)<br/>for friend in user.friends():<br/>    print(friend.screen_name)</pre>
+<p style="padding-left: 60px">The output we'll see is as follows:</p>
+<div class="mce-root">
+<pre style="padding-left: 60px">wonderofscience<br/>SpaceComCC<br/>AFSpace<br/>Liv_Boeree<br/>shivon<br/>Teslarati<br/>neiltyson<br/>SciGuySpace<br/>wlopwangling<br/>Berger_SN<br/>pewdiepie<br/>CathieDWood<br/>lexfridman<br/>ccsakuras<br/>4thFromOurStar<br/>TheOnion<br/>BBCScienceNews<br/>sciencemagazine<br/>NatureNews<br/>TheStoicEmperor</pre></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In steps 1 and 2, you will want to go onto the Twitter developer web page to create your API account, which will be free. To access the Twitter API through Python, we use the <kbd>tweepy</kbd> library (step 3). Our goal is to learn from the tweets of a target Twitter user so that our tweets have the same style and topics as that user. Such tweets then form likely bait for anyone interested in the same topics and style. We chose to imitate Elon Musk's style for our tweets (step 4). We proceed to collect the last 200 tweets that Elon has released (steps 5 and 6). Generally speaking, the more tweets from the user you can obtain, the more convincing the model will be. However, it may be important to account for time and relevancy—that is, that users are more likely to click on timely and relevant tweets than those dealing with aged topics.</p>
+<p class="mce-root">We define a function to process the text so that all the URLs are replaced with the desired URL (step 7) and then apply it to our text (step 8). We used a URL shortener to hide the destination of the phishing link, which is just Google. There is great room for creativity at this stage of processing the tweets. For instance, we may customize the <kbd>@</kbd> screen names so they are more relevant to our target. In steps 9 and 10, we train a Markov model on the tweets we have processed and then generate several tweets with the phishing link embedded in them. Finally, concerning step 11, keep in mind that other modifications to make the bot more effective include picking the optimal time of day, week, month, or other (for example, event-related timing) to send the tweet or adding photos with links into the tweet.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Voice impersonation</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Using the new technology of voice style transfer via neural networks, it is becoming easier and easier to convincingly impersonate a target's voice. In this section, we show you how to use deep learning to have a recording of a target saying whatever you want them to say, for example, to have a target's voice used for social engineering purposes or, a more playful example, using Obama's voice to sing <span>Beyoncé </span><span>songs. We selected the architecture in <kbd>mazzzystar/randomCNN-voice-transfer</kbd> that allows for fast results with high quality. In particular, there is no need to pre-train the model on a large dataset of recorded audio.</span></p>
+<p class="mce-root">In the accompanying code for this book, you will find two versions of the voice transfer neural network code, one for GPU and one for CPU. We describe here the one for CPU, though the one for GPU is very similar.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>pytorch</kbd> and <kbd>librosa</kbd> in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install torch librosa</strong></pre>
+<p>Also, place two files in the <kbd>voice_impersonation_input</kbd> folder. One file will be an audio recording of the message you would like to vocalize and another file will be the voice in which you would like to vocalize that message.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we provide a recipe for transferring the voice of one speaker to the recording of another speaker. The code is structured in three parts: Voice Impersonation for CPU (main), a model, and utilities. We will discuss how to run the main and explain what it is doing. Whenever a reference occurs to the other parts of the code, we will provide a high-level explanation of what the referenced method does, but leave the details out for the sake of brevity.</p>
+<p class="mce-root">The following code can be found in <kbd>Voice Impersonation.ipynb</kbd>:</p>
+<ol>
+<li class="mce-root">Import PyTorch utilities, the neural network model, and <kbd>math</kbd> for some basic computations:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import math<br/>from torch.autograd import Variable<br/>from voice_impersonation_utils import *<br/>from voice_impersonation_model import *</pre>
+<ol start="2">
+<li class="mce-root">Specify the voice we wish to use in <kbd>style_file</kbd> and the audio we wish to utter in that voice in <kbd>content_file</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">input_files = "voice_impersonation_input/"<br/>content_file = input_files + "male_voice.wav"<br/>style_file = input_files + "Eleanor_Roosevelt.wav"</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="3">
+<li class="mce-root">We extract the spectra of the content and style files and convert these into PyTorch tensors:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">audio_content, sampling_rate = wav2spectrum(content_file)<br/>audio_style, sampling_rate = wav2spectrum(style_file)<br/>audio_content_torch = torch.from_numpy(audio_content)[None, None, :, :]<br/>audio_style_torch = torch.from_numpy(audio_style)[None, None, :, :]</pre>
+<ol start="4">
+<li class="mce-root">We instantiate a Random CNN model and set it to <kbd>eval</kbd> mode:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">voice_impersonation_model = RandomCNN()<br/>voice_impersonation_model.eval()</pre>
+<ol start="5">
+<li class="mce-root">We prepare the tensors for the upcoming training of the neural network and select the Adam optimizer and a learning rate:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">audio_content_variable = Variable(audio_content_torch, requires_grad=False).float()<br/>audio_style_variable = Variable(audio_style_torch, requires_grad=False).float()<br/>audio_content = voice_impersonation_model(audio_content_variable)<br/>audio_style = voice_impersonation_model(audio_style_variable)<br/><br/>learning_rate = 0.003<br/>audio_G_var = Variable(<br/>    torch.randn(audio_content_torch.shape) * 1e-3, requires_grad=True<br/>)<br/>opt = torch.optim.Adam([audio_G_var])</pre>
+<ol start="6">
+<li class="mce-root">We specify <kbd>style</kbd> and <kbd>content</kbd> parameters and how long we wish to train our model:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">style_param = 1<br/>content_param = 5e2<br/><br/>num_epochs = 500<br/>print_frequency = 50</pre>
+<ol start="7">
+<li>We train our model:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">for epoch in range(1, num_epochs + 1):<br/>    opt.zero_grad()<br/>    audio_G = voice_impersonation_model(audio_G_var)<br/><br/>    content_loss = content_param * compute_content_loss(audio_content, audio_G)<br/>    style_loss = style_param * compute_layer_style_loss(audio_style, audio_G)<br/>    loss = content_loss + style_loss<br/>    loss.backward()<br/>    opt.step()</pre>
+<ol start="8">
+<li>We print the ongoing progress of the training, specify the output file's name, and, finally, convert the neural network's output spectrum into an audio file:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">    if epoch % print_frequency == 0:<br/>        print("epoch: "+str(epoch))<br/>        print("content loss: "+str(content_loss.item()))<br/>        print("style loss: "+str(style_loss.item()))<br/>        print("loss: "+str(loss.item()))<br/><br/>gen_spectrum = audio_G_var.cpu().data.numpy().squeeze()<br/>output_audio_name = "Eleanor_saying_there_was_a_change_now.wav"<br/>spectrum2wav(gen_spectrum, sampling_rate, output_audio_name)</pre>
+<p class="mce-root">The final result of our computation can be seen in the audio file with the name <kbd>Eleanor_saying_there_was_a_change_now.wav</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We begin by importing PyTorch, the neural network model, and <kbd>math</kbd> for some basic computations (step 1). More interestingly, in step 2, we specify content and style audio. In the content file, you can utter whatever phrase you wish, for example, <em>you can't do cybersecurity without machine learning</em>. Then, in the style file, you select a recording of someone's voice, for example, a recording of a famous individual such as Elon Musk. The final result of the voice impersonation is that Elon Musk says that <em>you can't do cybersecurity without machine learning</em>. Steps 3, 4, and 5 involve some legwork to prepare our data to be fed into our model and then instantiate a Random CNN model and its optimizer. The main feature of the model is that it uses a 2D convolutional layer rather than a 1D layer for the audio spectrogram and it computes <kbd>grams</kbd> over the time axis. Setting the model to evaluation mode (to be contrasted with training mode) affects the behavior of certain layers, such as dropout and batch norm, that are used differently in training versus testing. In the next step (step 6), we define the <kbd>style</kbd> and <kbd>content</kbd> parameters, which assign relative weights to style and content. In particular, these determine how strongly the final audio will inherit the style versus content from the respective files. We are now ready to train our model, which we do in step 7 by performing forward and back propagation. We monitor the progress of the training (step 8), and then finally output an audio file to disk that pronounces the content file using the style of the style file. You may find this file in the repository for this book.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Speech recognition for OSINT</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The story goes that a pen tester was performing intelligence gathering on the at-the-time director of the FBI, James Comey. By listening to footage from Comey, the pen tester noted that Comey mentioned having several social media accounts, including a Twitter account. However, at the time, no account of his was known.</p>
+<p class="mce-root">Through thorough investigation, the pen tester eventually discovered Comey's secret Twitter account, screen name Reinhold Niebuhr. The goal of this recipe is to help the pen tester to automate and expedite the sifting through large amounts of audio/video footage about a target in the search of keywords. Specifically, we use machine learning to convert speech into text, collect this text, and then search for keywords of interest.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing the <kbd>speechrecognition</kbd> package in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install speechrecognition</strong></pre>
+<p>In addition, collect a number of audio files whose speech you would like to recognize.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we show how to use the speech recognition library to convert audio recordings of speech into text and then search through these texts for desired keywords:</p>
+<ol>
+<li class="mce-root">Import the speech recognition library and select a list of audio files whose speech we wish to convert into text. Also, create a list of keywords you would like to automatically detect in these audio files:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import speech_recognition<br/><br/>list_of_audio_files = ["Eleanor_Roosevelt.wav", "Comey.wav"]<br/>keywords = ["Twitter", "Linkedin", "Facebook", "Instagram", "password", "FBI"]</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<ol start="2">
+<li class="mce-root">Define a function that uses the Google speech recognition API to convert the audio file into text:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def transcribe_audio_file_to_text(audio_file):<br/>    """Takes an audio file and produces a text transcription."""<br/>    recognizer = speech_recognition.Recognizer()<br/>    with speech_recognition.AudioFile(audio_file) as audio_source:<br/>        audio = recognizer.record(audio_source)<br/>        return recognizer.recognize_google(audio)</pre>
+<ol start="3">
+<li class="mce-root">Convert the audio files into text and create a dictionary to remember which audio file the text came from:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">audio_corpus = {}<br/>for audio_file in list_of_audio_files:<br/>    audio_corpus[transcribe_audio_file_to_text(audio_file)] = audio_file<br/><br/>print(audio_corpus)</pre>
+<p style="padding-left: 60px" class="mce-root">The corpus output is as the following:</p>
+<pre style="padding-left: 60px">{"I'm very glad to be able to take part in this celebration dim sum Direct on human rights day": 'Eleanor_Roosevelt.wav', "have you met read recently that I'm on Twitter I am not a tweeter I am there to listen to read especially what's being said about the FBI and its mission": 'Comey.wav'}</pre>
+<ol start="4">
+<li class="mce-root">Search through the corpus of text for the keywords and print out which audio files had those keywords:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">for keyword in keywords:<br/>    for transcription in audio_corpus:<br/>        if keyword in transcription:<br/>            print(<br/>                "keyword "<br/>                + keyword<br/>                + " found in audio "<br/>                + '"'<br/>                + audio_corpus[transcription]<br/>                + '"'<br/>            )</pre>
+<p style="padding-left: 60px">Our run has detected the keyword <kbd>Twitter</kbd>:</p>
+<pre style="padding-left: 60px" class="mce-root">keyword Twitter found in audio "Comey.wav"<br/>keyword FBI found in audio "Comey.wav"</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We begin by importing the speech recognition library and selecting a list of audio files whose speech we wish to convert into text. Also, we create a list of keywords we would like to automatically detect in these audio files (step 1). The approach taken, of detecting the utterance of these keywords, can be made more robust through stemming or lemmatization, which effectively accounts for variants of the keywords that have the same meaning. For example, Twitter, Twitted, and Tweet would all be detected if this approach is properly implemented. In step 2, we specify that we will use Google's Speech Recognition API to transcribe the audio. Other speech recognition services, such as pocketsphinx, are available as well. We are now ready to transcribe our audio files, which we do in step 3. Now we have our audio in text format, and it's smooth sailing from here. Simply search for the keywords of interest (step 4). An additional optimization that may be fruitful when the corpus and text grow larger is to print the sentence where the keyword was found, to make it easier to understand the context.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Facial recognition</h1>
+                </header>
+            
+            <article>
+                
+<p>A facial recognition system is a technology for identifying or verifying a person in images or videos. When performing OSINT on a target or potential targets, a facial recognition system can be invaluable. In this recipe, you will learn how to use the well-developed <kbd>face_recognition</kbd> Python library.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing the <kbd>face_recognition</kbd> and OpenCV packages in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install face_recognition opencv-python</strong></pre>
+<p>In addition, you will want a portrait of an individual and a collection of images through which you would like to search for that individual.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, you will train <kbd>face_recognition</kbd> to find and label a given individual in a series of images:</p>
+<ol>
+<li>Begin by importing the <kbd>face_recognition</kbd> library:</li>
+</ol>
+<pre style="padding-left: 60px">import face_recognition</pre>
+<ol start="2">
+<li>Start by loading in a labeled portrait of the individual on which you will perform OSINT:</li>
+</ol>
+<pre style="padding-left: 60px">known_image = face_recognition.load_image_file("trump_official_portrait.jpg")</pre>
+<p style="padding-left: 60px">The face of the individual must be clearly visible: </p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1107 image-border" src="assets/ab1cb3f4-c88f-407d-854f-84fdda2fe552.png" style="width:17.58em;height:22.25em;"/></p>
+<ol start="3">
+<li>Next, load in an <kbd>unknown</kbd> image, in which you would like to automatically detect the face of the individual:</li>
+</ol>
+<pre style="padding-left: 60px">unknown_image = face_recognition.load_image_file("trump_and_others.jpg")</pre>
+<p style="padding-left: 60px">The individual whose face is being searched for is present in this screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1108 image-border" src="assets/6dc5fd33-e04a-4c6a-b76b-342c63c0e8c3.png" style="width:25.50em;height:17.00em;"/></p>
+<ol start="4">
+<li>Encode the face of the individual:</li>
+</ol>
+<pre style="padding-left: 60px">trump_encoding = face_recognition.face_encodings(known_image)[0]</pre>
+<ol start="5">
+<li>Encode the faces of all individuals in the unknown image:</li>
+</ol>
+<pre style="padding-left: 60px">unknown_faces = face_recognition.face_encodings(unknown_image)</pre>
+<ol start="6">
+<li> Perform a search for the face of the individual:</li>
+</ol>
+<pre style="padding-left: 60px">matches = face_recognition.compare_faces(unknown_faces, trump_encoding)<br/>print(matches)</pre>
+<p style="padding-left: 60px" class="mce-root">The output is as follows:</p>
+<pre style="padding-left: 60px">[False, False, False, True]</pre>
+<ol start="7">
+<li>Load the locations of all faces in the unknown image and save the location of the match into a variable:</li>
+</ol>
+<pre style="padding-left: 60px">face_locations = face_recognition.face_locations(unknown_image)<br/>trump_face_location = face_locations[3]</pre>
+<ol start="8">
+<li>Read in the unknown image into <kbd>cv2</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import cv2<br/>unknown_image_cv2 = cv2.imread("trump_and_others.jpg")</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="9">
+<li>Draw a rectangle on the unknown image for where the matching face is:</li>
+</ol>
+<pre style="padding-left: 60px">(top, right, bottom, left) = trump_face_location<br/>cv2.rectangle(unknown_image_cv2, (left, top), (right, bottom), (0, 0, 255), 2)</pre>
+<ol start="10">
+<li>Label the rectangle:</li>
+</ol>
+<pre style="padding-left: 60px">cv2.rectangle(unknown_image_cv2, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)<br/>font = cv2.FONT_HERSHEY_DUPLEX<br/>cv2.putText(unknown_image_cv2, "Trump", (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)</pre>
+<ol start="11">
+<li>Display the image with the labeled rectangle:</li>
+</ol>
+<pre style="padding-left: 60px">cv2.namedWindow('image', cv2.WINDOW_NORMAL)<br/>cv2.imshow('image',unknown_image_cv2)<br/>cv2.waitKey(0)<br/>cv2.destroyAllWindows()</pre>
+<p style="padding-left: 60px">The following screenshot shows us that the output has been successful:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1109 image-border" src="assets/a50ba5dd-c7f1-4134-bdb9-bf958eea114b.png" style="width:31.33em;height:20.83em;"/></p>
+<p>It is straightforward to automate this searching and labeling process.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Begin simply by importing the facial recognition library (step 1). In the next step, we load the image of the target we wish to locate in a collection of images in our pen test. Next, prepare an example image that we would like to scan for the presence of the target's face (step 3). Encode all found faces in images (steps 4 and 5) and then search for the face of the target (step 6). For convenience, we print out the results of seeking a match with the target's face. In steps 7-10, we wish to demonstrate that we have found a match. To that end, we load the image we have scanned. We then draw a rectangle and a label where our classifier has detected the target's face. Looking at the result in step 11, we see a massive success. We made a successful detection.</p>
+<p>In passing, note that the technology behind the <kbd>face_recognition</kbd> tool is deep learning, and, as a corollary, a search process for faces can be expedited using a GPU.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deepfake</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Deepfake</strong> is the technique of using a neural network to take a video or image, superimpose some content onto it, and make the result look realistic. For example, the technique can take a video of Alice saying she supports a movement, and then, replacing Alice with Bob, create a realistic-looking video of Bob saying he supports the movement. Clearly, this technique has deep implications on the trust we can place on videos and images, while also providing a useful tool for social engineers.</p>
+<p class="mce-root">In this recipe, we use a Deepfake variant to take the image of the face of one target and realistically superimpose it onto the image of another target's face. The recipe is a refactored and simplified version of the code in the GitHub repository, <kbd>wuhuikai/FaceSwap</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>opencv</kbd>, <kbd>dlib</kbd>, and <kbd>scipy</kbd> in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install opencv-python dlib scipy</strong></pre>
+<p>Also, you will want two images; one is a portrait of an individual and one is an image containing a face. The former face will be transferred onto the latter. A sample has been provided for you in the <kbd>deepfake_input</kbd><span> </span><span>folder</span><span>.</span></p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we provide a recipe for replacing the face of one individual in an image with that of another. The code is structured in five parts: <kbd>Deepfake.ipynb</kbd> (main), the <kbd>deepfake_config</kbd> configuration file, <kbd>deepfake_face_detection</kbd>, <kbd>deepfake_face_points_detection</kbd>, and <kbd>deepfake_face_swap</kbd>. Also, a models folder is included.</p>
+<p class="mce-root">The following code can be found in <kbd>Deepfake.ipynb</kbd>:</p>
+<ol>
+<li class="mce-root">Import <kbd>opencv</kbd> for image operations and the methods needed to swap faces from the associated code:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import os<br/>import cv2<br/>import numpy as np<br/>from deepfake_face_detection import select_face<br/>from deepfake_face_swap import (<br/>    warp_image_2d,<br/>    warp_image_3d,<br/>    mask_from_points,<br/>    apply_mask,<br/>    correct_colours,<br/>    transformation_from_points,<br/>    ProcessFace,<br/>)</pre>
+<ol start="2">
+<li class="mce-root">Specify the image containing the face we wish to use in <kbd>content_image</kbd> and the image where we want the face to be transferred to in <kbd>target_image</kbd>. Finally, specify where you'd like the result created:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">content_image = "deepfake_input/author.jpg"<br/>target_image = "deepfake_input/gymnast.jpg"<br/>result_image_path = "deepfake_results/author_gymnast.jpg"</pre>
+<p style="padding-left: 60px" class="mce-root">In the running example, the source image is a picture of the author's face:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1110 image-border" src="assets/496dcb42-9f33-42d4-a495-d0a6af15168c.png" style="width:17.17em;height:17.08em;"/></p>
+<p style="padding-left: 60px" class="mce-root">The destination image is a picture of a gymnast mid-performance:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1111 image-border" src="assets/2bb0fc84-9761-4944-89fe-61015978deb6.png" style="width:18.75em;height:21.50em;"/></p>
+<ol start="3">
+<li class="mce-root CDPAlignLeft CDPAlign">Read in the images into <kbd>opencv</kbd> and then extract the source and destination faces:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">content_img = cv2.imread(content_image)<br/>destination_img = cv2.imread(target_image)<br/>content_img_points, content_img_shape, content_img_face = select_face(content_img)<br/>destination_img_points, destination_img_shape, destination_img_face = select_face(<br/>    destination_img<br/>)</pre>
+<ol start="4">
+<li class="mce-root">Compute a transformed version of the source face:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">result_image = ProcessFace(<br/>    content_img_points, content_img_face, destination_img_points, destination_img_face<br/>)</pre>
+<ol start="5">
+<li class="mce-root">Draw the transformed face into the destination image and write the file to disk:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">x, y, w, h = destination_img_shape<br/>destination_img_copy = destination_img.copy()<br/>destination_img_copy[y : y + h, x : x + w] = result_image<br/>result_image = destination_img_copy<br/>cv2.imwrite(result_image_path, result_image)</pre>
+<p style="padding-left: 60px" class="mce-root">The final result of the <kbd>deepfake</kbd> operation in this example is an image with the gymnast's body and author's face:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1112 image-border" src="assets/cb7b4948-d6ec-482f-a1fa-4f3a56f0558e.png" style="width:17.17em;height:19.50em;"/></p>
+<p>By applying the method frame by frame, it can be extended to videos.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Begin, as usual, by importing the appropriate libraries (step 1). Specify, in step 2, the style and content images. Here, the content is the target image while the style is the face to draw in. In step 3, note that if there are several faces in the image, a screen will be presented to you asking which of the faces you would like to use. The next step is a computation to determine how to draw the superimposed face (step 4). Having completed this step, we can now draw out and display the <kbd>deepfake</kbd> superimposed face in step 5. Evidently, this implementation has room for improvement but does an OK job.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deepfake recognition</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">With the advent of deepfake and similar image forgery technology, it is becoming more and more difficult to differentiate between forgery and real media. Fortunately, just as neural networks can compose fake media, they can also detect it. In this recipe, we will utilize a deep neural network to detect fake images. The recipe utilizes the MesoNet<span> </span><span>architecture</span><span>, found in the GitHub repository, <kbd>DariusAf/MesoNet</kbd>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>keras</kbd>, <kbd>tensorflow</kbd>, and <kbd>pillow</kbd> in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install keras tensorflow pillow</strong></pre>
+<p>In addition, a collection of fake and real images has been provided for you in the <kbd>mesonet_test_images</kbd><span> </span><span>folder</span><span>, to which you may add additional images.</span></p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we provide a recipe for detecting when an image is produced by deepfake. The code is structured in four parts: Deepfake <kbd>Recognition.ipynb</kbd> (main), the <kbd>mesonet_classifiers.py</kbd> file defining the MesoNet classifier, the <kbd>mesonet_weights</kbd> folder holding the trained weights, and the <kbd>mesonet_test_images</kbd> folder containing our test images.</p>
+<p class="mce-root">The following code can be found in Deepfake <kbd>Recognition.ipynb</kbd>:</p>
+<ol>
+<li class="mce-root">Import the MesoNet neural network and the image data generator from <kbd>keras</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from mesonet_classifiers import *<br/>from keras.preprocessing.image import ImageDataGenerator</pre>
+<ol start="2">
+<li class="mce-root">Instantiate MesoNet and load its weights:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">MesoNet_classifier = Meso4()<br/>MesoNet_classifier.load("mesonet_weights/Meso4_DF")</pre>
+<ol start="3">
+<li class="mce-root">Create an image data generator to read in images from a directory and specify the path where the unknown images are stored:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">image_data_generator = ImageDataGenerator(rescale=1.0 / 255)<br/>data_generator = image_data_generator.flow_from_directory(<br/>    "", classes=["mesonet_test_images"]<br/>)</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px">Found 3 images belonging to 1 classes.</pre>
+<ol start="4">
+<li class="mce-root">Define a dictionary to translate numerical labels to the text labels, <kbd>"real"</kbd> and <kbd>"fake"</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">num_to_label = {1: "real", 0: "fake"}</pre>
+<p style="padding-left: 60px" class="mce-root">In our example, we place three images in the folder, one real and two fake:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1113 image-border" src="assets/3d2752b4-ff56-4583-b0a1-5d89d389546f.png" style="width:19.83em;height:6.58em;"/></p>
+<p style="padding-left: 60px">Can you tell which ones are which?</p>
+<ol start="5">
+<li class="mce-root">Running MesoNet reveals the following output:</li>
+</ol>
+<pre style="padding-left: 60px">X, y = data_generator.next()<br/>probabilistic_predictions = MesoNet_classifier.predict(X)<br/>predictions = [num_to_label[round(x[0])] for x in probabilistic_predictions]<br/>print(predictions)</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px">['real', 'fake', 'fake']</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>As for most recipes, we begin by importing the necessary libraries. We then load up a MesoNet model in step 2, that is, load up its structure and pre-trained weights. For clarity, the architecture may be found in the <kbd>MesoNet_classifiers</kbd> file and is given by the following:</p>
+<pre class="mce-root">         x = Input(shape = (IMGWIDTH, IMGWIDTH, 3))<br/>         x1 = Conv2D(8, (3, 3), padding='same', activation = 'relu')(x)<br/>         x1 = BatchNormalization()(x1)<br/>         x1 = MaxPooling2D(pool_size=(2, 2), padding='same')(x1)<br/>         <br/>         x2 = Conv2D(8, (5, 5), padding='same', activation = 'relu')(x1)<br/>         x2 = BatchNormalization()(x2)<br/>         x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)<br/>         <br/>         x3 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x2)<br/>         x3 = BatchNormalization()(x3)<br/>         x3 = MaxPooling2D(pool_size=(2, 2), padding='same')(x3)<br/>         <br/>         x4 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x3)<br/>         x4 = BatchNormalization()(x4)<br/>         x4 = MaxPooling2D(pool_size=(4, 4), padding='same')(x4)<br/>         <br/>         y = Flatten()(x4)<br/>         y = Dropout(0.5)(y)<br/>         y = Dense(16)(y)<br/>         y = LeakyReLU(alpha=0.1)(y)<br/>         y = Dropout(0.5)(y)<br/>         y = Dense(1, activation = 'sigmoid')(y)</pre>
+<p class="mce-root">In step 3, we define and use an <kbd>ImageDataGenerator</kbd>, a convenient <kbd>keras</kbd> object that allows us to perform image processing in one place—in the case at hand, to rescale and normalize the numerical values of pixels. It is hard to tell what the labels <kbd>0</kbd> and <kbd>1</kbd> represent. For that reason, for readability purposes, we define a dictionary to translate 0s and 1s into the words, <kbd>real</kbd> and <kbd>fake</kbd> (step 4). Finally, in step 5, we see that the MesoNet model was able to correctly predict the labels of the test images.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Lie detection using machine learning</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">When gathering intelligence for social engineering purposes, it is crucial to be able to tell when an individual is telling the truth and when they are lying. To this end, machine learning can come to our aid. By analyzing a video for microexpressions and vocal quality, a machine learning system can help to identify untruthful actors. In this recipe, we will be running through a lie detection cycle, using a slightly modified version of Lie To Me, a lie detection system that uses facial and vocal recognition.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing several packages in <kbd>pip</kbd>. The list of packages can be found in the <kbd>requirements.txt</kbd> file. To install all of these at once, run the following:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install -r requirements.txt</strong></pre>
+<p>You will need one video file with audio to analyze.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In the following steps, we provide a recipe for analyzing a video for lying behavior:</p>
+<ol>
+<li class="mce-root">Run the Lie To Me application:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>Python application.py</strong> </pre>
+<ol start="2">
+<li class="mce-root">Open the portal for Lie To Me by going to the IP address specified, for example, <kbd>127.0.0.1:5000</kbd>, by opening a web browser and typing this address.</li>
+</ol>
+<ol start="3">
+<li class="mce-root">Click on <strong>UPLOAD</strong> and select a video you would like to analyze:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1097 image-border" src="assets/11288da4-2f84-4c91-95d7-ff9c6755378a.png" style="width:159.92em;height:75.42em;"/></p>
+<ol start="4">
+<li class="mce-root">Once the analysis is complete, you will notice the following.</li>
+</ol>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Blink Analysis</strong> graph: </p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1098 image-border" src="assets/f8a14ee8-ae4a-41f8-9d12-6a382936c6d3.png" style="width:159.92em;height:63.25em;"/></p>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Micro Expression Analysis</strong> graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1099 image-border" src="assets/37cbad82-7c4f-49c9-9244-4833f8a0d7be.png" style="width:159.92em;height:63.67em;"/></p>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Voice Energy Analysis</strong> graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1100 image-border" src="assets/3cbcdef4-2f40-424e-a442-d6ac9641429b.png" style="width:159.92em;height:62.33em;"/></p>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Voice Pitch Analysis</strong> graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1101 image-border" src="assets/c1a025b9-ed03-47e4-9627-24da5b18cde5.png" style="width:159.92em;height:67.17em;"/></p>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Voice Pitch Contour Analysis</strong> graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1102 image-border" src="assets/d7763af6-b146-4219-bc7d-117c4858eb58.png" style="width:159.92em;height:61.00em;"/></p>
+<p style="padding-left: 60px">The following screenshot shows the variation happening in the <strong>Vowel Duration Analysis</strong> graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1103 image-border" src="assets/47bdbdee-d25d-4d57-87ce-590541dc5efd.png" style="width:159.75em;height:63.50em;"/></p>
+<ol start="5">
+<li>Finally, clicking on results shows an analysis of the lies detected in the video:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1104 image-border" src="assets/12a286af-cc3f-41bf-af79-068412c04c50.png" style="width:159.92em;height:71.67em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>In step 1, we run the Lie To Me application using Python. We enter the application's portal and upload a candidate video (steps 2 and 3). Upon completion of the analysis of the video, the Lie To Me application shows several exploratory screens (step 4). These represent features that may be indicative of lying. Finally, in step 5, we see a screen that reveals whether the video contained any lying individuals, and if so, when and how many times a lie has been spoken.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Personality analysis</h1>
+                </header>
+            
+            <article>
+                
+<p>Knowing a target's personality type and communication style greatly increases the potential to influence. For this reason, a personality analysis is a nice tool to have in the social engineer's toolbelt. In this recipe, we will utilize IBM Watson's Personality Insights API to analyze a target's Tweets to obtain a personality profile.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing the IBM Watson package in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install ibm-watson</strong></pre>
+<p>In addition, you will want to sign up for a Watson Personality Insights account.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we set up an API call to analyze the personality of an author of tweets:</p>
+<ol>
+<li>Sign up for a Watson Personality Insights account. It is quick and free.</li>
+<li>Import the Python library for Watson and record today's date:</li>
+</ol>
+<pre style="padding-left: 60px">from ibm_watson import PersonalityInsightsV3<br/>from datetime import date<br/><br/>v = str(date.today())<br/>api_key = "fill me in"</pre>
+<ol start="3">
+<li>Specify your API key, which you have obtained in step 1, and declare the Personality Insights instance:</li>
+</ol>
+<pre style="padding-left: 60px">personality_insights_service = PersonalityInsightsV3(version=v, iam_apikey=api_key)</pre>
+<ol start="4">
+<li>Curate a text file, for example, a collection of tweets:</li>
+</ol>
+<pre style="padding-left: 60px">tweets_file = "ElonMuskTweets.txt"</pre>
+<ol start="5">
+<li>Call the Personality Insights API on the text file:</li>
+</ol>
+<pre style="padding-left: 60px">with open(tweets_file) as input_file:<br/>    profile = personality_insights_service.profile(<br/>        input_file.read(),<br/>        "application/json",<br/>        raw_scores=False,<br/>        consumption_preferences=True,<br/>    ).get_result()</pre>
+<ol start="6">
+<li>Finally, print out the personality profile:</li>
+</ol>
+<pre style="padding-left: 60px">import json<br/><br/>print(json.dumps(profile, indent=2))<br/><br/>{ "word_count": 2463, "processed_language": "en", "personality": [ { "trait_id": "big5_openness", "name": "Openness", "category": "personality", "percentile": 0.7417085532819794, "significant": true, "children": [ { "trait_id": "facet_adventurousness", "name": "Adventurousness", "category": "personality", "percentile": 0.9589655282562557, "significant": true }, { "trait_id": "facet_artistic_interests", "name": "Artistic interests", "category": "personality", "percentile": 0.44854779978198406, "significant": true }, { "trait_id": "facet_emotionality", "name": "Emotionality", "category": "personality", "percentile": 0.0533351337262023, "significant": true },<br/> &lt;snip&gt;<br/> "consumption_preference_id": "consumption_preferences_books_financial_investing", "name": "Likely to read financial investment books", "score": 0.0 }, { "consumption_preference_id": "consumption_preferences_books_autobiographies", "name": "Likely to read autobiographical books", "score": 1.0 } ] }, { "consumption_preference_category_id": "consumption_preferences_volunteering", "name": "Volunteering Preferences", "consumption_preferences": [ { "consumption_preference_id": "consumption_preferences_volunteer", "name": "Likely to volunteer for social causes", "score": 0.0 } ] } ], "warnings": [] }</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Start by signing up for a Watson Personality Insights account. There are different tiers for the service, with different limits on API call rates and different prices, but the lowest tier is easy to set up, free, and sufficient enough for this recipe. We save today's date into a variable and import the IBM Watson library (step 2). By specifying the latest date, we are ensuring that we will be employing the latest version of Watson. In the next step, we instantiate IBM Watson personality insights using our API key.</p>
+<p>For step 4, we must collate a text dataset produced by the target. It may be helpful to utilize the recipe from the Twitter spear phishing bot to gather a user's Tweets. In step 5, we run the personality insights application on our text set, consisting of Elon Musk's recent tweets. We elected to display the personality profile as a JSON. It is also possible to display in other formats, such as CSV, and details may be found in the personality insights' API documentation. Finally, in step 6, we print a small snippet from the personality profile. As you can see, it even provides actionable insights, such as how likely the target is to agree to volunteer.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Social Mapper</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Social Mapper</strong> is an OSINT tool that allows you to correlate the multitude of social media profiles of a target using facial recognition. It automatically searches popular social media sites for the target's name and pictures to effortlessly find the user's social media profiles and then outputs the results into a report that you can use to take your investigations further.</p>
+<p>The largest benefit of Social Mapper is that by combining name search with image recognition, as opposed to just name search, it can eliminate false positives, saving the social engineer valuable time.</p>
+<p>Social Mapper currently supports LinkedIn, Facebook, Twitter, Google Plus, Instagram, VKontakte, Weibo, and Douban.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="a-b-r-La">For this recipe, it is recommended that you prepare a Python 2.7 environment. Social Mapper has been designed to be used on Python 2.7 and may not work with other Python environments. The prerequisites for installation are delineated in <a href="https://github.com/Greenwolf/social_mapper">https://github.com/Greenwolf/social_mapper</a>. Also, you will want to use a Mac or Linux machine for this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we provide a recipe for using Social Mapper to correlate the social media accounts of an individual:</p>
+<ol start="1">
+<li>Following the instructions on the GitHub page at <a href="https://github.com/Greenwolf/social_mapper">https://github.com/Greenwolf/social_mapper</a>, install Social Mapper and its prerequisites.</li>
+<li>Place an image of the face of your target into <kbd>Input, Examples/imagefolder/</kbd> with the name of the file and the full name of the target:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1114 image-border" src="assets/886752a2-59ff-46f1-bd42-96828f5dfa22.png" style="width:16.67em;height:16.67em;"/></div>
+<ol start="3">
+<li>Create throwaway accounts for the social media websites you wish to search your target on. For example, create throwaway Facebook, LinkedIn, and Twitter accounts.</li>
+<li>Open the <kbd>social_mapper.py</kbd> file and fill in your throwaway accounts credentials. For instance, you may only be interested in Twitter:</li>
+</ol>
+<pre style="padding-left: 60px"> global linkedin_username<br/> global linkedin_password<br/> linkedin_username = ""<br/> linkedin_password = ""<br/> global facebook_username<br/> global facebook_password<br/> facebook_username = ""<br/> facebook_password = ""<br/> global twitter_username<br/> global twitter_password<br/> twitter_username = "FILL ME IN"<br/> twitter_password = "FILL ME IN"<br/> global instagram_username<br/> global instagram_password<br/> instagram_username = ""<br/> instagram_password = ""<br/> global google_username<br/> global google_password<br/> google_username = ""<br/> google_password = ""<br/> global vk_username<br/> global vk_password</pre>
+<ol start="5">
+<li>In Terminal, run the command to search for the target's social media profiles:</li>
+</ol>
+<pre style="padding-left: 60px"><strong> Python social_mapper.py -f imagefolder -I ./Input-Examples/imagefolder -m fast -tw</strong> </pre>
+<ol start="6">
+<li>Examine the output in the <kbd>social_mapper/results-social-mapper.html</kbd> file:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1105 image-border" src="assets/d22a0574-be38-4681-b197-c5c9a9e765db.png" style="width:53.83em;height:13.25em;"/></p>
+<p>With each target individual, an additional row is added having that individual's social network data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Start by preparing Social Mapper in your environment (step 1). Place an image of your target in the inputs directory (step 2). The image must be named after the target's full name; otherwise, the application will not be able to find the target's accounts. Next, in step 3, create throwaway accounts for the social media websites you wish to search your target on and fill these into the appropriate place in <kbd>social_mapper.py</kbd> (step 4). Note that the more different accounts you have, the more data you can gather on the target via Social Mapper. You are ready now to perform the search on the target. In Terminal, run the command to search for the target's social media profiles (step 5). There are many variations on the arguments and options you may wish to use. For instance, we have specified Twitter using the <kbd>-tw</kbd> argument. However, you may wish to add in additional social media sites, such as LinkedIn (<kbd>-li</kbd>) or Instagram (<kbd>-ig</kbd>). Finally, in step 6, observe that Social Mapper was able to find Bill Gates's Twitter account.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Fake review generator</h1>
+                </header>
+            
+            <article>
+                
+<p>An important part of social engineering is impersonation. A social engineer may want to pretend to represent a company or business that doesn't currently exist. By creating a profile and populating it with convincing reviews, the social engineer can add credibility to the fake business. In this recipe, we show how to train an RNN so that it can generate new reviews, similar to the ones in the training dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Training a fake review generator</h1>
+                </header>
+            
+            <article>
+                
+<p>Our first step is to train the model. Later, we will utilize it to produce new reviews.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>keras</kbd> and <kbd>tensorflow</kbd> in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install keras tensorflow</strong></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we provide a recipe for training a Recurrent Neural Network (RNN) using a corpus of reviews:</p>
+<ol>
+<li>Collect the types of reviews you wish to imitate. For more on this, see the discussion in the <em>How it works...</em> section:</li>
+</ol>
+<pre style="padding-left: 60px">with open("airport_reviews_short.csv", encoding="utf-8") as fp:<br/>    reviews_text = fp.read()</pre>
+<ol start="2">
+<li>Create a dictionary to vectorize the characters of the text:</li>
+</ol>
+<pre style="padding-left: 60px">chars_list = sorted(list(set(reviews_text)))<br/>char_to_index_dict = {<br/>    character: chars_list.index(character) for character in chars_list<br/>}</pre>
+<p style="padding-left: 60px">The dictionary might look like so, depending on which characters your corpus contains:</p>
+<pre style="padding-left: 60px">{' ': 0, '!': 1, "'": 2, '(': 3, ')': 4, ',': 5, '-': 6, '.': 7, '/': 8, '2': 9, '5': 10, '&lt;': 11, '&gt;': 12, 'A': 13, 'B': 14, 'C': 15, 'D': 16, 'E': 17, 'F': 18, 'G': 19, 'H': 20, 'I': 21, 'J': 22, 'L': 23, 'M': 24, 'O': 25, 'R': 26, 'S': 27, 'T': 28, 'U': 29, 'W': 30, 'a': 31, 'b': 32, 'c': 33, 'd': 34, 'e': 35, 'f': 36, 'g': 37, 'h': 38, 'i': 39, 'j': 40, 'k': 41, 'l': 42, 'm': 43, 'n': 44, 'o': 45, 'p': 46, 'r': 47, 's': 48, 't': 49, 'u': 50, 'v': 51, 'w': 52, 'x': 53, 'y': 54}</pre>
+<ol start="3">
+<li>Construct an RNN to learn and predict the sequence of characters:</li>
+</ol>
+<pre style="padding-left: 60px">import keras<br/>from keras import layers<br/><br/>max_length = 40<br/>rnn = keras.models.Sequential()<br/>rnn.add(<br/>    layers.LSTM(1024, input_shape=(max_length, len(chars_list)), return_sequences=True)<br/>)<br/>rnn.add(layers.LSTM(1024, input_shape=(max_length, len(chars_list))))<br/>rnn.add(layers.Dense(len(chars_list), activation="softmax"))</pre>
+<ol start="4">
+<li>Select an optimizer and compile the model:</li>
+</ol>
+<pre style="padding-left: 60px">optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, nesterov=True)<br/>rnn.compile(loss="categorical_crossentropy", optimizer=optimizer)</pre>
+<ol start="5">
+<li>Define a convenience function to vectorize text:</li>
+</ol>
+<pre style="padding-left: 60px">import numpy as np<br/><br/>def text_to_vector(input_txt, max_length):<br/>    """Reads in the text and vectorizes it.<br/>    X will consist of consecutive sequences of characters. <br/>    Y will consist of the next character.<br/>    """<br/>    sentences = []<br/>    next_characters = []<br/>    for i in range(0, len(input_txt) - max_length):<br/>        sentences.append(input_txt[i : i + max_length])<br/>        next_characters.append(input_txt[i + max_length])<br/>    X = np.zeros((len(sentences), max_length, len(chars_list)))<br/>    y = np.zeros((len(sentences), len(chars_list)))<br/>    for i, sentence in enumerate(sentences):<br/>        for t, char in enumerate(sentence):<br/>            X[i, t, char_to_index_dict[char]] = 1<br/>            y[i, char_to_index_dict[next_characters[i]]] = 1<br/>    return [X, y]</pre>
+<ol start="6">
+<li>Vectorize our sample input text and train the model in batches:</li>
+</ol>
+<pre style="padding-left: 60px">X, y = text_to_vector(reviews_text, max_length)<br/>rnn.fit(X, y, batch_size=256, epochs=1)</pre>
+<ol start="7">
+<li>Finally, save the model's weights for future use.</li>
+</ol>
+<pre style="padding-left: 60px">rnn.save_weights("weights.hdf5")</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Start by collecting a dataset of reviews you'd like to imitate (step 1). A practical example would require a large corpus of reviews. There are many such datasets available, such as the Yelp reviews dataset. Proceeding to step 2, we create a mapping between characters and numbers. This will allow us to vectorize the text. Depending on your application, you may want to use the standard ASCII code. However, if you are using only a small number of characters, then this will unnecessarily slow down your model. We go on to declare the architecture of an RNN to learn and predict the sequence of characters (step 3). We used a relatively simple architecture. As will be shown in the next section, it nonetheless provides convincing results. The motivated reader is free to experiment with other architectures. Next, we declare a (standard) optimizer (step 4), define a function to take in text, and then vectorize it so we can feed it into our neural network (step 5). In step 5, note the shape of the vectors is as follows:</p>
+<ul>
+<li><strong>X</strong>: (number of reviews, <kbd>maxlen</kbd>, number of characters)</li>
+<li><strong>Y</strong>: (number of reviews, number of characters)</li>
+</ul>
+<p>In particular, we set <kbd>max_length=40</kbd> to simplify computation by indicating that we will only be considering the first <kbd>40</kbd> characters of a review. Having made all the needed preparations, we now pass in our text to be vectorized and then train our model on it (step 6). Specifically, our <kbd>text_to_vector</kbd> function takes the text and converts it into vectorized sentences, as well as a vectorized label, which is the following character. Finally, we save our model's weights so that we do not have to retrain it in the future (step 7).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Generating fake reviews</h1>
+                </header>
+            
+            <article>
+                
+<p>Having trained a network, our next step is to utilize it to generate new fake reviews.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>keras</kbd> and <kbd>tensorflow</kbd> in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install keras tensorflow</strong></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we provide a recipe for using a previously trained RNN to generate reviews:</p>
+<ol>
+<li>We will start by importing <kbd>keras</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import keras<br/>from keras import layers</pre>
+<ol start="2">
+<li>Create a dictionary of indices for the characters or load up the one from the previous recipe:</li>
+</ol>
+<pre style="padding-left: 60px">char_indices = dict((char, chars.index(char)) for char in chars) </pre>
+<ol start="3">
+<li>Read in a seed text and declare <kbd>max_length</kbd> of a sentence taken in by the neural network:</li>
+</ol>
+<pre style="padding-left: 60px">text = open("seed_text.txt").read()<br/>max_length = 40</pre>
+<ol start="4">
+<li>Construct an RNN model and load in your pre-trained weights:</li>
+</ol>
+<pre style="padding-left: 60px">rnn = keras.models.Sequential()<br/>rnn.add(<br/>    layers.LSTM(1024, input_shape=(max_length, len(chars_list)), return_sequences=True)<br/>)<br/>rnn.add(layers.LSTM(1024, input_shape=(max_length, len(chars_list))))<br/>rnn.add(layers.Dense(len(chars_list), activation="softmax"))<br/>rnn.load_weights("weights.hdf5")<br/>optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, nesterov=True)<br/>rnn.compile(loss="categorical_crossentropy", optimizer=optimizer)</pre>
+<ol start="5">
+<li>Define a function for sampling from a probability vector:</li>
+</ol>
+<pre style="padding-left: 60px">import numpy as np<br/><br/>def sample_next_char(preds):<br/>    """Samples the subsequent character based on a probability distribution."""<br/>    return np.random.choice(chars_list, p=preds)</pre>
+<ol start="6">
+<li>Generate random reviews from the initial seed text:</li>
+</ol>
+<pre style="padding-left: 60px">import sys<br/><br/>start_index = np.random.randint(0, len(text) - max_length - 1)<br/>generated_text = text[start_index : start_index + max_length]<br/>sys.stdout.write(generated_text)<br/>sentence_length = 1000<br/>for i in range(sentence_length):<br/>    vec_so_far = np.zeros((1, max_length, len(chars_list)))<br/>for t, char in enumerate(generated_text):<br/>    vec_so_far[0, t, char_to_index_dict[char]] = 1.0<br/>preds = rnn.predict(vec_so_far)[0]<br/>next_char = sample_next_char(preds)<br/>generated_text += next_char<br/>generated_text = generated_text[1:]<br/>sys.stdout.write(next_char)<br/>sys.stdout.flush()<br/>print(generated_text)</pre>
+<p>Here is the review output from a run of the code:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1106 image-border" src="assets/76e836af-49a3-417c-8a78-83248d10534e.png" style="width:38.25em;height:7.92em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Our initial steps (steps 1, 2, and 4) are operations we have performed during the training phase, which we reproduce here to allow the recipe to be self-contained. In step 3, we read in a seed text to initialize our RNN. The seed text can be any text consisting of the listed characters, as long as it is longer than <kbd>max_length</kbd>. Now, we must be able to create interesting text using our pre-trained, pre loaded, and initialized-on-a-seed-text neural network. To this end, we define a convenience function to sample the consequent character that the neural network will generate (step 5). Sampling from the probability vector ensures that the RNN does not simply select the most likely subsequent character, leading to repetitive generated text. There are more clever ways to sample, employing a temperature parameter and exponential weighing, but this one addresses the basics. Finally, in step 6, we go ahead and generate text using our neural network. We specify 1,000 as the number of characters to generate. Varying this parameter will alter the number of reviews in the output.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Fake news</h1>
+                </header>
+            
+            <article>
+                
+<p>Fake news is a type of disinformation or propaganda that is spread via traditional news media or online social media. Like any disinformation campaign, its effects can be devastating. In this recipe, you will load a dataset of real and fake news, and utilize ML to determine when a news story is fake.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe consists of installing <kbd>pandas</kbd> and scikit-learn in <kbd>pip</kbd>. The instructions are as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install pandas sklearn</strong></pre>
+<p>Also, extract <kbd>fake_news_dataset.7z</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, you will read in the fake news dataset, preprocess it, and then train a Random Forest classifier to detect fake news:</p>
+<ol>
+<li>Import <kbd>pandas</kbd> and read in the CSV file, <kbd>fake_news_dataset.csv</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>columns = [<br/>    "text",<br/>    "language",<br/>    "thread_title",<br/>    "spam_score",<br/>    "replies_count",<br/>    "participants_count",<br/>    "likes",<br/>    "comments",<br/>    "shares",<br/>    "type",<br/>]<br/>df = pd.read_csv("fake_news_dataset.csv", usecols=columns)</pre>
+<ol start="2">
+<li>Preprocess the dataset by focusing on articles in English and dropping rows with missing values:</li>
+</ol>
+<pre style="padding-left: 60px">df = df[df["language"] == "english"]<br/>df = df.dropna()<br/>df = df.drop("language", axis=1</pre>
+<ol start="3">
+<li>Define a convenience function to convert categorical features into numerical:</li>
+</ol>
+<pre style="padding-left: 60px">features = 0<br/>feature_map = {}<br/><br/>def add_feature(name):<br/>    """Adds a feature to the dictionary of features."""<br/>    if name not in feature_map:<br/>        global features<br/>        feature_map[name] = features<br/>        features += 1</pre>
+<ol start="4">
+<li>Convert the <kbd>"fake"</kbd> and <kbd>"real"</kbd> features into numerical:</li>
+</ol>
+<pre style="padding-left: 60px">add_feature("fake")<br/>add_feature("real")</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="5">
+<li>Define a function that will convert all labels into <kbd>real</kbd> or <kbd>fake</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">def article_type(row):<br/>    """Binarizes target into fake or real."""<br/>    if row["type"] == "fake":<br/>        return feature_map["fake"]<br/>    else:<br/>        return feature_map["real"]</pre>
+<ol start="6">
+<li>Apply the function to the <span>DataFrame</span> to convert the labels into 0s and 1s:</li>
+</ol>
+<pre style="padding-left: 60px">df["type"] = df.apply(article_type, axis=1)</pre>
+<ol start="7">
+<li>Create a train-test split on the DataFrame:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>df_train, df_test = train_test_split(df)</pre>
+<ol start="8">
+<li>Instantiate two Tf-Idf vectorizers, one for the text of the article and one for its headline:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.feature_extraction.text import TfidfVectorizer<br/><br/>vectorizer_text = TfidfVectorizer()<br/>vectorizer_title = TfidfVectorizer()</pre>
+<ol start="9">
+<li>Fit and transform the text and headline data using the Tf-Idf vectorizers:</li>
+</ol>
+<pre style="padding-left: 60px">vectorized_text = vectorizer_text.fit_transform(df_train.pop("text").values)<br/>vectorized_title = vectorizer_title.fit_transform(df_train.pop("thread_title").values</pre>
+<ol start="10">
+<li>Convert the remaining numerical fields of the <span>DataFrame</span> into matrices:</li>
+</ol>
+<pre style="padding-left: 60px">from scipy import sparse<br/><br/>spam_score_train = sparse.csr_matrix(df_train["spam_score"].values).transpose()<br/>replies_count_train = sparse.csr_matrix(df_train["replies_count"].values).transpose()<br/>participants_count_train = sparse.csr_matrix(<br/>    df_train["participants_count"].values<br/>).transpose()<br/>likes_train = sparse.csr_matrix(df_train["likes"].values).transpose()<br/>comments_train = sparse.csr_matrix(df_train["comments"].values).transpose()<br/>shares_train = sparse.csr_matrix(df_train["shares"].values).transpose()</pre>
+<ol start="11">
+<li>Merge all of the matrices into one feature matrix and create a set of labels:</li>
+</ol>
+<pre style="padding-left: 60px">from scipy.sparse import hstack<br/><br/>X_train = hstack(<br/>    [<br/>        vectorized_text,<br/>        vectorized_title,<br/>        spam_score_train,<br/>        replies_count_train,<br/>        participants_count_train,<br/>        likes_train,<br/>        comments_train,<br/>        shares_train,<br/>    ]<br/>)<br/>y_train = df_train.pop("type").values</pre>
+<ol start="12">
+<li>Instantiate a Random Forest classifier and train it on the training data:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier()<br/>clf.fit(X_train, y_train)</pre>
+<ol start="13">
+<li>Transform the text and headlines of the testing data into numerical form using the previously trained Tf-Idf vectorizers:</li>
+</ol>
+<pre style="padding-left: 60px">vectorized_text_test = vectorizer_text.transform(df_test.pop("text").values)<br/>vectorized_title_test = vectorizer_title.transform(df_test.pop("thread_title").values)</pre>
+<ol start="14">
+<li>As before, combine all numerical features into one feature matrix:</li>
+</ol>
+<pre style="padding-left: 60px">spam_score_test = sparse.csr_matrix(df_test["spam_score"].values).transpose()<br/>replies_count_test = sparse.csr_matrix(df_test["replies_count"].values).transpose()<br/>participants_count_test = sparse.csr_matrix(<br/>    df_test["participants_count"].values<br/>).transpose()<br/>likes_test = sparse.csr_matrix(df_test["likes"].values).transpose()<br/>comments_test = sparse.csr_matrix(df_test["comments"].values).transpose()<br/>shares_test = sparse.csr_matrix(df_test["shares"].values).transpose()<br/>X_test = hstack(<br/>    [<br/>        vectorized_text_test,<br/>        vectorized_title_test,<br/>        spam_score_test,<br/>        replies_count_test,<br/>        participants_count_test,<br/>        likes_test,<br/>        comments_test,<br/>        shares_test,<br/>    ]<br/>)<br/>y_test = df_test.pop("type").values</pre>
+<ol start="15">
+<li>Test the Random Forest classifier:</li>
+</ol>
+<pre style="padding-left: 60px">clf.score(X_test, y_test)</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px">0.9977324263038548</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Our initial steps are to import our dataset of fake news and perform basic data munging (steps 1-6), such as converting the target into a numeric type. Next, in step 7, we train-test split our dataset in preparation for constructing a classifier. Since we are dealing with textual data, we must featurize these. To that end, in steps 8 and 9, we instantiate Tf-Idf vectorizers for NLP on the text and fit these. Other NLP approaches may be fruitful here. Continuing to featurize, we extract the numerical features of our <span>DataFrame</span> (steps 10 and 11). Having finished featurizing the dataset, we can now instantiate a basic classifier and fit it on the dataset (step 12). In steps 13-15, we repeat the process on the testing set and measure our performance. Observe the remarkable performance. Even now, possible steps for increasing the performance of the classifier include accounting for the source of the article, including images, and performing more sophisticated correlations with other events.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

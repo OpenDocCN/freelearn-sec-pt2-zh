@@ -1,0 +1,731 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Malware Obfuscation Techniques</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The term <em class="calibre17">obfuscation</em> refers to a process of obscuring meaningful information. Malware authors often use various obfuscation techniques to hide the information and to modify the malicious content to make detection and analysis difficult for a security analyst. Adversaries typically use <em class="calibre17">encoding/encryptio</em>n techniques to conceal the information from the security products. In addition to using encoding/encryption, an attacker uses a program such as packers to obfuscate the malicious binary content, which makes analysis and reverse engineering much more difficult. In this chapter, we will look at identifying these obfuscation techniques and how to decode/decrypt and unpack the malicious binaries. We will begin by looking at the encoding/encryption techniques, and later we will look at the unpacking techniques.</p>
+<p class="calibre2">Adversaries typically use encoding and encryption for the following reasons:</p>
+<ul class="calibre11">
+<li class="calibre12">To conceal command and control communication</li>
+<li class="calibre12">To hide from a signature-based solution such as Intrusion prevention systems</li>
+<li class="calibre12">To obscure the content of the configuration file used by the malware</li>
+<li class="calibre12">To encrypt information to be exfiltrated from the victim system</li>
+<li class="calibre12">To obfuscate strings in the malicious binary to hide from static analysis</li>
+</ul>
+<p class="calibre2">Before we delve into how malware uses an encryption algorithm, let's try to understand the basics and some of the terms that we will use throughout this chapter. A <em class="calibre17">plaintext</em> refers to an unencrypted message; this might be a command and control (C2) traffic or content of the file that malware wants to encrypt. A <em class="calibre17">ciphertext</em> refers to an encrypted message; this might be an encrypted executable or encrypted command that malware receives from the C2 server.</p>
+<p class="calibre2">Malware encrypts the <em class="calibre17">plaintext</em>, by passing it as input along with the <em class="calibre17">key</em> to an encryption function, which produces a <em class="calibre17">ciphertext</em>. The resultant ciphertext is typically used by the malware to write to file or send over the network:</p>
+<div class="cdpaligncenter"><img src="../images/00281.jpeg" class="calibre213"/></div>
+<p class="calibre2">In the same manner, malware may receive an encrypted content from the C2 server or from the file and then decrypt it by passing the <em class="calibre17">encrypted content</em> and the <em class="calibre17">key</em> to the decryption function, as follows:</p>
+<div class="cdpaligncenter"><img src="../images/00282.jpeg" class="calibre214"/></div>
+<p class="calibre2">While analyzing malware, you may want to understand how a particular content is encrypted or decrypted. To do this, you will mainly focus on identifying either the encryption or the decryption function and the key used to encrypt or decrypt the content. For instance, if you wish to determine how the network content is encrypted, then you will likely find the encryption function just before the network output operation (such as <kbd class="calibre13">HttpSendRequest()</kbd>). In the same manner, if you wish to know how the encrypted content from the C2 is decrypted, then you are likely to find the decryption function after the content is retrieved from C2 using an API such as <kbd class="calibre13">InternetReadFile()</kbd>.</p>
+<p class="calibre2">Once the encryption/decryption function is identified, examining these functions will give you an idea as to how the content is encrypted/decrypted, the key used, and the algorithm used to obfuscate the data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1. Simple Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Most of the time, attackers use very simple encoding algorithms such as <kbd class="calibre13">Base64 encoding</kbd> or <kbd class="calibre13">xor encryption</kbd> to obscure the data. The reason why attackers use simple algorithms because they are easy to implement, takes fewer system resources, and are just enough to obscure the content from the security products and the security analyst.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1 Caesar Cipher</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Ceaser cipher</em>, also known as <em class="calibre17">shift cipher</em>, is a traditional cipher and is one of the simplest encoding techniques. It encodes the message by shifting each letter in the plaintext with some fixed number of positions down the alphabet. For example, if you shift character <kbd class="calibre13">'A'</kbd> down <kbd class="calibre13">3</kbd> positions, then you will get <kbd class="calibre13">'D'</kbd>, and <kbd class="calibre13">'B'</kbd> will be <kbd class="calibre13">'E'</kbd> and so on,  wrapping back to <kbd class="calibre13">'A'</kbd> when the shift reaches <kbd class="calibre13">'X'</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1.1 Working Of Caesar Cipher</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The best way to understand Caesar cipher is to write down the letters from <kbd class="calibre13">A</kbd> to <kbd class="calibre13">Z</kbd> and assign an index, from <kbd class="calibre13">0</kbd> to <kbd class="calibre13">25</kbd>, to these letters, as follows In other words, <kbd class="calibre13">'A'</kbd> corresponds to index <kbd class="calibre13">0</kbd>, <kbd class="calibre13">'B'</kbd> corresponds to index <kbd class="calibre13">1</kbd>, and so on. A group of all the letters from <kbd class="calibre13">A</kbd> to <kbd class="calibre13">Z</kbd> is called the <em class="calibre17">character set</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00283.jpeg" class="calibre41"/></div>
+<p class="calibre2">Now, let's say you want to shift the letters by three positions, then <kbd class="calibre13">3</kbd> becomes your key. To encrypt the letter <kbd class="calibre13">'A'</kbd>, add the index of letter <kbd class="calibre13">A</kbd>, which is <kbd class="calibre13">0</kbd>, to the key <kbd class="calibre13">3</kbd>; this results in <kbd class="calibre13">0+3 = 3</kbd>. Now use the result <kbd class="calibre13">3</kbd> as an index to find the corresponding letter, which is <kbd class="calibre13">'D'</kbd>, so <kbd class="calibre13">'A'</kbd> is encrypted to <kbd class="calibre13">'D'</kbd>. To encrypt <kbd class="calibre13">'B'</kbd>, you will add the index of <kbd class="calibre13">'B' (1)</kbd> to the key <kbd class="calibre13">3</kbd>, which results in <kbd class="calibre13">4</kbd>, and the index <kbd class="calibre13">4</kbd> is associated with <kbd class="calibre13">'E'</kbd>, so <kbd class="calibre13">'B'</kbd> encrypts to <kbd class="calibre13">'E'</kbd>, and so on.</p>
+<p class="calibre2">The problem with the previous technique arises when we reach <kbd class="calibre13">'X'</kbd>, which has an index of <kbd class="calibre13">23</kbd>. When we add <kbd class="calibre13">23+3</kbd>, we get <kbd class="calibre13">26</kbd>, but we know that there is no character associated with index <kbd class="calibre13">26</kbd> because the maximum index value is <kbd class="calibre13">25</kbd>. We also know that index <kbd class="calibre13">26</kbd>, should wrap back to index <kbd class="calibre13">0</kbd> (which is associated with <kbd class="calibre13">'A'</kbd>). To solve this problem, we use the <em class="calibre17">modulus</em> operation with the length of the character set. In this case, the length of the character set <kbd class="calibre13">ABCDEFGHIJKLMNOPQRSTUVWXYZ</kbd> is <kbd class="calibre13">26</kbd>. Now, to encrypt <kbd class="calibre13">'X'</kbd>, we use the index of <kbd class="calibre13">'X' (23)</kbd> and add it to the <kbd class="calibre13">key (3)</kbd> and perform the modulus operation with the length of the character set <kbd class="calibre13">(26)</kbd>, as follows. The result of this operation is <kbd class="calibre13">0</kbd>, which is used as the index to find the corresponding character, that is, <kbd class="calibre13">'A'</kbd>:</p>
+<pre class="calibre18">(23+3)%26 = 0</pre>
+<p class="calibre2">The modulus operation allows you to cycle back around to the beginning. You can use the same logic to encrypt all the characters (from <kbd class="calibre13">A</kbd> to <kbd class="calibre13">Z</kbd>) in the character set and wrap back to the beginning. In <em class="calibre17">Caesar cipher</em>, you can get the index of the encrypted (ciphertext) character using:</p>
+<pre class="calibre18">(i + key) % (length of the character set)<br class="title-page-name"/><br class="title-page-name"/>where i = index of plaintext character</pre>
+<p class="calibre2">In the same manner, you can get the index of the plaintext (decrypted) character using:</p>
+<pre class="calibre18">(j - key) % (length of the character set)<br class="title-page-name"/><br class="title-page-name"/>where j = index of ciphertext character</pre>
+<p class="calibre2">The following diagram shows the character set, the encryption, and the decryption of the text <kbd class="calibre13">"ZEUS"</kbd> using <kbd class="calibre13">3</kbd> as the key (shifting three positions). After encryption, the text <kbd class="calibre13">"ZEUS"</kbd> is translated to <kbd class="calibre13">"CHXV"</kbd>, and then the decryption translates it back to <kbd class="calibre13">"ZEUS"</kbd>.</p>
+<div class="cdpaligncenter"><img src="../images/00284.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1.2 Decrypting Caesar Cipher In Python</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The following is an example of a simple Python script that decrypts the string <kbd class="calibre13">"CHXV"</kbd> back to <kbd class="calibre13">"ZEUS"</kbd>:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">chr_set = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">key = 3</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">cipher_text = "CHXV"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">plain_text = ""</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">for ch in cipher_text:</strong><br class="title-page-name"/><strong class="calibre1">                 j = chr_set.find(ch.upper())</strong><br class="title-page-name"/><strong class="calibre1">                 plain_index = (j-key) % len(chr_set)</strong><br class="title-page-name"/><strong class="calibre1">                 plain_text += chr_set[plain_index]</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print plain_text</strong><br class="title-page-name"/>ZEUS</pre>
+<div class="packt_tip">Some malware samples may use a modified version of Caesar (shift) cipher; in that case, you can modify the previously mentioned script to suit your needs. The malware <em class="calibre22">WEBC2-GREENCAT</em>, used by the APT1 group, fetched the content from the C2 server and decrypted the content using the modified version of caesar cipher. It used a 66-character' character set, <kbd class="calibre42">abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/-</kbd>, and a key of <kbd class="calibre42">56</kbd>. </div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2 Base64 Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Using Caesar cipher, an attacker can encrypt letters, but it is not good enough to encrypt binary data. Attackers use various other encoding/encryption algorithms to encrypt binary data. <kbd class="calibre13">Base64</kbd> encoding allows an attacker to encode binary data to an ASCII string format. For this reason, you will often see attackers using <kbd class="calibre13">Base64</kbd>-encoded data in plain text protocols such as HTTP.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2.1 Translating Data To Base64</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Standard Base64 encoding consists of the following 64-character set. Each 3 bytes (24 bits) of the binary data that you want to encode is translated into four characters from the character set mentioned later. Each translated character is 6 bits in size. In addition to the following characters, the <kbd class="calibre13">=</kbd> character is used for padding:</p>
+<pre class="calibre18">ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/</pre>
+<p class="calibre2">To understand how the data is translated into <kbd class="calibre13">Base64</kbd> encoding, first, build the <kbd class="calibre13">Base64</kbd> index table by assigning index <kbd class="calibre13">0</kbd> to <kbd class="calibre13">63</kbd> to the letters in the character set, as shown here. As per the following table, the index <kbd class="calibre13">0</kbd> corresponds to the letter <kbd class="calibre13"><span><span>A</span></span></kbd> and the index <kbd class="calibre13">62</kbd> corresponds to <kbd class="calibre13">+</kbd>, and so on:</p>
+<div class="cdpaligncenter"><img src="../images/00285.jpeg" class="calibre215"/></div>
+<p class="calibre2">Now, let's say we want to <kbd class="calibre13">Base64</kbd> encode the text <kbd class="calibre13">"One"</kbd>. To do this, we need to convert the letters to their corresponding bit values, as shown here:</p>
+<pre class="calibre18">O -&gt; 0x4f -&gt; 01001111<br class="title-page-name"/>n -&gt; 0x6e -&gt; 01101110<br class="title-page-name"/>e -&gt; 0x65 -&gt; 01100101</pre>
+<p class="calibre2">The <kbd class="calibre13">Base64</kbd> algorithm processes 3 bytes (24 bits) at a time; in this case, we have exactly <kbd class="calibre13">24</kbd> bits that are placed next to each other, as shown here:</p>
+<pre class="calibre18">010011110110111001100101</pre>
+<p class="calibre2">The <kbd class="calibre13">24</kbd> bits are then split into four parts, each consisting of <kbd class="calibre13">6</kbd> bits and converted to its equivalent decimal value. The decimal value is then used as an index to find the corresponding value in the <kbd class="calibre13">Base64</kbd> index table, so the text <kbd class="calibre13">One</kbd> encodes to <kbd class="calibre13">T25l</kbd>:</p>
+<pre class="calibre18">010011 -&gt; 19 -&gt; base64 table lookup -&gt; T<br class="title-page-name"/>110110 -&gt; 54 -&gt; base64 table lookup -&gt; 2<br class="title-page-name"/>111001 -&gt; 57 -&gt; base64 table lookup -&gt; 5<br class="title-page-name"/>100101 -&gt; 37 -&gt; base64 table lookup -&gt; l</pre>
+<div class="packt_tip">Decoding Base64 is a reverse process, but it is not essential to understand the workings of <kbd class="calibre42">Base64</kbd> encoding or decoding, because there are python modules and tools that allow you to decode <kbd class="calibre42">Base64</kbd>-encoded data without having to understand the algorithm. Understanding it will help in situations where attackers use a custom version of <kbd class="calibre42">Base64</kbd> encoding.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2.2 Encoding And Decoding Base64</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To encode data in <kbd class="calibre13">Python(2.x)</kbd> using <kbd class="calibre13">Base64</kbd>, use the following code:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import base64</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">plain_text = "One"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">encoded = base64.b64encode(plain_text)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print encoded</strong><br class="title-page-name"/>T25l</pre>
+<p class="calibre2">To decode <kbd class="calibre13">base64</kbd> data in python, use the following code:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import base64</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">encoded = "T25l"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">decoded = base64.b64decode(encoded)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print decoded</strong><br class="title-page-name"/>One</pre>
+<div class="packt_infobox"><em class="calibre22">CyberChef</em> by GCHQ is a great web application that allows you to carry out all kinds of encoding/decoding, encryption/decryption, compression/decompression, and data analysis operations within your browser. You can access CyberChef at <a href="https://gchq.github.io/CyberChef/" target="_blank" class="calibre20">https://gchq.github.io/CyberChef/</a>, and more details can be found at <a href="https://github.com/gchq/CyberChef" target="_blank" class="calibre20">https://github.com/gchq/CyberChef.</a></div>
+<p class="calibre2">You can also use a tool such as <em class="calibre17">ConverterNET</em> (<a href="http://www.kahusecurity.com/tools/" class="calibre10">http://www.kahusecurity.com/tools/</a>) to encode/decode <kbd class="calibre13">base64</kbd> data. <em class="calibre17">ConvertNET</em> offers various features and allows you to convert data to/from many different formats. To encode, enter the text to encode in the input field and press the <span class="calibre7">Text to Base64</span> button. To decode, enter the encoded data in the input field and press the <span class="calibre7">Base64 to Text</span> button. The following screenshot shows the <kbd class="calibre13">Base64</kbd> encoding of the string <kbd class="calibre13">Hi</kbd> using ConverterNET:</p>
+<div class="cdpaligncenter"><img src="../images/00286.jpeg" class="calibre216"/></div>
+<p class="calibre2">The <kbd class="calibre13">=</kbd> character at the end of the encoded string is the padding character. If you recall, the algorithm converts the three bytes of input into four characters, and as <kbd class="calibre13">Hi</kbd> has only two characters, it is padded to make it three characters; whenever padding is used, you will see the <kbd class="calibre13">=</kbd> characters at the end of the <kbd class="calibre13">Base64</kbd>-encoded string. What this means is the length of a valid <kbd class="calibre13">Base64</kbd>-encoded string will always be multiples of <kbd class="calibre13">4</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2.3 Decoding Custom Base64</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Attackers use different variations of <kbd class="calibre13">Base64</kbd> encoding; the idea is to prevent the <kbd class="calibre13">Base64</kbd> decoding tools from decoding the data successfully. In this section, you will understand some of these techniques.</p>
+<p class="calibre2">Some malware samples remove the padding character <kbd class="calibre13">(=)</kbd> from the end. A C2 communication made by a malware sample (<em class="calibre17">Trojan Qidmorks</em>) is shown later. The following post payload looks like it is encoded with <kbd class="calibre13">base64</kbd> encoding:</p>
+<div class="cdpaligncenter"><img src="../images/00287.jpeg" class="calibre217"/></div>
+<p class="calibre2">When you try to decode the <kbd class="calibre13">POST</kbd> payload, you get the <kbd class="calibre13">Incorrect</kbd> padding error as follows:</p>
+<div class="cdpaligncenter"><img src="../images/00288.jpeg" class="calibre218"/></div>
+<p class="calibre2">The reason for this error is that the length of the encoded string <kbd class="calibre13">(150)</kbd> is not multiples of <kbd class="calibre13">4</kbd>. In other words, two characters are missing from the Base64-encoded data, which is very likely to be padding characters (<kbd class="calibre13">==</kbd>):</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">encoded = "Q3VycmVudFZlcnNpb246IDYuMQ0KVXNlciBwcml2aWxlZ2llcyBsZXZlbDogMg0KUGFyZW50IHByb2Nlc3M6IFxEZXZpY2VcSGFyZGRpc2tWb2x1bWUxXFdpbmRvd3NcZXhwbG9yZXIuZXhlDQoNCg"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">len(encoded)</strong><br class="title-page-name"/>150</pre>
+<p class="calibre2">Appending two padding characters <kbd class="calibre13">(==)</kbd> to the encoded string successfully decodes the data, as shown here. From the decoded data, it can be seen that malware sends the operating system version (<kbd class="calibre13">6.1</kbd> that represents Windows 7), the privilege level of the user, and the parent process to the C2 server:</p>
+<div class="cdpaligncenter"><img src="../images/00289.jpeg" class="calibre219"/></div>
+<p class="calibre2">Sometimes, malware authors use a slight variation of <kbd class="calibre13">base64</kbd> encoding. For instance, an attacker can use a character set where characters <kbd class="calibre13">-</kbd> and <kbd class="calibre13">_</kbd> are used in place of <kbd class="calibre13">+</kbd> and <kbd class="calibre13">/</kbd> (63<sup class="calibre139">rd</sup> and 64<sup class="calibre139">th</sup> characters) as shown here:</p>
+<pre class="calibre18">ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_</pre>
+<p class="calibre2">Once you identify the characters that are replaced in the original character set to encode the data, then you can use the code such as the one shown here. The idea here is to replace the modified characters back to the original characters in the standard character set and then decode it:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import base64</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">encoded = "cGFzc3dvcmQxMjM0IUA_PUB-"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">encoded = encoded.replace("-","+").replace("_","/")</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">decoded = base64.b64decode(encoded)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print decoded</strong><br class="title-page-name"/>password1234!@?=@~</pre>
+<p class="calibre2">Sometimes, malware authors alter the order of the characters in the character set. For example, they may use the following character set instead of the standard character set:</p>
+<pre class="calibre18">0123456789+/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</pre>
+<p class="calibre2">When attackers use a nonstandard <kbd class="calibre13">Base64</kbd> character set, you can decode the data using the following code. Note that in the following code, in addition to the <kbd class="calibre13">64</kbd> characters, the variables <kbd class="calibre13">chr_set</kbd> and <kbd class="calibre13">non_chr_set</kbd> also include the padding character <kbd class="calibre13">=</kbd> (65<sup class="calibre139">th</sup> character), which is required for proper decoding:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import base64</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">chr_set = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">non_chr_set = "0123456789+/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz="</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">encoded = "G6JgP6w="</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">re_encoded = ""</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">for en_ch in encoded:</strong><br class="title-page-name"/><strong class="calibre1">         re_encoded += en_ch.replace(en_ch, chr_set[non_chr_set.find(en_ch)])</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">decoded = base64.b64decode(re_encoded)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print decoded</strong><br class="title-page-name"/>Hello</pre>
+<p class="calibre2">You can also perform custom Base64 decoding using the <em class="calibre17">ConverterNET</em> tool by selecting <span class="calibre7">Conversions | Convert Custom Base64</span>. Just enter the custom <kbd class="calibre13">Base64</kbd> character set in the <span class="calibre7">Alphabet</span> field, and then enter the data to decode in the <span class="calibre7">Input</span> field and press the <span class="calibre7">Decode</span> button, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00290.jpeg" class="calibre220"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2.4 Identifying Base64</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">You can identify a binary using base64 encoding by looking for a long string comprising the <kbd class="calibre13">Base64</kbd> character set (alphanumeric characters,  <kbd class="calibre13">+</kbd> and <kbd class="calibre13">/</kbd>). The following screenshot shows the <kbd class="calibre13">Base64</kbd> character set in the malicious binary, suggesting that malware probably uses <kbd class="calibre13">Base64</kbd> encoding:</p>
+<div class="cdpaligncenter"><img src="../images/00291.jpeg" class="calibre221"/></div>
+<p class="calibre2">You can use the strings <em class="calibre17">cross-references</em> feature (<em class="calibre17">covered in Chapter 5</em>) to locate the code where the <kbd class="calibre13">Base64</kbd> character set is being used, as shown in the following screenshot. Even though it is not necessary to know where the <kbd class="calibre13">Base64</kbd> character set is used in the code to decode <kbd class="calibre13">Base64</kbd> data, sometimes, locating it can be useful, such as in cases where malware authors use <kbd class="calibre13">Base64</kbd> encoding along with other encryption algorithms. For instance, if malware encrypts the C2 network traffic with some encryption algorithm and then uses <kbd class="calibre13">Base64</kbd> encoding; in that case, locating the <kbd class="calibre13">Base64</kbd> character set will likely land you in the <kbd class="calibre13">Base64</kbd> function. You can then analyze the <kbd class="calibre13">Base64</kbd> function or identify the function that calls the <kbd class="calibre13">Base64</kbd> function ( Using <em class="calibre17">Xrefs to</em> feature), which will <span class="calibre7">probably </span>lead you to the encryption function:</p>
+<div class="cdpaligncenter"><img src="../images/00292.jpeg" class="calibre222"/></div>
+<div class="packt_tip">You can use string cross-references in <em class="calibre22">x64dbg;</em> to do this, make sure that the debugger is paused anywhere inside the module and then right-click on the <span class="calibre21"><span class="calibre21">disassembly</span> window</span> (<span class="calibre21">CPU window</span>) and select <span class="calibre21">Search for | Current Module | String references</span>.</div>
+<p class="calibre2">Another method to detect the presence of the <kbd class="calibre13">Base64</kbd> character set in the binary is using a <em class="calibre17">YARA</em> rule (YARA was covered in <a href="part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 2</a>, <em class="calibre17">Static Analysis</em>) such as the one shown here:</p>
+<pre class="calibre18">rule base64<br class="title-page-name"/>{<br class="title-page-name"/>strings:<br class="title-page-name"/>    $a="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"<br class="title-page-name"/>    $b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"<br class="title-page-name"/>condition:<br class="title-page-name"/>    $a or $b<br class="title-page-name"/>}</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3 XOR Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Apart from <kbd class="calibre13">Base64</kbd> encoding, another common encoding algorithm used by the malware authors is the <kbd class="calibre13">XOR</kbd> encoding algorithm. <kbd class="calibre13">XOR</kbd> is a bitwise operation (like <kbd class="calibre13">AND</kbd><em class="calibre17">,</em> <kbd class="calibre13">OR</kbd>, and <kbd class="calibre13">NOT</kbd>), and it is performed on the corresponding bits of the operands. The following table depicts the properties of the <kbd class="calibre13">XOR</kbd> operation. In the <kbd class="calibre13">XOR</kbd> operation, when both the bits are the same, the result is <kbd class="calibre13">0</kbd>; otherwise, the result is <kbd class="calibre13">1</kbd>:</p>
+<p class="calibre2"/>
+<table border="1" class="calibre46">
+<tbody class="calibre47">
+<tr class="calibre48">
+<td class="calibre49"><strong class="calibre1">A</strong></td>
+<td class="calibre49"><strong class="calibre1">B</strong></td>
+<td class="calibre49"><strong class="calibre1">A^B</strong></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+<td class="calibre49"><kbd class="calibre13">1</kbd></td>
+<td class="calibre49"><kbd class="calibre13">0</kbd></td>
+</tr>
+</tbody>
+</table>
+<p class="calibre2"> </p>
+<p class="calibre2">For example, when you <kbd class="calibre13">XOR</kbd> <kbd class="calibre13">2</kbd> and <kbd class="calibre13">4</kbd>, that is, <kbd class="calibre13">2 ^ 4</kbd>, the result is <kbd class="calibre13">6</kbd>. The way it works is shown here:</p>
+<pre class="calibre18">                2: 0000 0010<br class="title-page-name"/>                4: 0000 0100<br class="title-page-name"/>---------------------------<br class="title-page-name"/>Result After XOR : 0000 0110 (6)</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.1 Single Byte XOR</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In a single byte <kbd class="calibre13">XOR</kbd>, each byte from the plaintext is <kbd class="calibre13">XORed</kbd> with the encryption key. For example, if an attacker wants to encrypt plaintext <kbd class="calibre13">cat</kbd> with a key of <kbd class="calibre13">0x40</kbd>, then each character (byte) from the text is <kbd class="calibre13">XORed</kbd> with <kbd class="calibre13">0x40</kbd>, which results in the cipher-text <kbd class="calibre13">#!4</kbd>. The following diagram displays the encryption process of each individual characters:</p>
+<div class="cdpaligncenter"><img src="../images/00293.jpeg" class="calibre223"/></div>
+<p class="calibre2">Another interesting property of <kbd class="calibre13">XOR</kbd> is that when you <kbd class="calibre13">XOR</kbd> the <em class="calibre17">ciphertext</em> with the same key used to encrypt, you get back the <em class="calibre17">plain text</em>. For example, if you take the ciphertext <kbd class="calibre13">#!4</kbd> from the previous example and <kbd class="calibre13">XOR</kbd> it with <kbd class="calibre13">0x40</kbd> (key), you get back <kbd class="calibre13">cat</kbd>. This means that if you know the key, then the same function can be used to both encrypt and decrypt the data. The following is a simple python script to perform <kbd class="calibre13">XOR</kbd> decryption (the same function can be used to perform <kbd class="calibre13">XOR</kbd> encryption as well):</p>
+<pre class="calibre18">def xor(data, key):<br class="title-page-name"/>    translated = ""<br class="title-page-name"/>    for ch in data:<br class="title-page-name"/>        translated += chr(ord(ch) ^ key)<br class="title-page-name"/>    return translated<br class="title-page-name"/><br class="title-page-name"/>if __name__ == "__main__":<br class="title-page-name"/>   out = xor("#!4", 0x40)<br class="title-page-name"/>   print out</pre>
+<p class="calibre2">With an understanding of the <kbd class="calibre13">XOR</kbd> encoding algorithm, let's look at an example of a keylogger, which encodes all the typed keystrokes to a file. When this sample is executed, it logs the keystrokes, and it opens a file (where all the keystrokes will be logged) using the <kbd class="calibre13">CreateFileA()</kbd> API, as shown later. It then writes the logged keystrokes to the file using the <kbd class="calibre13">WriteFile()</kbd> API. Note how the malware calls a function (renamed as <kbd class="calibre13">enc_function</kbd>) after the call to <kbd class="calibre13">CreateFileA()</kbd> and before the call to <kbd class="calibre13">WriteFile()</kbd>; this function encodes the content before writing it to the file. The <kbd class="calibre13">enc_function</kbd> takes two arguments; the <sup class="calibre139">1st</sup> argument is the buffer containing the data to encrypt, and the 2<sup class="calibre139">nd</sup> argument is the length of the buffer:</p>
+<div class="cdpaligncenter"><img src="../images/00294.jpeg" class="calibre224"/></div>
+<p class="calibre2">Examining the <kbd class="calibre13">enc_function</kbd> shows that the malware uses single byte <kbd class="calibre13">XOR</kbd>. It reads each character from the data buffer and encodes with a key of <kbd class="calibre13">0x5A</kbd>, as shown here. In the following XOR loop, the <kbd class="calibre13">edx</kbd> register points to the data buffer, the <kbd class="calibre13">esi</kbd> register contains the length of the buffer, and the <kbd class="calibre13">ecx</kbd> register acts as an index into the data buffer that is incremented at the end of the loop, and loop is continued as long as the index value <kbd class="calibre13">(ecx)</kbd> is less than the length of the buffer <kbd class="calibre13">(esi)</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00295.jpeg" class="calibre225"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.2 Finding XOR Key Through Brute-Force</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In a single byte <kbd class="calibre13">XOR</kbd>, the length of the key is one byte, so there can be only <kbd class="calibre13">255</kbd> possible keys <kbd class="calibre13">(0x0 - 0xff)</kbd> with the exception of <kbd class="calibre13">0</kbd> as the <em class="calibre17">ke</em>y because XORing any value with <kbd class="calibre13">0</kbd> will give the same value as result (that is, no encryption). Since there are only <kbd class="calibre13">255</kbd> keys, you can try all possible keys on the encrypted data. This technique is useful if you know what to find in the decrypted data. For example, upon executing a malware sample, let's say the malware gets the computer hostname <kbd class="calibre13">mymachine</kbd> and concatenates with some data and performs single byte xor encryption, which encrypts it to a ciphertext <kbd class="calibre13">lkwpjeia&gt;i}ieglmja</kbd>. Let's assume that this ciphertext is exfiltrated in a C2 communication. Now, to determine the key used to encrypt the ciphertext, you can either analyze the encryption function or brute-force it. The following python commands implement the brute-force technique; since we expect the decrypted string to contain <kbd class="calibre13">"mymachine"</kbd>, the script decrypts the encrypted string (ciphertext) with all possible keys and displays the key and the decrypted content when <kbd class="calibre13">"mymachine"</kbd> is found. In the later-mentioned example, you can see the key was determined as <kbd class="calibre13">4</kbd> and the decrypted content <kbd class="calibre13">hostname:mymachine</kbd>, includes the hostname <kbd class="calibre13">mymachine</kbd>:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">def xor_brute_force(content, to_match):</strong><br class="title-page-name"/><strong class="calibre1">    for key in range(256):</strong><br class="title-page-name"/><strong class="calibre1">        translated = ""</strong><br class="title-page-name"/><strong class="calibre1">        for ch in content:</strong><br class="title-page-name"/><strong class="calibre1">            translated += chr(ord(ch) ^ key)</strong><br class="title-page-name"/><strong class="calibre1">        if to_match in translated:</strong><br class="title-page-name"/><strong class="calibre1">           print "Key %s(0x%x): %s" % (key, key, translated)</strong><br class="title-page-name"/><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">xor_brute_force("lkwpjeia&gt;i}ieglmja", "mymachine")</strong><br class="title-page-name"/>Key 4(0x4): hostname:mymachine</pre>
+<p class="calibre2">You can also use a tool such as <em class="calibre17">ConverterNET</em> to brute-force and determine the key. To do this, select <span class="calibre7">Tools | Key Search/Convert</span>. In the window that pops up, enter the encrypted content and the match string and press the <span class="calibre7">Search</span> button. If the key is found, it is displayed in the <span class="calibre7">Result</span> field as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00296.jpeg" class="calibre226"/></div>
+<div class="packt_tip">The brute-force technique is useful in determining the <kbd class="calibre42">XOR</kbd> key used to encrypt a PE file (such as EXE or DLL). Just look for the match string <kbd class="calibre42">MZ</kbd> or <kbd class="calibre42">This program cannot be run in DOS mode</kbd> in the decrypted content.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.3 NULL Ignoring XOR Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In <kbd class="calibre13">XOR</kbd> encoding, when a null byte <kbd class="calibre13">(0x00)</kbd> is <kbd class="calibre13">XORed</kbd> with a key, you get back the key as shown here:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">ch = 0x00</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">key = 4</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">ch ^ key</strong><br class="title-page-name"/>4</pre>
+<p class="calibre2">What this means is that whenever a buffer containing a large number of null bytes is encoded, the single byte xor key becomes clearly visible. In the following example, the <kbd class="calibre13">plaintext</kbd> variable is assigned a string containing three null bytes at the end, which is encrypted with a key <kbd class="calibre13">0x4b</kbd>  (character <kbd class="calibre13">K</kbd>), and the encrypted output is printed both in hex string format and text format. Note how the three <kbd class="calibre13">null</kbd> bytes in <kbd class="calibre13">plaintext</kbd> variable are translated to <kbd class="calibre13">XOR</kbd> key values <kbd class="calibre13">0x4b 0x4b 0x4b</kbd> or (<kbd class="calibre13">KKK</kbd>) in the encrypted content. This property of <kbd class="calibre13">XOR</kbd> makes it easy to spot the key if the null bytes are not ignored:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">plaintext = "hello\x00\x00\x00"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">key = 0x4b   </strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">enc_text = ""</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">for ch in plaintext:</strong><br class="title-page-name"/><strong class="calibre1">        x = ord(ch) ^ key</strong><br class="title-page-name"/><strong class="calibre1">        enc_hex += hex(x) + " "</strong><br class="title-page-name"/><strong class="calibre1">        enc_text += chr(x)</strong><br class="title-page-name"/><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print enc_hex</strong><br class="title-page-name"/>0x23 0x2e 0x27 0x27 0x24 <strong class="calibre1">0x4b 0x4b 0x4b</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print enc_text</strong><br class="title-page-name"/>#.''$<strong class="calibre1">KKK</strong></pre>
+<p class="calibre2">The following screenshot shows the <kbd class="calibre13">XOR</kbd>-encrypted communication of a malware sample (<em class="calibre17">HeartBeat RAT</em>). Note the presence of the byte <kbd class="calibre13">0x2</kbd> spread all over the place; this is due to malware encrypting a large buffer (containing null bytes) with the <kbd class="calibre13">XOR</kbd> key of <kbd class="calibre13">0x2</kbd>. For more information on the reverse engineering of this malware, refer to the author's Cysinfo meet presentation at <a href="https://cysinfo.com/session-10-part-1-reversing-decrypting-communications-of-heartbeat-rat/" class="calibre10">https://cysinfo.com/session-10-part-1-reversing-decrypting-communications-of-heartbeat-rat/</a>:</p>
+<div class="cdpaligncenter"><img src="../images/00297.jpeg" class="calibre227"/></div>
+<p class="calibre2">To avoid the null byte problem, malware authors ignore the null byte <kbd class="calibre13">(0x00)</kbd> and the <em class="calibre17">encryption key</em> during encryption, as shown in the commands mentioned here. Note that, in the following code, the plaintext characters are encrypted with the key <kbd class="calibre13">0x4b</kbd>, except the null byte (<kbd class="calibre13">0x00</kbd>) and the encryption key byte (<kbd class="calibre13">0x4b</kbd>); as a result of this, in the encrypted output, the null bytes are preserved without giving away the encryption key. As you can see, when an attacker uses this technique, it is not easy to determine the <em class="calibre17">key</em> just by looking at the encrypted content:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">plaintext = "hello\x00\x00\x00"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">key = 0x4b</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">enc_text = ""</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">for ch in plaintext:</strong><br class="title-page-name"/><strong class="calibre1">        if ch == "\x00" or ch == chr(key):</strong><br class="title-page-name"/><strong class="calibre1">           enc_text += ch</strong><br class="title-page-name"/><strong class="calibre1">        else:</strong><br class="title-page-name"/><strong class="calibre1">           enc_text += chr(ord(ch) ^ key)</strong><br class="title-page-name"/><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">enc_text</strong><br class="title-page-name"/>"#.''$\x00\x00\x00"</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.4 Multi-byte XOR Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Attackers commonly use multi-byte <kbd class="calibre13">XOR</kbd> because it provides better defense against the brute-force technique. For example, if a malware author uses 4-byte <kbd class="calibre13">XOR</kbd> key to encrypt the data and then to brute-force, you will need to try <kbd class="calibre13">4,294,967,295 (0xFFFFFFFF)</kbd> possible keys instead of <kbd class="calibre13">255 (0xFF)</kbd> keys. The following screenshot shows the <kbd class="calibre13">XOR</kbd> decryption loop of the malware (<em class="calibre17">Taidoor</em>). In this case, <em class="calibre17">Taidoor</em> extracted the encrypted PE (exe) file from its resource section and decrypted it using the 4-byte <kbd class="calibre13">XOR</kbd> key <kbd class="calibre13">0xEAD4AA34</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00298.jpeg" class="calibre228"/></div>
+<p class="calibre2">The following screenshot shows the encrypted resource in the <em class="calibre17">Resource Hacker</em> tool. The resource can be extracted and saved to a file by right-clicking on the resource and then selecting <strong class="calibre5">Save Resource to a *.bin file</strong>:</p>
+<div class="cdpaligncenter"><img src="../images/00299.jpeg" class="calibre229"/></div>
+<p class="calibre2">The following is a python script that decodes the encoded resource using a <kbd class="calibre13">4-byte XOR</kbd> key <kbd class="calibre13">0xEAD4AA34</kbd> and writes the decoded content to a file (<kbd class="calibre13">decrypted.bin</kbd>):</p>
+<pre class="calibre18">import os<br class="title-page-name"/>import struct<br class="title-page-name"/>import sys<br class="title-page-name"/><br class="title-page-name"/>def four_byte_xor(content, key ):<br class="title-page-name"/>    translated = ""<br class="title-page-name"/>    len_content = len(content)<br class="title-page-name"/>    index = 0<br class="title-page-name"/>    while (index &lt; len_content):<br class="title-page-name"/>        data = content[index:index+4]<br class="title-page-name"/>        p = struct.unpack("I", data)[0]<br class="title-page-name"/>        translated += struct.pack("I", p ^ key)<br class="title-page-name"/>        index += 4<br class="title-page-name"/>    return translated<br class="title-page-name"/><br class="title-page-name"/>in_file = open("rsrc.bin", 'rb')<br class="title-page-name"/>out_file = open("decrypted.bin", 'wb')<br class="title-page-name"/>xor_key = 0xEAD4AA34<br class="title-page-name"/>rsrc_content = in_file.read()<br class="title-page-name"/>decrypted_content = four_byte_xor(rsrc_content,xor_key)<br class="title-page-name"/>out_file.write(decrypted_content)</pre>
+<p class="calibre2">The decrypted content is a PE (executable file) as shown here:</p>
+<pre class="calibre18">$ <strong class="calibre1">xxd decrypted.bin | more</strong><br class="title-page-name"/>00000000:  4d5a 9000 0300 0000 0400 0000 ffff 0000  <strong class="calibre1">MZ</strong>..............<br class="title-page-name"/>00000010:  b800 0000 0000 0000 4000 0000 0000 0000  ........@.......<br class="title-page-name"/>00000020:  0000 0000 0000 0000 0000 0000 0000 0000  ................<br class="title-page-name"/>00000030:  0000 0000 0000 0000 0000 0000 f000 0000  ................<br class="title-page-name"/>00000040:  0e1f ba0e 00b4 09cd 21b8 014c cd21 5468  ........!..L.!<strong class="calibre1">Th</strong><br class="title-page-name"/>00000050:  6973 2070 726f 6772 616d 2063 616e 6e6f  <strong class="calibre1">is program canno</strong><br class="title-page-name"/>00000060:  7420 6265 2072 756e 2069 6e20 444f 5320  <strong class="calibre1">t be run in DOS</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.5 Identifying XOR Encoding</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To identify XOR encoding, load the binary in IDA and search for the <kbd class="calibre13">XOR</kbd> instruction by selecting <span class="calibre7">Search | text</span>. In the dialog that appears, enter <kbd class="calibre13">xor</kbd> and select <span class="calibre7">Find all occurrences</span> as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00300.jpeg" class="calibre230"/></div>
+<p class="calibre2">When you click on <span class="calibre7">OK</span>, you will be presented with all the occurrences of <kbd class="calibre13">XOR.</kbd> It is very common to see the <kbd class="calibre13">XOR</kbd> operation where the operands are the same registers, such as <kbd class="calibre13">xor eax,eax</kbd> or <kbd class="calibre13">xor ebx,ebx</kbd>. These instructions are used by the compiler to zero out register values, and you can ignore these instructions. To identify <kbd class="calibre13">XOR</kbd> encoding, look for <em class="calibre17">(a)</em> <kbd class="calibre13">XOR</kbd> of a register (or memory reference) with a constant value such as the one shown here, or <em class="calibre17">(b)</em> look for <kbd class="calibre13">XOR</kbd> of a register (or memory reference) with a different register (or memory reference). You can navigate to the code by double-clicking on the entry:</p>
+<div class="cdpaligncenter"><img src="../images/00301.jpeg" class="calibre41"/></div>
+<p class="calibre2">The following are some of the tools you can use to determine the <kbd class="calibre13">XOR</kbd> key. In addition to using XOR encoding, attackers may also use <kbd class="calibre13">ROL, ROT or SHIFT</kbd> operations to encode data. <em class="calibre17">XORSearch</em> and <em class="calibre17">Balbuzard</em> mentioned here also support <kbd class="calibre13">ROL</kbd>, <kbd class="calibre13">ROT</kbd>, and <kbd class="calibre13">Shift</kbd> operations in addition to <kbd class="calibre13">XOR</kbd>. <em class="calibre17">CyberChef</em> <span class="calibre7">supports almost all types of encoding, encryption, and compression algorithms:</span></p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">CyberChef:</em> <a href="https://gchq.github.io/CyberChef/" target="_blank" class="calibre10">https://gchq.github.io/CyberChef/</a></li>
+<li class="calibre12"><em class="calibre19">XORSearch</em><span> </span>by Didier Stevens:<span> </span><a href="https://blog.didierstevens.com/programs/xorsearch/" class="calibre10">https://blog.didierstevens.com/programs/xorsearch/</a></li>
+<li class="calibre12"><em class="calibre19">Balbuzard:</em> <a href="https://bitbucket.org/decalage/balbuzard/wiki/Home" class="calibre10">https://bitbucket.org/decalage/balbuzard/wiki/Home</a></li>
+<li class="calibre12"><em class="calibre19">unXOR:</em> <a href="https://github.com/tomchop/unxor/#unxor" class="calibre10">https://github.com/tomchop/unxor/#unxor</a></li>
+<li class="calibre12"><em class="calibre19">brxor.py:</em> <a href="https://github.com/REMnux/distro/blob/v6/brxor.py" class="calibre10">https://github.com/REMnux/distro/blob/v6/brxor.py</a></li>
+<li class="calibre12"><em class="calibre19">NoMoreXOR.py:</em> <a href="https://github.com/hiddenillusion/NoMoreXOR" class="calibre10">https://github.com/hiddenillusion/NoMoreXOR</a></li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2. Malware Encryption</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Malware authors often use simple encoding techniques, because it is just enough to obscure the data, but sometimes, attackers also use encryption. To identify the use of cryptographic functionality in the binary, you can look for cryptographic indicators (signatures) such as:</p>
+<ul class="calibre11">
+<li class="calibre12">Strings or imports that reference cryptographic functions</li>
+<li class="calibre12">Cryptographic constants</li>
+<li class="calibre12">Unique sequences of instructions used by cryptographic routines</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.1 Identifying Crypto Signatures Using Signsrch</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A useful tool to search for the cryptographic signatures in a file or process is <em class="calibre17">Signsrch</em>, which can be downloaded from <a href="http://aluigi.altervista.org/mytoolz.htm" class="calibre10">http://aluigi.altervista.org/mytoolz.htm</a>. This tool relies on cryptographic signatures <span class="calibre7">to detect encryption algorithms.  The cryptographic signatures are</span> located in a text file, <kbd class="calibre13">signsrch.sig</kbd>. In the following output, when <kbd class="calibre13">signsrch</kbd> is run with the <kbd class="calibre13">-e</kbd> option, it displays the relative virtual addresses where the <kbd class="calibre13">DES</kbd> signatures were detected in the binary:</p>
+<pre class="calibre18">C:\signsrch&gt;<strong class="calibre1">signsrch.exe -e kav.exe</strong><br class="title-page-name"/><br class="title-page-name"/>Signsrch 0.2.4<br class="title-page-name"/>by Luigi Auriemma<br class="title-page-name"/>e-mail: aluigi@autistici.org<br class="title-page-name"/>web: aluigi.org<br class="title-page-name"/>  optimized search function by Andrew http://www.team5150.com/~andrew/<br class="title-page-name"/>  disassembler engine by Oleh Yuschuk<br class="title-page-name"/><br class="title-page-name"/>- open file "kav.exe"<br class="title-page-name"/>- 91712 bytes allocated<br class="title-page-name"/>- load signatures<br class="title-page-name"/>- open file C:\signsrch\signsrch.sig<br class="title-page-name"/>- 3075 signatures in the database<br class="title-page-name"/>- start 1 threads<br class="title-page-name"/>- start signatures scanning:<br class="title-page-name"/><br class="title-page-name"/>  offset num description [bits.endian.size]<br class="title-page-name"/>  --------------------------------------------<br class="title-page-name"/><strong class="calibre1">00410438 1918 DES initial permutation IP [..64]</strong><br class="title-page-name"/><strong class="calibre1">00410478 2330 DES_fp [..64]</strong><br class="title-page-name"/><strong class="calibre1">004104b8 2331 DES_ei [..48]</strong><br class="title-page-name"/><strong class="calibre1">004104e8 2332 DES_p32i [..32]</strong><br class="title-page-name"/><strong class="calibre1">00410508 1920 DES permuted choice table (key) [..56]</strong><br class="title-page-name"/><strong class="calibre1">00410540 1921 DES permuted choice key (table) [..48]</strong><br class="title-page-name"/><strong class="calibre1">00410580 1922 DES S-boxes [..512]</strong><br class="title-page-name"/>[Removed]</pre>
+<p class="calibre2"><br class="calibre6"/>
+Once you know the address where the cryptographic indicators are found, you can use IDA to navigate to the address. For example, if you want to navigate to the address <kbd class="calibre13">00410438</kbd> (<kbd class="calibre13">DES initial permutation IP</kbd>), load the binary in IDA and select <span class="calibre7">Jump | Jump to address</span> (or <em class="calibre17">G</em> hotkey) and enter the address as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00302.jpeg" class="calibre231"/></div>
+<p class="calibre2">Once you click on <span class="calibre7">OK</span>, you will reach the address containing the indicator (in this case, <kbd class="calibre13">DES initial permutation IP</kbd>, labeled as <kbd class="calibre13">DES_ip</kbd>) as shown in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00303.jpeg" class="calibre232"/></div>
+<p class="calibre2">Now, to know where and how this crypto indicator is used in the code, you can use the cross-references (<em class="calibre17">Xrefs-to</em>) feature. Using the cross-references (<em class="calibre17">Xrefs to</em>) feature shows that <kbd class="calibre13">DES_ip</kbd> is referenced within a function <kbd class="calibre13">sub_4032B0</kbd> at address <kbd class="calibre13">0x4032E0</kbd> (<kbd class="calibre13">loc_4032E0</kbd>):</p>
+<div class="cdpaligncenter"><img src="../images/00304.jpeg" class="calibre233"/></div>
+<p class="calibre2">Now, navigating to the address <kbd class="calibre13">0x4032E0</kbd> directly lands you inside the <kbd class="calibre13">DES</kbd> encryption function, as shown in the following screenshot. Once the encryption function is found, you can use <span class="calibre7">cross-references </span>to examine it further to understand in what context the encryption function gets called and the key that is used to encrypt the data:</p>
+<div class="cdpaligncenter"><img src="../images/00305.jpeg" class="calibre234"/></div>
+<p class="calibre2">Instead of using the <kbd class="calibre13">-e</kbd> option to locate the signature and then manually navigating to the code where the signature is used, you can use the <kbd class="calibre13">-F</kbd> option, which will give you the address of the first instruction where the crypto indicator is used. In the following output, running <kbd class="calibre13">signsrch</kbd> with the <kbd class="calibre13">-F</kbd> option directly displays the address <kbd class="calibre13">0x4032E0</kbd> where the crypto indicator <kbd class="calibre13">DES initial permutation IP</kbd> (<kbd class="calibre13">DES_ip</kbd>) is used in the code:</p>
+<pre class="calibre18">C:\signsrch&gt;<strong class="calibre1">signsrch.exe -F kav.exe</strong><br class="title-page-name"/><br class="title-page-name"/>[removed]<br class="title-page-name"/><br class="title-page-name"/>  offset num description [bits.endian.size]<br class="title-page-name"/>  --------------------------------------------<br class="title-page-name"/>[removed]<br class="title-page-name"/><strong class="calibre1">004032e0 1918 DES initial permutation IP [..64]</strong><br class="title-page-name"/>00403490 2330 DES_fp [..64]</pre>
+<p class="calibre2">The <kbd class="calibre13">-e</kbd> and <kbd class="calibre13">-F</kbd> options display the addresses relative to the <em class="calibre17">preferred base address</em> specified in the PE header. For instance, if the <em class="calibre17">preferred base address</em> of the binary is <kbd class="calibre13">0x00400000</kbd>, then the addresses returned by the <kbd class="calibre13">-e</kbd> and <kbd class="calibre13">-F</kbd> options are determined by adding the relative virtual address with the preferred base address <kbd class="calibre13">0x00400000</kbd>. When you run (or debug) the binary, it can be loaded at any address other than the preferred base address (for example, <kbd class="calibre13">0x01350000</kbd>). If you wish to locate the address of the crypto indicator in a running process or while you are debugging a binary (in IDA or x64dbg), then you can run the <kbd class="calibre13">signsrch</kbd> with the <strong class="calibre5"><kbd class="calibre13">-P &lt;pid or process name&gt;</kbd></strong> option. The <kbd class="calibre13">-P</kbd> option automatically determines the base address where the executable is loaded, and then calculates the virtual address of crypto signatures, as shown here:</p>
+<pre class="calibre18">C:\signsrch&gt;<strong class="calibre1">signsrch.exe -P kav.exe</strong><br class="title-page-name"/><br class="title-page-name"/>[removed]<br class="title-page-name"/><br class="title-page-name"/>- 01350000 0001b000 C:\Users\test\Desktop\kav.exe<br class="title-page-name"/>- pid 3068<br class="title-page-name"/>- <strong class="calibre1">base address 0x01350000</strong><br class="title-page-name"/>- offset 01350000 size 0001b000<br class="title-page-name"/>- 110592 bytes allocated<br class="title-page-name"/>- load signatures<br class="title-page-name"/>- open file C:\signsrch\signsrch.sig<br class="title-page-name"/>- 3075 signatures in the database<br class="title-page-name"/>- start 1 threads<br class="title-page-name"/>- start signatures scanning:<br class="title-page-name"/><br class="title-page-name"/>  offset num description [bits.endian.size]<br class="title-page-name"/>  --------------------------------------------<br class="title-page-name"/>  <strong class="calibre1">01360438 1918 DES initial permutation IP [..64]</strong><br class="title-page-name"/><strong class="calibre1">  01360478 2330 DES_fp [..64]</strong><br class="title-page-name"/><strong class="calibre1">  013604b8 2331 DES_ei [..48]</strong></pre>
+<div class="packt_infobox">In addition to detecting encryption algorithms, <em class="calibre22">Signsrch</em> can detect compression algorithms, some anti-debugging code, and Windows cryptographic functions, which normally starts with <kbd class="calibre42">Crypt</kbd> such as <kbd class="calibre42">CryptDecrypt()</kbd> and <kbd class="calibre42">CryptImportKey()</kbd>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.2 Detecting Crypto Constants Using FindCrypt2</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Findcrypt2</em> (<a href="http://www.hexblog.com/ida_pro/files/findcrypt2.zip" class="calibre10">http://www.hexblog.com/ida_pro/files/findcrypt2.zip</a>) is an IDA Pro plug-in that searches for cryptographic constants used by many different algorithms in memory. To use the plugin, download it, and copy the <kbd class="calibre13">findcrypt.plw</kbd> file into the IDA plugins folder. Now, when you load the binary, the plugin is automatically run, or you can manually invoke it by selecting <span class="calibre7">Edit | Plugins | Find crypt v2</span>. The results of the plugin are displayed in the output window:</p>
+<div class="cdpaligncenter"><img src="../images/00306.jpeg" class="calibre41"/></div>
+<div class="packt_tip">The <em class="calibre22">FindCrypt2</em> plugin can also be run when in the debugging mode. <em class="calibre22">FindCrypt2</em> works well if you are using IDA 6.x or a lower version; at the time of writing this book, it did not seem to work with IDA 7.x version (possible due to changes in the IDA 7.x API).</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.3 Detecting Crypto Signatures Using YARA</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Another way to identify the use of cryptography in a binary is by scanning the binary with YARA rules containing crypto signatures. You can either write your own YARA rules, or you can download the YARA rules written by other security researchers (such as at <a href="https://github.com/x64dbg/yarasigs/blob/master/crypto_signatures.yara" class="calibre10">https://github.com/x64dbg/yarasigs/blob/master/crypto_signatures.yara</a>) and then scan the binary with the YARA rules.</p>
+<p class="calibre2">The <em class="calibre17">x64dbg</em> integrates YARA; this is useful if you wish to scan for the crypto signatures in a binary while debugging. You can load the binary into <em class="calibre17">x64dbg</em> (make sure the execution is paused somewhere in the binary), then right-click on the <span class="calibre7">CPU window</span> and select <span class="calibre7">YARA</span> (or <em class="calibre17">Ctrl + Y</em>); this will bring up the <span class="calibre7">Yara</span> dialog shown here. Click on <span class="calibre7">File</span> and loacte the file containing <em class="calibre17">YARA</em> rules. You can also load multiple files containing YARA rules from a directory by clicking on the <span class="calibre7">Directory</span> button:</p>
+<div class="cdpaligncenter"><img src="../images/00307.jpeg" class="calibre235"/></div>
+<p class="calibre2">The following screenshot shows the <em class="calibre17">cryptographic constants</em> detected in a malicious binary as a result of scanning it with the YARA rules containing the crypto signatures. Now you can right-click on any of the entries and select <span class="calibre7">Follow in Dump</span> to look at the data in the <span class="calibre7">dump window</span>, or, if the signature is related to the cryptographic routine, then you can double-click on any of the entries to navigate to the code:</p>
+<div class="cdpaligncenter"><img src="../images/00308.jpeg" class="calibre236"/></div>
+<div class="packt_tip">Encryption algorithms such as RC4 do not use Cryptographic constants because of which it is not easy to detect it using Crypto signatures. Often, you will see attackers using RC4 to encrypt the data because it is easy to implement; the steps used in RC4 are explained in detail in this Talos blog post: <a href="http://blog.talosintelligence.com/2014/06/an-introduction-to-recognizing-and.html" class="calibre20">http://blog.talosintelligence.com/2014/06/an-introduction-to-recognizing-and.html</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.4 Decrypting In Python</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">After you have identified the encryption algorithm and the key used to encrypt the data, you can decrypt the data using<span class="calibre7"> the </span><em class="calibre17">PyCryto</em> <span class="calibre7">(</span><a href="https://www.dlitz.net/software/pycrypto/" class="calibre10">https://www.dlitz.net/software/pycrypto/</a><span class="calibre7">) Python module. To install</span> <em class="calibre17">PyCrypto,</em> <span class="calibre7">you can use</span> <kbd class="calibre13">apt-get install python-crypto</kbd> <span class="calibre7">or</span> <kbd class="calibre13">pip install pycrypto</kbd> <span class="calibre7">or compile it from the source. Pycrypto supports hashing algorithms such as</span> <kbd class="calibre13">MD2</kbd>,  <kbd class="calibre13">MD4</kbd>, <kbd class="calibre13">MD5</kbd>,  <kbd class="calibre13">RIPEMD</kbd>, <kbd class="calibre13"> SHA1</kbd>, and <kbd class="calibre13">SHA256</kbd><span class="calibre7">. It also supports encryption algorithms such as</span> <kbd class="calibre13">AES</kbd>,  <kbd class="calibre13">ARC2</kbd>,  <kbd class="calibre13">Blowfish</kbd>,  <kbd class="calibre13">CAST</kbd>,  <kbd class="calibre13">DES</kbd>,  <kbd class="calibre13">DES3 (Triple DES)</kbd>,   <kbd class="calibre13">IDEA</kbd>,  <kbd class="calibre13">RC5</kbd> and <kbd class="calibre13">ARC4</kbd>.</p>
+<p class="calibre2">The following Python commands demonstrate how to generate <kbd class="calibre13">MD5</kbd>, <kbd class="calibre13">SHA1</kbd>, and <kbd class="calibre13">SHA256</kbd> hashes using the <em class="calibre17">Pycrypto</em> module:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">from Crypto.Hash import MD5,SHA256,SHA1</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">text = "explorer.exe"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">MD5.new(text).hexdigest()</strong><br class="title-page-name"/>'cde09bcdf5fde1e2eac52c0f93362b79'<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">SHA256.new(text).hexdigest()</strong><br class="title-page-name"/>'7592a3326e8f8297547f8c170b96b8aa8f5234027fd76593841a6574f098759c'<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">SHA1.new(text).hexdigest()</strong><br class="title-page-name"/>'7a0fd90576e08807bde2cc57bcf9854bbce05fe3'</pre>
+<p class="calibre2">To decrypt the content, import the appropriate encryption modules from <kbd class="calibre13">Crypto.Cipher</kbd>. The following example shows how to encrypt and decrypt using DES in ECB mode:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">from Crypto.Cipher import DES</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">text = "hostname=blank78"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">key = "14834567"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">des = DES.new(key, DES.MODE_ECB)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">cipher_text = des.encrypt(text)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">cipher_text</strong><br class="title-page-name"/>'\xde\xaf\t\xd5)sNj`\xf5\xae\xfd\xb8\xd3f\xf7'<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">plain_text = des.decrypt(cipher_text)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">plain_text</strong><br class="title-page-name"/>'hostname=blank78'</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3. Custom Encoding/Encryption</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Sometimes, attackers use custom encoding/encryption schemes, which makes it difficult to identify the crypto (and the key), and it also makes reverse engineering harder. One of the custom encoding methods is to use a combination of encoding and encryption to obfuscate the data; an example of such a malware is <em class="calibre17">Etumbot</em> (<a href="https://www.arbornetworks.com/blog/asert/illuminating-the-etumbot-apt-backdoor/" class="calibre10">https://www.arbornetworks.com/blog/asert/illuminating-the-etumbot-apt-backdoor/</a>). The <em class="calibre17">Etumbot</em> malware sample, when executed, obtains the <kbd class="calibre13">RC4</kbd> key from the C2 server; it then uses the obtained <kbd class="calibre13">RC4</kbd> key to encrypt the system information (such as hostname, username, and IP address), and the encrypted content is further encoded using custom <kbd class="calibre13">Base64</kbd> and exfiltrated to the C2. The C2 communication containing the obfuscated content is shown later. For reverse engineering details of this sample, refer to the Author's presentation and the video demo (<a href="https://cysinfo.com/12th-meetup-reversing-decrypting-malware-communications/" class="calibre10">https://cysinfo.com/12th-meetup-reversing-decrypting-malware-communications/</a>):</p>
+<div class="cdpaligncenter"><img src="../images/00309.jpeg" class="calibre237"/></div>
+<p class="calibre2">To deobfuscate the content, it needs to be decoded using custom <kbd class="calibre13">Base64</kbd> first and then decrypted using <kbd class="calibre13">RC4</kbd>; these steps are performed using the following python commands. The output displays the decrypted system information:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import base64</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">from Crypto.Cipher import ARC4</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">rc4_key = "e65wb24n5"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">cipher_text = "kRp6OKW9r90_2_KvkKcQ_j5oA1D2aIxt6xPeFiJYlEHvM8QMql38CtWfWuYlgiXMDFlsoFoH"</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">content = cipher_text.replace('_','/').replace('-','=')</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">b64_decode = base64.b64decode(content)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">rc4 = ARC4.new(rc4_key)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">plain_text = rc4.decrypt(b64_decode)</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print plain_text</strong><br class="title-page-name"/>MYHOSTNAME|Administrator|192.168.1.100|No Proxy|04182|</pre>
+<p class="calibre2">Instead of using a combination of standard encoding/encryption algorithms, some malware authors implement a completely new encoding/encryption schemes. An example of such a malware is the one used by the <em class="calibre17">APT1</em> group. This malware decrypts a string to a URL; to do this, malware calls a user-defined function (renamed as <kbd class="calibre13">Decrypt_Func</kbd> in the later-mentioned screenshot), which implements the custom encryption algorithm. The <kbd class="calibre13">Decrypt_Func</kbd> accepts three arguments; the 1<sup class="calibre139">st</sup> argument is the buffer containing encrypted content, the 2<sup class="calibre139">nd</sup> argument is a buffer where the decrypted content will be stored, and the 3<sup class="calibre139">rd</sup> argument is the length of the buffer. In the following screenshot, the execution is paused before executing <kbd class="calibre13">Decrypt_Func</kbd>, and it shows the <sup class="calibre139">1st</sup> argument (buffer containing encrypted content):</p>
+<div class="cdpaligncenter"><img src="../images/00310.jpeg" class="calibre238"/></div>
+<p class="calibre2">Depending on your objective, you can either analyze the <kbd class="calibre13">Decrypt_Func</kbd> to understand the workings of the algorithm and then write a decryptor as covered in the author's presentation (<a href="https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/" class="calibre10">https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/</a>), or you can allow the malware to decrypt the content for you. To let the malware decrypt the content, just <em class="calibre17">step over</em> the <kbd class="calibre13">Decrypt_Func</kbd> (which will finish executing the decryption function) and then inspect the 2<sup class="calibre139">nd</sup> argument (buffer where the decrypted content is stored). The following screenshot shows the decrypted buffer (2<sup class="calibre139">nd</sup> argument) containing the malicious URL:</p>
+<div class="cdpaligncenter"><img src="../images/00311.jpeg" class="calibre239"/></div>
+<p class="calibre2">The previously mentioned technique of allowing the malware to decode the data is useful if the decryption function is called few times. If the decryption function is called multiple times in a program, it would be more efficient to automate the decoding process using debugger scripting (<em class="calibre17">covered in</em> <a href="part0184.html#5FF7G0-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 6</a>, <em class="calibre17"><span class="calibre7">Debugging Malicious Binary</span></em>) rather than doing it manually. To demonstrate this, consider the code snippet from a 64-bit malware sample (in the following screenshot). Note how the malware calls a function (renamed as <kbd class="calibre13">dec_function</kbd>) multiple times; if you look at the code, you will note that an encrypted string is passed to this function as the 1<sup class="calibre139">st</sup> argument (in <kbd class="calibre13">rcx</kbd> register), and after executing the function, the return value in <kbd class="calibre13">eax</kbd> contains the address of the buffer where the decrypted content is stored:</p>
+<div class="cdpaligncenter"><img src="../images/00312.jpeg" class="calibre240"/></div>
+<p class="calibre2">The following screenshot displays the <em class="calibre17">cross-references</em> to the <kbd class="calibre13">dec_function</kbd>; as you can see, this function is called multiple times in the program:</p>
+<div class="cdpaligncenter"><img src="../images/00313.jpeg" class="calibre241"/></div>
+<p class="calibre2">Each time <kbd class="calibre13">dec_function</kbd> is called, it decrypts a string. To decrypt all the strings passed to this function, we can write an <em class="calibre17">IDAPython</em> script (such as the one shown here): </p>
+<pre class="calibre18">import idautils<br class="title-page-name"/>import idaapi<br class="title-page-name"/>import idc<br class="title-page-name"/><br class="title-page-name"/>for name in idautils.Names():<br class="title-page-name"/>    if name[1] == "dec_function":<br class="title-page-name"/>        ea= idc.get_name_ea_simple("dec_function")<br class="title-page-name"/>        for ref in idautils.CodeRefsTo(ea, 1):<br class="title-page-name"/>            idc.add_bpt(ref)<br class="title-page-name"/>idc.start_process('', '', '')<br class="title-page-name"/>while True:<br class="title-page-name"/>    event_code = idc.wait_for_next_event(idc.WFNE_SUSP, -1)<br class="title-page-name"/>    if event_code &lt; 1 or event_code == idc.PROCESS_EXITED:<br class="title-page-name"/>        break<br class="title-page-name"/>    rcx_value = idc.get_reg_value("RCX")<br class="title-page-name"/>    encoded_string = idc.get_strlit_contents(rcx_value)<br class="title-page-name"/>    idc.step_over()<br class="title-page-name"/>    evt_code = idc.wait_for_next_event(idc.WFNE_SUSP, -1)<br class="title-page-name"/>    if evt_code == idc.BREAKPOINT:<br class="title-page-name"/>        rax_value = idc.get_reg_value("RAX")<br class="title-page-name"/>    decoded_string = idc.get_strlit_contents(rax_value)<br class="title-page-name"/>    print "{0} {1:&gt;25}".format(encoded_string, decoded_string)<br class="title-page-name"/>    idc.resume_process()</pre>
+<p class="calibre2"><span class="calibre7">Since we have renamed the decryption function to </span><kbd class="calibre13">dec_function</kbd>,<span class="calibre7"> it is accessible from the names window in IDA. </span>The previous script iterates through the names window to identify the <kbd class="calibre13">dec_function</kbd> and performs the following steps:</p>
+<ol class="calibre14">
+<li value="1" class="calibre12">If the <kbd class="calibre13">dec_function</kbd> is present, it determines the address of <kbd class="calibre13">dec_function</kbd>.</li>
+<li value="2" class="calibre12">It uses the address of <kbd class="calibre13">dec_function</kbd> to determine the cross-references (<kbd class="calibre13">Xrefs to</kbd>) to <kbd class="calibre13">dec_function</kbd>, which gives all the addresses where <kbd class="calibre13">dec_function</kbd> is called.</li>
+<li value="3" class="calibre12">It sets the breakpoint on all the addresses where <kbd class="calibre13">dec_function</kbd> is called.</li>
+<li value="4" class="calibre12">It starts the debugger automatically, and when the breakpoint is hit at <kbd class="calibre13">dec_function</kbd>, it reads the encrypted string from the address pointed to by the <kbd class="calibre13">rcx</kbd> register. A point to remember is, for the IDA debugger to start automatically, be sure to select the debugger (such as <span>Local Windows debugger</span>), either from the <span>Toolbar area</span> or by choosing <strong class="calibre1"><span>Debugger | Select debugger</span></strong>.</li>
+<li value="5" class="calibre12">It then <em class="calibre19">steps over</em> the function to execute the decryption function (<kbd class="calibre13">dec_function</kbd>) and reads the return value <kbd class="calibre13">(rax)</kbd>, <span>which contains the address of the decrypted string. It then prints the decrypted string.</span></li>
+<li value="6" class="calibre12">It repeats the previous steps, to decrypt each string passed to <kbd class="calibre13">dec_function</kbd>.</li>
+</ol>
+<p class="calibre2">After running the previous script, the encrypted strings and their corresponding decrypted strings are displayed in the <span class="calibre7">output window</span> as shown here. From the output, you can see that the malware decrypts the file names, registry name, and API function names during runtime to avoid suspicion. In other words, these are the strings the attacker wants to hide from static analysis:</p>
+<div class="cdpaligncenter"><img src="../images/00314.jpeg" class="calibre242"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4. Malware Unpacking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Attackers go to great lengths to protect their binary from anti-virus detection and to make it difficult for a malware analyst to perform static analysis and reverse engineering. Malware authors often use <em class="calibre17">packers</em> and <em class="calibre17">cryptors</em> (<em class="calibre17">see</em> <a href="part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 2</a><em class="calibre17">, Static Analysis, for a basic introduction to packers and how to detect them</em>) to obfuscate the executable content. A <em class="calibre17">packer</em> is a program that takes a normal executable, compresses its contents, and generates a new obfuscated executable. A <em class="calibre17">cryptor</em> is like a packer instead of compressing the binary; it encrypts it. In other words, a packer or cryptor transforms an executable into a form that is difficult to analyze. When a binary is packed, it reveals very less information; you will not find strings revealing any valuable information, the number of imported functions will be lower, and the program instructions will be obscured. To make sense of a packed binary, you need to remove the obfuscation layer (unpack) applied to the program; to do this, it is important to first understand the workings of a packer.</p>
+<p class="calibre2">When a normal executable is passed through a packer, the executable content is compressed, and it adds an <em class="calibre17">unpacking stub</em> (<em class="calibre17">decompression routine</em>). The packer then modifies the executable's entry point to the location of the stub and generates a new packed executable. When the packed binary is executed, the unpacking stub extracts the original binary (during runtime) and then triggers the execution of the original binary by transferring the control to the <em class="calibre17">original entry point (OEP)</em> as depicted in the following diagram:</p>
+<div class="cdpaligncenter"><img src="../images/00315.jpeg" class="calibre243"/></div>
+<p class="calibre2">To unpack a packed binary, you can either use automated tools or do it manually. The automated approach saves time, but it's not completely reliable (sometimes it works and sometimes it doesn't), whereas the manual method is time-consuming, but once you acquire the skills, it is the most reliable method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1 Manual Unpacking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To unpack the binary packed with a packer, we normally perform the following general steps:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1"> The first step is to identify the <em class="calibre19">OEP;</em> as mentioned previously, when a packed binary is executed, it extracts the original binary, and at some point, it transfers control to the <em class="calibre19">OEP</em>. The original entry point (OEP) is the address of the malware's first instruction (where malicious code begins) before it was packed. In this step, we identify the instruction in the packed binary that will jump (lead us) to the OEP.</li>
+<li class="calibre12" value="2">The next step involves executing the program until the OEP is reached; the idea is to allow the malware stub to unpack itself in memory and pause at the OEP (before executing malicious code).</li>
+<li class="calibre12" value="3">The third step involves dumping the unpacked process from the memory to disk.</li>
+<li class="calibre12" value="4">The final step involves fixing the <em class="calibre19">Import Address Table (IAT)</em> of the dumped file.</li>
+</ol>
+<p class="calibre2">In the next few sections, we will look at these steps in detail. To demonstrate the previous concepts, we will use a malware packed with the <em class="calibre17">UPX packer</em> (<a href="https://upx.github.io/" class="calibre10">https://upx.github.io/</a>). The tools and techniques covered in the next few sections should give you an idea of the manual unpacking process.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1.1 Identifying The OEP</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this section, you will understand the techniques to identify the OEP in the packed binary. In the following screenshot, examining the packed binary i<span class="calibre7">n </span><em class="calibre17">pestudio</em><span class="calibre7"> (</span><a href="https://www.winitor.com/" target="_blank" class="calibre10">https://www.winitor.com/</a><span class="calibre7">)</span> shows many indicators that suggest the file is packed. The packed binary contains three sections, <kbd class="calibre13">UPX0</kbd>, <kbd class="calibre13">UPX1</kbd>, and <kbd class="calibre13">.rsrc</kbd>. From the screenshot, you can see that the entry point of the packed binary is in the <kbd class="calibre13">UPX1</kbd> section, so the execution begins here, and this section contains the decompression stub that will unpack the original executable at runtime. Another indicator is that the raw-size of the <kbd class="calibre13">UPX0</kbd> section is <kbd class="calibre13">0</kbd>, but the virtual-size is <kbd class="calibre13">0x1f000</kbd>; this suggests that the <kbd class="calibre13">UPX0</kbd> section does not occupy any space on the disk, but it occupies space in memory; to be specific, it occupies a size of <kbd class="calibre13">0x1f000</kbd> bytes (this is because the malware decompresses the executable in memory and stores it in the <kbd class="calibre13">UPX0</kbd> section during runtime). Also, the <kbd class="calibre13">UPX0</kbd> section has a <kbd class="calibre13">read</kbd>, <kbd class="calibre13">write</kbd>, <kbd class="calibre13">execute</kbd> permission, most likely because after decompressing the original binary, the malicious code will start executing in <kbd class="calibre13">UPX0</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00316.jpeg" class="calibre244"/></div>
+<p class="calibre2">Another indicator is that the packed binary contains obfuscated strings, and when you load the binary in IDA, IDA recognizes that the import address table (<em class="calibre17">IAT</em>) is in a nonstandard location and displays the following warning; this is due to <kbd class="calibre13">UPX</kbd> packing all the sections and <em class="calibre17">IAT</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00317.jpeg" class="calibre245"/></div>
+<p class="calibre2">The binary consists of only one built-in function and only 5 imported functions; all these indicators suggest that the binary is packed:</p>
+<div class="cdpaligncenter"><img src="../images/00318.jpeg" class="calibre246"/></div>
+<p class="calibre2">To find the OEP, you will need to locate the instruction in the packed program that transfers control to the OEP. Depending on the packer, this can be simple or challenging; you will normally focus on those instructions that transfer control to an unclear destination. Examining the flowchart of the function in the packed binary shows a jump to a location, which is highlighted in red by IDA:</p>
+<div class="cdpaligncenter"><img src="../images/00319.jpeg" class="calibre247"/></div>
+<p class="calibre2">The red color is IDA's way of saying it cannot analyze because the jump destination is unclear. The following screenshot shows the jump instruction:</p>
+<div class="cdpaligncenter"><img src="../images/00320.jpeg" class="calibre41"/></div>
+<p class="calibre2">Double-clicking on the <em class="calibre17">jump destination</em> <kbd class="calibre13">(byte_40259B)</kbd> shows that the jump will be taken to <kbd class="calibre13">UPX0</kbd> (from <kbd class="calibre13">UPX1</kbd>). In other words, upon execution, the malware executes decompression stub in <kbd class="calibre13">UPX1</kbd>, which unpacks the original binary, copies unpacked code in <kbd class="calibre13">UPX0</kbd>, and the jump instruction will most likely transfer the control to the unpacked code in <kbd class="calibre13">UPX0</kbd> (from <kbd class="calibre13">UPX1</kbd>).</p>
+<div class="cdpaligncenter"><img src="../images/00321.jpeg" class="calibre41"/></div>
+<p class="calibre2">At this point, we have located the instruction that we believe will jump to the <kbd class="calibre13">OEP</kbd>. The next step is to load the binary in a debugger and set a <em class="calibre17">breakpoint</em> at the instruction performing the jump and execute until it reaches that instruction. To do that, the binary was loaded into <em class="calibre17">x64dbg</em> (you can also use the IDA debugger and follow the same steps) and a <em class="calibre17">breakpoint</em> was set and executed until the jump instruction. As shown in the following screenshot, the execution is paused at that jump instruction.</p>
+<div class="cdpaligncenter"><img src="../images/00322.jpeg" class="calibre41"/></div>
+<p class="calibre2">You can now assume that the malware has finished unpacking; now, you can press <em class="calibre17">F7</em> once (<span class="calibre7">step into</span>), which takes you to the original entry point at address <kbd class="calibre13">0x0040259B.</kbd> At this point, we are at the malware's first instruction (after unpacking):</p>
+<div class="cdpaligncenter"><img src="../images/00323.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1.2 Dumping Process Memory With Scylla</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Now that we have located the OEP, the next step is to dump the process memory to disk. To dump the process, we will use a tool named <em class="calibre17">Scylla</em> (<a href="https://github.com/NtQuery/Scylla" class="calibre10">https://github.com/NtQuery/Scylla</a>); it is a great tool to dump the process memory and to rebuild the import address table. One of the great features of <em class="calibre17">x64dbg</em> is that it integrates <em class="calibre17">Scylla</em>, and Scylla can be launched by clicking on <span class="calibre7">Plugins | Scylla</span>, (or <em class="calibre17">Ctrl</em> <em class="calibre17">+ I</em>). To dump the process memory, while the execution is paused at the OEP, launch Scylla, make sure that the <span class="calibre7">OEP</span> field is set to correct address as follows; if not you need to set it manually and click on the <span class="calibre7">Dump</span> button and save the dumped executable to disk (in this case, it was saved as <kbd class="calibre13">packed_dump.exe</kbd>):</p>
+<div class="cdpaligncenter"><img src="../images/00324.jpeg" class="calibre248"/></div>
+<p class="calibre2">Now, when you load the dumped executable into IDA, you will see the entire list of built-in functions (which was not visible in the packed program before), and the function code is no longer obfuscated, but still, the <em class="calibre17">imports</em> are not visible, and the API call displays addresses instead of names. To overcome this problem, you need to rebuild the import table of the packed binary:</p>
+<div class="cdpaligncenter"><img src="../images/00325.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1.3 Fixing The Import Table</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To fix the imports, go back to <em class="calibre17">Scylla</em>, and click on the <span class="calibre7">IAT Autosearch</span> button, which will scan the memory of the process to locate the import table; if found, it populates the <span class="calibre7">VA</span> and the <span class="calibre7">size</span> fields with appropriate values. To get the list of imports, click on the <span class="calibre7">Get Imports</span> button. The list of imported functions determined using this method is shown here. Sometimes, you may note invalid entries (with no tick mark next to the entry) in the results; in such case, right-click those entries and choose <span class="calibre7">Cut Thunk</span> to delete them:</p>
+<div class="cdpaligncenter"><img src="../images/00326.jpeg" class="calibre249"/></div>
+<p class="calibre2">After determining the imported functions using the previous step, you need to apply the patch to the dumped executable (<kbd class="calibre13">packed_dump.exe</kbd>). To do that, click on the <span class="calibre7">Fix Dump</span> button, which will launch the file browser where you can select the file that you dumped before. <em class="calibre17">Scylla</em> will patch the binary with the determined import functions, and a new file will be created with a file name containing <kbd class="calibre13">_SCY</kbd> at the end (such as <kbd class="calibre13">packed_dumped_SCY.exe</kbd>). Now, when you load the patched file in IDA, you will see references to the imported function, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00327.jpeg" class="calibre250"/></div>
+<div class="packt_tip">When you are dealing with some of the packers, the <span class="calibre21">IAT Autosearch</span> button in Scylla may not be able to find the module's import table; in such a case, you may need to put in some extra effort to manually determine the start of the import table and the size of the import table and enter them in the <span class="calibre21">VA</span> and the <span class="calibre21">Size</span> fields.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.2 Automated Unpacking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">There are various tools that allow you to unpack the malware packed with common packers such as <em class="calibre17">UPX</em>, <em class="calibre17">FSG</em>, and <em class="calibre17">AsPack</em>. Automated tools are great for known packers and can save time, but remember, it may not always work; that is when the manual unpacking skills will help. <em class="calibre17">TitanMist</em> by ReversingLabs (<a href="https://www.reversinglabs.com/open-source/titanmist.html" class="calibre10">https://www.reversinglabs.com/open-source/titanmist.html</a>) is a great tool that consists of various <em class="calibre17">packer signatures</em> and <em class="calibre17">unpacking scripts</em>. After you download and extract it, you can run it against the packed binary using the command shown here; using <kbd class="calibre13">-i</kbd>, you specify the input file (packed file), and <kbd class="calibre13">-o</kbd> specifies the output filename, and <kbd class="calibre13">-t</kbd> specifies the type of unpacker. In the later-mentioned command, <em class="calibre17">TitanMist</em> was run against the binary packed with <em class="calibre17">UPX; </em>note how it automatically identified the packer and performed the unpacking process. The tool automatically identified the OEP and import table, dumped the process, fixed the imports, and applied the patch to the dumped process:</p>
+<pre class="calibre18">C:\TitanMist&gt;<strong class="calibre1">TitanMist.exe -i packed.exe -o unpacked.exe -t python</strong><br class="title-page-name"/><br class="title-page-name"/>Match found!<br class="title-page-name"/>│ <strong class="calibre1">Name: UPX</strong><br class="title-page-name"/>│ Version: 0.8x - 3.x<br class="title-page-name"/>│ Author: Markus and Laszlo<br class="title-page-name"/>│ Wiki url: http://kbase.reversinglabs.com/index.php/UPX<br class="title-page-name"/>│ Description:<br class="title-page-name"/><br class="title-page-name"/>Unpacker for UPX 1.x - 3.x packed files<br class="title-page-name"/>ReversingLabs Corporation / www.reversinglabs.com<br class="title-page-name"/>[x] Debugger initialized.<br class="title-page-name"/>[x] Hardware breakpoint set.<br class="title-page-name"/>[x] Import at 00407000.<br class="title-page-name"/>[x] Import at 00407004.<br class="title-page-name"/>[x] Import at 00407008.[Removed]<br class="title-page-name"/>[x] Import at 00407118.<br class="title-page-name"/>[x] <strong class="calibre1">OEP found: 0x0040259B</strong>.<br class="title-page-name"/>[x] <strong class="calibre1">Process dumped.</strong><br class="title-page-name"/>[x] <strong class="calibre1">IAT begin at 0x00407000, size 00000118</strong>.<br class="title-page-name"/>[X] <strong class="calibre1">Imports fixed.</strong><br class="title-page-name"/>[x] No overlay found.<br class="title-page-name"/>[x] File has been realigned.<br class="title-page-name"/>[x] File has been unpacked to unpacked.exe.<br class="title-page-name"/>[x] Exit Code: 0.<br class="title-page-name"/>█ Unpacking succeeded! </pre>
+<p class="calibre2">Another option is to use the IDA Pro's <em class="calibre17">Universal PE Unpacker plugin</em>. This plugin relies on debugging the malware, to determine when the code jumps to the OEP. For detailed information on this plugin, refer to this article (<a href="https://www.hex-rays.com/products/ida/support/tutorials/unpack_pe/unpacking.pdf" class="calibre10">https://www.hex-rays.com/products/ida/support/tutorials/unpack_pe/unpacking.pdf</a>). To invoke this plugin, load the binary into IDA and select <span class="calibre7">Edit | Plugins | Universal PE</span> unpacker. Running the plugin launches the program in the debugger, and it tries to suspend it, as soon as the packer finishes unpacking. After loading the <em class="calibre17">UPX-</em>packed malware (the same sample used in manual unpacking) in IDA and launching the plugin, the following dialog is displayed. In the following screenshot, IDA set the start address and end address to the range of the <kbd class="calibre13">UPX0</kbd> section; this range is treated as the <kbd class="calibre13">OEP</kbd> range. In other words, when the execution reaches this section (from <kbd class="calibre13">UPX1</kbd>, which contains decompression stub), IDA will suspend the program execution, giving you a chance to take further action:</p>
+<div class="cdpaligncenter"><img src="../images/00328.jpeg" class="calibre251"/></div>
+<p class="calibre2">In the following screenshot, note how IDA automatically determined the OEP address and then showed the following dialog:</p>
+<div class="cdpaligncenter"><img src="../images/00329.jpeg" class="calibre252"/></div>
+<p class="calibre2">If you click on the <span class="calibre7">Yes</span> button, the execution is stopped, and the process is exited but before that, IDA automatically determines the import address table (IAT) and it creates a new segment to rebuild the import section of the program. At this point, you can analyze the unpacked code. The following screenshot shows the newly rebuilt import address table:</p>
+<div class="cdpaligncenter"><img src="../images/00330.jpeg" class="calibre253"/></div>
+<p class="calibre2">Instead of clicking the <span class="calibre7">YES</span> button, if you click on the <span class="calibre7">No</span> button, then IDA will pause the debugger execution at the OEP, and At this point, you can either debug the unpacked code or manually dump the executable, fix the imports using a tool such as <em class="calibre17">Scylla</em> by entering the proper OEP (as covered in <em class="calibre17">Section 4.1 manual unpacking</em>).</p>
+<p class="calibre2">In <em class="calibre17">x64dbg,</em> you can perform automated unpacking using unpacking scripts, which can be downloaded from <a href="https://github.com/x64dbg/Scripts" target="_blank" class="calibre10">https://github.com/x64dbg/Scripts</a>. To unpack, make sure that the binary is loaded and paused at the entry point. Depending on the packer you are dealing with, you need to load the appropriate unpacker script by right-clicking on the <span class="calibre7">script pane</span> and then by selecting <span class="calibre7">Load Script | Open</span> (or <em class="calibre17">Ctrl + O</em>). The following screenshot shows the contents of the UPX unpacker script:</p>
+<div class="cdpaligncenter"><img src="../images/00331.jpeg" class="calibre254"/></div>
+<p class="calibre2">After loading the script, run the script by right-clicking on the <span class="calibre7">script pane</span> and by selecting <span class="calibre7">Run</span>. If the script successfully unpacks it, a message box pops up saying Script Finished and the execution will be paused at the OEP. The following screenshot shows the breakpoint (In the CPU pane) automatically set at the OEP as a result of running the UPX unpacker script. Now, you can start debugging the unpacked code or you can use <em class="calibre17">Scylla</em> to dump the process and fix the imports (as described in <em class="calibre17">section 4.1 manual unpacking</em>):</p>
+<div class="cdpaligncenter"><img src="../images/00332.jpeg" class="calibre255"/></div>
+<div class="packt_tip">In addition to the earlier-mentioned tools, there are various other resources that can help you with automatic unpacking. See <em class="calibre22">Ether Unpack Service</em>: <a href="http://ether.gtisc.gatech.edu/web_unpack/" class="calibre20">http://ether.gtisc.gatech.edu/web_unpack/</a>, <em class="calibre22">FUU (Faster Universal Unpacker)</em>: <a href="https://github.com/crackinglandia/fuu" class="calibre20">https://github.com/crackinglandia/fuu.</a></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Summary</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Malware authors use obfuscation techniques to conceal the data and to hide information from the security analyst. In this chapter, we looked at various encoding, encryption, and packing techniques commonly used by the malware authors, and we also looked at different strategies to deobfuscate the data. In the next chapter, you will be introduced to the concept of memory forensics, and you will understand how to use memory forensics to investigate malware capabilities.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

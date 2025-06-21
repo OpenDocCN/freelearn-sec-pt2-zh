@@ -1,0 +1,699 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Code Injection and Hooking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In the previous chapter, we looked at the different persistence mechanisms used by malware to remain on a victim system. In this chapter, you will learn how malicious programs inject code into another process (called <em class="calibre17">target process</em> or <em class="calibre17">remote process</em>) to perform malicious actions. The technique of injecting malicious code into a target process's memory and executing the malicious code within the context of the target process is called <em class="calibre17">code injection (or process injection)</em>.</p>
+<p class="calibre2">An attacker typically chooses a legitimate process (such as <kbd class="calibre13">explorer.exe</kbd> or <kbd class="calibre13">svchost.exe</kbd>) as the target process. Once the malicious code is injected into the target process, it can then perform malicious actions, such as logging keystrokes, stealing passwords, and exfiltrating data, within the context of the target process. After injecting the code into the memory of the target process, the malware component responsible for injecting code can either continue to persist on the system, thereby injecting code into the target process every time the system reboots, or it can delete itself from the filesystem, keeping the malicious code in memory only.</p>
+<p class="calibre2">Before we delve into the malware code injection techniques, it is essential to understand the virtual memory concept.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1. Virtual Memory</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">When you double-click a program containing a sequence of instructions, a process is created. The Windows operating system provides each new process created with its own private memory address space (called the <em class="calibre17">process memory</em>). The process memory is a part of <em class="calibre17">virtual memory</em>; virtual memory is not real memory, but an illusion created by the operating system's memory manager. It is because of this illusion that each process thinks that it has its own private memory space. During runtime, the Windows memory manager, with the help of hardware, translates the virtual address into the physical address (in RAM) where the actual data resides; to manage the memory, it pages some of the memory to the disk. When the process's thread accesses the virtual address that is paged to the disk, the memory manager loads it from the disk back to the memory. The following diagram illustrates two processes, A and B, whose process memories are mapped to the physical memory while some parts are paged to the disk:</p>
+<div class="cdpaligncenter"><img src="../images/00231.jpeg" class="calibre193"/></div>
+<p class="calibre2">Since we normally deal with virtual addresses (the ones that you see in your debugger), we will keep physical memory out of the discussion for the rest of the chapter. Now, let's focus on virtual memory. <em class="calibre17">Virtual memory</em> is segregated into <em class="calibre17">process memory</em> (process space or user space) and <em class="calibre17">kernel memory</em> (kernel space or system space). The size of the virtual memory address space depends on the hardware platform. For example, on a 32-bit architecture, by default, the total virtual address space (for both process and kernel memory) is a maximum of 4 GB. The lower half (lower 2 GB), ranging from <kbd class="calibre13">0x00000000</kbd> through <kbd class="calibre13">0x7FFFFFFF</kbd>, is reserved for user processes (process memory or user space), and the upper half of the address (upper 2 GB), ranging from <kbd class="calibre13">0x80000000</kbd> through <kbd class="calibre13">0xFFFFFFFF</kbd>, is reserved for kernel memory (kernel space).</p>
+<p class="calibre2">On a 32-bit system, out of the 4 GB virtual address space, each process thinks that it has 2 GB of process memory, ranging from <kbd class="calibre13">0x00000000</kbd> - <kbd class="calibre13">0x7FFFFFFF</kbd>. Since each process thinks that it has its own private virtual address space (which ultimately gets mapped to physical memory), the total virtual address gets much larger than the available physical memory (RAM). The Windows memory manager addresses this by paging some of the memory to the disk; this frees the physical memory, which can be used for other processes, or for the operating system itself. Even though each Windows process has its own private memory space, the kernel memory is, for the most part, common, and is shared by all the processes. The following diagram shows the memory layout of 32-bit architecture. You may notice a 64 KB gap between the user and kernel space; this region is not accessible and ensures that the kernel does not accidentally cross the boundary and corrupt the user-space. You can determine the upper boundary (last usable address) of the process address space by examining the symbol <kbd class="calibre13">MmHighestUserAddress</kbd>, and the lower boundary (first usable address) of the kernel space by querying the symbol <kbd class="calibre13">MmSystemRangeStart</kbd> with a kernel debugger such as <em class="calibre17">Windbg</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00232.jpeg" class="calibre194"/></div>
+<p class="calibre2">Even though the virtual address range is the same for each process (<kbd class="calibre13">x00000000 - 0x7FFFFFFF</kbd>), both the hardware and Windows make sure that the physical addresses mapped to this range are different for each process. For instance, when two processes access the same virtual address, each process will end up accessing a different address in the physical memory. By providing private address space for each process, the operating system ensures that processes do not overwrite each other's data.</p>
+<p class="calibre2">The virtual memory space need not always be divided into 2 GB halves; that is just the default setup. For example, you can enable a 3 GB boot switch by using the following command, which increases the process memory to 3 GB, ranging from <kbd class="calibre13">0x00000000</kbd> - <kbd class="calibre13">0xBFFFFFFF</kbd>; the kernel memory gets the remaining 1 GB, from <kbd class="calibre13">0xC0000000</kbd> - <kbd class="calibre13">0xFFFFFFFF</kbd>:</p>
+<pre class="calibre18">bcdedit /set increaseuserva 3072</pre>
+<p class="calibre2">The x64 architecture provides much larger address space for both the process and kernel memory, as shown in the following diagram. On x64 architecture, the user space ranges from <kbd class="calibre13">0x0000000000000000 - 0x000007ffffffffff</kbd>, and the kernel space from <kbd class="calibre13">0xffff080000000000</kbd> and above. You may notice a huge address gap between the user-space and the kernel space; this address range is not usable. Even though, in the following screenshot, the kernel space is shown as starting from <kbd class="calibre13">0xffff080000000000</kbd>, the first usable address in the kernel space starts at <kbd class="calibre13">ffff800000000000</kbd>. The reason for this is that all addresses used in x64 code must be canonical. An address is said to be canonical if it has the bits <kbd class="calibre13">47-63</kbd> either all <em class="calibre17">set</em> or all <em class="calibre17">clear</em>. Attempting to use a non-canonical address results in a page fault exception:</p>
+<div class="cdpaligncenter"><img src="../images/00233.jpeg" class="calibre195"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1 Process Memory Components (User Space)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">With an understanding of virtual memory, let us focus our attention on a part of the virtual memory called <em class="calibre17">process memory</em>. Process memory is the memory used by <em class="calibre17">user applications</em>. The following screenshot shows two processes and gives a high-level overview of the components which reside in the process memory. In the following screenshot, the kernel space is deliberately left blank for simplicity (we will fill in that blank in the next section). Keep in mind that processes share the same kernel space:</p>
+<div class="cdpaligncenter"><img src="../images/00234.jpeg" class="calibre196"/></div>
+<p class="calibre2">Process memory consists of the following major components:</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Process executable</strong>: This region contains the executable associated with the application. When a program on the disk is double-clicked, a process is created, and the executable associated with the program is loaded into the process memory.</li>
+<li class="calibre12"><strong class="calibre1">Dynamic Linked Libraries (DLLs)</strong>: When a process is created, all its associated DLLs get loaded into the process memory. This region represents all DLLs associated with a process.</li>
+<li class="calibre12"><strong class="calibre1">Process environment variables:</strong> This memory region stores the process's environment variables, such as the temporary directories, home directory, AppData directory, and so on.</li>
+<li class="calibre12"><strong class="calibre1">Process heap(s):</strong> This region specifies the process heap. Each process has a single heap and can create additional heaps as required. This region specifies the dynamic input that the process receives.</li>
+<li class="calibre12"><strong class="calibre1">Thread stack(s):</strong> This region represents the dedicated range of process memory allocated to each thread, called its <em class="calibre19">runtime stack</em>. <span>Each thread gets its own stack, and this</span> is where function arguments, local variables, and return addresses can be found. </li>
+<li class="calibre12"><strong class="calibre1">Process Environment Block (PEB)</strong>: This region represents the <kbd class="calibre13">PEB</kbd> structure, which contains information about where the executable is loaded, its full path on the disk, and where to find the DLLs in memory.</li>
+</ul>
+<p class="calibre2">You can examine the contents of a process memory by using the<em class="calibre17"> Process Hacker</em> (<a href="https://processhacker.sourceforge.io/" target="_blank" class="calibre10">https://processhacker.sourceforge.io/</a>)<em class="calibre17"> </em>tool. To do that, launch Process Hacker, right-click on the desired process, select <span class="calibre7">Properties</span>, and choose the <span class="calibre7">Memory</span> tab.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2 Kernel Memory Contents (Kernel Space)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The <em class="calibre17">kernel memory</em> contains the operating system and the device drivers. The following screenshot shows the user-space and kernel space components. In this section, we will  mainly focus on the kernel space components:</p>
+<div class="cdpaligncenter"><img src="../images/00235.jpeg" class="calibre197"/></div>
+<p class="calibre2">The kernel memory consists of the following key components:</p>
+<ul class="calibre11">
+<li class="calibre12"><kbd class="calibre13">hal.dll</kbd>: The <em class="calibre19">hardware abstraction layer (HAL)</em> is implemented in the loadable kernel module <kbd class="calibre13">hal.dll</kbd>. HAL isolates the operating system from the hardware; it implements functions to support different hardware platforms (mostly chipsets). It primarily provides services to the <em class="calibre19">Windows executive</em>, <em class="calibre19">kernel</em>, and kernel mode <em class="calibre19">device drivers</em>. The kernel mode device drivers invoke functions exposed by <kbd class="calibre13">hal.dll</kbd> to interact with the hardware, instead of directly communicating with the hardware.</li>
+<li class="calibre12"><kbd class="calibre13">ntoskrnl.exe</kbd>: This binary is the core component of the Windows operating system known as kernel image. The <kbd class="calibre13">ntoskrnl.exe</kbd> binary provides two types of functionality: the <em class="calibre19">executive</em> and the <em class="calibre19">kernel</em>. The <em class="calibre19">executive</em> implements functions called <em class="calibre19">system service routines,</em> which are callable by user-mode applications via a controlled mechanism. The executive also implements major operating system components, such as the memory manager, I/O manager, object manager, process/thread manager, and so on. The <em class="calibre19">kernel</em> implements low-level operating system services and exposes sets of routines, which are built upon by the executive to provide high-level services.</li>
+<li class="calibre12"><kbd class="calibre13">Win32K.sys</kbd>: This kernel mode driver implements <em class="calibre19">UI</em> and <em class="calibre19">graphics device interface (GDI)</em> services, which are used to render graphics on output devices (such as monitors). It exposes functions for GUI applications.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2. User Mode And Kernel Mode</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In the previous section, we saw how virtual memory is divided into user-space (process memory) and kernel space (kernel memory). The <em class="calibre17">user-space</em> contains code (such as executable and DLL) that runs with restricted access, known as the <em class="calibre17">user mode</em>. In other words, the executable or DLL code that runs in the user space cannot access anything in the kernel space or directly interact with the hardware. The <em class="calibre17">kernel space</em> contains the kernel itself (<kbd class="calibre13">ntoskrnl.exe</kbd>) and the <em class="calibre17">device drivers</em>. The code running in the kernel space executes with a high privilege, known as <em class="calibre17">kernel mode</em>, and it can access both the user-space and the kernel space. By providing the kernel with a high privilege level, the operating system ensures that a user-mode application cannot cause system instability by accessing protected memory or I/O ports. Third-party drivers can get their code to run in kernel mode by implementing and installing signed drivers.</p>
+<p class="calibre2">The difference between the space (user space/kernel space) and the mode (user mode/kernel mode) is that <em class="calibre17">space</em> specifies the location where the contents (data/code) are stored, and <em class="calibre17">mode</em> refers to the execution mode, which specifies how an application's instructions are allowed to execute.</p>
+<p class="calibre2">If the user-mode applications cannot directly interact with the hardware, then the question is, how can a malware binary running in user-mode write content to a file on the disk by calling the <kbd class="calibre13">WriteFile</kbd> API?. In fact, most of the APIs called by user-mode applications, end up calling the <em class="calibre17">system service routines</em> (functions) implemented in the kernel executive (<kbd class="calibre13">ntoskrnl.exe</kbd>), which in turn interacts with the hardware (such as, for writing to a file on the disk). In the same manner, any user-mode application that calls a GUI-related API ends up calling the functions exposed by <kbd class="calibre13">win32k.sys</kbd> in the kernel space. The following diagram illustrates this concept; I have removed some components from the user-space, to keep it simple. The <kbd class="calibre13">ntdll.dll</kbd> (residing in the user-space) acts as the gateway between the user-space and the kernel space. In the same way, <kbd class="calibre13">user32.dll</kbd> acts as a gateway for the GUI applications. In the next section, we will mainly focus on the transition of the API call to the kernel executive's system service routines via <kbd class="calibre13">ntdll.dll</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00236.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.1 Windows API Call Flow</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The Windows operating system provides services by exposing APIs implemented in DLLs. An application uses the service by calling the API implemented in the DLL. Most API functions end up calling the <em class="calibre17">system service routine</em> in the <kbd class="calibre13">ntoskrnl.exe</kbd> (kernel executive). In this section, we will examine what happens when an application calls an API, and how the API ends up calling the system service routines in <kbd class="calibre13">ntoskrnl.exe</kbd> (executive). Specifically, we will look at what happens when an application invokes the <kbd class="calibre13">WriteFile()</kbd> API. The following diagram gives a high-level overview of the API call flow:</p>
+<div class="cdpaligncenter"><img src="../images/00237.jpeg" class="calibre41"/></div>
+<ol class="calibre14">
+<li class="calibre12" value="1">When a process is invoked by double-clicking a program, the process executable image and all its associated DLLs are loaded into the process memory by the Windows loader. When a process starts, the main thread gets created, which reads the executable code from the memory and starts executing it. An important point to remember is that it is not the process that executes the code, it is the thread that executes the code (a process is merely a container for the threads). The thread that is created starts executing in the user-mode (with restricted access). A process may explicitly create additional threads, as required.</li>
+<li class="calibre12" value="2">Let's suppose that an application needs to call the <kbd class="calibre13">WriteFile()</kbd> <span>API, which is exported by</span> <kbd class="calibre13">kernel32.dll</kbd>. <span>To transfer the execution control to</span> <kbd class="calibre13">WriteFile()</kbd><span>, the thread has to know the address of</span> <kbd class="calibre13">WriteFile()</kbd> <span>in the memory. If the application imports</span> <kbd class="calibre13">WriteFile()</kbd><span>, then it can determine its address by looking in a table of function pointers called the</span> <em class="calibre19">Import Address Table (IAT)</em>, <span>as shown in the preceding diagram. This table is located in an application's executable image in the memory, and it is populated by the windows loader with the function addresses when the DLLs are loaded.</span></li>
+</ol>
+<p class="calibre26">An application can also load a DLL during runtime by calling the <kbd class="calibre13">LoadLibrary()</kbd> API, and it can determine the address of a function within the loaded DLL by using the <kbd class="calibre13">GetProcessAddress()</kbd> API. If an application loads a DLL during runtime, then the IAT does not get populated.</p>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">Once the thread determines the address of <kbd class="calibre13">WriteFile()</kbd> from the IAT or during runtime, it calls <kbd class="calibre13">WriteFile()</kbd>, implemented in <kbd class="calibre13">kernel32.dll</kbd>. The code in the <kbd class="calibre13">WriteFile()</kbd> function ends up calling a function, <kbd class="calibre13">NtWriteFile()</kbd>, exported by the gateway DLL, <kbd class="calibre13">ntdll.dll</kbd>. The <kbd class="calibre13">NtWriteFile()</kbd> function in <kbd class="calibre13">ntdll.dll</kbd> is not a real implementation of <kbd class="calibre13">NtWriteFile()</kbd>. The actual function, with the same name, <kbd class="calibre13">NtWriteFile()</kbd> (system service routine), resides in <kbd class="calibre13">ntoskrnl.exe</kbd> (executive), which contains the real implementation. The <kbd class="calibre13">NtWriteFile()</kbd> in <kbd class="calibre13">ntdll.dll</kbd> is just a stub routine that executes either <kbd class="calibre13">SYSENTER</kbd> (x86) or <kbd class="calibre13">SYSCALL</kbd> (x64) instructions. These instructions transition the code to the kernel mode.</li>
+<li class="calibre12" value="4">Now, the thread running in kernel mode <span>(with unrestricted access) needs to find the address of the actual function,</span> <kbd class="calibre13">NtWriteFile()</kbd>, <span>implemented in</span> <kbd class="calibre13">ntoskrnl.exe</kbd><span>. To do that, it consults a table in the kernel space called</span> the <em class="calibre19">System Service Descriptor Table (SSDT)</em> <span>and determines the address of</span> <kbd class="calibre13">NtWriteFile()</kbd><span>. It then calls the actual</span> <kbd class="calibre13">NtWriteFile()</kbd> <span>(</span>system service routine<span>) in the Windows executive (in</span> <kbd class="calibre13">ntoskrnl.exe</kbd><span>), which directs the request to the I/O functions in the <em class="calibre19">I/O manager</em>. The I/O manager then directs the request to the appropriate kernel-mode device driver. The kernel-mode device driver uses the routines exported by</span> <kbd class="calibre13">HAL</kbd> <span>to interface with the hardware.</span></li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3. Code Injection Techniques</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">As mentioned earlier, the objective of a code injection technique is to inject code into the remote process memory and execute the injected code within the context of a remote process. The injected code could be a module such as an executable, DLL, or even shellcode. Code injection techniques provide many benefits for attackers; once the code is injected into the remote process, an adversary can do the following things:</p>
+<ul class="calibre11">
+<li class="calibre12">Force the remote process to execute the injected code to perform malicious actions (such as downloading additional files or stealing keystrokes).</li>
+<li class="calibre12">Inject a malicious module (such as a DLL) and redirect the API call made by the remote process to a malicious function in the injected module. The malicious function can then intercept the input parameters of the API call, and also filter the output parameters. For example, <em class="calibre19">Internet Explorer</em> uses <kbd class="calibre13">HttpSendRequest()</kbd> to send a request containing an optional POST payload to the web server, and it uses <kbd class="calibre13">InternetReadFile()</kbd> to fetch the bytes from the server's response to display it in the browser. An attacker can inject a module into Internet Explorer's process memory and redirect the <kbd class="calibre13">HttpSendRequest()</kbd> to the malicious function within the injected module to extract credentials from the POST payload. In the same manner, it can intercept the data received from the <kbd class="calibre13">InternetReadFile()</kbd> API to read the data or modify the data received from the web server. This enables an attacker to intercept the data (such as banking credentials) before it reaches the web server, and it also allows an attacker to replace or insert additional data into the server’s response (such as inserting an extra field into the HTML content) before it reaches the victim's browser.</li>
+<li class="calibre12">Injecting code into an already running process allows an adversary to achieve persistence.</li>
+<li class="calibre12">Injecting code into trusted processes allows an attacker to bypass security products (such as whitelisting software) and hide from the user.</li>
+</ul>
+<p class="calibre2">In this section, we will mainly focus on the code injection techniques in the user-space. We will look at various methods used by the attackers to perform code injection into the remote process.</p>
+<p class="calibre2">In the following code injection techniques, there is a malware process (<em class="calibre17">launcher</em> or <em class="calibre17">loader</em>) that injects code, and a legitimate process (such as <kbd class="calibre13">explorer.exe</kbd>) into which the code will be injected. Before performing code injection, the launcher needs to first identify the process to inject the code. This is typically done by enumerating the processes running on the system; it uses three API calls: <kbd class="calibre13">CreateToolhelp32Snapshot()</kbd>, <kbd class="calibre13">Process32First()</kbd>, and <kbd class="calibre13">Process32Next()</kbd>. <kbd class="calibre13">CreateToolhelp32Snapshot()</kbd> is used to obtain the snapshot of all of the running processes; <kbd class="calibre13">Process32First()</kbd> gets the information about the first process in the snapshot; <kbd class="calibre13">Process32Next()</kbd> is used in a loop to iterate through all of the processes. The <kbd class="calibre13">Process32First()</kbd> and <kbd class="calibre13">Process32Next()</kbd> APIs get information about the process, such as the executable name, the process ID, and the parent process ID; this information can be used by malware to determine whether it is the target process or not. Sometimes, instead of injecting code into an already running process, malicious programs launch a new process (such as <kbd class="calibre13">notepad.exe</kbd>) and then inject code into it.</p>
+<p class="calibre2">Whether the malware injects code into an already running process or launches a new process to inject code, the objective in all the code injection techniques (covered next) is to inject malicious code (either DLL, executable, or Shellcode) into the address space of the target (legitimate) process and force the legitimate process to execute the injected code. Depending on the code injection technique, the malicious component to be injected can reside on the disk or in the memory. The following diagram should give you a high-level overview of code injection techniques in the user-space:</p>
+<div class="cdpaligncenter"><img src="../images/00238.jpeg" class="calibre198"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.1 Remote DLL Injection</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this technique, the target (remote) process is forced to load a malicious DLL into its process memory space via the <kbd class="calibre13">LoadLibrary()</kbd> API. The <span class="calibre7"><kbd class="calibre13">kernel32.dll</kbd> exports </span><kbd class="calibre13">LoadLibrary()</kbd>, and this function takes a single argument, which is the path to the DLL on the disk, and loads that DLL into the address space of the calling process. In this injection technique, the malware process creates a thread in the target process, and the thread is made to call <kbd class="calibre13">LoadLibrary()</kbd> by passing a malicious DLL path as the argument. Since the thread gets created in the target process, the target process loads the malicious DLL into its address space. Once the target process loads the malicious DLL, the operating system automatically calls the DLL's <kbd class="calibre13">DllMain()</kbd> function, thus executing the malicious code.</p>
+<p class="calibre2">The following steps describe in detail how this technique is performed, with an example of a malware named <kbd class="calibre13">nps.exe</kbd> (loader or launcher) that injects a DLL via <kbd class="calibre13">LoadLibrary()</kbd> into the legitimate <kbd class="calibre13">explorer.exe</kbd> process. Before injecting the malicious DLL component, it is dropped onto the disk, and then the following steps are performed:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">The malware process (<kbd class="calibre13">nps.exe</kbd>) identifies the target process (<kbd class="calibre13">explorer.exe</kbd>, in this case) and gets its process ID (pid). The idea of getting the pid is to open a handle to the target process so that the malware process can interact with it. To open a handle, the <kbd class="calibre13">OpenProcess()</kbd> API is used, and one of the parameters it accepts is the pid of the process. In the following screenshot, the malware calls <kbd class="calibre13">OpenProcess()</kbd> by passing the pid of <kbd class="calibre13">explorer.exe</kbd> (<kbd class="calibre13">0x624</kbd>, which is <kbd class="calibre13">1572</kbd>) as the third parameter. The return value of <kbd class="calibre13">OpenProcess()</kbd> is the handle to the <kbd class="calibre13">explorer.exe</kbd> process:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00239.jpeg" class="calibre41"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">The malware process then allocates memory in the target process using the <kbd class="calibre13">VirutualAllocEx()</kbd> API. In the following screenshot, the 1<sup class="calibre139">st</sup> argument (<kbd class="calibre13">0x30</kbd>) is the handle to <kbd class="calibre13">explorer.exe</kbd> (the target process), which it acquired from the previous step. The 3<sup class="calibre139">rd</sup> argument, <kbd class="calibre13">0x27 (39)</kbd>, represents the number of bytes to be allocated in the target process, and the 5<sup class="calibre139">th</sup> argument (<kbd class="calibre13">0x4</kbd>) is a constant value that represents the memory protection of <kbd class="calibre13">PAGE_READWRITE</kbd>. The return value of <kbd class="calibre13">VirtualAllocEx()</kbd> is the address of the allocated memory in <kbd class="calibre13">explorer.exe</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00240.jpeg" class="calibre41"/></div>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">The reason for allocating the memory in the target process is to copy a string that identifies the full path of the malicious DLL on the disk. The malware uses <kbd class="calibre13">WriteProcessMemory()</kbd> to copy the DLL pathname to the allocated memory in the target process. In the following screenshot, the 2<sup class="calibre139">nd </sup>argument, <kbd class="calibre13">0x01E30000</kbd>, is the address of the allocated memory in the target process, and the 3<sup class="calibre139">rd</sup> argument is the full path to the DLL that will be written to the allocated memory address <kbd class="calibre13">0x01E30000</kbd> in <kbd class="calibre13">explorer.exe</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00241.jpeg" class="calibre41"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">The idea of copying the DLL pathname to the target process memory is that, later, when the remote thread is created in the target process and when <kbd class="calibre13">LoadLibrary()</kbd> is called via a remote thread, the DLL path will be passed as the argument to <kbd class="calibre13">LoadLibrary()</kbd>. Before creating a remote thread, malware must determine the address of <kbd class="calibre13">LoadLibrary()</kbd> in <kbd class="calibre13">kernel32.dll</kbd>; to do that, it calls the <kbd class="calibre13">GetModuleHandleA()</kbd> API and passes <kbd class="calibre13">kernel32.dll</kbd> as the argument, which will return the base address of <kbd class="calibre13">Kernel32.dll</kbd>. Once it gets the base address of <kbd class="calibre13">kernel32.dll</kbd>, it determines the address of <kbd class="calibre13">LoadLibrary()</kbd> by calling <kbd class="calibre13">GetProcessAddress()</kbd>.</li>
+</ol>
+<ol start="5" class="calibre14">
+<li class="calibre12" value="5">At this point, the malware has copied the DLL pathname in the target process memory, and it has determined the address of <kbd class="calibre13">LoadLibrary()</kbd>. <span>Now, the malware needs to create a thread in the target process (</span><kbd class="calibre13">explorer.exe</kbd><span>), and this thread must be made to execute</span> <kbd class="calibre13">LoadLibrary()</kbd> <span>by passing the copied DLL pathname so that the malicious DLL will be loaded by <kbd class="calibre13">explorer.exe</kbd>. To do that, the malware calls</span> <kbd class="calibre13">CreateRemoteThread()</kbd> <span>(or the undocumented API</span> <kbd class="calibre13">NtCreateThreadEx()</kbd>), <span>which creates a thread in the target process. In the following screenshot, the 1<sup class="calibre139">st</sup> argument,</span> <kbd class="calibre13">0x30</kbd>, to <kbd class="calibre13">CreateRemoteThread()</kbd> <span>is the handle to the</span> <kbd class="calibre13">explorer.exe</kbd> <span>process, in which the thread will be created. The 4<sup class="calibre139">th</sup> argument is the address in the target process memory where the thread will start executing, which is the address of</span> <kbd class="calibre13">LoadLibrary()</kbd>, <span>and the 5<sup class="calibre139">th</sup> argument is the address in the target process memory that contains the full path to the DLL. After calling</span> <kbd class="calibre13">CreateRemoteThread()</kbd>, <span>the thread created in</span> <kbd class="calibre13">explorer.exe</kbd> <span>invokes</span> <kbd class="calibre13">LoadLibrary()</kbd>, <span>which will load the DLL from the disk into the</span> <kbd class="calibre13">explorer.exe</kbd> <span>process memory space. As a result of loading the malicious DLL, its</span> <kbd class="calibre13">DLLMain()</kbd> <span>function gets called automatically, thereby executing malicious code within the context of</span> <kbd class="calibre13">explorer.exe</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00242.jpeg" class="calibre41"/></div>
+<ol start="6" class="calibre14">
+<li class="calibre12" value="6">Once the injection is complete, the malware calls the <kbd class="calibre13">VirtualFree()</kbd> API to free the memory containing the DLL path and closes the handle to the target process (<kbd class="calibre13">explorer.exe</kbd>) by using the <kbd class="calibre13">CloseHandle()</kbd> API.</li>
+</ol>
+<div class="packt_infobox">A malicious process can inject code into other processes running with the same integrity level or lower. For instance, a malware process running with medium integrity can inject code into the <kbd class="calibre42">explorer.exe</kbd> process (which also runs with a medium integrity level). To manipulate the system-level process, a malicious process needs to enable <kbd class="calibre42">SE_DEBUG_PRIVILEGE</kbd> (which requires administrator privileges) by calling <kbd class="calibre42">AdjustTokenPrivileges()</kbd>; this allows it to read, write, or inject code into another process's memory.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.2 DLL Injection Using APC (APC Injection)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In the previous technique, after writing the DLL pathname, <kbd class="calibre13">CreateRemoteThread()</kbd> was invoked to create a thread in the target process, which in turn called <kbd class="calibre13">LoadLibrary()</kbd> to load the malicious DLL. The <em class="calibre17">APC injection</em> technique is similar to remote DLL injection, but instead of using <kbd class="calibre13">CreateRemoteThread()</kbd>, a malware makes use of <em class="calibre17">Asynchronous Procedure Calls (APCs)</em> to force the thread of a target process to load the malicious DLL.</p>
+<p class="calibre2">An APC is a function that executes asynchronously in the context of a particular thread. Each thread contains a queue of APCs that will be executed when the target thread enters an alertable state. As per Microsoft documentation (<a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx" class="calibre10">https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx</a>), a thread enters an alertable state if it calls one of the following functions:</p>
+<pre class="calibre18">SleepEx(), <br class="title-page-name"/>SignalObjectAndWait()<br class="title-page-name"/>MsgWaitForMultipleObjectsEx()<br class="title-page-name"/>WaitForMultipleObjectsEx()<br class="title-page-name"/>WaitForSingleObjectEx()</pre>
+<p class="calibre2">The way the APC injection technique works is, a malware process identifies the thread in the target process (the process into which the code will be injected) that is in an alertable state, or likely to go into an alertable state. It then places the custom code in that thread's APC queue by using the <kbd class="calibre13">QueueUserAPC()</kbd> function. The idea of queuing the custom code is that, when the thread enters the alertable state, the custom code gets picked up from the APC queue, and it gets executed by the thread of the target process.</p>
+<p class="calibre2">The following steps describe a malware sample using APC injection to load a malicious DLL into the Internet Explorer <kbd class="calibre13">(iexplore.exe)</kbd> process. This technique starts with the same four steps as remote DLL injection (in other words, it opens a handle to <kbd class="calibre13">iexplore.exe</kbd>, allocates memory in the target process, copies the malicious DLL pathname into the allocated memory, and determines the address of <kbd class="calibre13">Loadlibrary()</kbd>). It then follows these steps to force the remote thread to load the malicious DLL:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">It opens a handle to the thread of the target process using the <kbd class="calibre13">OpenThread()</kbd> API. In the following screenshot, the 3<sup class="calibre139">rd</sup> argument, <kbd class="calibre13">0xBEC(3052)</kbd>, is the thread ID (TID) of the <kbd class="calibre13">iexplore.exe</kbd> process. The return value of <kbd class="calibre13">OpenThread()</kbd> is the handle to the thread of <kbd class="calibre13">iexplore.exe</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00243.jpeg" class="calibre41"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">The malware process then calls <kbd class="calibre13">QueueUserAPC()</kbd> to queue the APC function in the Internet Explorer thread's APC queue. In the following screenshot, the 1<sup class="calibre139">st</sup> argument to <kbd class="calibre13">QueueUserAPC()</kbd> is the pointer to the APC function that the malware wants the target thread to execute. In this case, the APC function is the <kbd class="calibre13">LoadLibrary()</kbd> whose address was determined previously. The 2<sup class="calibre139">nd</sup> argument, <kbd class="calibre13">0x22c</kbd>, is the handle to the target thread of <kbd class="calibre13">iexplore.exe</kbd>. The 3<sup class="calibre139">rd</sup> argument, <kbd class="calibre13">0x2270000</kbd>, is the address in the target process (<kbd class="calibre13">iexplore.exe</kbd>) memory containing the full path to the malicious DLL; this argument will automatically be passed as the parameter to the APC function (<kbd class="calibre13">LoadLibrary()</kbd>) when the thread executes it:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00244.jpeg" class="calibre41"/></div>
+<p class="calibre2">The following screenshot shows the content of the address <kbd class="calibre13">0x2270000</kbd><span class="calibre7"> in Internet Explorer's process memory</span>  (this was passed as the 3rd argument to <kbd class="calibre13">QueueUserAPC()</kbd>); this address contains the full path to the DLL that was previously written by the malware:</p>
+<div class="cdpaligncenter"><img src="../images/00245.jpeg" class="calibre41"/></div>
+<p class="calibre2">At this point, the injection is complete, and when the thread of the target process enters an alertable state, the thread executes <kbd class="calibre13">LoadLibrary()</kbd> from the APC queue, and the full path to the DLL is passed as an argument to <kbd class="calibre13">LoadLibrary()</kbd>. As a result, the malicious DLL gets loaded into the target process address space, which in turn invokes the <kbd class="calibre13">DLLMain()</kbd> function containing the malicious code.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.3 DLL Injection Using SetWindowsHookEx()</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In the previous chapter <span class="calibre7">(refer to </span><em class="calibre17">Section 1.3.2, Keylogger Using SetWindowsHookEx</em><span class="calibre7">)</span>, we looked at how malware uses the <kbd class="calibre13">SetWindowsHookEx()</kbd> API to install a <em class="calibre17">hook procedure</em> to monitor keyboard events. The<span class="calibre7"> </span><kbd class="calibre13">SetWindowsHookEx()</kbd><span class="calibre7"> </span>API can also be used to load a DLL into a target process address space and execute malicious code. To do that, a malware first loads the malicious DLL into its own address space. It then installs a<span class="calibre7"> </span><em class="calibre17">hook procedure</em> (a function exported by the malicious DLL) for a particular event (such as a <em class="calibre17">keyboard</em> or <em class="calibre17">mouse event</em>), and it associates the event with the thread of the target process (or all of the threads in the current desktop). The idea is that when a particular event is triggered, for which the hook is installed, the thread of the target process will invoke the<span class="calibre7"> </span>hook procedure. To invoke<span class="calibre7"> a </span>hook procedure<span class="calibre7"> </span>defined in the DLL, it must load the DLL (containing the hook procedure) into the address space of the target process.</p>
+<p class="calibre2">In other words, an attacker creates a DLL containing an <em class="calibre17">export</em> function. The export function containing the malicious code is set as the<span class="calibre7"> </span><em class="calibre17">hook procedure</em><span class="calibre7"> </span>for a particular event. The hook procedure is associated with a thread of the target process, and when the event is triggered, the attacker's DLL is loaded into the address space of the target process, and the hook procedure is invoked by the target process's thread, thereby executing malicious code. The malware can set the hook for any type of event, as long as that event is likely to occur. The point here is that the DLL is loaded into the address space of the target process, and performs malicious actions.</p>
+<p class="calibre2">The following describes the steps used by the malware sample (<em class="calibre17">Trojan Padador</em>) to load its DLL into the address space of the remote process and to execute the malicious code:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">The malware executable drops a DLL named<span> </span><kbd class="calibre13">tckdll.dll</kbd><span> </span>on the disk. The DLL contains an entrypoint function, and an export function named<span> </span><kbd class="calibre13">TRAINER</kbd><span>, </span>shown as follows. The DLL entry point function does not do much, whereas the<span> </span><kbd class="calibre13">TRAINER</kbd><span> </span>function contains the malicious code. This means that whenever a DLL is loaded (its entry point function is invoked), no malicious code is executed; only when the<span> </span><kbd class="calibre13">TRAINER</kbd><span> </span>function is invoked are the malicious actions performed:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00246.jpeg" class="calibre41"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">Malware loads the DLL (<kbd class="calibre13">tckdll.dll</kbd>) into its own address space using the<span> </span><kbd class="calibre13">LoadLibrary()</kbd><span> </span>API, but no malicious code is executed at this point. The return value of<span> </span><kbd class="calibre13">LoadLibrary()</kbd><span> </span>is the handle to the loaded module<span> </span>(<kbd class="calibre13">tckdll.dll</kbd>).<span> </span>It then determines the address of the<span> </span><kbd class="calibre13">TRAINER</kbd><span> </span>function by using<span> </span><kbd class="calibre13">GetProcAddress()</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00247.jpeg" class="calibre41"/></div>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">The malware uses the handle to the<span> </span><kbd class="calibre13">tckdll.dll</kbd><span> </span>and the address of the<span> </span><kbd class="calibre13">TRAINER</kbd><span> </span>function to register a<span> </span><em class="calibre19">hook procedure</em><span> </span>for the keyboard event. In the following screenshot, the 1<sup class="calibre139">st</sup> argument,<span> </span><kbd class="calibre13">WH_KEYBOARD</kbd><span> </span>(constant value<span> </span><kbd class="calibre13">2</kbd>), specifies the type of event that will invoke the<span> </span>hook routine. The 2<sup class="calibre139">nd</sup> argument is the address of the hook routine, which is the address of the<span> </span><kbd class="calibre13">TRAINER</kbd><span> </span>function determined in the previous step. The 3<sup class="calibre139">rd</sup> argument is the handle to the<span> </span><kbd class="calibre13">tckdll.dll</kbd><span>, </span>which contains the hook procedure. The fourth argument,<span> </span><kbd class="calibre13">0</kbd><span>, </span>specifies that the hook procedure must be associated with all of the threads in the current desktop. Instead of associating the hook procedure with all of the desktop threads, a malware may choose to target a specific thread by providing its thread ID:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00248.jpeg" class="calibre199"/></div>
+<p class="calibre2">After performing the preceding steps, when the keyboard event is triggered within an application, that application will load the malicious DLL and invoke the<span class="calibre7"> </span><kbd class="calibre13">TRAINER</kbd><span class="calibre7"> </span>function. For instance, when you launch <em class="calibre17">Notepad</em> and enter some characters (which triggers a keyboard event),<span class="calibre7"> </span><kbd class="calibre13">tckdll.dll</kbd><span class="calibre7"> </span>will be loaded into Notepad's address space, and the<span class="calibre7"> </span><kbd class="calibre13">TRAINER</kbd><span class="calibre7"> </span>function will be invoked, forcing the <kbd class="calibre13">notepad.exe</kbd> process to execute malicious code.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4 DLL Injection Using The Application Compatibility Shim</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The Microsoft Windows <em class="calibre17">application compatibility infrastructure/framework (application shim)</em> is a feature that allows programs created for older versions of the operating system (such as<span class="calibre7"> </span>Windows XP) to work with modern versions of the operating system (such as<span class="calibre7"> </span>Windows 7<span class="calibre7"> </span>or<span class="calibre7"> </span>Windows 10). This is achieved through<span class="calibre7"> </span><em class="calibre17">application compatibility fixes</em> (<em class="calibre17">shims</em>). The<span class="calibre7"> </span>shims<span class="calibre7"> </span>are provided by Microsoft to the developers so that they can apply fixes to their programs without rewriting the code. When a shim is applied to a program, and when the shimmed program is executed, the shim engine redirects the API call made by the shimmed program to shim code; this is done by replacing the pointer in the IAT<span class="calibre7"> </span>with the address of the shim code. Details on how applications use the IAT were covered in<span class="calibre7"> section <em class="calibre17">2.1</em></span><em class="calibre17"> Windows API call flow</em>. In other words, it hooks the Windows API to redirect calls to the shim code instead of calling the API directly in the DLL. As a result of API redirection, the shim code can modify the parameters passed to the API, redirect the API, or modify the response from the Windows operating system. The following diagram should help you to understand the differences in interactions between the<span class="calibre7"> </span>normal<span class="calibre7"> </span>and<span class="calibre7"> </span>shimmed applications<span class="calibre7"> </span>in the Windows operating system:</p>
+<div class="cdpaligncenter"><img src="../images/00249.jpeg" class="calibre41"/></div>
+<p class="calibre2">To help you understand the functionality of a shim, let's look at an example. Suppose that a few years back (before the release of<span class="calibre7"> </span>Windows 7), you wrote an application (<kbd class="calibre13">xyz.exe</kbd>) that checked the OS version, before performing some useful operation. Let's suppose that your application determined the OS version by calling the<span class="calibre7"> </span><kbd class="calibre13">GetVersion()</kbd><span class="calibre7"> </span>API in<span class="calibre7"> </span><kbd class="calibre13">kernel32.dll</kbd>. In short, the application did something useful only if the OS version was<span class="calibre7"> </span>Windows XP. Now, if you take that application (<kbd class="calibre13">xyz.exe</kbd>) and run it on Windows 7, it will not do anything useful, because the OS version returned on Windows 7 by<span class="calibre7"> </span><kbd class="calibre13">GetVersion()</kbd><span class="calibre7"> </span>does not match with Windows XP. To make that application work on Windows 7, you can either fix the code and rebuild the program, or you can apply a shim called<span class="calibre7"> </span><kbd class="calibre13">WinXPVersionLie</kbd> to that application (<kbd class="calibre13">xyz.exe</kbd>).</p>
+<p class="calibre2">After applying the shim, when the shimmed application (<kbd class="calibre13">xyz.exe</kbd>) is executed on Windows 7 and when it tries to determine the OS version by calling<span class="calibre7"> </span><kbd class="calibre13">GetVersion()</kbd>, the shim engine intercepts and returns a different version of Windows (Windows XP<span class="calibre7"> </span>instead of<span class="calibre7"> </span>Windows 7). To be more specific, when the shimmed application is executed, the shim engine modifies the IAT and redirects the<span class="calibre7"> </span><kbd class="calibre13">GetVersion()</kbd><span class="calibre7"> </span>API call to the shim code (instead of<span class="calibre7"> </span><kbd class="calibre13">kernel32.dll</kbd>). In other words, the<span class="calibre7"> </span><kbd class="calibre13">WinXPVersionLie</kbd><span class="calibre7"> </span>shim is tricking the application into believing it is running on<span class="calibre7"> </span>Windows XP,<span class="calibre7"> </span>without modifying the code in the application.</p>
+<div class="packt_infobox">For detailed information on the workings of the shim engine, refer to Alex Ionescu's blog post, <em class="calibre22">Secrets of the Application Compatibility Database (SDB)</em> at<span class="calibre21"> </span><a href="http://www.alex-ionescu.com/?p=39" class="calibre20">http://www.alex-ionescu.com/?p=39</a>.</div>
+<p class="calibre2">Microsoft provides <em class="calibre17">hundreds of shims</em> (like <kbd class="calibre13">WinXPVersionLie</kbd>) that can be applied to an application to alter its behavior. Some of these shims are abused by attackers to achieve persistence, to inject code, and for executing malicious code with elevated privileges.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4.1 Creating A Shim</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">There are many shims that can be abused by attackers for malicious purposes. In this section, I will walk you through the process of creating a shim for injecting a DLL into a target process; this will help you understand how easy it is for an attacker to create a shim and abuse this feature. In this case, we will create a shim for<span class="calibre7"> </span><kbd class="calibre13">notepad.exe</kbd><span class="calibre7"> </span>and make it load a DLL of our choice. Creating a shim for an application can be broken down into four steps:</p>
+<ul class="calibre11">
+<li class="calibre12">Choosing the application to shim.</li>
+<li class="calibre12">Creating the shim database for the application.</li>
+<li class="calibre12">Saving the database (<kbd class="calibre13">.sdb</kbd> file).</li>
+<li class="calibre12">Installing the database.</li>
+</ul>
+<p class="calibre2">To create and install a shim, you need to have administrator rights. You can perform all of the preceding steps by using a tool provided by Microsoft, called<span class="calibre7"> </span><em class="calibre17">Application Compatibility Toolkit (ACT)</em>. For Windows 7, it can be downloaded from<span class="calibre7"> </span><a href="https://www.microsoft.com/en-us/download/details.aspx?id=7352" class="calibre10">https://www.microsoft.com/en-us/download/details.aspx?id=7352</a>,<span class="calibre7"> </span>and for Windows 10, it is bundled with<span class="calibre7"> </span>Windows ADK; depending on the version, it can be downloaded from <a href="https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit" class="calibre10">https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit</a>. On a 64-bit version of Windows, ACT will install two versions of<span class="calibre7"> the </span><em class="calibre17">Compatibility Administrator Tool<span class="calibre7"> </span></em>(32-bit and 64-bit). To shim a 32-bit program, you must use the 32-bit version Compatibility Administrator Tool, and to shim a 64-bit program, use the 64-bit version.</p>
+<p class="calibre2">To demonstrate this concept, I will be using a 32-bit version of Windows 7, and the target process chosen is<span class="calibre7"> </span><kbd class="calibre13">notepad.exe</kbd>.<span class="calibre7"> </span>We will create an<span class="calibre7"> </span><kbd class="calibre13">InjectDll</kbd><span class="calibre7"> </span>shim to make <kbd class="calibre13">notepad.exe</kbd><span class="calibre7"> </span>load a DLL named<span class="calibre7"> </span><kbd class="calibre13">abcd.dll</kbd>.<span class="calibre7"> </span>To create a shim, launch the Compatibility Administrator Tool (32-bit) from the start menu, and right-click on<span class="calibre7"> </span><span class="calibre7">New Database</span> | <span class="calibre7">Application Fix</span>:</p>
+<div class="cdpaligncenter"><img src="../images/00250.jpeg" class="calibre200"/></div>
+<p class="calibre2">In the following dialog, enter the details of the application that you want to shim. The name of the program and vendor name can be anything, but the program file location should be correct:</p>
+<div class="cdpaligncenter"><img src="../images/00251.jpeg" class="calibre41"/></div>
+<p class="calibre2">After you press the<span class="calibre7"> </span><span class="calibre7">Next</span><span class="calibre7"> </span>button, you will be presented with<span class="calibre7"> a</span><span class="calibre7"><span class="calibre7"><strong class="calibre5"> </strong></span><strong class="calibre5">Compatibility Modes</strong></span><span class="calibre7"> </span>dialog; you can simply press the<span class="calibre7"> </span><span class="calibre7">Next</span><span class="calibre7"> </span>button. In the next window, you will be presented with a<span class="calibre7"> </span><span class="calibre7">Compatibility Fixes<span class="calibre7"> </span>(Shims)</span> dialog; this is where you can choose various shims. In this case, we are interested in the<span class="calibre7"> </span><kbd class="calibre13">InjectDll</kbd><span class="calibre7"> </span>shim. Select the<span class="calibre7"> </span><kbd class="calibre13">InjectDll</kbd><span class="calibre7"> </span>shim<span class="calibre7"> </span>checkbox, then click on the<span class="calibre7"> </span><span class="calibre7">Parameters</span><span class="calibre7"> </span>button and enter the path to the DLL (this is the DLL we want Notepad to load), as follows. Click on<span class="calibre7"> </span><span class="calibre7">OK</span><span class="calibre7"> </span>and press the<span class="calibre7"> </span><span class="calibre7">Next</span><span class="calibre7"> </span>button. An important point to note is that the<span class="calibre7"> </span><kbd class="calibre13">InjectDll</kbd><span class="calibre7"> </span>shim option is available only in the 32-bit Compatibility Administrator Tool, which means that you can apply this shim only to a 32-bit process:</p>
+<div class="cdpaligncenter"><img src="../images/00252.jpeg" class="calibre201"/></div>
+<p class="calibre2">Next, you will be presented with a screen that specifies which attributes will be matched for the program (<em class="calibre17">Notepad</em>). The selected attributes will be matched when<span class="calibre7"> </span><kbd class="calibre13">notepad.exe</kbd><span class="calibre7"> </span>is run, and after the matching condition is satisfied, the shim will be applied. To make the matching criteria less restrictive, I have unchecked all of the options, shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00253.jpeg" class="calibre202"/></div>
+<p class="calibre2">After you click on<span class="calibre7"> </span><span class="calibre7">Finish</span>, a complete summary of the application and the fixes applied will be presented to you, as follows. At this point, the shim database containing the shim information for<span class="calibre7"> </span><kbd class="calibre13">notepad.exe</kbd><span class="calibre7"> </span>is created:</p>
+<div class="cdpaligncenter"><img src="../images/00254.jpeg" class="calibre41"/></div>
+<p class="calibre2">The next step is to save the database; to do that, click on the<span class="calibre7"> </span><span class="calibre7">Save</span><span class="calibre7"> </span>button, and, when prompted, give a name to your database and save the file. In this case, the database file is saved as<span class="calibre7"> </span><kbd class="calibre13">notepad.sdb</kbd><span class="calibre7"> </span>(you are free to choose any filename).</p>
+<p class="calibre2">After the database file has been saved, the next step is to install the database. You can install it by right-clicking on the saved shim and clicking the<span class="calibre7"> </span><span class="calibre7">Install</span><span class="calibre7"> </span>button, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00255.jpeg" class="calibre41"/></div>
+<p class="calibre2">Another method for installing the database is to use a built-in, command-line utility, <kbd class="calibre13">sdbinst.exe</kbd>; the database can be installed by using the following command:</p>
+<pre class="calibre18"><strong class="calibre1">sdbinst.exe notepad.sdb</strong></pre>
+<p class="calibre2">Now, if you invoke<span class="calibre7"> </span><kbd class="calibre13">notepad.exe</kbd>,<span class="calibre7"> </span><kbd class="calibre13">abcd.dll</kbd><span class="calibre7"> </span>will be loaded from the<span class="calibre7"> </span><kbd class="calibre13">c:\test</kbd><span class="calibre7"> </span>directory into Notepad's process address space, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00256.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4.2 Shim Artifacts</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">At this point, you have an understanding of how a shim can be used to load a DLL into the address space of a target process. Before we look at how attackers use the shim, it is essential to understand what artifacts are created when you install the shim database (either by right-clicking on the database and selecting <span class="calibre7">Install</span> or using the<span class="calibre7"> </span><kbd class="calibre13">sdbinst.exe</kbd><span class="calibre7"> </span>utility). When you install the database, the installer creates a GUID for the database and copies the <kbd class="calibre13">.sdb</kbd> file into<span class="calibre7"> </span><kbd class="calibre13">%SystemRoot%\AppPatch\Custom\&lt;GUID&gt;.sdb</kbd><span class="calibre7"> </span>(for 32-bit shims) or<span class="calibre7"> </span><kbd class="calibre13">%SystemRoot%\AppPatch\Custom\Custom64\&lt;GUID&gt;.sdb</kbd><span class="calibre7"> </span>(for 64-bit shims). It also creates two registry entries in the following registry keys:</p>
+<pre class="calibre18">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Custom\<br class="title-page-name"/>HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\InstalledSDB\</pre>
+<p class="calibre2">The following screenshot shows the registry entry created in<span class="calibre7"> </span><kbd class="calibre13">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Custom\</kbd>. This registry entry contains the name of the program for which the shim is applied, and the associated shim database file (<kbd class="calibre13">&lt;GUID&gt;.sdb</kbd>):</p>
+<div class="cdpaligncenter"><img src="../images/00257.jpeg" class="calibre41"/></div>
+<p class="calibre2">The second registry,<span class="calibre7"> </span><kbd class="calibre13">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\InstalledSDB\</kbd><span class="calibre7">, </span>contains the database information and the installation path of the shim database file:</p>
+<div class="cdpaligncenter"><img src="../images/00258.jpeg" class="calibre41"/></div>
+<p class="calibre2">These artifacts are created so that when the shimmed application is executed, the loader determines whether the application needs to be shimmed by consulting these registry entries, and invokes the shim engine that will use the configuration from the <kbd class="calibre13">.sdb</kbd> file located in the<span class="calibre7"> </span><kbd class="calibre13">AppPatch\</kbd><span class="calibre7"> </span>directory to shim the application. One more artifact that is created as a result of installing the shim database is that an entry is added to the list of <em class="calibre17">installed programs</em> in the <em class="calibre17">control panel</em>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4.3 How Attackers Use Shims</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The following steps describe the manner in which an attacker may shim an application and install it on a victim system:</p>
+<ul class="calibre11">
+<li class="calibre12">An attacker creates an <em class="calibre19">application compatibility database (shim database)</em> for the target application (such as <kbd class="calibre13">notepad.exe</kbd>, or any legitimate third-party application frequently used by the victim). An attacker can choose a single shim, such as<span> </span><kbd class="calibre13">InjectDll</kbd><span>, </span>or multiple shims.</li>
+<li class="calibre12">The attacker saves the shim database (<kbd class="calibre13">.sdb</kbd> file) created for the target application.</li>
+<li class="calibre12">The<span> </span><kbd class="calibre13">.sdb</kbd><span> </span>file is delivered and dropped on the victim system (mostly via malware), and it is installed, typically using the <kbd class="calibre13">sdbinst</kbd> utility.</li>
+<li class="calibre12">The attacker invokes the target application or waits for the user to execute the target application.</li>
+<li class="calibre12">An attacker may also delete the malware that installed the shim database. In that case, you are only left with the <kbd class="calibre13">.sdb</kbd> file.</li>
+</ul>
+<div class="packt_infobox">An attacker can install a shim database just by dropping the <kbd class="calibre42">.sdb</kbd> file in some location on the filesystem and modifying the minimal set of registry entries. This technique avoids using<span class="calibre21"> the </span><kbd class="calibre42">sdbinst</kbd><span class="calibre21"> </span>utility. The <kbd class="calibre42">shim_persist</kbd> object (<a href="https://github.com/hasherezade/persistence_demos/tree/master/shim_persist" class="calibre20">https://github.com/hasherezade/persistence_demos/tree/master/shim_persist</a>) is a POC, written by the security researcher<span class="calibre21"> </span>Hasherezade (<kbd class="calibre42">@hasherezade</kbd>),<span class="calibre21"> </span>that drops a DLL in<span class="calibre21"> the </span><kbd class="calibre42">programdata</kbd><span class="calibre21"> </span>directory and installs a shim without using the <kbd class="calibre42">sdbinst</kbd> utility to inject the dropped DLL into the <kbd class="calibre42">explorer.exe</kbd> process.</div>
+<p class="calibre2">Malware authors have abused shims for different purposes, such as achieving persistence, code injection, disabling security features, executing code with elevated privileges, and bypassing a <em class="calibre17">User Account Control (UAC)</em> prompt. The following table outlines some of the interesting shims and their descriptions:</p>
+<table border="1" class="calibre46">
+<tbody class="calibre47">
+<tr class="calibre48">
+<td class="calibre49"><strong class="calibre1">Shim Name</strong></td>
+<td class="calibre49"><strong class="calibre1">Description</strong></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>RedirectEXE</span></kbd></td>
+<td class="calibre49"><span>Redirects execution</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>InjectDll</span></kbd></td>
+<td class="calibre49"><span>Injects DLL into an application</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>DisableNXShowUI</span></kbd></td>
+<td class="calibre49"><span>Disables <em class="calibre19">Data Execution Prevention</em></span> <em class="calibre19">(<span>DEP</span>)</em></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>CorrectFilePaths</span></kbd></td>
+<td class="calibre49"><span>Redirects filesystem paths</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>VirtualRegistry</span></kbd></td>
+<td class="calibre49"><span>Registry redirection</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>RelaunchElevated</span></kbd></td>
+<td class="calibre49"><span>Launches application with elevated privileges</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>TerminateExe</span></kbd></td>
+<td class="calibre49"><span>Terminates an executable upon launch</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>DisableWindowsDefender</span></kbd></td>
+<td class="calibre49"><span>Disables Windows Defender service for application</span></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13"><span>RunAsAdmin</span></kbd></td>
+<td class="calibre49"><span>Marks an application to run with admin privileges</span></td>
+</tr>
+</tbody>
+</table>
+<div class="packt_tip"><br class="calibre203"/>
+For more information on how the shims are used in the attacks, refer to the talks presented at various conferences by the security researchers, all of which can be found at <a href="https://sdb.tools/talks.html" class="calibre20">https://sdb.tools/talks.html</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4.4 Analyzing The Shim Database</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To shim an application, an attacker installs the shim database (<kbd class="calibre13">.sdb</kbd>), which resides somewhere on the victim's filesystem. Assuming that you have identified the <kbd class="calibre13">.sdb</kbd> file used in the malicious activity, you can investigate the <kbd class="calibre13">.sdb</kbd> file by using a tool such as<span class="calibre7"> </span><kbd class="calibre13">sdb-explorer</kbd><span class="calibre7"> </span>(<a href="https://github.com/evil-e/sdb-explorer" class="calibre10">https://github.com/evil-e/sdb-explorer</a>) or<span class="calibre7"> </span><kbd class="calibre13">python-sdb</kbd><span class="calibre7"> </span>(<a href="https://github.com/williballenthin/python-sdb" class="calibre10">https://github.com/williballenthin/python-sdb</a>). </p>
+<p class="calibre2">In the following example, <kbd class="calibre13">python-sdb</kbd> tool was used to investigate the shim database (<kbd class="calibre13">.sdb</kbd>) file that we created earlier. Running<span class="calibre7"> </span><kbd class="calibre13">python-sdb</kbd><span class="calibre7"> </span>on the shim database displays its elements as shown here:</p>
+<pre class="calibre18">$ <strong class="calibre1">python sdb_dump_database.py notepad.sdb</strong><br class="title-page-name"/>&lt;DATABASE&gt;<br class="title-page-name"/>   &lt;TIME type='integer'&gt;0x1d3928964805b25&lt;/TIME&gt;<br class="title-page-name"/>   &lt;COMPILER_VERSION type='stringref'&gt;2.1.0.3&lt;/COMPILER_VERSION&gt;<br class="title-page-name"/>   &lt;NAME type='stringref'&gt;notepad&lt;/NAME&gt;<br class="title-page-name"/>   &lt;OS_PLATFORM type='integer'&gt;0x1&lt;/OS_PLATFORM&gt;<br class="title-page-name"/>   &lt;DATABASE_ID type='guid'&gt;<strong class="calibre1">ed41a297-9606-4f22-93f5-b37a9817a735</strong>&lt;/DATABASE_ID&gt;<br class="title-page-name"/>   &lt;LIBRARY&gt;<br class="title-page-name"/>   &lt;/LIBRARY&gt;<br class="title-page-name"/>   &lt;EXE&gt;<br class="title-page-name"/>     &lt;NAME type='stringref'&gt;<strong class="calibre1">notepad.exe</strong>&lt;/NAME&gt;<br class="title-page-name"/>     &lt;APP_NAME type='stringref'&gt;notepad&lt;/APP_NAME&gt;<br class="title-page-name"/>     &lt;VENDOR type='stringref'&gt;&amp;lt;Unknown&amp;gt;&lt;/VENDOR&gt;<br class="title-page-name"/>     &lt;EXE_ID type='hex'&gt;a65e89a9-1862-4886-b882-cb9b888b943c&lt;/EXE_ID&gt;<br class="title-page-name"/>     &lt;MATCHING_FILE&gt;<br class="title-page-name"/>       &lt;NAME type='stringref'&gt;*&lt;/NAME&gt;<br class="title-page-name"/>     &lt;/MATCHING_FILE&gt;<br class="title-page-name"/>     &lt;SHIM_REF&gt;<br class="title-page-name"/>       &lt;NAME type='stringref'&gt;<strong class="calibre1">InjectDll</strong>&lt;/NAME&gt;<br class="title-page-name"/>       &lt;COMMAND_LINE type='stringref'&gt;<strong class="calibre1">c:\test\abcd.dll</strong>&lt;/COMMAND_LINE&gt;<br class="title-page-name"/>     &lt;/SHIM_REF&gt;<br class="title-page-name"/>   &lt;/EXE&gt;<br class="title-page-name"/>&lt;/DATABASE&gt;</pre>
+<div class="packt_infobox">In one of the attacks, the<span class="calibre21"> </span><kbd class="calibre42">RedirectEXE</kbd><span class="calibre21"> </span>shim was used by the <em class="calibre22">dridex</em> malware to bypass UAC. It installed the shim database and deleted it immediately after elevating the privilege. For more details, refer to the blog post at<span class="calibre21"> </span><a href="http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html" class="calibre20">http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.5 Remote Executable/Shellcode Injection</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this technique, the malicious code is injected into the target process memory directly, without dropping the component on the disk. The malicious code can be a <em class="calibre17">shellcode</em> or an <em class="calibre17">executable</em> whose import address table is configured for the target process. The injected malicious code is forced to execute by creating a remote thread via <kbd class="calibre13">CreateRemoteThread()</kbd>, and the start of the thread is made to point to the code/function within the injected block of code. The advantage of this method is that the malware process does not have to drop the malicious DLL on the disk; it can extract the code to inject from the <em class="calibre17">resource section</em> of the binary, or get it over the network and perform code injection directly.</p>
+<p class="calibre2">The following steps describe how this technique is performed, with an example of a malware sample named <kbd class="calibre13">nsasr.exe</kbd> (<em class="calibre17">W32/Fujack</em>), which injects the executable into the Internet Explorer (<kbd class="calibre13">iexplorer.exe</kbd>) process:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">The malware process (<kbd class="calibre13">nsasr.exe</kbd>) opens a handle to the Internet Explorer process (<kbd class="calibre13">iexplore.exe</kbd>) using the <kbd class="calibre13">OpenProcess()</kbd> API.</li>
+</ol>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">It allocates memory in the target process (<kbd class="calibre13">iexplore.exe</kbd>) at a specific address, <kbd class="calibre13">0x13150000</kbd>, using <kbd class="calibre13">VirutualAllocEx()</kbd> with <kbd class="calibre13">PAGE_EXECUTE_READWRITE</kbd> protection, instead of <kbd class="calibre13">PAGE_READWRITE</kbd> (as compared to the <em class="calibre19">remote DLL injection technique</em>, <em class="calibre19">covered in section 3.1</em>). The protection <kbd class="calibre13">PAGE_EXECUTE_READWRITE</kbd> allows the malware process (<kbd class="calibre13">nsasr.exe</kbd>) to write the code into the target process, and, after writing the code, this protection allows the target process (<kbd class="calibre13">iexplore.exe</kbd>) to read and execute code from this memory.</li>
+<li class="calibre12" value="3">It then writes the malicious executable content <span>into the memory allocated in the previous step </span>using <kbd class="calibre13">WriteProcessMemory()</kbd><span>. In the following screenshot, the 1<sup class="calibre139">st</sup> argument,</span> <kbd class="calibre13">0xD4</kbd>, <span>is the handle to</span> <kbd class="calibre13">iexplore.exe</kbd>. <span>The 2<sup class="calibre139">nd</sup> argument,</span> <kbd class="calibre13">0x13150000</kbd>, is the address in the target process (<kbd class="calibre13">iexplore.exe</kbd>) memory, <span>where the content will be written to. The 3rd argument,</span> <kbd class="calibre13">0x13150000</kbd>, <span>is the buffer in the malware (<kbd class="calibre13">nsasr.exe</kbd>) process memory; this buffer contains the executable content, which will be written to the target process memory:</span></li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00259.jpeg" class="calibre41"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">After the malicious executable content is written (at the address <kbd class="calibre13">0x13150000</kbd>) in the <kbd class="calibre13">iexplore.exe</kbd> process memory, it calls the <kbd class="calibre13">CreateRemoteThread()</kbd> API to create a remote thread, and the start address of the thread is made to point to the <em class="calibre19">address of entrypoint</em> of the injected executable. In the following screenshot, the 4<sup class="calibre139">th</sup> argument, <kbd class="calibre13">0x13152500</kbd>, specifies the address in the target process (<kbd class="calibre13">iexplore.exe</kbd>) memory where the thread will start executing; this is the <em class="calibre19">entry point address</em> of the injected executable. At this point, the injection is complete, and the thread in the <kbd class="calibre13">iexplore.exe</kbd> process starts executing malicious code:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00260.jpeg" class="calibre41"/></div>
+<div class="packt_infobox"><em class="calibre22">Reflective DLL injection</em> is a technique similar to remote executable/ShellCode injection. In this method, a DLL containing the reflective loader component is directly injected, and the target process is made to invoke the reflective loader component that takes care of resolving the imports, relocating it into a suitable memory location, and calling the <kbd class="calibre42">DllMain()</kbd> function. The advantage of this technique is that it does not rely on the <kbd class="calibre42">LoadLibrary()</kbd> function to load the DLL. Since <kbd class="calibre42">LoadLibrary()</kbd> can only load the library from the disk, the injected DLL need not reside on the disk. For more information on this technique, refer to <em class="calibre22">Reflective DLL Injection</em> by Stephen Fewer at <a href="https://github.com/stephenfewer/ReflectiveDLLInjection" class="calibre20">https://github.com/stephenfewer/ReflectiveDLLInjection</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.6 Hollow Process Injection (Process Hollowing)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Process hollowing,</em> or <em class="calibre17">Hollow Process Injection,</em> is a code injection technique in which the executable section of the legitimate process in the memory, is replaced with a malicious executable. This technique allows an attacker to disguise his malware as a legitimate process and execute malicious code. The advantage of this technique is that the path of the process being hollowed out will still point to the legitimate path, and, by executing within the context of a legitimate process, the malware can bypass firewalls and host intrusion prevention systems. For example, if the <kbd class="calibre13">svchost.exe</kbd> process is hollowed out, the path will still point to the legitimate executable path (<kbd class="calibre13">C:\Windows\system32\svchost.exe</kbd>)<strong class="calibre5">,</strong> but, only in the memory, the executable section of <kbd class="calibre13">svchost.exe</kbd> is replaced with the malicious code; this allows an attacker to remain undetected from live forensic tools.</p>
+<p class="calibre2">The following steps describe the hollow process injection performed by the malware sample (<em class="calibre17">Skeeyah</em>)<em class="calibre17">.</em> In the following description, the malware process extracts the malicious executable to be injected from its <em class="calibre17">resource section</em> before performing these steps:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">The malware process starts a legitimate process in the suspended mode. As a result, the executable section of the legitimate process is loaded into the memory, and the <kbd class="calibre13">process environment block (PEB)</kbd> structure in the memory identifies the full path to the legitimate process. PEB's <kbd class="calibre13">ImageBaseAddress</kbd>  (<kbd class="calibre13">Peb.ImageBaseAddress</kbd>) field contains the address where the legitimate process executable is loaded. In the following screenshot, the malware starts the legitimate <kbd class="calibre13">svchost.exe</kbd> process in suspended mode, and the <kbd class="calibre13">svchost.exe</kbd>, in this case, is loaded into the address <kbd class="calibre13">0x01000000</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00261.jpeg" class="calibre204"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">The malware determines the address of the <kbd class="calibre13">PEB</kbd> structure so that it can read the <kbd class="calibre13">PEB.ImageBaseAddress</kbd> field to determine the base address of the process executable (<kbd class="calibre13">svchost.exe</kbd>). To determine the address of the <kbd class="calibre13">PEB</kbd> structure, it calls <kbd class="calibre13">GetThreadContext()</kbd>. The <kbd class="calibre13">GetThreadContext()</kbd> retrieves the context of a specified thread, and it takes two arguments: the 1<sup class="calibre139">st</sup> argument is the handle to the thread, and the 2<sup class="calibre139">nd</sup> argument is a pointer to the structure, named <kbd class="calibre13">CONTEXT</kbd><strong class="calibre1">.</strong> In this case, the malware passes the handle to the suspended thread as the 1<sup class="calibre139">st</sup> argument to <kbd class="calibre13">GetThreadContext()</kbd>, and the pointer to the <kbd class="calibre13">CONTEXT</kbd> structure as the 2<sup class="calibre139">nd</sup> argument. After this API call, the <kbd class="calibre13">CONTEXT</kbd> structure is populated with the context of the suspended thread. This structure contains the register states of the suspended thread. The malware then reads the <kbd class="calibre13">CONTEXT._Ebx</kbd> field, which contains the pointer to the <kbd class="calibre13">PEB</kbd> data structure. Once the address of the <kbd class="calibre13">PEB</kbd> is determined, it then reads the <kbd class="calibre13">PEB.ImageBaseAddress</kbd> to determine the base address of the process executable (in other words, <kbd class="calibre13">0x01000000</kbd>):</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00262.jpeg" class="calibre205"/></div>
+<p class="calibre26">Another method to determine the pointer to PEB is using the <kbd class="calibre13">NtQueryInformationProcess()</kbd> function; details are available at <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx" class="calibre10">https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx</a>.</p>
+<ol start="3" class="calibre14">
+<li class="calibre12" value="3">Once the address of the target process executable in memory is determined, it then deallocates the executable section of the legitimate process (<kbd class="calibre13">svchost.exe</kbd>) using the <kbd class="calibre13">NtUnMapViewofSection()</kbd> API. In the following screenshot, the 1<sup class="calibre139">st</sup> argument is the handle (<kbd class="calibre13">0x34</kbd>) to the <kbd class="calibre13">svchost.exe</kbd> process, and the 2<sup class="calibre139">nd</sup> argument is the base address of the process executable (<kbd class="calibre13">0x01000000</kbd>) to deallocate:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00263.jpeg" class="calibre41"/></div>
+<ol start="4" class="calibre14">
+<li class="calibre12" value="4">After the process executable section is hollowed out, it allocates a new memory segment in the legitimate process (<kbd class="calibre13">svchost.exe</kbd>), with <kbd class="calibre13">read</kbd>, <kbd class="calibre13">write</kbd>, and <kbd class="calibre13">execute</kbd> permission. The new memory segment can be allocated in the same address (where the process executable resided before hollowing) or in a different region. In the following screenshot, the malware uses <kbd class="calibre13">VirutalAllocEX()</kbd> to allocate memory in a different region (in this case, at <kbd class="calibre13">0x00400000</kbd>):</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00264.jpeg" class="calibre41"/></div>
+<ol start="5" class="calibre14">
+<li class="calibre12" value="5">It then copies the malicious executable and its sections, using <kbd class="calibre13">WriteProcessMemory()</kbd>, into the newly allocated memory address at <kbd class="calibre13">0x00400000</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00265.jpeg" class="calibre206"/></div>
+<ol start="6" class="calibre14">
+<li class="calibre12" value="6">The malware then overwrites the <kbd class="calibre13">PEB.ImageBaseAdress</kbd> of the legitimate process with the newly allocated address. The following screenshot shows the malware overwriting the <kbd class="calibre13">PEB.ImageBaseAdress</kbd> of <kbd class="calibre13">svchost.exe</kbd> with the new address (<kbd class="calibre13">0x00400000</kbd>); this changes the base address of <kbd class="calibre13">svchost.exe</kbd> in <kbd class="calibre13">PEB</kbd> from <kbd class="calibre13">0x1000000</kbd> to <kbd class="calibre13">0x00400000</kbd> (this address now contains the injected executable):</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00266.jpeg" class="calibre207"/></div>
+<ol start="7" class="calibre14">
+<li class="calibre12" value="7">The malware then changes the <em class="calibre19">start address</em> of the suspended thread to point to the <em class="calibre19">address of entry point</em> of the injected executable. This is done by setting the <kbd class="calibre13">CONTEXT._Eax</kbd> value and calling <kbd class="calibre13">SetThreadContext()</kbd>. At this point, the thread of the suspended process points to the injected code. It then resumes the suspended thread using <kbd class="calibre13">ResumeThread()</kbd>. After this, the resumed thread starts executing the injected code:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00267.jpeg" class="calibre208"/></div>
+<div class="packt_infobox">A malware process may just use <span class="calibre21"><kbd class="calibre42">NtMapViewSection()</kbd></span>  to avoid using <kbd class="calibre42">VirtualAllocEX()</kbd> and <kbd class="calibre42">WriteProcessMemory()</kbd> to write the malicious executable content into the target process; this allows the malware to map a section of memory (containing a malicious executable) from its own address space to the target process's address space. In addition to the technique described previously, attackers have been known to use different variations of hollow process injection techniques. To get an idea of this, watch <em class="calibre22">author's Black Hat presentation</em> at <a href="https://www.youtube.com/watch?v=9L9I1T5QDg4" target="_blank" class="calibre20">https://www.youtube.com/watch?v=9L9I1T5QDg4</a> or read the related blog post at <a href="https://cysinfo.com/detecting-deceptive-hollowing-techniques/" target="_blank" class="calibre20">https://cysinfo.com/detecting-deceptive-hollowing-techniques/</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4. Hooking Techniques</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">So far, we have looked at different code injection techniques to execute malicious code. Another reason an attacker injects code (mostly DLL, but it can also be an executable or shellcode) into the legitimate (target) process is to hook the API calls made by the target process. Once a code is injected into the target process, it has full access to the process memory and can modify its components. The ability to alter the process memory components allows an attacker to replace the entries in the IAT or modify the API function itself; this technique is referred to as <em class="calibre17">hooking</em><strong class="calibre5">.</strong> By hooking an API, an attacker can control the execution path of the program and re route it to the malicious code of his choice. The malicious function can then:</p>
+<ul class="calibre11">
+<li class="calibre12">Block calls made to the API by legitimate applications (such as security products).</li>
+<li class="calibre12">Monitor and intercept input parameters passed to the API.</li>
+<li class="calibre12">Filter the output parameters returned from the API.</li>
+</ul>
+<p class="calibre2">In this section, we will look at different types of hooking techniques.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1 IAT Hooking</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">As mentioned earlier, the IAT contains the addresses of functions that an application imports from DLLs. In this technique, after a DLL is injected into the target (legitimate) process, the code in the injected DLL (<kbd class="calibre13">Dllmain()</kbd> function) hooks the IAT entries in the target process. The following gives a high-level overview of the steps used to perform this type of hooking:</p>
+<ul class="calibre11">
+<li class="calibre12">Locate the IAT by parsing the executable image in memory.</li>
+<li class="calibre12">Identify the entry of the function to hook.</li>
+<li class="calibre12">Replace the address of the function with the address of the malicious function.</li>
+</ul>
+<p class="calibre2">To help you understand, let's look at an example of a legitimate program deleting a file by calling the <kbd class="calibre13">DeleteFileA()</kbd> API. The <kbd class="calibre13">DeleteFileA()</kbd> object accepts a single parameter, which is the name of the file to be deleted. The following screenshot displays the legitimate process (before hooking), consulting the IAT normally to determine the address of <kbd class="calibre13">DeleteFileA()</kbd>, and then calling <kbd class="calibre13">DeleteFileA()</kbd> in the <kbd class="calibre13">kernel32.dll</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00268.jpeg" class="calibre41"/></div>
+<p class="calibre2">When the program's IAT is hooked, the address of <kbd class="calibre13">DeleteFileA()</kbd> in the IAT is replaced with the address of the malicious function, as follows. Now, when the legitimate program calls <kbd class="calibre13">DeleteFileA()</kbd>, the call is redirected to the malicious function in the malware module. The malicious function then invokes the original <kbd class="calibre13">DeleteFileA()</kbd> function, to make it seem like everything is normal. The malicious function sitting in between can either prevent the legitimate program from deleting the file, or monitor the parameter (the file that is being deleted), and then take some action:</p>
+<div class="cdpaligncenter"><img src="../images/00269.jpeg" class="calibre41"/></div>
+<p class="calibre2">In addition to blocking and monitoring, which typically happens before invoking the original function, the malicious function can also filter the output parameters, which occurs after the re-invocation. This way, the malware can hook APIs that display lists of processes, files, drivers, network ports, and so on, and filter the output to hide from the tools that use these API functions.</p>
+<p class="calibre2">The disadvantage for an attacker using this technique is that it does not work if the program is using <em class="calibre17">run time linking,</em> or if the function the attacker wishes to hook has been imported as an <em class="calibre17">ordinal</em>. Another disadvantage for the attacker is that IAT hooking can be easily detected. Under normal circumstances, the entries in the IAT should lie within the address range of its corresponding module. For example, the address of <kbd class="calibre13">DeleteFile()</kbd> should be within the address range of <kbd class="calibre13">kernel32.dll</kbd>. To detect this hooking technique, a security product can identify the entry in the IAT that falls outside of its module's address range. On 64-bit Windows, a technology named <em class="calibre17">PatchGuard</em> prevents patching the call tables, including IAT. Due to these problems, malware authors use a slightly different hooking technique, which is discussed next.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.2 Inline Hooking (Inline Patching)</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">IAT hooking relies on swapping the function pointers, whereas, in <em class="calibre17">inline hooking</em>, the API function itself is modified (patched) to redirect the API to the malicious code. As in IAT hooking, this technique allows the attacker to intercept, monitor, and block calls made by a specific application, and filter output parameters. In inline hooking, the target API function's first few bytes (instructions) are usually overwritten with a <em class="calibre17">jump</em> statement that re routes the program control to the malicious code. The malicious code can then intercept the input parameters, filter output, and redirect the control back to the original function.</p>
+<p class="calibre2">To help you understand, let's suppose that an attacker wants to hook the <kbd class="calibre13">DeleteFileA()</kbd> function call made by a legitimate application. Normally, when the legitimate application's thread encounters the call to <kbd class="calibre13">DeleteFileA()</kbd>, the thread starts executing from the start of the <kbd class="calibre13">DeleteFileA()</kbd> function, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00270.jpeg" class="calibre41"/></div>
+<p class="calibre2">To replace the first few instructions of a function with a jump, the malware needs to choose which instructions to replace. The <kbd class="calibre13">jmp</kbd> instruction requires at least 5 bytes, so the malware needs to choose instructions that occupy 5 bytes or more. In the preceding diagram, it is safe to replace the first three instructions (highlighted using a different color), because they take up exactly 5 bytes, and also, these instructions do not do much, apart from setting up the stack frame. The three instructions to be replaced in <kbd class="calibre13">DeleteFileA()</kbd> are copied, and then replaced with a jump statement of some sort, which transfers control to the malicious function. The malicious function does what it wants to do, and then executes the original three instructions of <kbd class="calibre13">DeleteFileA()</kbd> and jumps back to the address that lies below the <em class="calibre17">patch</em> (below the jump instruction), as shown in the following diagram. The replaced instructions, along with the jump statement that returns to the target function, are known as the <em class="calibre17">trampoline</em>:</p>
+<div class="cdpaligncenter"><img src="../images/00271.jpeg" class="calibre41"/></div>
+<p class="calibre2">This technique can be detected by looking for unexpected jump instructions at the start of the API function, but be aware that malware can make detection difficult by inserting the jump deeper in the API function, rather than at the start of the function. Instead of using a <kbd class="calibre13">jmp</kbd> instruction, malware may use a <kbd class="calibre13">call</kbd> instruction, or a combination of <kbd class="calibre13">push</kbd> and <kbd class="calibre13">ret</kbd> instructions, to redirect control; this technique bypasses the security tools, which only look for <kbd class="calibre13">jmp</kbd> instructions.</p>
+<p class="calibre2">With an understanding of inline hooking, let's take a look at an example of malware (<em class="calibre17">Zeus Bot</em>) using this technique. Zeus bot hooks various API functions; one of them is the <kbd class="calibre13">HttpSendRequestA()</kbd> in Internet Explorer (<kbd class="calibre13">iexplore.exe</kbd>). By hooking this function, the malware can extract credentials from the <kbd class="calibre13">POST</kbd> payload. Before hooking, the malicious executable (containing various functions) is injected into the address space of Internet Explorer. The following screenshot shows the address <kbd class="calibre13">0x33D0000</kbd>, where the executable is injected:</p>
+<div class="cdpaligncenter"><img src="../images/00272.jpeg" class="calibre41"/></div>
+<p class="calibre2">After injecting the executable, <kbd class="calibre13">HttpSendRequestA()</kbd> is hooked to redirect the program control to one of the malicious functions within the injected executable. Before we look at the hooked function, let's look at the first few bytes of the legitimate <kbd class="calibre13">HttpSendRequestA()</kbd> function (shown here):</p>
+<div class="cdpaligncenter"><img src="../images/00273.jpeg" class="calibre41"/></div>
+<p class="calibre2"><span class="calibre7">The first three instructions (occupying 5 bytes, highlighted in the preceding screenshot) are replaced to redirect control. </span>The following screenshot shows the <kbd class="calibre13">HttpSendRequestA()</kbd> after hooking. The first three instructions are replaced with the <kbd class="calibre13">jmp</kbd> instruction (occupying 5 bytes); note how the <em class="calibre17">jump</em> instruction redirects control to the malicious code at the address <kbd class="calibre13">0x33DEC48</kbd>, which falls within the address range of the injected executable:</p>
+<div class="cdpaligncenter"><img src="../images/00274.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.3 In-memory Patching Using Shim</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In inline hooking, we saw how the series of bytes in a function are patched to redirect control to malicious code. It is possible to perform <em class="calibre17">in-memory patching</em> using the <em class="calibre17">application compatibility shim</em> (the details of the shim were covered previously). Microsoft uses the feature of in-memory patching to apply patches to fix vulnerabilities in their products. <em class="calibre17">In-memory patching</em> is an undocumented feature, and is not available in the Compatibility Administrator Tool (covered earlier), but security researchers, through reverse engineering, have figured out the functionality of in-memory patches, and have developed tools to analyze them. The <kbd class="calibre13">sdb-explorer</kbd> by Jon Erickson (<a href="https://github.com/evil-e/sdb-explorer" class="calibre10">https://github.com/evil-e/sdb-explorer</a>) and <kbd class="calibre13">python-sdb</kbd> by William Ballenthin (<a href="https://github.com/williballenthin/python-sdb" class="calibre10">https://github.com/williballenthin/python-sdb</a>) allow you <span class="calibre7">to inspect in-memory patching</span> by parsing the shim database (<kbd class="calibre13">.sdb</kbd>) files. The following presentations by these researchers contain detailed information on in-memory patches, and the tools to analyze them:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">Persist It Using and Abusing Microsoft’s Fix It Patches:</em> <a href="http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf" class="calibre10">http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf</a></li>
+</ul>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">The Real</em> Shim <em class="calibre19">Shady:</em> <a href="http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf" class="calibre10">http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf</a></li>
+</ul>
+<p class="calibre2">Malware authors have used in-memory patching to inject code and hook the API functions. One of the malware samples that use in-memory patching is <em class="calibre17">GootKit</em>; this malware installs various shim database (files) using the <kbd class="calibre13">sdbinst</kbd> utility. The following screenshot shows shims installed for multiple applications, and the screenshot shows the <kbd class="calibre13">.sdb</kbd> file associated with <kbd class="calibre13">explorer.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00275.jpeg" class="calibre41"/></div>
+<p class="calibre2">The installed <kbd class="calibre13">.sdb</kbd> files contain the shellcode that will be patched directly into the memory of the target process. You can examine the <kbd class="calibre13">.sdb</kbd> file using the <kbd class="calibre13">sdb_dump_database.py</kbd> script (part of the <kbd class="calibre13">python-sdb</kbd> tool) by using the command shown here:</p>
+<pre class="calibre18">$ <strong class="calibre1">python sdb_dump_database.py {4c895e03-f7a5-4780-b65b-549b3fef0540}.sdb</strong></pre>
+<p class="calibre2">The output of the preceding command shows the malware targeting <kbd class="calibre13">explorer.exe</kbd> and applying a shim named <kbd class="calibre13">patchdata0</kbd>. The <kbd class="calibre13">PATCH_BITS</kbd> below the shim name is a raw binary data that contains the shellcode that will be patched into the memory of <kbd class="calibre13">explorer.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00276.jpeg" class="calibre209"/></div>
+<p class="calibre2">To know what the shellcode is doing, we need to be able to parse <kbd class="calibre13">PATCH_BITS</kbd>, which is an undocumented structure. To parse this structure, you can use the <kbd class="calibre13">sdb_dump_patch.py</kbd> script (part of <kbd class="calibre13">python-sdb</kbd>) by giving the patch name, <kbd class="calibre13">patchdata0</kbd>, as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> python sdb_dump_patch.py {4c895e03-f7a5-4780-b65b-549b3fef0540\}.sdb patchdata0</strong></pre>
+<p class="calibre2">Running the preceding command shows various patches applied in <kbd class="calibre13">kernel32.dll</kbd>, within <kbd class="calibre13">explorer.exe</kbd>. The following screenshot displays the first patch, where it matches two bytes, <kbd class="calibre13">8B FF (mov edi,edi)</kbd>, at the relative virtual address (RVA) <kbd class="calibre13">0x0004f0f2</kbd>, and replaces them with <kbd class="calibre13">EB F9 (jmp 0x0004f0ed)</kbd>. In other words, it redirects control to the RVA <kbd class="calibre13">0x0004f0ed</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00277.jpeg" class="calibre210"/></div>
+<p class="calibre2">The following output shows another patch applied at the <span class="calibre7">RVA </span><kbd class="calibre13">0x0004f0ed</kbd> in <kbd class="calibre13">kernel32.dll</kbd>, where the malware replaced the series of <kbd class="calibre13">NOP</kbd> instructions with <kbd class="calibre13">call 0x000c61a4</kbd>, thereby redirecting the program control to function at the RVA <kbd class="calibre13">0x000c61a4</kbd>. This way, the malware patches multiple locations in <kbd class="calibre13">kernel32.dll</kbd>  and performs various redirections, which finally leads it to the actual shellcode:</p>
+<div class="cdpaligncenter"><img src="../images/00278.jpeg" class="calibre211"/></div>
+<p class="calibre2">To understand what the malware is patching in <kbd class="calibre13">kernel32.dll</kbd>, you can attach the debugger to the patched <kbd class="calibre13">explorer.exe</kbd> process and locate these patches in <kbd class="calibre13">kernel32.dll</kbd>. For instance, to inspect the first patch at the RVA <kbd class="calibre13">0x0004f0f2</kbd>, we need to determine the base address where <kbd class="calibre13">kernel32.dll</kbd> is loaded. In my case, it is loaded at <kbd class="calibre13">0x76730000</kbd>, and then add the RVA <kbd class="calibre13">0x0004f0f2</kbd> (in other words, <kbd class="calibre13">0x76730000 + 0x0004f0f2 = 0x7677f0f2</kbd>). The following screenshot shows that this address <kbd class="calibre13">0x7677f0f2</kbd> is associated with the API function <kbd class="calibre13">LoadLibraryW()</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00279.jpeg" class="calibre41"/></div>
+<p class="mce-root4">Inspecting the <kbd class="calibre13">LoadLibraryW()</kbd> function shows the jump instruction at the start of the function, which will ultimately reroute the program control to the shellcode:</p>
+<p class="mce-root2"><img src="../images/00280.jpeg" class="calibre212"/></p>
+<p class="mce-root4">This technique is interesting, because in this case, the malware does not allocate memory or inject code directly, but relies on Microsoft's shim feature to inject the shellcode and hook the <kbd class="calibre13">LoadLibraryW()</kbd> API. It also makes detection difficult by jumping to various locations within <kbd class="calibre13">kernel32.dll</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5. Additional Resources</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In addition to the code injection techniques covered in this chapter, security researchers have discovered various other means of injecting code. The following are some of the new code injection techniques, and resources for further reading:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">ATOMBOMBING: BRAND NEW CODE INJECTION FOR WINDOWS:</em> <a href="https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows" class="calibre10">https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows</a></li>
+<li class="calibre12"><em class="calibre19">PROPagate:</em> <a href="http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/" class="calibre10">http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/</a></li>
+<li class="calibre12"><em class="calibre19">Process Doppelgänging, by Tal Liberman and Eugene Kogan:</em> <a href="https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf" class="calibre10">https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf</a></li>
+<li class="calibre12"><em class="calibre19">Gargoyle:</em> <a href="https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html" class="calibre10">https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html</a></li>
+<li class="calibre12"><em class="calibre19">GHOSTHOOK:</em> <a href="https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/" class="calibre10">https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/</a></li>
+</ul>
+<p class="calibre2">In this chapter, we focused mainly on code injection techniques in the user space; similar capabilities are possible in the kernel space (we will look at kernel space hooking techniques in <em class="calibre17">Chapter 11</em>). The following books should help you gain a deeper understanding of the rootkit techniques and Windows internal concepts:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">The Rootkit Arsenal: Escape and Evasion in the Dark Corners of the System (2nd Edition),</em> by Bill Blunden</li>
+<li class="calibre12"><em class="calibre19">Practical Reverse Engineering: x86, x64, ARM, Windows Kernel, Reversing Tools, and Obfuscation,</em> by Bruce Dang, Alexandre Gazet, and Elias Bachaalany</li>
+<li class="calibre12"><em class="calibre19">Windows Internals (7th Edition),</em> by Pavel Yosifovich, Alex Ionescu, Mark E. Russinovich, and David A. Solomon</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Summary</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this chapter, we looked at the different code injection techniques used by malicious programs to inject and execute malicious code within the context of a legitimate process. These techniques allow an attacker to perform malicious actions and bypass various security products. Apart from executing malicious code, an attacker can hijack the API functions called by a legitimate process <span class="calibre7">(using hooking) </span>and redirect control to the malicious code to monitor, block, or even filter an API's output, thereby altering a program's behavior. In the next chapter, you will learn the various obfuscation techniques used by adversaries to remain undetected from security monitoring solutions.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

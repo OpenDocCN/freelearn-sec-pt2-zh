@@ -1,0 +1,615 @@
+<html><head></head><body>
+		<div id="_idContainer222">
+			<h1 class="chapter-number" id="_idParaDest-268"><a id="_idTextAnchor278"/><a id="_idTextAnchor279"/>10</h1>
+			<h1 id="_idParaDest-269"><a id="_idTextAnchor280"/>Language Modes and Just Enough Administration (JEA)</h1>
+			<p>We have learned that PowerShell offers amazing logging and auditing capabilities and explored how to access the local system as well as Active Directory and Azure Active Directory. We also looked at daily red and blue team practitioner tasks. In this part of the book, we are diving deeper into mitigation features and how PowerShell can help you to build a robust and more <span class="No-Break">secure environment.</span></p>
+			<p>We will first explore language modes and understand the difference between the Constrained Language <a id="_idIndexMarker1750"/>mode and <strong class="bold">Just Enough Administration</strong> (<strong class="bold">JEA</strong>). Then, we will dive deep into JEA and explore what is needed to configure your first very own <span class="No-Break">JEA endpoint.</span></p>
+			<p>You will learn about the role capability and the session configuration file and learn how to deploy JEA in your environment. If you have the right tools at hand such as JEAnalyzer, creating an initial JEA configuration is not <span class="No-Break">too hard.</span></p>
+			<p>Finally, you will understand how to best leverage logging when working with JEA and which risky commands or bypasses you should avoid to harden your JEA configuration and <span class="No-Break">your environment.</span></p>
+			<p>In this chapter, you will get a deeper understanding of the <span class="No-Break">following topics:</span></p>
+			<ul>
+				<li>What are language modes <span class="No-Break">within PowerShell?</span></li>
+				<li><span class="No-Break">Understanding JEA</span></li>
+				<li>Simplifying your deployment <span class="No-Break">using JEAnalyzer</span></li>
+				<li>Logging within <span class="No-Break">JEA sessions</span></li>
+				<li>Best practices—avoiding risks and <span class="No-Break">possible bypasses</span></li>
+			</ul>
+			<h1 id="_idParaDest-270"><a id="_idTextAnchor281"/>Technical requirements</h1>
+			<p>To get the most out of this chapter, ensure that you have <span class="No-Break">the following:</span></p>
+			<ul>
+				<li>PowerShell 7.3 <span class="No-Break">and above</span></li>
+				<li>Visual Studio <span class="No-Break">Code installed</span></li>
+				<li>Access to the GitHub repository <span class="No-Break">for </span><span class="No-Break"><strong class="source-inline">Chapter10</strong></span><span class="No-Break">:</span></li>
+			</ul>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter10"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter10</span></a><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/tree/master/Chapter10&#13;"/></p>
+			<h1 id="_idParaDest-271"><a id="_idTextAnchor282"/>What are language modes within PowerShell?</h1>
+			<p>A<a id="_idIndexMarker1751"/> language mode<a id="_idIndexMarker1752"/> in PowerShell determines which elements of PowerShell are allowed and can be used in a session. You can find out the language mode of the current session by running <strong class="source-inline">$ExecutionContext.SessionState.LanguageMode</strong>—of course, this only works if you are allowed to run <span class="No-Break">this command:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer203">
+					<img alt="Figure 10.1 – Querying the language mode" src="image/B16679_10_001.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.1 – Querying the language mode</p>
+			<p>In the example shown in the screenshot, the Full Language mode is enabled in the <span class="No-Break">current session.</span></p>
+			<p>There are four different language modes available, which we will explore a little bit deeper in the <span class="No-Break">following sections.</span></p>
+			<h2 id="_idParaDest-272"><a id="_idTextAnchor283"/>Full Language (FullLanguage)</h2>
+			<p>The Full Language mode is <a id="_idIndexMarker1753"/>the default mode for PowerShell. Every command and all elements <span class="No-Break">are allowed.</span></p>
+			<p>The only restrictions that a user may experience would be if they do not have the Windows privileges to run a command (such as administrative privileges), but this behavior is not restricted by <span class="No-Break">language mode.</span></p>
+			<h2 id="_idParaDest-273"><a id="_idTextAnchor284"/>Restricted Language (RestrictedLanguage)</h2>
+			<p>The<a id="_idIndexMarker1754"/> Restricted Language mode is a <em class="italic">data-specific form of the PowerShell language</em> that is primarily intended to support the localization files used by <strong class="source-inline">Import-LocalizedData</strong>. While cmdlets and functions can be executed in this mode, users are not allowed to run script blocks. It is important to note that the Restricted Language mode is not intended to be used explicitly in most scenarios and should only be used when working with <span class="No-Break">localization files.</span></p>
+			<p>And beginning with PowerShell 7.2, the <strong class="source-inline">New-Object</strong> cmdlet is disabled if the system lockdown mode <span class="No-Break">is configured.</span></p>
+			<p>Only the following variables are allowed <span class="No-Break">by default:</span></p>
+			<ul>
+				<li><strong class="source-inline">$</strong><span class="No-Break"><strong class="source-inline">True</strong></span></li>
+				<li><strong class="source-inline">$</strong><span class="No-Break"><strong class="source-inline">False</strong></span></li>
+				<li><strong class="source-inline">$</strong><span class="No-Break"><strong class="source-inline">Null</strong></span></li>
+				<li><strong class="source-inline">$</strong><span class="No-Break"><strong class="source-inline">PSCulture</strong></span></li>
+				<li><strong class="source-inline">$</strong><span class="No-Break"><strong class="source-inline">PSUICulture</strong></span></li>
+			</ul>
+			<p>Only the following operators are allowed <span class="No-Break">by default:</span></p>
+			<ul>
+				<li><strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">eq</strong></span></li>
+				<li><strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">gt</strong></span></li>
+				<li><strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">lt</strong></span></li>
+			</ul>
+			<p>Please refer to <a href="B16679_02_Final_PD.xhtml#_idTextAnchor034"><span class="No-Break"><em class="italic">Chapter 2</em></span></a>, <em class="italic">PowerShell Scripting Fundamentals</em>, for more details <span class="No-Break">on operators.</span></p>
+			<h2 id="_idParaDest-274"><a id="_idTextAnchor285"/>No Language (NoLanguage)</h2>
+			<p>The <a id="_idIndexMarker1755"/>No Language mode can be used via the API only and allows no single kind <span class="No-Break">of script.</span></p>
+			<p>Similar to the Restricted Language mode, beginning with PowerShell 7.2, the <strong class="source-inline">New-Object</strong> cmdlet is <a id="_idIndexMarker1756"/>disabled if the system lockdown mode <span class="No-Break">is configured.</span></p>
+			<h2 id="_idParaDest-275"><a id="_idTextAnchor286"/>Constrained Language (ConstrainedLanguage)</h2>
+			<p>As <a id="_idIndexMarker1757"/>we learned earlier in the book in <a href="B16679_05_Final_PD.xhtml#_idTextAnchor110"><span class="No-Break"><em class="italic">Chapter 5</em></span></a>, <em class="italic">PowerShell Is Powerful – System and API Access</em>, some of the most dangerous ways to abuse PowerShell are when COM or .NET are abused or if <strong class="source-inline">Add-Type</strong> is used to run and reuse code that was written in other languages (such <span class="No-Break">as C#).</span></p>
+			<p>The Constrained Language mode prevents those dangerous scenarios, while it still permits the user to use legitimate .NET classes, as well as all cmdlets and PowerShell elements. It is designed to support day-to-day administrative tasks, but restricts the user from executing risky elements such as—for example—calling <span class="No-Break">arbitrary APIs:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer204">
+					<img alt="Figure 10.2 – Running functions from arbitrary APIs is not possible within the constrained language mode" src="image/B16679_10_002.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.2 – Running functions from arbitrary APIs is not possible within the constrained language mode</p>
+			<p>To configure a language mode for testing, you can simply set it via the <span class="No-Break">command line:</span></p>
+			<pre class="source-code">
+&gt; $ExecutionContext.SessionState.LanguageMode = "ConstrainedLanguage"</pre>
+			<p>Using this particular setting in a production environment is not recommended—if an adversary gains access to the system, they could easily change this setting to compromise the security of <span class="No-Break">the system:</span></p>
+			<pre class="source-code">
+&gt; $ExecutionContext.SessionState.LanguageMode = "FullLanguage".</pre>
+			<p>There is also the undocumented <strong class="source-inline">__PSLockDownPolicy</strong> environment variable that some blog posts recommend. However, this variable was only implemented for debugging and unit testing and should not be used for enforcement, due to the same reasons: an attacker can easily overwrite it, and it should only be used <span class="No-Break">for testing.</span></p>
+			<p>To effectively use the Constrained Language mode to secure your PowerShell environment, it is critical to use it in conjunction with a robust application control solution such<a id="_idIndexMarker1758"/> as <strong class="bold">Windows Defender Application </strong><span class="No-Break"><strong class="bold">Control</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">WDAC</strong></span><span class="No-Break">):</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/select-types-of-rules-to-create"><span class="No-Break">https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/select-types-of-rules-to-create</span></a><a href="https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/select-types-of-rules-to-create&#13;"/></p>
+			<p>Without <a id="_idIndexMarker1759"/>such measures in place, attackers can easily bypass the Constrained Language mode by using other scripting engines or by creating custom malware in the form of <strong class="source-inline">.exe</strong> or <strong class="source-inline">.</strong><span class="No-Break"><strong class="source-inline">dll</strong></span><span class="No-Break"> files.</span></p>
+			<p>We will also explore AppLocker and application control further in <a href="B16679_11_Final_PD.xhtml#_idTextAnchor306"><span class="No-Break"><em class="italic">Chapter 11</em></span></a>, <em class="italic">AppLocker, Application Control, and </em><span class="No-Break"><em class="italic">Code Signing</em></span><span class="No-Break">.</span></p>
+			<p>Make sure to also refer to the PowerShell team’s blog post on Constrained <span class="No-Break">Language mode:</span></p>
+			<p><a href="https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/"><span class="No-Break">https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/</span></a></p>
+			<p>Constrained Language mode is a great option, but wouldn’t it be great to also restrict which exact commands and parameters are allowed in a session or by a particular user? This is where JEA comes <span class="No-Break">into play.</span></p>
+			<h1 id="_idParaDest-276"><a id="_idTextAnchor287"/>Understanding JEA</h1>
+			<p>JEA does <a id="_idIndexMarker1760"/>exactly what its name stands for: it allows you to define which role can execute which command and allows just enough <span class="No-Break">administration rights.</span></p>
+			<p>Imagine you have multiple people working on one server system: there might be administrators and supporters who might need to perform certain operations such as restarting a service from time to time (for example, restarting the print spooler service on a print server). This operation would require administrative rights, but for the support person, an admin account would mean too many privileges—privileges that could be abused by an attacker in case the support person’s credentials <span class="No-Break">get stolen.</span></p>
+			<p>Using JEA, the system’s administrator can define which commands can be run by a certain role <a id="_idIndexMarker1761"/>and even restrict the parameters. As such, the support person can log in via <strong class="bold">PowerShell Remoting</strong> (<strong class="bold">PSRemoting</strong>), quickly restart the print spooler service, and return to their daily business. No other commands can be used but <span class="No-Break">those configured.</span></p>
+			<p>Additionally, JEA <a id="_idIndexMarker1762"/>relies on PSRemoting, which is also a great way to avoid leaving credentials on the target system. There is even a possibility to configure that a virtual account is used on the target system on behalf of the operating person. Once the session is terminated, the virtual account will be destroyed and can no longer <span class="No-Break">be used.</span></p>
+			<h2 id="_idParaDest-277"><a id="_idTextAnchor288"/>An overview of JEA</h2>
+			<p>JEA relies<a id="_idIndexMarker1763"/> on PSRemoting: a technology that lets you connect to defined endpoints remotely, which we explored further in <a href="B16679_03_Final_PD.xhtml#_idTextAnchor064"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, <em class="italic">Exploring PowerShell Remote Management Technologies and </em><span class="No-Break"><em class="italic">PowerShell Remoting</em></span><span class="No-Break">.</span></p>
+			<p>There are two important files that you need to configure JEA basics—the <strong class="bold">role capability file</strong> and <a id="_idIndexMarker1764"/>the <strong class="bold">session configuration file</strong>. Using these two files <a id="_idIndexMarker1765"/>within a PSRemoting session allows JEA to let the <span class="No-Break">magic work.</span></p>
+			<p>Of course, you also need to restrict all other forms of access (such as via Remote Desktop) to the target server to restrict users from bypassing your <span class="No-Break">JEA restrictions.</span></p>
+			<p>The following diagram shows an overview of how a JEA <span class="No-Break">connection works:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer205">
+					<img alt="Figure 10.3 – High-level overview of how to connect with JEA" src="image/B16679_10_003.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.3 – High-level overview of how to connect with JEA</p>
+			<p>Using JEA even allows a non-administrative user to access a server to perform administrative tasks that were predefined for this <span class="No-Break">user’s role.</span></p>
+			<p>Depending on the configuration, a virtual account can be used on behalf of the user to allow non-administrative remote users to accomplish tasks that require administrative privileges. And don’t worry; of course, every command that is executed under the virtual account is logged and can be mapped back to the <span class="No-Break">originating user.</span></p>
+			<p>You might have<a id="_idIndexMarker1766"/> heard much about PSRemoting sessions, but where in this picture can you <span class="No-Break">find JEA?</span></p>
+			<p>Everything begins with starting an interactive session with a remote server—for example, by <span class="No-Break">using </span><span class="No-Break"><strong class="source-inline">Enter-PSSession</strong></span><span class="No-Break">.</span></p>
+			<p>There’s also a possibility to add session options to the session—is this where you can find JEA? No, but session options come in very handy in case you don’t want to connect to a <em class="italic">normal</em> PowerShell session. If you have, for example, a proxy to connect against, <strong class="source-inline">-SessionOption</strong> helps you to identify <span class="No-Break">these details.</span></p>
+			<p>Session options are great, but they are not part of this chapter. So, if you want to learn more about them, refer to the options the <strong class="source-inline">New-PSSessionOption</strong> <span class="No-Break">cmdlet provides:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/new-pssessionoption"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/new-pssessionoption</span></a></p>
+			<p>Then, there is the option to add a configuration to the session, using the <strong class="source-inline">-ConfigurationName</strong> parameter. Is this where JEA hides? Well, almost, but we are not there yet. You can see in the following diagram the differences between options, configurations, and where JEA finally <span class="No-Break">fits in:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer206">
+					<img alt="Figure 10.4 – Where JEA resides" src="image/B16679_10_004.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.4 – Where JEA resides</p>
+			<p>JEA really comes into play within a configuration, where a role definition was created. So, JEA is a part of a session that is established, secured by <strong class="bold">Security Descriptor Definition Language</strong> (<strong class="bold">SDDL</strong>), and <a id="_idIndexMarker1767"/>with a special role definition. SDDLs define the rights a user or group can have to access <span class="No-Break">a resource.</span></p>
+			<h2 id="_idParaDest-278"><a id="_idTextAnchor289"/>Planning for JEA</h2>
+			<p>Before you <a id="_idIndexMarker1768"/>can use JEA, there are a few things to consider first. JEA was included in PowerShell 5.0, so make sure that the right version is installed (5.0 or higher). You can check the current version <span class="No-Break">using </span><span class="No-Break"><strong class="source-inline">$PSVersionTable.PSVersion</strong></span><span class="No-Break">.</span></p>
+			<p>Since JEA relies on PSRemoting and WinRM, make sure both are configured and enabled. See <a href="B16679_03_Final_PD.xhtml#_idTextAnchor064"><span class="No-Break"><em class="italic">Chapter 3</em></span></a>, <em class="italic">Exploring PowerShell Remote Management Technologies and PowerShell Remoting</em>, for <span class="No-Break">more details.</span></p>
+			<p>You also need administrative privileges on the system to be able to <span class="No-Break">configure JEA.</span></p>
+			<p>And not only the right PowerShell version needs to be installed, but also the right operating system version. The following screenshot shows you all the supported versions for server operating systems, and what steps you need to take to make sure JEA is <span class="No-Break">working properly:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer207">
+					<img alt="Figure 10.5 – JEA supportability for server operating systems" src="image/B16679_10_005.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.5 – JEA supportability for server operating systems</p>
+			<p>JEA can also <a id="_idIndexMarker1769"/>be used on client operating systems. The following screenshot shows you which features are available with which version and what you need to do to get JEA running on each <span class="No-Break">operating system:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer208">
+					<img alt="Figure 10.6 – JEA supportability for client operating systems" src="image/B16679_10_006.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.6 – JEA supportability for client operating systems</p>
+			<p>Finally, you need to identify which users and/or groups you want to restrict and what rights each one of them should have. This might sound quite challenging. In this chapter, you will find some helpful tricks and tools to help you with <span class="No-Break">this task.</span></p>
+			<p>But before we <a id="_idIndexMarker1770"/>dive into that, let’s explore what JEA consists of. First, there are two main files behind JEA, <span class="No-Break">as follows:</span></p>
+			<ul>
+				<li>The role <span class="No-Break">capability file</span></li>
+				<li>The session <span class="No-Break">configuration file</span></li>
+			</ul>
+			<p>Let’s first explore what the role capability file is about and how to <span class="No-Break">configure it.</span></p>
+			<h2 id="_idParaDest-279"><a id="_idTextAnchor290"/>Role capability file</h2>
+			<p>The <a id="_idIndexMarker1771"/>role capability file determines<a id="_idIndexMarker1772"/> which commands each role is allowed to run. You can specify which actions users in a particular role can perform and restrict these roles to using certain cmdlets, functions, providers, and external <span class="No-Break">programs only.</span></p>
+			<p>It is common to define role capability files for certain roles—such as for print server admins, DNS admins, tier 1 helpdesk, and many more. Since role capability files can be implemented as part of PowerShell modules, you can easily share them <span class="No-Break">with others.</span></p>
+			<p>Using <strong class="source-inline">New-PSRoleCapabilityFile</strong>, you can create your first skeleton JEA role <span class="No-Break">capability file:</span></p>
+			<pre class="source-code">
+&gt; New-PSRoleCapabilityFile -Path .\Support.psrc</pre>
+			<p>An empty file, named <strong class="source-inline">Support.psrc</strong>, is created with prepopulated parameters that can be filled <span class="No-Break">and edited:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer209">
+					<img alt="Figure 10.7 – An empty skeleton role capability file" src="image/B16679_10_007.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.7 – An empty skeleton role capability file</p>
+			<p>When <a id="_idIndexMarker1773"/>choosing the name of the role capability file, make sure that it reflects the name of the actual role—so, be careful what name you choose for each file. In our example, we created the <strong class="source-inline">Support.psrc</strong> role capability file, which is a great start to configuring a <span class="No-Break">support role.</span></p>
+			<p>You can find a generated skeleton file without any configuration in the GitHub repository of <span class="No-Break">this book:</span></p>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA_SkeletonRoleCapabilityFile.psrc"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA_SkeletonRoleCapabilityFile.psrc</span></a></p>
+			<h3>Allowing PowerShell cmdlets and functions</h3>
+			<p>Let’s get <a id="_idIndexMarker1774"/>started with an easy example of a role capability file. Let’s imagine you are the administrator of an organization and the helpdesk reports regular issues with the print server. Well, one solution would be to give helpdesk administration privileges on all print servers, but that would give all helpdesk employees too many privileges on the print servers and probably expose your environment <span class="No-Break">to risk.</span></p>
+			<p>Therefore, you might want to give the helpdesk employees only the privilege to restart services on the <span class="No-Break">print servers.</span></p>
+			<p>You might have heard about <strong class="source-inline">Restart-Service</strong>, which serves exactly this purpose: to restart services. But was it a <em class="italic">cmdlet</em> or a <em class="italic">function</em>? Or even <span class="No-Break">an </span><span class="No-Break"><em class="italic">alias</em></span><span class="No-Break">?</span></p>
+			<p>If you are<a id="_idIndexMarker1775"/> unsure about a certain command, the <strong class="source-inline">Get-Command</strong> cmdlet can help you in finding out <span class="No-Break">more information:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer210">
+					<img alt="Figure 10.8 – Using Get-Command to find out the command type" src="image/B16679_10_008.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.8 – Using Get-Command to find out the command type</p>
+			<p>Thanks to <strong class="source-inline">Get-Command</strong>, we now know that <strong class="source-inline">Restart-Service</strong> is a <em class="italic">cmdlet</em> and we can continue to configure it. If you have a look at the generated skeleton <strong class="source-inline">.psrc</strong> file, you can see multiple sections that start with <strong class="source-inline">Visible</strong>. Using these, you are able to define what will be available in your JEA session. All the parameters that you can configure in the role capability file align with the parameters that the <strong class="source-inline">New-PSRoleCapabilityFile</strong> <span class="No-Break">cmdlet provides:</span></p>
+			<pre class="source-code">
+&gt; New-PSRoleCapabilityFile -Path <strong class="bold">&lt;path&gt;</strong> -<strong class="bold">ParameterName</strong> <strong class="bold">&lt;values&gt;</strong></pre>
+			<p>For example, if you wanted to configure a simple JEA configuration and only make the <strong class="source-inline">Restart-Service</strong> cmdlet available, you could use the <span class="No-Break">following command:</span></p>
+			<pre class="source-code">
+&gt; New-PSRoleCapabilityFile -Path .\Support.psrc -VisibleCmdlets 'Restart-Service'</pre>
+			<p>In this example, we used the <strong class="source-inline">-VisibleCmdlets</strong> parameter to configure the <strong class="source-inline">Restart-Service</strong> cmdlet to be available in the <strong class="source-inline">Support</strong> role, so let’s have a closer look at what we can do using this <span class="No-Break">configuration option.</span></p>
+			<h3>VisibleCmdlets</h3>
+			<p>Use the <strong class="source-inline">-VisibleCmdlets</strong> parameter to define which <em class="italic">cmdlets</em> are visible and can be<a id="_idIndexMarker1776"/> used by the configured role. All cmdlets defined need to be available on the target system to <span class="No-Break">avoid errors.</span></p>
+			<p>After creating your <strong class="source-inline">Support.psrc</strong> role capability file, it is also possible to directly edit it using a text editor of your choice. Not only can you use the <strong class="source-inline">-VisibleCmdlets</strong> parameter when creating the role capability file, but you can also configure this option directly in the role <span class="No-Break">capability file.</span></p>
+			<p>If you simply want to configure cmdlets without restricting their parameters, you can put them into single quotation marks and separate them with commas. In this example, the configured role would be able to restart services as well as restart <span class="No-Break">the computer:</span></p>
+			<pre class="source-code">
+VisibleCmdlets = 'Restart-Service', 'Restart-Computer'</pre>
+			<p>When using wildcards to configure cmdlets, it is crucial to be aware of the potential risks involved. While it may seem convenient to use a wildcard to allow a range of commands, you might unintentionally grant more permissions than necessary, creating vulnerabilities in your setup. Using the following command, this role would be able to run all commands that start <span class="No-Break">with </span><span class="No-Break"><strong class="source-inline">Get-</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+VisibleCmdlets = 'Get-*'</pre>
+			<p>But allowing a role to use all commands that start with <strong class="source-inline">Get-</strong> might also expose sensitive information through the <strong class="source-inline">Get-Content</strong> cmdlet, even if that was not the intended purpose of the role. Therefore, it’s important to carefully consider the commands you allow and regularly review and adjust the permissions as needed to maintain the security of <span class="No-Break">your system.</span></p>
+			<p>To also restrict the parameters of a cmdlet, you can build simple hash tables, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+VisibleCmdlets = @{ Name = 'Restart-Service'; Parameters = @{ Name = 'Name'; ValidateSet = 'Dns', 'Spooler' }},
+@{ Name = 'Restart-Computer'; Parameters = @{ Name = 'Name'; ValidateSet = 'Confirm', 'Delay', 'Force', 'Timeout' }}
+@{ Name = 'Get-ChildItem'; Parameters = @{ Name = 'Path';  ValidatePattern = '^C:\\Users\\[^\\]+$' }}</pre>
+			<p>Using the preceding example, the configured role would be allowed to run three commands: the first allowed cmdlet would be <strong class="source-inline">Restart-Service</strong>, but this role would be only allowed to restart the <strong class="source-inline">dns</strong> and <strong class="source-inline">spooler</strong> services. The second allowed cmdlet empowers the role to also <em class="italic">restart the computer</em> but only using the <strong class="source-inline">-Confirm</strong>, <strong class="source-inline">-Delay</strong>, <strong class="source-inline">-Force</strong>, and <strong class="source-inline">-Timeout</strong> parameters. And last, but not least, the third allowed cmdlet is <strong class="source-inline">Get-ChildItem</strong>, but with the configuration specified within <strong class="source-inline">ValidatePattern</strong>, a user <a id="_idIndexMarker1777"/>with this role would only be able to query subfolders of the <span class="No-Break"><strong class="source-inline">C:\Users</strong></span><span class="No-Break"> path.</span></p>
+			<h3>VisibleFunctions</h3>
+			<p><strong class="source-inline">VisibleFunctions</strong> defines<a id="_idIndexMarker1778"/> which <em class="italic">functions</em> are visible and can be used by the configured role. All functions defined need to be either available on the target system or defined in the <strong class="source-inline">FunctionDefinitions</strong> section of the current role capability file to <span class="No-Break">avoid errors.</span></p>
+			<p>Functions are defined <span class="No-Break">like cmdlets:</span></p>
+			<pre class="source-code">
+VisibleFunctions = 'Restart-NetAdapter'</pre>
+			<p>This example would allow the <strong class="source-inline">Restart-NetAdapter</strong> function; if executed, this function restarts a network adapter by disabling and enabling the network <span class="No-Break">adapter again.</span></p>
+			<p>For functions, you can also use hash tables to define more complex restrictions and wildcards that also work similarly to cmdlets—these should still be used <span class="No-Break">very carefully.</span></p>
+			<h3>VisibleAliases</h3>
+			<p><strong class="source-inline">VisibleAliases</strong> defines<a id="_idIndexMarker1779"/> which <em class="italic">aliases</em> are visible and can be used by the configured role. All aliases defined need to be either available on the target system or defined in the <strong class="source-inline">AliasDefinitions</strong> section of the current role capability file to <span class="No-Break">avoid errors:</span></p>
+			<pre class="source-code">
+VisibleAliases = 'cd', 'ls'</pre>
+			<p>This example would allow the <strong class="source-inline">cd</strong> alias to allow the <strong class="source-inline">Set-Location</strong> cmdlet and the <strong class="source-inline">ls</strong> alias to allow the <span class="No-Break"><strong class="source-inline">Get-ChildItem</strong></span><span class="No-Break"> cmdlet.</span></p>
+			<p>Aliases are configured in a similar way to cmdlets and functions in the role capability file. Please refer to those sections (<em class="italic">VisibleCmdlets</em> and <em class="italic">VisibleFunctions</em>) for <span class="No-Break">further examples.</span></p>
+			<h3>VisibleExternalCommands</h3>
+			<p><strong class="source-inline">VisibleExternalCommands</strong> defines which <em class="italic">traditional Windows executables</em> are visible<a id="_idIndexMarker1780"/> and can be used by the configured role. All defined external commands need to be available on the target system to avoid errors. An example of an external command is a standalone executable or an installed program. Always test your configuration to ensure all dependencies are considered by <span class="No-Break">your configuration.</span></p>
+			<p>Using this setting, you can allow external commands and PowerShell scripts. Using the following example, you would allow an executable file named <strong class="source-inline">putty.exe</strong>, which is located under <strong class="source-inline">C:\tmp\putty.exe</strong>, as well as a <strong class="source-inline">myOwnScript.ps1</strong> PowerShell script, which can be found under <span class="No-Break"><strong class="source-inline">C:\scripts\myOwnScript.ps1</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+VisibleExternalCommands = 'C:\tmp\putty.exe', 'C:\scripts\myOwnScript.ps1'</pre>
+			<p>Make sure that you have thoroughly reviewed and tested the script you’re exposing and that you have implemented appropriate measures to prevent unauthorized tampering. If you are exposing a script or an executable, always ensure that you have complete control over it and are confident that it will not compromise <span class="No-Break">your configuration.</span></p>
+			<h3>VisibleProviders</h3>
+			<p>No PowerShell <em class="italic">providers</em> are <a id="_idIndexMarker1781"/>available in JEA sessions by default, but by using <strong class="source-inline">VisibleProviders</strong>, you can define which ones are visible and can be used by the configured role. All providers defined need to be available on the target system to <span class="No-Break">avoid errors.</span></p>
+			<p>To get a full list of providers, run <strong class="source-inline">Get-PSProvider</strong>, as shown in the <span class="No-Break">following screenshot:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer211">
+					<img alt="Figure 10.9 – Getting a full list of available providers" src="image/B16679_10_009.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.9 – Getting a full list of available providers</p>
+			<p>For example, if you want to make the <strong class="source-inline">Registry</strong> provider available and, with it, also its <strong class="source-inline">HKEY_LOCAL_MACHINE</strong> (<strong class="source-inline">HKLM</strong>) and <strong class="source-inline">HKEY_CURRENT_USER</strong> (<strong class="source-inline">HKCU</strong>) drives, the configuration would look <span class="No-Break">like this:</span></p>
+			<pre class="source-code">
+VisibleProviders = 'Registry'</pre>
+			<p>Only make <a id="_idIndexMarker1782"/>providers available if it’s really necessary for the role that you are configuring. If this role does not operate with the registry on a regular basis, consider writing a script or a function instead, if the task <span class="No-Break">is repeatable.</span></p>
+			<h3>ModulesToImport</h3>
+			<p>Using<a id="_idIndexMarker1783"/> the <strong class="source-inline">ModulesToImport</strong> parameter, you can define which modules will be imported in the current session. Please note that the modules already need to be installed before they can <span class="No-Break">be imported:</span></p>
+			<pre class="source-code">
+ModulesToImport = @{ModuleName='EventList'; ModuleVersion='2.0.2'}</pre>
+			<p>Again, it is possible to use hash tables to specify more details. The preceding example would import the <strong class="source-inline">EventList</strong> module in version <em class="italic">2.0.2</em>. Please make sure to use <strong class="source-inline">VisibleFunctions</strong> and/or <strong class="source-inline">VisibleCmdlets</strong> to restrict which functions or cmdlets can be used in <span class="No-Break">this session.</span></p>
+			<h3>ScriptsToProcess</h3>
+			<p>The specified script file(s) will be <a id="_idIndexMarker1784"/>executed once the session is established, like a startup script. The path to the script needs to be defined as a full or an <span class="No-Break">absolute path.</span></p>
+			<p>The <strong class="source-inline">ScriptsToProcess</strong> parameter allows you to add configured scripts to this role’s JEA session, which then will be run in the context of the session. Of course, the script needs to be available on the <span class="No-Break">target system.</span></p>
+			<p>The script specified is run as soon as a connection to this session <span class="No-Break">is established:</span></p>
+			<pre class="source-code">
+ScriptsToProcess = 'C:\Scripts\MyScript.ps1'</pre>
+			<p>If <strong class="source-inline">ScriptsToProcess</strong> is configured for a role within the role capability file, it only applies to this role. If it’s configured within a session configuration file, it applies to all roles that are<a id="_idIndexMarker1785"/> linked to this <span class="No-Break">particular session.</span></p>
+			<h3>AliasDefinitions</h3>
+			<p>You can use this section to<a id="_idIndexMarker1786"/> define aliases that were not already defined on the target system and will be only used in the current <span class="No-Break">JEA session:</span></p>
+			<pre class="source-code">
+AliasDefinitions = @{Name='ipc'; Value='ipconfig'; Description='Displays the Windows IP Configuration'; Options='ReadOnly'}
+VisibleAliases = 'ipc'</pre>
+			<p>Don’t forget to also add the alias to <strong class="source-inline">VisibleAliases</strong> to make it available in <span class="No-Break">the session.</span></p>
+			<h3>FunctionDefinitions</h3>
+			<p>You can use this<a id="_idIndexMarker1787"/> section to define functions that are not available on the target system and will be only used in the current <span class="No-Break">JEA session.</span></p>
+			<p>If you define a function within <strong class="source-inline">FunctionDefinitions</strong>, make sure to also configure it in the <span class="No-Break"><strong class="source-inline">VisibleFunctions</strong></span><span class="No-Break"> section:</span></p>
+			<pre class="source-code">
+VisibleFunctions = 'Restart-PrintSpooler'
+FunctionDefinitions = @{
+    Name        = 'Restart-PrintSpooler'
+    ScriptBlock = {
+        if ((Get-Service -Name 'Spooler').Status -eq 'Running') {
+            Write-Warning "Attempting to restart Spooler service..."
+            Restart-Service -Name 'Spooler'
+        }
+        else {
+            Write-Warning "Attempting to start Spooler service..."
+            Start-Service -Name 'Spooler'
+        }
+    }
+}</pre>
+			<p>This<a id="_idIndexMarker1788"/> example creates a <strong class="source-inline">Restart-PrintSpooler</strong> custom function that first checks if the spooler service is running. If it’s running, it will be restarted, and if it’s not running, it will attempt to <span class="No-Break">be started.</span></p>
+			<p>If you are referring to other modules, use<a id="_idIndexMarker1789"/> the <strong class="bold">fully qualified module name</strong> (<strong class="bold">FQMN</strong>) instead <span class="No-Break">of aliases.</span></p>
+			<p>Instead of writing a lot of custom functions, it may be easier to write a PowerShell script module and configure <strong class="source-inline">VisibleFunctions</strong> <span class="No-Break">and </span><span class="No-Break"><strong class="source-inline">ModulesToImport</strong></span><span class="No-Break">.</span></p>
+			<h3>VariableDefinitions</h3>
+			<p>You <a id="_idIndexMarker1790"/>can use this section to define variables that will be only used in the current JEA session. Variables are defined within a hash table. Variables can be statically or <span class="No-Break">dynamically set:</span></p>
+			<pre class="source-code">
+VariableDefinitions = @{ Name = 'Variable1'; Value = { 'Dynamic' + 'InitialValue' } }, @{ Name = 'Variable2'; Value = 'StaticValue' }</pre>
+			<p>The following code line is an example of a static variable and a dynamic variable set using <span class="No-Break"><strong class="source-inline">VariableDefinitions</strong></span><span class="No-Break">:</span></p>
+			<pre class="source-code">
+VariableDefinitions =@{TestShare1 = '$Env:TEMP\TestShare'; TestShare2 = 'C:\tmp\TestShare'}</pre>
+			<p>Two variables would be defined in this example: while the first variable, <strong class="source-inline">$TestShare1</strong>, is dynamically set and refers to where the <strong class="source-inline">$Env:TEMP</strong> environment variable would lead to, the second one, <strong class="source-inline">$TestShare2</strong>, is static and would always point <span class="No-Break">to </span><span class="No-Break"><strong class="source-inline">'C:\tmp\TestShare'</strong></span><span class="No-Break">.</span></p>
+			<p>Variables can also<a id="_idIndexMarker1791"/> have options configured. This parameter is optional and is <strong class="source-inline">None</strong> by default. Acceptable parameters are <strong class="source-inline">None</strong>, <strong class="source-inline">ReadOnly</strong>, <strong class="source-inline">Constant</strong>, <strong class="source-inline">Private</strong>, <span class="No-Break">or </span><span class="No-Break"><strong class="source-inline">AllScope</strong></span><span class="No-Break">.</span></p>
+			<h3>EnvironmentVariables</h3>
+			<p>You can use this <a id="_idIndexMarker1792"/>section to define environment variables that will be only used in the current JEA session. Environment variables are defined as <span class="No-Break">hash tables:</span></p>
+			<pre class="source-code">
+EnvironmentVariables = @{Path= '%SYSTEMROOT%\system32; %SYSTEMROOT%\System32\WindowsPowerShell\v1.0\;C:\Program Files\PowerShell\7\;C:\Program Files\Git\cmd'}</pre>
+			<p>The previous example would set the environment <strong class="source-inline">Path</strong> environment variable to contain the <strong class="source-inline">'%SYSTEMROOT%\system32; %SYSTEMROOT%\System32\WindowsPowerShell\v1.0\;C:\Program Files\PowerShell\7\;C:\Program Files\Git\cmd'</strong> string to enable programs such as Windows PowerShell, PowerShell 7, and Git to find their executables and run without prompting <span class="No-Break">the user.</span></p>
+			<h3>TypesToProcess</h3>
+			<p>You can<a id="_idIndexMarker1793"/> use <strong class="source-inline">TypesToProcess</strong> to specify <strong class="source-inline">types.ps1xml</strong> files that should be added to the configured session. Type files are usually specified as <strong class="source-inline">.ps1xml</strong> files. Use the full or absolute path to define type files in the role <span class="No-Break">capability file:</span></p>
+			<pre class="source-code">
+TypesToProcess = 'C:\tmp\CustomFileTypes.ps1xml'</pre>
+			<p>You can find more information about type files in the <span class="No-Break">official documentation:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_types.ps1xml"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_types.ps1xml</span></a><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_types.ps1xml&#13;"/></p>
+			<h3>FormatsToProcess</h3>
+			<p>You can use the <strong class="source-inline">FormatsToProcess</strong> parameter to specify which formatting files should be<a id="_idIndexMarker1794"/> loaded in the current session. Similar to type files, formatting files are also configured within files that end with <strong class="source-inline">.ps1xml</strong>. Also, for <strong class="source-inline">FormatsToProcess</strong>, the path must be specified as a full or an <span class="No-Break">absolute path:</span></p>
+			<pre class="source-code">
+FormatsToProcess = 'C:\tmp\CustomFormatFile.ps1xml'</pre>
+			<p>You can find more information about formatting files in the <span class="No-Break">official documentation:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_format.ps1xml"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_format.ps1xml</span></a><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_format.ps1xml&#13;"/></p>
+			<h3>AssembliesToLoad</h3>
+			<p>To make the <a id="_idIndexMarker1795"/>types contained in binary files available for the scripts and functions that you write, use the <strong class="source-inline">AssembliesToLoad</strong> parameter to specify the desired assemblies. This enables you to leverage the functionality provided by these assemblies in the <span class="No-Break">JEA session:</span></p>
+			<pre class="source-code">
+AssembliesToLoad = "System.Web","FSharp.Compiler.CodeDom.dll", 'System.OtherAssembly, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'</pre>
+			<p>If you want to learn more about role capability files in JEA and more options such as creating custom functions especially for one role, please refer to the <span class="No-Break">official documentation:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/role-capabilities"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/role-capabilities</span></a></p>
+			<p>If you want a role capability file to be updated, you can do this at any time by simply saving changes to the role capability file. Any new JEA session that is established after the changes were made will represent the <span class="No-Break">updated changes.</span></p>
+			<p>Role capabilities can also be merged when a user is granted access to multiple role capabilities. Please refer to the official documentation to learn which permissions will be applied in <span class="No-Break">this case:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/role-capabilities"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/role-capabilities</span></a><span class="No-Break">#how-role-capabilities-are-merged</span></p>
+			<p>Now that you have defined your roles—for a better overview, create each one in a separate role capability file—it’s time to assign them to certain users and groups and define<a id="_idIndexMarker1796"/> session-specific parameters. This can be done within a session <span class="No-Break">configuration file.</span></p>
+			<h2 id="_idParaDest-280"><a id="_idTextAnchor291"/>Session configuration file</h2>
+			<p>Using<a id="_idIndexMarker1797"/> a session configuration file, you can specify who is allowed to connect to which endpoint. Not only can<a id="_idIndexMarker1798"/> you map users and groups to specific roles, but you can also configure global session settings such as which scripts should be executed when connected to the session, logging policies, or which identity will be used when you connect (for example, virtual accounts or <strong class="bold">group Managed Service Accounts</strong> (<strong class="bold">gMSAs</strong>)). If you<a id="_idIndexMarker1799"/> want to, you can configure session files on a <span class="No-Break">per-machine basis.</span></p>
+			<p>You can create a skeleton session configuration file using the <span class="No-Break"><strong class="source-inline">New-PSSessionConfigurationFile</strong></span><span class="No-Break"> cmdlet:</span></p>
+			<pre class="source-code">
+New-PSSessionConfigurationFile -Path .\JEA_SessionConfigurationFile.pssc</pre>
+			<p>Similar to creating a skeleton role capability file, a prepopulated session configuration file that can be edited <span class="No-Break">is created:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer212">
+					<img alt="Figure 10.10 – An empty skeleton session configuration file" src="image/B16679_10_010.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.10 – An empty skeleton session configuration file</p>
+			<p>In the <a id="_idIndexMarker1800"/>session configuration file, there are again some <em class="italic">general parameters</em> that help you describe this file. Some of them are <span class="No-Break">listed here:</span></p>
+			<ul>
+				<li><strong class="source-inline">SchemaVersion</strong>: Describes the schema version number of this document, which is usually <strong class="source-inline">2.0.0.0</strong>, if not <span class="No-Break">specified otherwise.</span></li>
+				<li><strong class="source-inline">GUID</strong>: A GUID is a unique, randomly generated UID to identify <span class="No-Break">this file.</span></li>
+				<li><strong class="source-inline">Author</strong>: The author who created <span class="No-Break">this document.</span></li>
+				<li><strong class="source-inline">Description</strong>: A description of this session configuration file. It makes sense to be specific so that you can easily edit and operate your base of growing <span class="No-Break">configuration files.</span></li>
+			</ul>
+			<p>Let’s look at which other options you can configure using the session <span class="No-Break">configuration file.</span></p>
+			<h3>Session type</h3>
+			<p>The session type indicates what kind of session is created (language mode-wise) and which <a id="_idIndexMarker1801"/>commands are allowed. For a JEA session configuration file, you should <em class="italic">always configure</em> <strong class="source-inline">SessionType = '</strong><span class="No-Break"><strong class="source-inline">RestrictedRemoteServer'</strong></span><span class="No-Break">.</span></p>
+			<p>In regular session files, you can use the following values for <span class="No-Break">this parameter:</span></p>
+			<ul>
+				<li><strong class="source-inline">Default</strong>: This configuration provides an <em class="italic">unrestricted PowerShell endpoint</em>. This means that users can run <em class="italic">any</em> command that is available on the system. It is not recommended to use this session type when <span class="No-Break">configuring JEA.</span></li>
+				<li><strong class="source-inline">Empty</strong>: No modules and no commands are added to the session. Only if you had configured <strong class="source-inline">VisibleCmdlets</strong>, <strong class="source-inline">VisibleFunctions</strong>, and other parameters in the session configuration file would your session be populated. Don’t use these settings when configuring JEA, unless you have a use case to even restrict the cmdlets that are allowed when <span class="No-Break">configuring </span><span class="No-Break"><strong class="source-inline">RestrictedRemoteServer</strong></span><span class="No-Break">.</span></li>
+				<li><strong class="source-inline">RestrictedRemoteServer</strong>: This value should be used when creating a JEA session configuration file. It appropriately limits the language mode and only imports a small set of essential commands, such as <strong class="source-inline">Exit-PSSession</strong>, <strong class="source-inline">Get-Command</strong>, <strong class="source-inline">Get-FormatData</strong>, <strong class="source-inline">Get-Help</strong>, <strong class="source-inline">Measure-Object</strong>, <strong class="source-inline">Out-Default</strong>, and <strong class="source-inline">Select-Object</strong>, which are sufficient for most administrative tasks. This configuration provides a higher level of security as it restricts access to potentially dangerous cmdlets <span class="No-Break">and functions.</span></li>
+			</ul>
+			<p>When creating the base session configuration file, you can use the <strong class="source-inline">-SessionType</strong> parameter to directly configure the session type, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+&gt; New-PSSessionConfigurationFile -SessionType RestrictedRemoteServer -Path .\JEA_SessionConfigurationFile.pssc</pre>
+			<h3>TranscriptDirectory</h3>
+			<p>Session<a id="_idIndexMarker1802"/> transcripts record all commands that are being run in a particular session, as well as the output. It is recommended to use session transcripts for every user and audit which commands are being executed. This can be achieved by using the <span class="No-Break"><strong class="source-inline">TranscriptDirectory</strong></span><span class="No-Break"> parameter.</span></p>
+			<p>First, make sure to preconfigure a folder on the JEA endpoint to store the transcripts. This folder needs to be a protected folder so that regular users cannot modify or delete any data within this folder. Also, make sure that the local system account is configured to have read and write access, as this account will be used to create <span class="No-Break">transcript files.</span></p>
+			<p>In the <a id="_idIndexMarker1803"/>best case, also make sure that the transcript files are regularly uploaded and parsed to your <strong class="bold">Security Information and Event Management</strong> (<strong class="bold">SIEM</strong>) system so that they are in a central location. Also, make sure to implement a mechanism to rotate log files so that the hard disk does not run out <span class="No-Break">of space.</span></p>
+			<p>Everything set up? Good! Now, it’s time to configure the path to the preconfigured folder in the session configuration file, <span class="No-Break">as follows:</span></p>
+			<pre class="source-code">
+TranscriptDirectory = 'C:\Jea-Transcripts'</pre>
+			<p>Using the preceding configuration would write all transcripts to the <strong class="source-inline">C:\Jea-Transcripts</strong> folder. New files will always be generated using a timestamp so that no file <span class="No-Break">is overwritten.</span></p>
+			<p>Additional to the <strong class="source-inline">TranscriptDirectory</strong> parameter, also make sure to implement proper auditing. See <a href="B16679_04_Final_PD.xhtml#_idTextAnchor090"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, <em class="italic">Detection – Auditing and Monitoring</em>, for <span class="No-Break">more details.</span></p>
+			<h3>Configuring the JEA identity</h3>
+			<p>When<a id="_idIndexMarker1804"/> using JEA, you don’t use your<a id="_idIndexMarker1805"/> regular account on the target system. But which account will be <span class="No-Break">used instead?</span></p>
+			<p>With JEA, there are two possibilities when it comes to identities: using either a <strong class="bold">virtual account</strong> or a <strong class="bold">gMSA</strong>. Using a virtual account is the method that you should always prefer unless you need access to network resources during the JEA session. In the following sections, we will learn more about both options and explore why a virtual account is a more <span class="No-Break">secure option.</span></p>
+			<h4>Virtual account</h4>
+			<p>When in <a id="_idIndexMarker1806"/>doubt, configuring a virtual account should always be your preferred option. A virtual account is a temporary administrator account that is created at the start of a JEA session and is destroyed once the session ends. This means that it only lasts for the duration of the remote session, making it a secure option for providing temporary administrative access. A huge advantage is that at no point in time do reusable credentials enter <span class="No-Break">the system.</span></p>
+			<p>When connecting to an endpoint, the non-administrator user connects and runs all commands in the session as a privileged virtual account. This account is a local administrator or a domain administrator <a id="_idIndexMarker1807"/>account on <strong class="bold">domain controllers</strong> (<strong class="bold">DCs</strong>) but nevertheless is restricted to running only the commands that are allowed for <span class="No-Break">this role.</span></p>
+			<p>To follow this example more easily, I have created a simple script to create a <strong class="source-inline">ServerOperator</strong> role and register it together with a session configuration that lets the connecting user connect as a virtual account. Let’s use this configuration to demonstrate the examples within <span class="No-Break">this chapter.</span></p>
+			<p>You can find the script in the GitHub repository of this book <span class="No-Break">under </span><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA-ServerOperator.ps1"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA-ServerOperator.ps1</span></a><span class="No-Break">.</span></p>
+			<p>In my example, I execute all commands on <strong class="source-inline">PSSec-Srv01</strong>, a Windows 2019 server that was joined to the <span class="No-Break"><strong class="source-inline">PSSec</strong></span><span class="No-Break"> domain.</span></p>
+			<p>First, make sure that the account you want to configure the <strong class="source-inline">ServerOperator</strong> role for is present in your environment, and possibly adjust the username in the script. In my demo example, the user <span class="No-Break">is </span><span class="No-Break"><strong class="source-inline">PSSec\mwiesner</strong></span><span class="No-Break">.</span></p>
+			<p>Then, run the <strong class="source-inline">JEA-ServerOperator.ps1</strong> script from the GitHub repository to ensure that the <strong class="source-inline">ServerOperator</strong> JEA endpoint was <span class="No-Break">created successfully.</span></p>
+			<p>Once the endpoint has been successfully created, establish a session to the localhost, using the <strong class="source-inline">ServerOperator</strong> <span class="No-Break">JEA session:</span></p>
+			<pre class="source-code">
+&gt; Enter-PSSession –ComputerName localhost –ConfigurationName ServerOperator -Credential $ServerOperator</pre>
+			<p>Once a JEA session is established that relies on a virtual account, let’s check the actual local user accounts by running the <strong class="source-inline">Get-LocalUser</strong> command from a separate elevated PowerShell console. As you can see, there was no additional local account created for the <span class="No-Break">JEA connection:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer213">
+					<img alt="Figure 10.11 – No additional local account was created" src="image/B16679_10_011.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.11 – No additional local account was created</p>
+			<p>To verify<a id="_idIndexMarker1808"/> which virtual accounts are or were signed in during the current uptime of the machine, I have written a script to help you see which virtual accounts were created for your <span class="No-Break">JEA sessions:</span></p>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/Get-VirtualAccountLogons.ps1"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/Get-VirtualAccountLogons.ps1</span></a><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/blob/master/Chapter10/JEA-ServerOperator.ps1"/></p>
+			<p>The script uses <strong class="source-inline">Get-CimInstance</strong> to retrieve information about logged-on users and their logon sessions, merges the information, and displays which virtual accounts were created and whether the session is still active <span class="No-Break">or inactive.</span></p>
+			<p>The following screenshot shows you the output of the <span class="No-Break"><strong class="source-inline">Get-VirtualAccountLogons.ps1</strong></span><span class="No-Break"> script:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer214">
+					<img alt="Figure 10.12 – Virtual account usage for the current uptime can be assessed using the Get-VirtualAccountLogons.ps1 script" src="image/B16679_10_012.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.12 – Virtual account usage for the current uptime can be assessed using the Get-VirtualAccountLogons.ps1 script</p>
+			<p>All virtual accounts<a id="_idIndexMarker1809"/> that were created until the operating system reboots are cached in <a id="_idIndexMarker1810"/>the <strong class="bold">Common Information Model</strong> (<strong class="bold">CIM</strong>) tables, therefore you can see past as well as current virtual account connections. If the session is still established, the script indicates it with <span class="No-Break"><strong class="source-inline">ActiveSession: True</strong></span><span class="No-Break">.</span></p>
+			<p>All virtual account names that are generated through an established JEA session follow the <strong class="source-inline">"WinRM VA_&lt;number&gt;_&lt;domain&gt;_&lt;username&gt;"</strong> scheme. If multiple sessions from the same user account were to be established, the number would be <span class="No-Break">raised accordingly.</span></p>
+			<p class="callout-heading">Did you know?</p>
+			<p class="callout">Retrieving a list of all curren<a id="_idTextAnchor292"/>t users is<a id="_idIndexMarker1811"/> also possible by using the deprecated <strong class="source-inline">Get-WmiObject win32_process).GetOwner().User</strong> <strong class="bold">Windows Management</strong> <strong class="bold">Instrumentation</strong> (<span class="No-Break"><strong class="bold">WMI</strong></span><span class="No-Break">) command.</span></p>
+			<p>Therefore, if you don’t need to access network resources, the best option to configure the identity of your JEA session is to use a <span class="No-Break">virtual account.</span></p>
+			<h4>gMSA</h4>
+			<p>If you<a id="_idIndexMarker1812"/> need to access network resources (for example, other servers or network shares), a gMSA is an alternative to a <span class="No-Break">virtual account.</span></p>
+			<p>You can find more information on how to create and configure a gMSA in the <span class="No-Break">official documentation:</span></p>
+			<p><span class="No-Break">https://docs.microsoft.com/en-us/windows-server/security/group-managed-service-accounts/group-managed-service-accounts-overview</span></p>
+			<p>You can use a gMSA account to authenticate against your domain and therefore access resources on any domain-joined machine. The rights a user gets by using a gMSA account are determined by the resources that will be accessed. Only if a gMSA account was explicitly granted admin privileges causes the user using the gMSA account have <span class="No-Break">administrator rights.</span></p>
+			<p>A gMSA is an account that is managed by Active Directory and changes its password on a frequent basis. As such, the password could be reused by an adversary—if captured—but only for a <span class="No-Break">limited time.</span></p>
+			<p>In the best case, use a virtual account; only use gMSA accounts when your tasks require access to network resources for some particular reasons, such as <span class="No-Break">the following:</span></p>
+			<ul>
+				<li>It is more difficult to determine who performed which actions under the identity of a gMSA as the same account is used by every user connecting to a session with the same gMSA account. To determine which user performed which action, you would need to correlate PowerShell session transcript files with the according events from <span class="No-Break">event logs.</span></li>
+				<li>There is a possibility to grant more rights than the JEA configuration plans to, as a gMSA account might have access to many network resources that are not needed. Always follow the least-privilege principle to restrict your JEA <span class="No-Break">sessions effectively.</span></li>
+			</ul>
+			<p>gMSAs are only available starting from Windows PowerShell 5.1 or higher and can only be used on domain-joined machines. Of course, it is also possible to use a standalone domain if you don’t want to join the machine to your <span class="No-Break">production domain.</span></p>
+			<h4>Choosing the JEA identity</h4>
+			<p>Once <a id="_idIndexMarker1813"/>you have chosen the identity you want to use to connect to your JEA session, it’s time to configure it. You will need to configure either a virtual account or a gMSA, and you can do this in your JEA session <span class="No-Break">configuration file.</span></p>
+			<p>Configure a local virtual account using the <span class="No-Break">following options:</span></p>
+			<ul>
+				<li><strong class="source-inline">RunAsVirtualAccount = $</strong><span class="No-Break"><strong class="source-inline">true</strong></span></li>
+				<li><strong class="source-inline">RunAsVirtualAccountGroups = '</strong><span class="No-Break"><strong class="source-inline">NetworkOperator', 'NetworkAuditor'</strong></span></li>
+			</ul>
+			<p>Using the <strong class="source-inline">RunVirtualAccountGroups</strong> parameter, you can define in which groups the virtual account should reside. To prevent the virtual account from being added to the local or domain administrators group by default, you will need to specify one or more <span class="No-Break">security groups.</span></p>
+			<p>Define a gMSA using the <strong class="source-inline">GroupManagedServiceAccount</strong> parameter, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+GroupManagedServiceAccount = 'MyJEAgMSA'</pre>
+			<p>Also, refer to the official session <span class="No-Break">configuration documentation:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/session-configurations "><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/session-configurations</span></a></p>
+			<h3>ScriptsToProcess</h3>
+			<p>Similar <a id="_idIndexMarker1814"/>to <strong class="source-inline">ScriptsToProcess</strong>, which can be configured within the role capability file. See the <em class="italic">ScriptsToProcess</em> subsection of the section entitled <em class="italic">The role capability file</em> to learn more about it and how to <span class="No-Break">configure it.</span></p>
+			<p>If <strong class="source-inline">ScriptsToProcess</strong> is configured for a role within the role capability file, it only applies to this role. If it’s configured within a session configuration file, it applies to all roles that are linked to this <span class="No-Break">particular session.</span></p>
+			<h3>RoleDefinitions</h3>
+			<p>Role definitions connect the roles that you have configured in the role capability file with the current <a id="_idIndexMarker1815"/>session configuration file and can be configured within a hash table, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+RoleDefinitions = @{
+    'CONTOSO\JEA_DNS_ADMINS' = @{ RoleCapabilities = 'DnsAdmin', 'DnsOperator', 'DnsAuditor' }
+    'CONTOSO\JEA_DNS_OPERATORS' = @{ RoleCapabilities = 'DnsOperator', 'DnsAuditor' }
+    'CONTOSO\JEA_DNS_AUDITORS' = @{ RoleCapabilities = 'DnsAuditor' }
+}</pre>
+			<p>You can assign one or more role capabilities to a user account or to an Active <span class="No-Break">Directory group.</span></p>
+			<h3>Conditional access</h3>
+			<p>JEA itself is already a <a id="_idIndexMarker1816"/>great option to restrict the exact commands a role is allowed to execute on an endpoint, but all users or groups that are assigned a role are able to run the configured commands. But what if you want to set up more restrictions, such as— for example—enforcing the users to also <a id="_idIndexMarker1817"/>use <strong class="bold">multi-factor </strong><span class="No-Break"><strong class="bold">authentication</strong></span><span class="No-Break"> (</span><span class="No-Break"><strong class="bold">MFA</strong></span><span class="No-Break">)?</span></p>
+			<p>This is where additional access comes into play. Using the <strong class="source-inline">RequiredGroups</strong> parameter, you can enforce that connecting users are part of a defined group—a group that you can use to enforce more conditions on <span class="No-Break">the user.</span></p>
+			<p>Using <strong class="source-inline">And</strong> or <strong class="source-inline">Or</strong> helps you to define more <span class="No-Break">granular rules.</span></p>
+			<p>Using the following example, all connecting users must belong to a security group named <strong class="source-inline">MFA-logon</strong>; simply use the <span class="No-Break"><strong class="source-inline">And</strong></span><span class="No-Break"> condition:</span></p>
+			<pre class="source-code">
+RequiredGroups = @{ And = 'MFA-logon' }</pre>
+			<p>Sometimes, you have different ways to authenticate or to provide additional security. So, if you want those connecting users to be either in the <strong class="source-inline">MFA-logon</strong> <em class="italic">OR</em> <strong class="source-inline">smartcard-logon</strong> group, use the <strong class="source-inline">Or</strong> condition, as shown in the <span class="No-Break">following example:</span></p>
+			<pre class="source-code">
+RequiredGroups = @{ Or = 'MFA-logon', 'smartcard-logon' }</pre>
+			<p>Of course, you can also create more complicated, nested conditions by combining <strong class="source-inline">And</strong> and <span class="No-Break"><strong class="source-inline">Or</strong></span><span class="No-Break"> conditions.</span></p>
+			<p>In the<a id="_idIndexMarker1818"/> following example, connecting users need to be part of the <strong class="source-inline">elevated-jea</strong> group and need to be either logged in with MFA or a <span class="No-Break">smart card:</span></p>
+			<pre class="source-code">
+RequiredGroups = @{ And = 'elevated-jea', @{ Or = 'MFA-logon', 'smartcard-logon' }}</pre>
+			<p>However, regardless of which configuration option(s) you use, always make sure to test that your conditions are applied <span class="No-Break">as planned.</span></p>
+			<h3>User drive</h3>
+			<p>It is possible <a id="_idIndexMarker1819"/>to copy files from a JEA session remotely by configuring and leveraging a user drive. For example, you can copy log files from your session for detailed analysis later on your normal <span class="No-Break">work computer.</span></p>
+			<p>To configure a user drive with a capacity of 10 MB, use the <span class="No-Break">following configuration:</span></p>
+			<pre class="source-code">
+MountUserDrive = $true
+UserDriveMaximumSize = 10485760</pre>
+			<p>After accessing a JEA session that has a user drive configured, you can easily copy files from or to <span class="No-Break">the session.</span></p>
+			<p>The followin<a id="_idTextAnchor293"/>g example shows how to copy the <strong class="source-inline">myFile.txt</strong> file into your <strong class="source-inline">$ServerOperator</strong> <span class="No-Break">JEA session:</span></p>
+			<pre class="source-code">
+Copy-Item -Path .\myFile.txt -Destination User: -ToSession $ServerOperator</pre>
+			<p>The next example shows how to copy the <strong class="source-inline">access.log</strong> file from the remote machine within the <strong class="source-inline">$ServerOperator</strong> JEA session to your <span class="No-Break">local one:</span></p>
+			<pre class="source-code">
+Copy-Item -Path User:\access.log -Destination . -FromSession $jeasession</pre>
+			<p>Although you can copy files from and into the established JEA session, it is not possible to specify the filename or subfolder on the <span class="No-Break">remote machine.</span></p>
+			<p>If you want to learn more about PowerShell drives, also have a look <span class="No-Break">at </span><a href="https://docs.microsoft.com/en-us/powershell/scripting/samples/managing-windows-powershell-drives"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/samples/managing-windows-powershell-drives</span></a><span class="No-Break">.</span></p>
+			<h3>Access rights (SDDL)</h3>
+			<p>Access rights <a id="_idIndexMarker1820"/>to the JEA session are configured <span class="No-Break">per SDDL.</span></p>
+			<p>So when you are using JEA, SDDLs will get configured automatically when assigning user/group <strong class="bold">Access Control Lists (ACL)</strong> to a<a id="_idIndexMarker1821"/> session configuration. The group and <a id="_idIndexMarker1822"/>the <strong class="bold">Security Identifier (SID)</strong> will be both looked up and automatically added with the appropriate level of access to the <span class="No-Break">session configuration.</span></p>
+			<p>You can find out the SDDL of a session configuration by running the <strong class="source-inline">(Get-PSSessionConfiguration –Name &lt;session configuration </strong><span class="No-Break"><strong class="source-inline">name&gt;).SecurityDescriptorSddl</strong></span><span class="No-Break"> command:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer215">
+					<img alt="Figure 10.13 – Finding the SDDL of a session configuration" src="image/B16679_10_013.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.13 – Finding the SDDL of a session configuration</p>
+			<p>Refer to the official documentation to learn more about the <span class="No-Break">SDDL syntax:</span></p>
+			<p><span class="No-Break">https://docs.microsoft.com/en-us/windows/desktop/secauthz/security-descriptor-definition-language</span></p>
+			<h2 id="_idParaDest-281"><a id="_idTextAnchor294"/>Deploying JEA</h2>
+			<p>To <a id="_idIndexMarker1823"/>deploy JEA, you need to understand which <a id="_idIndexMarker1824"/>commands the users you want to restrict are using. If you ask me, this is the hardest part <span class="No-Break">about JEA.</span></p>
+			<p>But there are tools, such as my self-written JEAnalyzer open source project, that ease this task massively. I will come back to this tool later in <span class="No-Break">this chapter.</span></p>
+			<p>Once you have identified the commands used and the users and groups you want to restrict, first create a session capability file and a role capability file. The following diagram shows the<a id="_idIndexMarker1825"/> steps you will need to take to <span class="No-Break">deploy JEA:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer216">
+					<img alt="Figure 10.14 – Steps to deploy JEA" src="image/B16679_10_014.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.14 – Steps to deploy JEA</p>
+			<p>Once you<a id="_idIndexMarker1826"/> have created both required files, make sure to check the syntax of the session configuration file before deploying the files using the <strong class="source-inline">Test-PSSessionConfigurationFile -Path &lt;path to session configuration </strong><span class="No-Break"><strong class="source-inline">file&gt;</strong></span><span class="No-Break"> cmdlet.</span></p>
+			<p>If a JEA session configuration needs to be changed—for example, to map or remove users to or from a role—you will always need to unregister and register the JEA session configuration again. If you only want to change roles configured in the role capability file, it is enough to simply change the configuration; there’s no need to re-register the <span class="No-Break">session configuration.</span></p>
+			<p>You can also verify which capabilities a specific user would get in a specific session by running <strong class="source-inline">Get-PSSessionCapability –ConfigurationName &lt;configuration name&gt; -</strong><span class="No-Break"><strong class="source-inline">Username &lt;username&gt;</strong></span><span class="No-Break">.</span></p>
+			<p>Once you are ready to deploy, you will need to decide which deployment mechanism you will use. There’s the <a id="_idIndexMarker1827"/>option to either <em class="italic">register the session manually</em> or to use <strong class="bold">Desired State Configuration</strong> (<strong class="bold">DSC</strong>) for <span class="No-Break">the deployment.</span></p>
+			<h3>Registering manually</h3>
+			<p>Registering the <a id="_idIndexMarker1828"/>machine manually is a great option if you just want to test your configuration on a few machines or if you only need to administer small environments. Of course, you can also script the deployment process using manual registration commands, but you still need to find a way to deploy <span class="No-Break">your scripts.</span></p>
+			<p>Therefore for big environments, DSC might be the better solution <span class="No-Break">for you.</span></p>
+			<p>Before registering manually, ensure that at least one role was added to the <strong class="source-inline">RoleCapabilities</strong> file and that you created and tested the accompanying session <span class="No-Break">configuration file.</span></p>
+			<p>In order to register your JEA configuration successfully, you will need to be a local administrator on <span class="No-Break">the system(s).</span></p>
+			<p>If everything is in place, adjust the following command to your configuration and run it on the endpoint <span class="No-Break">to configure:</span></p>
+			<pre class="source-code">
+Register-PSSessionConfiguration -Path .\MyJEAConfig.pssc -Name 'JEAMaintenance' -Force</pre>
+			<p>After registering a session, make sure to restart the WinRM service to ensure that the new session is loaded <span class="No-Break">and active:</span></p>
+			<pre class="source-code">
+Restart-Service -name WinRM</pre>
+			<p>For a working example, refer to the demo configuration file on this book’s <span class="No-Break">GitHub repository:</span></p>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA-ServerOperator.ps1"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEA-ServerOperator.ps1</span></a></p>
+			<h3>Deploying via DSC</h3>
+			<p>In big<a id="_idIndexMarker1829"/> environments, it might be worthwhile to leverage DSC. DSC is a really cool way to tell your remote servers to “make it so” and to apply your chosen <span class="No-Break">configuration regularly.</span></p>
+			<p>Even if someone were to change the configuration on the server, with DSC configured, your servers could reset themselves without any intervention from an administrator, as they can pull and adjust their own configuration to your configured baseline on a <span class="No-Break">frequent basis.</span></p>
+			<p>DSC is a big topic, therefore I cannot describe the entire technique in detail, but if you want to learn more about it, review <a href="B16679_13_Final_PD.xhtml#_idTextAnchor341"><span class="No-Break"><em class="italic">Chapter 13</em></span></a><em class="italic">, What Else? – Further Mitigations and Resources</em>, and have a look at the <span class="No-Break">official documentation.</span></p>
+			<p>For a basic JEA DSC configuration, please refer to the <em class="italic">Registering JEA </em><span class="No-Break"><em class="italic">Configurations</em></span><span class="No-Break"> documentation:</span></p>
+			<p><a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/register-jea?"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/register-jea?</span></a><span class="No-Break">#multi-machine-configuration-with-dsc</span></p>
+			<h2 id="_idParaDest-282"><a id="_idTextAnchor295"/>Connecting to the session</h2>
+			<p>Once <a id="_idIndexMarker1830"/>you have set up your JEA sessions, make sure that users that should connect to the JEA sessions have the <strong class="bold">Access this computer from the network</strong> user <span class="No-Break">right configured.</span></p>
+			<p>Now is the big moment, and you can connect to the <span class="No-Break">JEA session:</span></p>
+			<pre class="source-code">
+Enter-PSSession –ComputerName &lt;computer&gt; –ConfigurationName &lt;configuration name&gt;</pre>
+			<p>By default, it is not possible to use <em class="italic">Tab</em> to autocomplete commands on the command line. If you want to have it accessible, nevertheless, it is recommended to use <strong class="source-inline">Import-PSSession</strong>, which allows features such as <em class="italic">Tab</em> completion to work without <span class="No-Break">impacting security:</span></p>
+			<pre class="source-code">
+&gt; $jeasession = New-PSSession –ComputerName &lt;computer&gt; –ConfigurationName &lt;configuration name&gt;
+&gt; Import-PSSession -Session $jeasession -AllowClobber</pre>
+			<p>It is recommended to <em class="italic">not</em> configure the <strong class="source-inline">TabExpansion2</strong> function as a visible function, as this executes all kinds of code and is dangerous for the security of your <span class="No-Break">secure environment.</span></p>
+			<p>To display all available session configurations on the local machine, <span class="No-Break">run </span><span class="No-Break"><strong class="source-inline">Get-PSSessionConfiguration</strong></span><span class="No-Break">.</span></p>
+			<p>Once you <a id="_idIndexMarker1831"/>have successfully configured, deployed, and tested your JEA sessions, make sure to remove all other access possibilities for the connecting user. Even if you have the best JEA configuration deployed, it’s worth nothing if your users can bypass it by leveraging another connection possibility—for example, by connecting over <span class="No-Break">Remote Desktop.</span></p>
+			<p>Deploying JEA seems like a bunch of work to get it running at first glance, right? But don’t worry—there are actually ways that can simplify your work, such <span class="No-Break">as JEAnalyzer.</span></p>
+			<h1 id="_idParaDest-283"><a id="_idTextAnchor296"/>Simplifying your deployment using JEAnalyzer</h1>
+			<p>When I first<a id="_idIndexMarker1832"/> learned about JEA, I evangelized it and told everyone how awesome this solution was. Isn’t it awesome restricting the commands your users are allowed to run to exactly to what is needed? Isn’t it amazing to configure virtual accounts and completely avoid passing the hash when using JEA and <span class="No-Break">virtual accounts?</span></p>
+			<p>Yes, it is! But when I talked to customers about JEA and how awesome it was, I quickly received the same questions over and over again: <em class="italic">How can we find out which commands our users and administrators are using? How can we create those role capability files in the </em><span class="No-Break"><em class="italic">easiest way?</em></span></p>
+			<p>And this was the time when I had the idea for the JEAnalyzer module. After I started the project, my friend Friedrich Weinmann was also very interested in this project, and when I switched jobs and barely worked with customers on other topics than Microsoft Defender for Endpoint, I was glad that he took over what I started and maintained the repository and included our remaining common visions for <span class="No-Break">the project.</span></p>
+			<p>You can find the JEAnalyzer repository <span class="No-Break">on GitHub:</span></p>
+			<p><a href="https://github.com/PSSecTools/JEAnalyzer"><span class="No-Break">https://github.com/PSSecTools/JEAnalyzer</span></a></p>
+			<p>JEAnalyzer is a PowerShell module that can be easily installed over the PowerShell Gallery, using the <strong class="source-inline">Install-Module JEAnalyzer -Force</strong> command. After agreeing to all popups, provided by NuGet and others, the module will be installed and can be imported using <span class="No-Break"><strong class="source-inline">Import-Module JEAnalyzer</strong></span><span class="No-Break">.</span></p>
+			<p>At the time this book was written, the latest version of JEAnalyzer was <strong class="source-inline">1.2.10</strong> and consists of 13 functions, as <span class="No-Break">illustrated here:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer217">
+					<img alt="Figure 10.15 – Available functions of JEAnalyzer" src="image/B16679_10_015.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.15 – Available functions of JEAnalyzer</p>
+			<p>Every function<a id="_idIndexMarker1833"/> is very well documented so I will not describe all functions, just the most important ones to find out which commands your users are using and how to simply create your first role capability and session configuration files with the help <span class="No-Break">of JEAnalyzer.</span></p>
+			<h2 id="_idParaDest-284"><a id="_idTextAnchor297"/>Converting script files to a JEA configuration</h2>
+			<p>If you <a id="_idIndexMarker1834"/>have a certain script logic that needs to be run within a JEA session and simply want to convert the script into an endpoint configuration, JEAnalyzer has <span class="No-Break">you covered.</span></p>
+			<p>As a demo script file, I used the <strong class="source-inline">Export AD Users to CSV</strong> script that was originally written by Victor Ashiedu in 2014. You can find a version of this <span class="No-Break">script here:</span></p>
+			<p><a href="https://github.com/sacroucher/ADScripts/blob/master/Export_AD_Users_to_CSV.v1.0.ps1"><span class="No-Break">https://github.com/sacroucher/ADScripts/blob/master/Export_AD_Users_to_CSV.v1.0.ps1</span></a></p>
+			<p>Download the script and save it under <strong class="source-inline">C:\DEMO\ext\Export_AD_Users_to_CSV.v1.0\Export_AD_Users_to_CSV.v1.0.ps1</strong>. Also, create a folder under <strong class="source-inline">C:\JEA\</strong> to store the <span class="No-Break">output files.</span></p>
+			<p>After you are well prepared, download the script from this book’s GitHub repository and make sure to follow it command after command. Don’t run it as a whole script to make sure that you understand every single step—the script is <span class="No-Break">well commented.</span></p>
+			<p>You can<a id="_idIndexMarker1835"/> find the script <span class="No-Break">under </span><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEAnalyzer-AnalyzeScripts.ps1"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEAnalyzer-AnalyzeScripts.ps1</span></a><span class="No-Break">.</span></p>
+			<p>The most important commands used from JEAnalyzer for this example are <span class="No-Break">outlined here:</span></p>
+			<ul>
+				<li><strong class="source-inline">Read-JeaScriptFile</strong>: Parses and analyzes a script file for qualified commands. Make sure to specify the script using the <strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">Path</strong></span><span class="No-Break"> parameter.</span></li>
+				<li><strong class="source-inline">Export-JeaRoleCapFile</strong>: Converts a list of commands into a JEA role <span class="No-Break">capability file.</span></li>
+			</ul>
+			<p>After entering the newly created session and analyzing the commands configured, you can see that all the commands used, as well as the standard session functions, are allowed within <span class="No-Break">this session:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer218">
+					<img alt="Figure 10.16 – Displaying all allowed functions and commands" src="image/B16679_10_016.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.16 – Displaying all allowed functions and commands</p>
+			<p>But sometimes, auditing and configuring only script files is not enough; sometimes you also need to configure sessions for your users and administrators, allowing commonly used commands <span class="No-Break">and functions.</span></p>
+			<h2 id="_idParaDest-285"><a id="_idTextAnchor298"/>Using auditing to create your initial JEA configuration</h2>
+			<p>To follow this<a id="_idIndexMarker1836"/> example, you will need this section’s script from the <span class="No-Break">GitHub repository:</span></p>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEAnalyzer-AnalyzeLogs.ps1"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/JEAnalyzer-AnalyzeLogs.ps1</span></a><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/blob/master/Chapter10/JEAnalyzer-AnalyzeLogs.ps1&#13;"/></p>
+			<p>Similar to the demo script from the converting script files, don’t run this script in its entirety, but make sure to follow it command by command to understand <span class="No-Break">the examples.</span></p>
+			<p>As a prerequisite, make sure to install the <strong class="source-inline">ScriptBlockLoggingAnalyzer</strong> module, which was created by Dr. <span class="No-Break">Tobias Weltner:</span></p>
+			<pre class="source-code">
+&gt; Install-Module ScriptBlockLoggingAnalyzer</pre>
+			<p>Also, before we can leverage auditing, we need to enable <strong class="source-inline">ScriptBlockLogging</strong>. Therefore either enable <strong class="source-inline">ScriptBlockLogging</strong> manually on your local machine or make sure to enable it for multiple machines. Refer to <a href="B16679_04_Final_PD.xhtml#_idTextAnchor090"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, <em class="italic">Detection – Auditing and Monitoring</em>, to learn more <span class="No-Break">about </span><span class="No-Break"><strong class="source-inline">ScriptBlockLogging</strong></span><span class="No-Break">.</span></p>
+			<p>Using these commands, you can enable <strong class="source-inline">ScriptBlockLogging</strong> manually on your local machine, <span class="No-Break">like so:</span></p>
+			<pre class="source-code">
+&gt; New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Force
+&gt; Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -Force</pre>
+			<p>At some point in the script, you will be asked to run some commands as another user. In my demo environment, I run the commands as the <strong class="source-inline">mwiesner</strong> user. If you configured another user for your demo purposes, make sure to run this session under your customized user account and adjust the <span class="No-Break">script accordingly.</span></p>
+			<p>To run commands as <strong class="source-inline">mwiesner</strong> or another user, right-click on the PowerShell console and select <strong class="bold">Run as different user</strong>. Depending on the configuration of your system, it might be necessary to press <em class="italic">Shift</em> and then right-click on the PowerShell console to make this <span class="No-Break">option appear.</span></p>
+			<p>Run some demo commands in this session. You can find some examples in the script. Just make sure to run one command after the other, and don’t run it as one big <span class="No-Break">script block.</span></p>
+			<p>Then, follow the script’s examples, analyze the commands, and create an initial JEA configuration<a id="_idIndexMarker1837"/> out of the audited commands. The most important commands used in this script are set <span class="No-Break">out here:</span></p>
+			<ul>
+				<li><strong class="source-inline">Get-SBLEvent</strong> (<strong class="source-inline">ScriptBlockLoggingAnalyzer</strong> module): Reads <strong class="source-inline">ScriptBlockLogging</strong> events from the PowerShell <span class="No-Break">audit log</span></li>
+				<li><strong class="source-inline">Read-JeaScriptblock</strong>: Parses and analyzes passed code for qualified commands, when specified using the <strong class="source-inline">-</strong><span class="No-Break"><strong class="source-inline">ScriptCode</strong></span><span class="No-Break"> parameter</span></li>
+				<li><strong class="source-inline">Export-JeaRoleCapFile</strong>: Converts a list of commands into a JEA role <span class="No-Break">capability file</span></li>
+			</ul>
+			<p>Use the script to explore how to create an initial JEA session out of audited commands and adjust the commands used to your needs. In this way, it will be easy to create an initial JEA role capability file to adjust and <span class="No-Break">fine-grain later.</span></p>
+			<p>But also once you have started using JEA, auditing is quite important within your JEA sessions. Let’s look in the next section at how you can leverage it and link important events related to your users’ <span class="No-Break">JEA sessions.</span></p>
+			<h1 id="_idParaDest-286"><a id="_idTextAnchor299"/>Logging within JEA sessions</h1>
+			<p>When using JEA, logging is<a id="_idIndexMarker1838"/> of course possible, and you also should implement it and regularly review audit logs to make sure your JEA configuration is not abused in an <span class="No-Break">unforeseen way.</span></p>
+			<p>We already covered logging extensively in <a href="B16679_04_Final_PD.xhtml#_idTextAnchor090"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, <em class="italic">Detection – Auditing and Monitoring</em>, therefore here’s only a little summary of what’s important for logging when it comes <span class="No-Break">to JEA.</span></p>
+			<h2 id="_idParaDest-287"><a id="_idTextAnchor300"/>Over-the-shoulder transcription</h2>
+			<p>Always <a id="_idIndexMarker1839"/>configure over-the-shoulder transcription for users running commands via a JEA session. Over-the-shoulder transcription can be configured within the <em class="italic">session configuration file</em> using the <strong class="source-inline">TranscriptDirectory</strong> parameter, as we discussed earlier in the <span class="No-Break"><em class="italic">TranscriptDirectory</em></span><span class="No-Break"> section.</span></p>
+			<p>Make sure to protect the configured folder so that its contents cannot be manipulated by an adversary. Also forward, parse, and review the <span class="No-Break">transcripts regularly.</span></p>
+			<p>Over-the-shoulder transcription records contain information about the user, the virtual user, the commands that were run in the session, <span class="No-Break">and more.</span></p>
+			<h2 id="_idParaDest-288"><a id="_idTextAnchor301"/>PowerShell event logs</h2>
+			<p>Not <a id="_idIndexMarker1840"/>only for finding out who runs which commands, PowerShell event logs are quite useful; when Script Block Logging is turned on, all PowerShell actions are also recorded in regular Windows <span class="No-Break">event logs.</span></p>
+			<p>Enable Script Block Logging as well as Module Logging and look for event ID <strong class="source-inline">4104</strong> in the <em class="italic">PowerShell operational log</em>. On the remote machine, the user you will need to look for is the WinRM virtual user if a virtual account is used. If a <em class="italic">gMSA</em> account was used, make sure to also watch out for this account. The following screenshot shows a Script Block Logging event for a <span class="No-Break">virtual account:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer219">
+					<img alt="Figure 10.17 – Virtual account is shown as username" src="image/B16679_10_017.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.17 – Virtual account is shown as username</p>
+			<p>Monitor especially for event IDs 4100, 4103, and 4104 in the PowerShell operational log. On some occasions, you will see that the connecting user is the actual user, while the user specified is the WinRM <span class="No-Break">virtual account.</span></p>
+			<h2 id="_idParaDest-289"><a id="_idTextAnchor302"/>Other event logs</h2>
+			<p>Unlike <a id="_idIndexMarker1841"/>PowerShell operational logs and transcripts, other logging mechanisms will not capture the connected user. To find out which users connected at which time, you need to correlate <span class="No-Break">event logs.</span></p>
+			<p>To do so, look for event ID <strong class="source-inline">193</strong> in the <em class="italic">WinRM operational log</em> to find out which virtual account or gMSA was requested by <span class="No-Break">which user:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer220">
+					<img alt="Figure 10.18 – Using the WinRM operational log for correlation" src="image/B16679_10_018.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.18 – Using the WinRM operational log for correlation</p>
+			<p>You can also get more details out of the security log by looking for event IDs <strong class="source-inline">4624</strong> and <strong class="source-inline">4625</strong>. In the following example screenshot, we are looking at two events with the ID <strong class="source-inline">4624</strong> (<strong class="source-inline">An account was successfully logged on</strong>.) that were generated at the same time—one shows a regular account logon while the other shows the logon of the <span class="No-Break">virtual account:</span></p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer221">
+					<img alt="Figure 10.19 – Comparing the regular account and the virtual account logon" src="image/B16679_10_019.jpg"/>
+				</div>
+			</div>
+			<p class="IMG---Caption" lang="en-US" xml:lang="en-US">Figure 10.19 – Comparing the regular account and the virtual account logon</p>
+			<p>If you <a id="_idIndexMarker1842"/>are looking for more activities in other event logs, use the <strong class="source-inline">Logon ID</strong> value to correlate activities to identified <span class="No-Break">logon sessions.</span></p>
+			<p>An account logoff can be identified by event <strong class="source-inline">4634</strong>. Refer to <a href="B16679_04_Final_PD.xhtml#_idTextAnchor090"><span class="No-Break"><em class="italic">Chapter 4</em></span></a>, <em class="italic">Detection – Auditing and Monitoring</em>, for more information about the Windows <span class="No-Break">event log.</span></p>
+			<h1 id="_idParaDest-290"><a id="_idTextAnchor303"/>Best practices – avoiding risks and possible bypasses</h1>
+			<p>JEA is a great <a id="_idIndexMarker1843"/>option to harden your environment and allow administrators and users to only execute the commands that they need for their daily work. But as with every other technology, JEA can also be misconfigured, and there are risks that you need to watch <span class="No-Break">out for.</span></p>
+			<p>Do not grant the connecting user admin privileges to bypass JEA—for example, allowing commands to edit admin groups such as <strong class="source-inline">Add-ADGroupMember</strong>, <strong class="source-inline">Add-LocalGroupMember</strong>, <strong class="source-inline">net.exe</strong>, and <strong class="source-inline">dsadd.exe</strong>. Rogue administrators or accounts that were compromised could easily escalate <span class="No-Break">their privileges.</span></p>
+			<p>Also, don’t allow users to run arbitrary code, such as malware, exploits, or custom scripts to bypass protections. Commands that you should especially watch out for are (not exclusively) <strong class="source-inline">Start-Process</strong>, <strong class="source-inline">New-Service</strong>, <strong class="source-inline">Invoke-Item</strong>, <strong class="source-inline">Invoke-WmiMethod</strong>, <strong class="source-inline">Invoke-CimMethod</strong>, <strong class="source-inline">Invoke-Expression</strong>, <strong class="source-inline">Invoke-Command</strong>, <strong class="source-inline">New-ScheduledTask</strong>, <strong class="source-inline">Register-ScheduledJob</strong>, and <span class="No-Break">many more.</span></p>
+			<p>If your <a id="_idIndexMarker1844"/>admins really need one of those risky commands, you can try to fine-grain the configuration by also configuring dedicated parameters or by creating and allowing a <span class="No-Break">custom function.</span></p>
+			<p>Try to avoid wildcard configurations as they could be tampered with, and be careful when using tools that help you to create a configuration; always review and test the configuration carefully before using it <span class="No-Break">in production.</span></p>
+			<p>To protect your role capability and session configuration files from being tampered with, use signing. Make sure to implement a proper logging mechanism and secure transcript files as well as event logs. Also, review them on a <span class="No-Break">regular basis.</span></p>
+			<p>And last but not least, when going live, be aware that none of this matters if you do not take away admin rights and remote desktop access to <span class="No-Break">the servers!</span></p>
+			<h1 id="_idParaDest-291"><a id="_idTextAnchor304"/>Summary</h1>
+			<p>In this chapter, you have learned what language modes are and how they differ from JEA. You have also learned what JEA is and how to set <span class="No-Break">it up.</span></p>
+			<p>You now know which parameters you can use to create your own customized JEA role capability and session configuration files (or at least where to go in the book to look for them) and how to register and deploy your <span class="No-Break">JEA endpoints.</span></p>
+			<p>Following the examples from this book’s GitHub repository, you have managed to create and explore your own JEA sessions, and you have been provided with an option on how to create a simple first configuration out of your own environment, using JEAnalyzer. Of course, you will still need to fine-tune your configuration, but the first step is <span class="No-Break">done easily.</span></p>
+			<p>You have explored how to interpret logging files to correlate JEA sessions over different event logs and what kinds of risks to look out for when creating your <span class="No-Break">JEA configurations.</span></p>
+			<p>JEA is a great step to define which commands can be executed by which role, but sometimes you might want to completely prohibit a certain application or just whitelist allowed applications and scripts in your environment. In our next chapter, we will discover how this goal can be achieved using AppLocker, Application Control, and <span class="No-Break">script signing.</span></p>
+			<h1 id="_idParaDest-292"><a id="_idTextAnchor305"/>Further reading</h1>
+			<p>If you want to explore some of the topics that were mentioned in this chapter, follow <span class="No-Break">these resources:</span></p>
+			<ul>
+				<li>PowerShell Constrained Language <span class="No-Break">Mode: </span><a href="https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/"><span class="No-Break">https://devblogs.microsoft.com/powershell/powershell-constrained-language-mode/</span></a></li>
+				<li><span class="No-Break">about_Language_Modes: </span><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_language_modes"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_language_modes</span></a><a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_language_modes&#13;"/></li>
+				<li>Just Enough Administration (official Microsoft <span class="No-Break">documentation): </span><a href="https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/overview"><span class="No-Break">https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/jea/overview</span></a></li>
+				<li>JEAnalyzer on <span class="No-Break">GitHub: </span><a href="https://github.com/PSSecTools/JEAnalyzer"><span class="No-Break">https://github.com/PSSecTools/JEAnalyzer</span></a><a href="https://github.com/PSSecTools/JEAnalyzer&#13;"/></li>
+				<li>PowerShell ♥ the Blue <span class="No-Break">Team: </span><a href="https://devblogs.microsoft.com/powershell/powershell-the-blue-team/"><span class="No-Break">https://devblogs.microsoft.com/powershell/powershell-the-blue-team/</span></a></li>
+			</ul>
+			<p>You can also find all links mentioned in this chapter in the GitHub repository for <a href="B16679_10_Final_PD.xhtml#_idTextAnchor278"><span class="No-Break"><em class="italic">Chapter 10</em></span></a>—there’s no need to manually type in <span class="No-Break">every link:</span></p>
+			<p><a href="https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/Links.md"><span class="No-Break">https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter10/Links.md</span></a></p>
+		</div>
+	</body></html>

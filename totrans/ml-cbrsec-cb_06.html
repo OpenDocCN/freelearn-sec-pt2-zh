@@ -1,0 +1,1973 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Automatic Intrusion Detection</h1>
+                </header>
+            
+            <article>
+                
+<p><span>An intrusion detection system monitors a network or a collection of systems for malicious activity or policy violations. Any malicious activity or violation caught is stopped or reported. In this chapter, we will design and implement several intrusion detection systems using machine learning. We will begin with the classical problem of detecting spam email. We will then move on to classifying malicious URLs. We will take a brief detour to explain how to capture network traffic, so that we may tackle more challenging network problems, such as botnet and DDoS detection. We will construct a classifier for insider threats. Finally, we will address the example-dependent, cost-sensitive, radically imbalanced, and challenging problem of credit card fraud.<br/></span></p>
+<p class="mce-root">This chapter contains the following recipes:</p>
+<ul>
+<li class="mce-root">Spam filtering using machine learning</li>
+<li class="mce-root">Phishing URL detection</li>
+<li class="mce-root">Capturing network traffic</li>
+<li class="mce-root">Network behavior anomaly detection</li>
+<li class="mce-root">Botnet traffic detection</li>
+<li class="mce-root">Feature engineering for insider threat detection</li>
+<li>Employing anomaly detection for insider threats</li>
+<li class="mce-root">Detecting DDoS</li>
+<li class="mce-root">Credit card fraud detection</li>
+<li>Counterfeit bank note detection</li>
+<li>Ad blocking using machine learning</li>
+<li>Wireless indoor localization</li>
+</ul>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p><span>The following are the technical prerequisites for this chapter</span>:</p>
+<ul>
+<li>Wireshark</li>
+<li>PyShark</li>
+<li>costcla</li>
+<li>scikit-learn</li>
+<li>pandas</li>
+<li>NumPy</li>
+</ul>
+<p><span>Code and datasets may be found at <a href="https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter06">https://github.com/PacktPublishing/Machine-Learning-for-Cybersecurity-Cookbook/tree/master/Chapter06</a>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Spam filtering using machine learning</h1>
+                </header>
+            
+            <article>
+                
+<p>Spam mails (unwanted mails) constitute around 60% of global email traffic. Aside from the fact that spam detection software has progressed since the first spam message in 1978, anyone with an email account knows that spam continues to be a time-consuming and expensive problem. Here, we provide a recipe for spam-ham (non-spam) classification using machine learning.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing the <kbd>scikit-learn</kbd> package in <kbd>pip</kbd>. <span>The command is as follows</span>:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn</strong></pre>
+<p>In addition, extract <kbd>spamassassin-public-corpus.7z</kbd> into a folder named <kbd>spamassassin-public-corpus</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we build a classifier for wanted and unwanted email:</p>
+<ol>
+<li>Unzip the <kbd>spamassassin-public-corpus.7z</kbd> dataset.</li>
+</ol>
+<ol start="2">
+<li>Specify the path of your <kbd>spam</kbd> and <kbd>ham</kbd> directories:</li>
+</ol>
+<pre style="padding-left: 60px">import os<br/><br/>spam_emails_path = os.path.join("spamassassin-public-corpus", "spam")<br/>ham_emails_path = os.path.join("spamassassin-public-corpus", "ham")<br/>labeled_file_directories = [(spam_emails_path, 0), (ham_emails_path, 1)]</pre>
+<ol start="3">
+<li>Create labels for the two classes and read the emails into a corpus:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">email_corpus = []<br/>labels = []<br/><br/>for class_files, label in labeled_file_directories:<br/>    files = os.listdir(class_files)<br/>    for file in files:<br/>        file_path = os.path.join(class_files, file)<br/>        try:<br/>            with open(file_path, "r") as currentFile:<br/>                email_content = currentFile.read().replace("\n", "")<br/>                email_content = str(email_content)<br/>                email_corpus.append(email_content)<br/>                labels.append(label)<br/>        except:<br/>            pass</pre>
+<ol start="4">
+<li>Train-test split the dataset:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>X_train, X_test, y_train, y_test = train_test_split(<br/>    email_corpus, labels, test_size=0.2, random_state=11<br/>)</pre>
+<ol start="5">
+<li>Train an NLP pipeline on the training data:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.pipeline import Pipeline<br/>from sklearn.feature_extraction.text import HashingVectorizer, TfidfTransformer<br/>from sklearn import tree<br/><br/>nlp_followed_by_dt = Pipeline(<br/>    [<br/>        ("vect", HashingVectorizer(input="content", ngram_range=(1, 3))),<br/>        ("tfidf", TfidfTransformer(use_idf=True,)),<br/>        ("dt", tree.DecisionTreeClassifier(class_weight="balanced")),<br/>    ]<br/>)<br/>nlp_followed_by_dt.fit(X_train, y_train)</pre>
+<ol start="6">
+<li>Evaluate the classifier on the testing data:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.metrics import accuracy_score, confusion_matrix<br/><br/>y_test_pred = nlp_followed_by_dt.predict(X_test)<br/>print(accuracy_score(y_test, y_test_pred))<br/>print(confusion_matrix(y_test, y_test_pred))</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>0.9761620977353993</strong><br/><strong>[[291 7]</strong><br/><strong>[ 13 528]]</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start by preparing a dataset consisting of raw emails (<em>Step 1</em>), which the reader can examine by looking at the dataset. In <em>Step 2</em>, we specify the paths of the spam and ham emails, as well as assign labels to their directories. We proceed to read all of the emails into an array, and create a labels array in <em>Step 3</em>. Next, we train-test split our dataset (<em>Step 4</em>), and then fit an NLP pipeline on it in <em>Step 5</em>. Finally, in <em>Step 6</em>, we test our pipeline. We see that accuracy is pretty high. Since the dataset is relatively balanced, there is no need to use special metrics to evaluate success.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Phishing URL detection</h1>
+                </header>
+            
+            <article>
+                
+<p>A phishing website is a website that tries to obtain your account password or other personal information by making you think that you are on a legitimate website. Some phishing URLs differ from the intended URL in a single character specially chosen to increase the odds of a typo, while others utilize other channels to generate traffic.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Here is an example of a phishing website attempting to obtain a user's email address by pressuring a user into believing that their email will be shut down:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1124 image-border" src="assets/a1e670df-c239-4c89-b24c-7251a90549ea.png" style="width:35.50em;height:21.50em;"/></p>
+<p>Since phishing is one of the most successful modes of attack, it is crucial to be able to identify when a URL is not legitimate. In this recipe, we will build a machine learning model to detect phishing URLs.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> and <kbd>pandas</kbd> in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas</strong></pre>
+<p>In addition, extract the archive named <kbd>phishing-dataset.7z</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we will read in a featurized dataset of URLs and train a classifier on it.</p>
+<ol>
+<li>Download the phishing dataset from this chapter's directory.</li>
+<li>Read in the training and testing data using <kbd>pandas</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">import pandas as pd<br/>import os<br/><br/>train_CSV = os.path.join("phishing-dataset", "train.csv")<br/>test_CSV = os.path.join("phishing-dataset", "test.csv")<br/>train_df = pd.read_csv(train_CSV)<br/>test_df = pd.read_csv(test_CSV)</pre>
+<ol start="3">
+<li>Prepare the labels of the phishing web pages:</li>
+</ol>
+<pre style="padding-left: 60px">y_train = train_df.pop("target").values<br/>y_test = test_df.pop("target").values</pre>
+<ol start="4">
+<li>Prepare the features:</li>
+</ol>
+<pre style="padding-left: 60px">X_train = train_df.values<br/>X_test = test_df.values</pre>
+<ol start="5">
+<li>Train, test, and assess a classifier:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/>from sklearn.metrics import accuracy_score, confusion_matrix<br/><br/>clf = RandomForestClassifier()<br/>clf.fit(X_train, y_train)<br/>y_test_pred = clf.predict(X_test)<br/>print(accuracy_score(y_test, y_test_pred))<br/>print(confusion_matrix(y_test, y_test_pred))</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>0.9820846905537459</strong><br/><strong>[[343 4]</strong><br/><strong>[ 7 260]]</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We begin by downloading the dataset, and then reading it into data frames (<em>Steps 1</em> and <em>2</em>) for convenient examination and manipulation. Moving on, we place the dataset into arrays in preparation for machine learning (<em>Steps 3</em> and <em>4</em>). The dataset consists of several thousand feature vectors for phishing URLs. There are 30 features, whose names and values are tabulated here:</p>
+<table style="border-collapse: collapse;width: 672px;height: 1019px" border="1">
+<tbody>
+<tr>
+<td style="width: 248px">
+<p>Attributes</p>
+</td>
+<td style="width: 187px">
+<p>Values</p>
+</td>
+<td style="width: 232px">
+<p>Column name</p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Having an IP address</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>has_ip</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Having a long URL</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0,-1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>long_url</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Uses Shortening Service</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>short_service</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Having the '@' symbol</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>has_at</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Double slash redirecting</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>double_slash_redirect</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Having a prefix and suffix</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>pref_suf</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Having a subdomain</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>has_sub_domain</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>SSLfinal state</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>ssl_state</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Domain registration length</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1,-1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>long_domain</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Favicon</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>favicon</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Is a standard port</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>port</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Uses HTTPS tokens</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>https_token</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Request_URL</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,-1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>req_url</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Abnormal URL anchor</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>url_of_anchor</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Links_in_tags</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,-1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>tag_links</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>SFH</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>SFH</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Submitting to email</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>submit_to_email</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Abnormal URL</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>abnormal_url</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Redirect</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>redirect</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>On mouseover</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>mouseover</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Right-click</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>right_click</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Pop-up window</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>popup</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Iframe</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>iframe</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Age of domain</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>domain_age</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>DNS record</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>dns_record</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Web traffic</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>traffic</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Page rank</p>
+</td>
+<td style="width: 187px">
+<p>{ -1,0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>page_rank</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Google index</p>
+</td>
+<td style="width: 187px">
+<p>{ 0,1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>google_index</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Links pointing to page</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0,-1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>links_to_page</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Statistical report</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,0 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>stats_report</kbd></p>
+</td>
+</tr>
+<tr>
+<td style="width: 248px">
+<p>Result</p>
+</td>
+<td style="width: 187px">
+<p>{ 1,-1 }</p>
+</td>
+<td style="width: 232px">
+<p><kbd>target</kbd></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In <em>Step 5</em>, we train and test a random forest classifier. The accuracy is pretty high, but depending on how balanced the dataset is, it might be necessary to consider an FP constraint. There are many ways to expand upon such a detector, such as by adding other features and growing the dataset. Given that most websites contain some images, an image classifier is just one way in which the model may improve its results.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Capturing network traffic</h1>
+                </header>
+            
+            <article>
+                
+<p>Capturing network traffic is important for troubleshooting, analysis, and software and communications protocol development. For the security-minded individual, monitoring network traffic is crucial for detecting malicious activity or policy violation. In this recipe, we will demonstrate how to capture and inspect network traffic.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In preparation for this recipe, observe the following steps:</p>
+<ol>
+<li class="CDPAlignLeft CDPAlign">Install <kbd>pyshark</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pip install pyshark</strong></pre>
+<ol start="2">
+<li>Install <kbd>wireshark</kbd>. The latest version can be found at <a href="https://www.wireshark.org/download.html">https://www.wireshark.org/download.html</a>.<a href="https://www.wireshark.org/download.html"/></li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we utilize a Python library named PyShark, along with Wireshark, to capture and examine network traffic.</p>
+<ol>
+<li>You must add <kbd>tshark</kbd> to PyShark's configuration path. Tshark is a command-line variant of Wireshark. To do this, run the following command:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pip show pyshark</strong></pre>
+<p style="padding-left: 60px">Note the location of the package. In the <kbd>pyshark</kbd> <span>directory</span> in this location, find the file, <kbd>config.ini</kbd>. Edit <kbd>tshark_path</kbd> to the location of <kbd>tshark</kbd> inside your <kbd>wireshark</kbd> installation folder. Similarly, edit <kbd>dumpcap_path</kbd> to the location of <kbd>dumpcap</kbd> inside your <kbd>wireshark</kbd> installation folder.</p>
+<p class="mce-root"/>
+<p style="padding-left: 60px"><em>Steps 2</em> and <em>4</em> should be executed in a Python environment. Note that, as of the current version, <kbd>pyshark</kbd> may have some bugs when run in a Jupyter notebook.</p>
+<ol start="2">
+<li>Import <kbd>pyshark</kbd> and specify the duration of the capture:</li>
+</ol>
+<pre style="padding-left: 60px">import pyshark<br/><br/>capture_time = 20</pre>
+<ol start="3">
+<li>Specify the name of the file to output the capture, <kbd>to</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import datetime<br/>start = datetime.datetime.now()<br/>end = start+datetime.timedelta(seconds=capture_time)<br/>file_name = "networkTrafficCatpureFrom"+str(start).replace(" ", "T")+"to"+str(end).replace(" ","T")+".pcap"</pre>
+<ol start="4">
+<li>Capture network traffic:</li>
+</ol>
+<pre style="padding-left: 60px">cap = pyshark.LiveCapture(output_file=file_name)<br/>cap.sniff(timeout=capture_time)</pre>
+<ol start="5">
+<li>To examine the capture, open the <kbd>pcap</kbd> file in Wireshark:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1125 image-border" src="assets/f1bee8ed-2b47-411b-a417-3af9f6829a1d.png" style="width:160.00em;height:85.75em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start this recipe by configuring <kbd>tshark</kbd>, the command-line variant of Wireshark. Once we are finished configuring <kbd>tshark</kbd>, it is now accessible through <kbd>pyshark</kbd>. We import <kbd>pyshark</kbd> and specify the duration of the network capture (<em>Step 2</em>). Captured network traffic data can be overwhelming in size, so it is important to control the duration. Next, we specify the name of the output capture in a way that makes it unique and easily understandable (<em>Step 3</em>), and then, in <em>Step 4</em>, we proceed to capture traffic. Finally, in <em>Step 6</em>, we employ Wireshark for its GUI to examine the captured network traffic. In able hands, such network traffic facilitates the detection of insecure IoT devices, misconfigurations, anomalous events, hacking attempts, and even data exfiltration.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Network behavior anomaly detection</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>Network behavior anomaly detection</strong> (<strong>NBAD</strong>) is the continuous monitoring of a network for unusual events or trends. Ideally, an NBAD program tracks critical network characteristics in real time and generates an alarm if a strange event or trend is detected that indicates a threat. In this recipe, we will build an NBAD using machine learning.</p>
+<p>The dataset used is a modified subset from a famous dataset known as the KDD dataset, and is a standard set for testing and constructing IDS systems. This dataset contains a wide variety of intrusions simulated in a military network environment.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd>, <kbd>pandas</kbd>, and <kbd>matplotlib</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas matplotlib</strong></pre>
+<p>In addition, extract the archive, <kbd>kddcup_dataset.7z</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we will utilize isolation forest to detect anomalies in the KDD dataset:</p>
+<ol>
+<li>Import <kbd>pandas</kbd> and read the dataset into a data frame:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>kdd_df = pd.read_csv("kddcup_dataset.csv", index_col=None)</pre>
+<ol start="2">
+<li>Examine the proportion of types of traffic:</li>
+</ol>
+<pre style="padding-left: 60px">y = kdd_df["label"].values<br/>from collections import Counter<br/><br/>Counter(y).most_common()</pre>
+<p style="padding-left: 60px">The following output will be observed:</p>
+<pre style="padding-left: 60px" class="mce-root">[('normal', 39247),<br/>('back', 1098),<br/>('apache2', 794),<br/>('neptune', 93),<br/>('phf', 2),<br/>('portsweep', 2),<br/>('saint', 1)]</pre>
+<ol start="3">
+<li>Convert all non-normal observations into a single class:</li>
+</ol>
+<pre style="padding-left: 60px">def label_anomalous(text):<br/>    """Binarize target labels into normal or anomalous."""<br/>    if text == "normal":<br/>        return 0<br/>    else:<br/>        return 1<br/><br/>kdd_df["label"] = kdd_df["label"].apply(label_anomalous)</pre>
+<ol start="4">
+<li>Obtain the ratio of anomalies to normal observations. This is the contamination parameter that will be used in our isolation forest:</li>
+</ol>
+<pre style="padding-left: 60px">y = kdd_df["label"].values<br/>counts = Counter(y).most_common()<br/>contamination_parameter = counts[1][1] / (counts[0][1] + counts[1][1])</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="5">
+<li>Convert all categorical features into numerical form:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.preprocessing import LabelEncoder<br/><br/>encodings_dictionary = dict()<br/>for c in kdd_df.columns:<br/>    if kdd_df[c].dtype == "object":<br/>        encodings_dictionary[c] = LabelEncoder()<br/>        kdd_df[c] = encodings_dictionary[c].fit_transform(kdd_df[c])</pre>
+<ol start="6">
+<li>Split the dataset into normal and abnormal observations:</li>
+</ol>
+<pre style="padding-left: 60px">kdd_df_normal = kdd_df[kdd_df["label"] == 0]<br/>kdd_df_abnormal = kdd_df[kdd_df["label"] == 1]<br/>y_normal = kdd_df_normal.pop("label").values<br/>X_normal = kdd_df_normal.values<br/>y_anomaly = kdd_df_abnormal.pop("label").values<br/>X_anomaly = kdd_df_abnormal.values</pre>
+<ol start="7">
+<li>Train-test split the dataset:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>X_normal_train, X_normal_test, y_normal_train, y_normal_test = train_test_split(<br/>    X_normal, y_normal, test_size=0.3, random_state=11<br/>)<br/>X_anomaly_train, X_anomaly_test, y_anomaly_train, y_anomaly_test = train_test_split(<br/>    X_anomaly, y_anomaly, test_size=0.3, random_state=11<br/>)<br/><br/>import numpy as np<br/><br/>X_train = np.concatenate((X_normal_train, X_anomaly_train))<br/>y_train = np.concatenate((y_normal_train, y_anomaly_train))<br/>X_test = np.concatenate((X_normal_test, X_anomaly_test))<br/>y_test = np.concatenate((y_normal_test, y_anomaly_test))</pre>
+<ol start="8">
+<li>Instantiate and train an isolation forest classifier:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import IsolationForest<br/><br/>IF = IsolationForest(contamination=contamination_parameter)<br/>IF.fit(X_train</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="9">
+<li>Score the classifier on normal and anomalous observations:</li>
+</ol>
+<pre style="padding-left: 60px">decisionScores_train_normal = IF.decision_function(X_normal_train)<br/>decisionScores_train_anomaly = IF.decision_function(X_anomaly_train)</pre>
+<ol start="10">
+<li>Plot the scores for the normal set:</li>
+</ol>
+<pre style="padding-left: 60px">import matplotlib.pyplot as plt<br/><br/>%matplotlib inline<br/>plt.figure(figsize=(20, 10))<br/>_ = plt.hist(decisionScores_train_normal, bins=50)</pre>
+<p style="padding-left: 30px">The following graph provides the output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1126 image-border" src="assets/e34915a8-d4cf-467a-bedd-25d7c7fe16d7.png" style="width:96.83em;height:47.92em;"/></p>
+<ol start="11">
+<li>Similarly, plot the scores on the anomalous observations for a visual examination:</li>
+</ol>
+<pre style="padding-left: 60px">plt.figure(figsize=(20, 10))<br/>_ = plt.hist(decisionScores_train_anomaly, bins=50)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p style="padding-left: 60px">The following graph provides the output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1127 image-border" src="assets/8d5553be-1729-4ae1-b3bd-7b25c92c7fcd.png" style="width:96.33em;height:47.92em;"/></p>
+<ol start="12">
+<li>Select a cut-off so as to separate out the anomalies from the normal observations:</li>
+</ol>
+<pre style="padding-left: 60px">cutoff = 0</pre>
+<ol start="13">
+<li>Examine this cut-off on the test set:</li>
+</ol>
+<pre style="padding-left: 60px">print(Counter(y_test))<br/>print(Counter(y_test[cutoff &gt; IF.decision_function(X_test)]))</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>Counter({0: 11775, 1: 597})</strong><br/><strong>Counter({1: 595, 0: 85})</strong></pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We start by reading the <kbd>KDD cup</kbd> dataset into a data frame. Next, in <em>Step 2</em>, we examine our data, to see that a majority of the traffic is normal, as expected, but a small amount is abnormal. Evidently, the problem is highly imbalanced. Consequently, this problem is a promising candidate for an anomaly detection approach. In <em>Steps 3</em> and <em>5</em>, we transform all non-normal traffic into a single class, namely, <strong>anomalous</strong>.</p>
+<p>We also make sure to compute the ratio of anomalies to normal observations (<em>Step 4</em>), known as the contamination parameter. This is one of the parameters that facilitates setting of the sensitivity of isolation forest. This is optional, but is likely to improve performance. We split our dataset into normal and anomalous observations in <em>Step 6</em>, as well as split our dataset into training and testing versions of the normal and anomalous data (<em>Step 7</em>). We instantiate an isolation forest classifier, and set its contamination parameter (<em>Step 8</em>). The default parameters, <kbd>n_estimators</kbd> and <kbd>max_samples</kbd>, are recommended in the paper <em>Isolation Forest</em> by Liu et al. In <em><span>S</span><span>teps</span> 9</em> and <em>10</em>, we use the decision function of isolation forest to provide a score to the normal training set, and then examine the results in a plot. In <em>Step 11</em>, we similarly provide a score to the anomalous training set.</p>
+<p>Knowing that the decision function is a measure of how simple a point is to describe, we would like to separate out simple points from complicated points by picking a numerical cut-off that gives clear separation. A visual examination suggests the value chosen in <em>Step 12</em>.</p>
+<p>Finally, we can use our model to make predictions and provide an assessment of its performance. In <em>Step 13</em>, we see that the model was able to pick up on a large number of anomalies without triggering too many false positives (instances of normal traffic), speaking proportion-wise.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Botnet traffic detection</h1>
+                </header>
+            
+            <article>
+                
+<p>A botnet is a network of internet-connected compromised devices. Botnets can be used to perform a distributed <strong>denial-of-service attack</strong> (<strong>DDoS attack</strong>), steal data, send spam, among many other creative malicious uses. Botnets can cause absurd amounts of damage. For example, a quick search for the word botnet on Google shows that 3 days before the time of writing, the Electrum Botnet Stole $4.6 Million in cryptocurrencies. In this recipe, we build a classifier to detect botnet traffic.</p>
+<p>The dataset used is a processed subset of a dataset called <strong>CTU-13</strong>, and consists of botnet traffic captured in Czechia, at the CTU University in 2011. The dataset is a large capture of real botnet traffic mixed with normal and background traffic.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> in <kbd>pip</kbd>. The command is as follows:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn</strong></pre>
+<p>In addition, extract <kbd>CTU13Scenario1flowData.7z</kbd>. To unpickle the <kbd>CTU13Scenario1flowData.pickle</kbd> <span>file,</span> you will need to use Python 2:</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Begin by reading in the pickled data:</li>
+</ol>
+<pre style="padding-left: 60px">import pickle<br/><br/>file = open('CTU13Scenario1flowData.pickle', 'rb')<br/>botnet_dataset = pickle.load(file)</pre>
+<ol start="2">
+<li>The data is already split into train-test sets, and you only need assign these to their respective variables:</li>
+</ol>
+<pre style="padding-left: 60px">X_train, y_train, X_test, y_test = (<br/>    botnet_dataset[0],<br/>    botnet_dataset[1],<br/>    botnet_dataset[2],<br/>    botnet_dataset[3],<br/>)</pre>
+<ol start="3">
+<li>Instantiate a decision tree classifier with default parameters:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.tree import *<br/><br/>clf = DecisionTreeClassifier()</pre>
+<ol start="4">
+<li>Fit the classifier to the training data:</li>
+</ol>
+<pre style="padding-left: 60px">clf.fit(X_train, y_train)</pre>
+<ol start="5">
+<li>Test it on the test set:</li>
+</ol>
+<pre style="padding-left: 60px">clf.score(X_test, y_test)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>0.9991001799640072</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>We begin <em>Step 1</em> by loading the data by unpickling it. The dataset has been pre-engineered to be balanced, so we do not need to worry about imbalanced data challenges. In practice, the detection of botnets may require satisfying a constraint on false positives. Moving on, we utilize the already predefined train-test split to split our data (<em>Step 2</em>). We can now instantiate a classifier, fit it to the data, and then test it (<em>Steps 3</em> and <em>5</em>). Looking at the accuracy, we see that it is quite high. Since the dataset is already balanced, we need not worry that our metric is misleading. In general, detecting botnets can be challenging. The difficulty in detecting botnets is illustrated by the GameOver Zeus botnet malware package. Originally discovered in 2007, it operated for over three years, eventually resulting in an estimated $70 million in stolen funds that led to the arrest of over a hundred individuals by the FBI in 2010. It wasn't until March 2012 that Microsoft announced that it was able to shut down the majority of the botnet's command and control (C&amp;C) servers.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Insider threat detection</h1>
+                </header>
+            
+            <article>
+                
+<p class="western"><span><span><span>Insider threat</span></span></span> <span><span><span>is a complex and growing challenge for employers. It is generally defined as any actions taken by an employee that are potentially harmful to the organization.</span></span></span> <span><span><span>These can include actions such as</span></span></span> <span><span><span>unsanctioned data transfer or the sabotaging of resources. Insider threats may manifest in various and novel forms motivated by differing goals, ranging from a disgruntled employee subverting the prestige of an employer, to <strong>advanced persistent threats</strong> (<strong>APT</strong>).</span></span></span></p>
+<p class="western"><span><span><span>The insider risk database of the CERT Program of the Carnegie Mellon University Software Engineering Institute contains the largest public archive of red team scenarios. The simulation is built by combining real-world insider risk case studies with actual neutral clients secretly obtained from a defense corporation. The dataset represents months of traffic in a single engineering company from internet, phone, logon, folder, and system access</span></span></span> <span><span><span>(dtaa.com).</span></span></span> <span><span><span>The mock company employs</span></span></span> <span><span><span>several thousand</span></span></span> <span><span><span>people who each perform an average</span></span></span> <span><span><span>of</span></span></span> <span><span><span>1,000 logged activities per day.</span></span></span> <span><span><span>There are several threat</span></span></span> <span><span><span>scenarios</span></span></span> <span><span><span>depicted, such as a</span></span></span> <span><span><span>leaker, thief,</span></span></span> <span><span><span>and</span></span></span> <span><span><span>saboteur. A notable feature of the issue is its very low signal-to-noise, whether this is expressed in total malicious users, frequent tallies, or overall usage.</span></span></span></p>
+<p class="western"><span><span><span>The</span></span></span> <span><span><span>analysis</span></span></span> <span><span><span>we perform is on</span></span></span> the <span><span><span>CERT insider threat scenario</span></span></span> <span><span><span>(v.4.2), specifically because it represents</span></span></span> <span><span><span>a</span></span></span> <span><span><span>dense needle dataset,</span></span></span> <span><span><span>meaning that it has a high incidence of attacks.</span></span></span></p>
+<p class="western"><span><span><span>The basic plan of attack is, first, to hand-engineer new features, such as whether an email has been sent to an outsider or a login has occurred outside of business hours. Next, the idea is to extract a multivariate time series per user. This time series will consist of a sequence of vectors—each vector constitutes a count of the number of times our hand-engineered features took place in a day. Hence, the shape of our input dataset will be as follows:</span></span></span></p>
+<p class="western"><span><span><span>(# of users, total # of features examined per day, # of days in the time series).</span></span></span></p>
+<p class="western"><span><span><span>We will then flatten the time series of each user, and utilize isolation forest to detect anomalies.</span></span></span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Feature engineering for insider threat detection</h1>
+                </header>
+            
+            <article>
+                
+<p>Generally, whenever a machine learning solution does not rely on end-to-end deep learning, performance can be improved by creating insightful and informative features. In this recipe, we will construct several promising new features for insider threat detection.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>pandas</kbd> in <kbd>pip</kbd>. <span>The command is as follows</span>:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install pandas</strong></pre>
+<p>In addition, <span>download the CERT insider threat dataset from the following link:</span> <a href="ftp://ftp.sei.cmu.edu/pub/cert-data/r4.2.tar.bz2"><span>ftp://ftp.sei.cmu.edu/pub/cert-data/r4.2.tar.bz2</span></a>. More information about the dataset, as well as answers, can be found at <a href="https://resources.sei.cmu.edu/library/asset-view.cfm?assetid=508099">https://resources.sei.cmu.edu/library/asset-view.cfm?assetid=508099</a>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p class="western"><span><span><span>In the following steps, you will construct new features for the CERT insider threat dataset:</span></span></span></p>
+<ol>
+<li class="western"><span><span><span>Import <kbd>numpy</kbd> and <kbd>pandas</kbd>, and point to where the downloaded data is located:</span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>import numpy as np<br/>import pandas as pd<br/></span></span></span><span><span><span>path_to_dataset = "./r42short/"</span></span></span></pre>
+<ol start="2">
+<li class="western"><span><span><span>Specify the <kbd>.csv</kbd> files and which of their columns to read:</span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western">log_types = ["device", "email", "file", "logon", "http"]<br/>log_fields_list = [<br/>    ["date", "user", "activity"],<br/>    ["date", "user", "to", "cc", "bcc"],<br/>    ["date", "user", "filename"],<br/>    ["date", "user", "activity"],<br/>    ["date", "user", "url"],<br/>]</pre>
+<ol start="3">
+<li class="western">We will hand-engineer a number of features and encode them, thereby creating a dictionary to track these.</li>
+</ol>
+<pre style="padding-left: 60px" class="western">features = 0<br/>feature_map = {}<br/><br/><br/>def add_feature(name):<br/>    """Add a feature to a dictionary to be encoded."""<br/>    if name not in feature_map:<br/>        global features<br/>        feature_map[name] = features<br/>        features += 1</pre>
+<ol start="4">
+<li>Add the features we will be using to our dictionary:</li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>add_feature("Weekday_Logon_Normal")<br/>add_feature("Weekday_Logon_After")<br/>add_feature("Weekend_Logon")<br/>add_feature("Logoff")<br/><br/>add_feature("Connect_Normal")<br/>add_feature("Connect_After")<br/>add_feature("Connect_Weekend")<br/>add_feature("Disconnect")<br/><br/>add_feature("Email_In")<br/>add_feature("Email_Out")<br/><br/>add_feature("File_exe")<br/>add_feature("File_jpg")<br/>add_feature("File_zip")<br/>add_feature("File_txt")<br/>add_feature("File_doc")<br/>add_feature("File_pdf")<br/>add_feature("File_other")<br/><br/>add_feature("url")</span></span></span></pre>
+<ol start="5">
+<li class="mce-root">Define a function to note the file type that was copied to removable media:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def file_features(row):<br/>    """Creates a feature recording the file extension of the file used."""<br/>    if row["filename"].endswith(".exe"):<br/>        return feature_map["File_exe"]<br/>    if row["filename"].endswith(".jpg"):<br/>        return feature_map["File_jpg"]<br/>    if row["filename"].endswith(".zip"):<br/>        return feature_map["File_zip"]<br/>    if row["filename"].endswith(".txt"):<br/>        return feature_map["File_txt"]<br/>    if row["filename"].endswith(".doc"):<br/>        return feature_map["File_doc"]<br/>    if row["filename"].endswith(".pdf"):<br/>        return feature_map["File_pdf"]<br/>    else:<br/>        return feature_map["File_other"]</pre>
+<ol start="6">
+<li>Define a function to identify whether an employee has sent an email to a non-company email:</li>
+</ol>
+<pre style="padding-left: 60px">def email_features(row):<br/>    """Creates a feature recording whether an email has been sent externally."""<br/>    outsider = False<br/>    if not pd.isnull(row["to"]):<br/>        for address in row["to"].split(";"):<br/>            if not address.endswith("dtaa.com"):<br/>                outsider = True<br/><br/>    if not pd.isnull(row["cc"]):<br/>        for address in row["cc"].split(";"):<br/>            if not address.endswith("dtaa.com"):<br/>                outsider = True<br/><br/>    if not pd.isnull(row["bcc"]):<br/>        for address in row["bcc"].split(";"):<br/>            if not address.endswith("dtaa.com"):<br/>                outsider = True<br/>    if outsider:<br/>        return feature_map["Email_Out"]<br/>    else:<br/>        return feature_map["Email_In"]</pre>
+<ol start="7">
+<li>Define a function to note whether the employee used removable media outside of business hours:</li>
+</ol>
+<pre style="padding-left: 60px">def device_features(row):<br/>    """Creates a feature for whether the user has connected during normal hours or otherwise."""<br/>    if row["activity"] == "Connect":<br/>        if row["date"].weekday() &lt; 5:<br/>            if row["date"].hour &gt;= 8 and row["date"].hour &lt; 17:<br/>                return feature_map["Connect_Normal"]<br/>            else:<br/>                return feature_map["Connect_After"]<br/>        else:<br/>            return feature_map["Connect_Weekend"]<br/>    else:<br/>        return feature_map["Disconnect"]</pre>
+<ol start="8">
+<li>Define a function to note whether an employee has logged onto a machine outside of business hours:</li>
+</ol>
+<pre style="padding-left: 60px">def logon_features(row):<br/>    """Creates a feature for whether the user logged in during normal hours or otherwise."""<br/>    if row["activity"] == "Logon":<br/>        if row["date"].weekday() &lt; 5:<br/>            if row["date"].hour &gt;= 8 and row["date"].hour &lt; 17:<br/>                return feature_map["Weekday_Logon_Normal"]<br/>            else:<br/>                return feature_map["Weekday_Logon_After"]<br/>        else:<br/>            return feature_map["Weekend_Logon"]<br/>    else:<br/>        return feature_map["Logoff"]</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="9">
+<li>We will not take advantage of the information contained in URLs visited by an employee:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">def http_features(row):<br/>    """Encodes the URL visited."""<br/>    return feature_map["url"]</pre>
+<ol start="10">
+<li>We preserve only the day when an event has occurred, rather than the full timestamp:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">def date_to_day(row):<br/>    """Converts a full datetime to date only."""<br/>    day_only = row["date"].date()<br/>    return day_only</pre>
+<ol start="11">
+<li>We loop over the <kbd>.csv</kbd> files containing the logs and read them into pandas data frames:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">log_feature_functions = [<br/>    device_features,<br/>    email_features,<br/>    file_features,<br/>    logon_features,<br/>    http_features,<br/>]<br/>dfs = []<br/>for i in range(len(log_types)):<br/>    log_type = log_types[i]<br/>    log_fields = log_fields_list[i]<br/>    log_feature_function = log_feature_functions[i]<br/>    df = pd.read_csv(<br/>        path_to_dataset + log_type + ".csv", usecols=log_fields, index_col=None<br/>    )</pre>
+<ol start="12">
+<li>Convert the <kbd>date</kbd> data to a <kbd>pandas</kbd> timestamp:</li>
+</ol>
+<pre class="western">    date_format = "%m/%d/%Y %H:%M:%S"<br/>    df["date"] = pd.to_datetime(df["date"], format=date_format)</pre>
+<ol start="13">
+<li>Create the new features defined above and then drop all features except the date, user, and our new feature:</li>
+</ol>
+<pre class="western">    new_feature = df.apply(log_feature_function, axis=1)<br/>    df["feature"] = new_feature<br/><br/>    cols_to_keep = ["date", "user", "feature"]<br/>    df = df[cols_to_keep]</pre>
+<ol start="14">
+<li>Convert the date to just a day:</li>
+</ol>
+<pre class="western">    df["date"] = df.apply(date_to_day, axis=1)<br/><br/>    dfs.append(df)</pre>
+<ol start="15">
+<li>Concatenate all the data frames into one and sort by <kbd>date</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">joint = pd.concat(dfs)<br/>joint = joint.sort_values(by="date")</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><span>Start by importing <kbd>pandas</kbd> and <kbd>numpy</kbd> and creating a variable pointing to the dataset (<em>Step 1</em>). There are several datasets available from CERT. Version 4.2 is distinguished in being a dense needle dataset, meaning that it has a higher incidence of insider threats than the other datasets.</span> <span>Since the dataset is so massive, it is convenient to filter and downsample it, at the very least during the experimentation phases, so we do so in <em>Step 2</em>.</span> In the following steps, we will hand-engineer features that we believe will help our classifier catch insider threats. In <em>Step 3</em>, we create a convenient function to encode features, so that a dictionary can track these. We provide the names of the features we will be adding in <em><span>Step</span> 4</em>. In <em><span>Step</span> 5</em>, we create a feature that will track the file type of a file copied to removable media. Presumably, this is indicative of criminal data leaking. In <em>Step 6</em>, we create a feature that tracks whether the employee has emailed an external entity. We create another feature to track whether an employee has used a removable media device outside of business hours (<em><span>Step</span> 7</em>).</p>
+<p>An additional feature tracks whether an employee has logged into a device outside of business hours (<em><span>Step</span> 8</em>). For simplicity, we do not utilize the URLs visited by employees (<em><span>Step</span> 9</em>), though these may be indicative of malicious behavior.</p>
+<p>Next, we simplify our data by using only the date (<em><span>Step</span> 10</em>), rather than the full timestamp in our featurized data. In <em><span>Step</span> 11</em>, we read our data into a pandas data frame. We then edit the current date format to fit pandas (<em>Step 12</em>), and then gather up all of the new features, while dropping the old ones (<em><span>Step</span> 13</em>). In <em><span>Step</span> 14</em>, we transform the data into a time series whose delta are single days. Finally, in <em><span>Step</span> 15</em>, we aggregate all of the data into one large sorted d<span>ata frame</span>. We have now completed the first iteration of the feature-engineering phase. <span>There are many directions you can pursue in order to improve performance</span> <span>and add features</span><span>. These include observing email text for negative sentiment and analyzing personality using psychometrics.</span></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Employing anomaly detection for insider threats</h1>
+                </header>
+            
+            <article>
+                
+<p class="western"><span>Having engineered promising new features, our next steps are to train-test split, process the data into a convenient time series form, and then classify. Our training and testing sets will be two temporal halves of the dataset. This way, we can easily ensure that the shape of the input for training is the same as the shape of the input for testing, without cheating in our evaluation.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd>, <kbd>pandas</kbd>, and <kbd>matplotlib</kbd> in <kbd>pip</kbd>. <span>The command is as follows</span>:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas matplotlib</strong></pre>
+<p>In preparation for this recipe, you will want to load in the data frame from the previous recipe (or just continue from where the previous recipe ended).</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, you will convert the featurized data into a collection of time series and detect crime using isolation forest:</p>
+<ol>
+<li class="western">List all threat actors in preparation for creating labels:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">threat_actors = [<br/>    "AAM0658",<br/>    "AJR0932",<br/>    "BDV0168",<br/>    &lt;snip&gt;<br/>    "MSO0222",<br/>]</pre>
+<ol start="2">
+<li class="western">We then index the dates:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">start_date = joint["date"].iloc[0]<br/>end_date = joint["date"].iloc[-1]<br/>time_horizon = (end_date - start_date).days + 1<br/><br/><br/>def date_to_index(date):<br/>    """Indexes dates by counting the number of days since the starting date of the dataset."""<br/>    return (date - start_date).days</pre>
+<ol start="3">
+<li class="western">Define a function to extract the time series information of a given user:</li>
+</ol>
+<pre style="padding-left: 60px" class="western">def extract_time_series_by_user(user_name, df):<br/>    """Filters the dataframe down to a specific user."""<br/>    return df[df["user"] == user_name]</pre>
+<ol start="4">
+<li class="western"><span><span><span>Define a function to vectorize the time series information of a user:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>def vectorize_user_time_series(user_name, df):<br/>    """Convert the sequence of features of a user to a vector-valued time series."""<br/>    user_time_series = extract_time_series_by_user(user_name, df)<br/>    x = np.zeros((len(feature_map), time_horizon))<br/>    event_date_indices = user_time_series["date"].apply(date_to_index).to_numpy()<br/>    event_features = user_time_series["feature"].to_numpy()<br/>    for i in range(len(event_date_indices)):<br/>        x[event_features[i], event_date_indices[i]] += 1<br/>    return x</span></span></span></pre>
+<ol start="5">
+<li class="western"><span><span><span>Define a function to vectorize a time series of all users' features:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>def vectorize_dataset(df):<br/>    """Takes the dataset and featurizes it."""<br/>    users = set(df["user"].values)<br/>    X = np.zeros((len(users), len(feature_map), time_horizon))<br/>    y = np.zeros((len(users)))<br/>    for index, user in enumerate(users):<br/>        x = vectorize_user_time_series(user, df)<br/>        X[index, :, :] = x<br/>        y[index] = int(user in threat_actors)<br/>    return X, y</span></span></span></pre>
+<ol start="6">
+<li class="western"><span><span><span>Vectorize the dataset:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>X, y = vectorize_dataset(joint)</span></span></span></pre>
+<ol start="7">
+<li class="western"><span><span><span>Train-test split the vectorized data:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from sklearn.model_selection import train_test_split<br/><br/>X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="8">
+<li class="western"><span><span><span>Reshape the vectorized data:</span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X_train_reshaped = X_train.reshape(<br/>    [X_train.shape[0], X_train.shape[1] * X_train.shape[2]]<br/>)<br/>X_test_reshaped = X_test.reshape([X_test.shape[0], X_test.shape[1] * X_test.shape[2]])</pre>
+<ol start="9">
+<li class="western"><span><span><span>Split the training and testing datasets into threat and non-threat subsets:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">X_train_normal = X_train_reshaped[y_train == 0, :]<br/>X_train_threat = X_train_reshaped[y_train == 1, :]<br/>X_test_normal = X_test_reshaped[y_test == 0, :]<br/>X_test_threat = X_test_reshaped[y_test == 1, :]</pre>
+<ol start="10">
+<li class="western"><span><span><span>Define and instantiate an isolation forest classifier:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from sklearn.ensemble import IsolationForest<br/><br/>contamination_parameter = 0.035<br/>IF = IsolationForest(<br/>    n_estimators=100, max_samples=256, contamination=contamination_parameter<br/>)</pre>
+<ol start="11">
+<li class="western"><span><span><span>Fit the isolation forest classifier to the training data:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>IF.fit(X_train_reshaped)</span></span></span></pre>
+<ol start="12">
+<li class="western"><span><span><span>Plot the decision scores of the normal subset of the training data:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">normal_scores = IF.decision_function(X_train_normal)<br/>import matplotlib.mlab as mlab<br/>import matplotlib.pyplot as plt<br/><br/>fig = plt.figure(figsize=(8, 4), dpi=600, facecolor="w", edgecolor="k")<br/><br/>normal = plt.hist(normal_scores, 50, density=True)<br/><br/>plt.xlim((-0.2, 0.2))<br/>plt.xlabel("Anomaly score")<br/>plt.ylabel("Percentage")<br/>plt.title("Distribution of anomaly score for non threats")</pre>
+<p style="padding-left: 60px">Take a look at the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1128 image-border" src="assets/c2b73e67-f7c5-49a7-a4ff-de067fc826eb.png" style="width:33.00em;height:17.33em;"/></p>
+<ol start="13">
+<li class="western"><span><span><span>Do the same for the threat actors in the training data:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>anomaly_scores = IF.decision_function(X_train_threat)<br/>fig = plt.figure(figsize=(8, 4), dpi=600, facecolor="w", edgecolor="k")<br/><br/>anomaly = plt.hist(anomaly_scores, 50, density=True)<br/><br/>plt.xlim((-0.2, 0.2))<br/>plt.xlabel("Anomaly score")<br/>plt.ylabel("Percentage")<br/>plt.title("Distribution of anomaly score for threats")<br/></span></span></span></pre>
+<p style="padding-left: 60px">Take a look at the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1129 image-border" src="assets/cda00f69-d7e1-49da-adf6-e2eeddd31596.png" style="width:29.92em;height:15.83em;"/></p>
+<p class="mce-root"/>
+<ol start="14">
+<li class="western"><span><span><span>Select a cut-off score:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">cutoff = 0.12</pre>
+<ol start="15">
+<li class="western"><span><span><span>Observe the results of the cut-off on the training data:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root">from collections import Counter<br/><br/>s = IF.decision_function(X_train_reshaped)<br/>print(Counter(y_train[cutoff &gt; s]))</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<div class="p-Widget jp-OutputArea jp-Cell-outputArea">
+<div class="p-Widget p-Panel jp-OutputArea-child">
+<div class="p-Widget jp-RenderedText jp-mod-trusted jp-OutputArea-output">
+<pre style="padding-left: 60px">Counter({0.0: 155, 1.0: 23})</pre></div>
+</div>
+</div>
+<ol start="16">
+<li class="western"><span><span><span>Measure the results of the cut-off choice on the testing set:<br/></span></span></span></li>
+</ol>
+<pre style="padding-left: 60px" class="western"><span><span><span>s = IF.decision_function(X_test_reshaped)<br/>print(Counter(y_test[cutoff &gt; s]))</span></span></span></pre>
+<p style="padding-left: 60px" class="mce-root">The following is the output:</p>
+<pre style="padding-left: 60px">Counter({0.0: 46, 1.0: 8})</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Having completed the feature-engineering phase in the previous recipe, we went ahead and created a model. In <em>Step 1</em>, we listed all threat actors in preparation for the next steps. <span><span>In <em>Step 2</em>, we created an indexing for the dates, so that <kbd>0</kbd> corresponded to the starting date, <kbd>1</kbd> to the next day, and so on. In the subsequent <em>Steps 3</em> and <em>5</em>, we defined functions to read in the whole dataset time series, filter it down to individual users, and then vectorize the time series for each user. We went ahead and vectorized the dataset (<em>Step 6</em>) and then train-test split it (<em>Step 7</em>). We reshaped the data in <em>Step 8</em> in order to be able to feed it into the isolation forest classifier. We split the data further into benign and threat subsets (<em>Step 9</em>) to allow us to tune our parameters. We instantiated an isolation forest classifier in <em>Step 10</em> and then fit it on the data in <em>Step 11</em>. For our contamination parameter, we used a value corresponding to the proportion of threats-to-benign actors.</span></span></p>
+<p><span><span>In the next three steps (<em>Steps 12</em>-<em>14</em>), we examined the decision scores of isolation forest on benign and threat actors, and concluded, via inspection, that the cut-off value of 0.12 detects a large proportion of the threat actors without flagging too many of the benign actors.</span></span> Finally, assessing our performance in <em><span>Steps</span></em> <span><span><span>15 and <em>16</em>, we saw that there were some false positives, but also a significant number of insider threats detected. Since the ratio was not too high, the classifier can be of great help in informing analysts about plausible threats.</span></span></span></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Detecting DDoS</h1>
+                </header>
+            
+            <article>
+                
+<p><strong>DDoS</strong>, or <strong>Distributed Denial of Service</strong>, is an attack in which traffic from different sources floods a victim, resulting in service interruption. There are many types of DDoS attacks, falling under three general categories: application-level, protocol, and volumetric attacks. Much of the DDoS defense today is manual. Certain IP addresses or domains are identified and then blocked. As DDoS bots become more sophisticated, such approaches are becoming outdated. Machine learning offers a promising automated solution.</p>
+<p>The dataset we will be working with is a subsampling of the CSE-CIC-IDS2018, CICIDS2017, and CIC DoS datasets (2017). It consists of 80% benign and 20% DDoS traffic, in order to represent a more realistic ratio of normal-to-DDoS traffic.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing a couple of packages in <kbd>pip</kbd>, namely, <kbd>scikit-learn</kbd> and <kbd>pandas</kbd>. <span>The command is as follows</span>:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas</strong></pre>
+<p>In preparation for this recipe, extract the archive, <kbd>ddos_dataset.7z</kbd>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we will train a random forest classifier to detect DDoS traffic:</p>
+<ol>
+<li>Import <kbd>pandas</kbd> and specify the data types for the columns you will be reading in the code:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>features = [<br/>    "Fwd Seg Size Min",<br/>    "Init Bwd Win Byts",<br/>    "Init Fwd Win Byts",<br/>    "Fwd Seg Size Min",<br/>    "Fwd Pkt Len Mean",<br/>    "Fwd Seg Size Avg",<br/>    "Label",<br/>    "Timestamp",<br/>]<br/>dtypes = {<br/>    "Fwd Pkt Len Mean": "float",<br/>    "Fwd Seg Size Avg": "float",<br/>    "Init Fwd Win Byts": "int",<br/>    "Init Bwd Win Byts": "int",<br/>    "Fwd Seg Size Min": "int",<br/>    "Label": "str",<br/>}<br/>date_columns = ["Timestamp"]</pre>
+<ol start="2">
+<li>Read in the <kbd>.csv</kbd> file containing the dataset:</li>
+</ol>
+<pre style="padding-left: 60px">df = pd.read_csv("ddos_dataset.csv", usecols=features, dtype=dtypes,parse_dates=date_columns,index_col=None)</pre>
+<ol start="3">
+<li>Sort the data by date:</li>
+</ol>
+<pre style="padding-left: 60px">df2 = df.sort_values("Timestamp")</pre>
+<ol start="4">
+<li>Drop the date column, as it is no longer needed:</li>
+</ol>
+<pre style="padding-left: 60px">df3 = df2.drop(columns=["Timestamp"])</pre>
+<ol start="5">
+<li>Split the data into training and testing subsets, consisting of the first 80% and last 20% of the data:</li>
+</ol>
+<pre style="padding-left: 60px">l = len(df3.index)<br/>train_df = df3.head(int(l * 0.8))<br/>test_df = df3.tail(int(l * 0.2))</pre>
+<ol start="6">
+<li>Prepare the labels:</li>
+</ol>
+<pre style="padding-left: 60px">y_train = train_df.pop("Label").values<br/>y_test = test_df.pop("Label").values</pre>
+<ol start="7">
+<li>Prepare the feature vectors:</li>
+</ol>
+<pre style="padding-left: 60px">X_train = train_df.values<br/>X_test = test_df.values</pre>
+<ol start="8">
+<li>Import and instantiate a random forest classifier:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier(n_estimators=50)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="9">
+<li>Fit random forest to the training data and score it on the testing data:</li>
+</ol>
+<pre style="padding-left: 60px">clf.fit(X_train, y_train)<br/>clf.score(X_test, y_test)</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>0.83262</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Since the dataset is large, even importing all of it is computationally intensive. For this reason, we begin <em>Step 1</em> by specifying a subset of features from our dataset, the ones we consider most promising, as well as recording their data type so that we don't have to convert them later. We then proceed to read the data into a data frame in <em>Step 2</em>. In <em>Steps 3</em> and <em>4</em>, we sort the data by date, since the problem requires being able to predict events in the future, and then drop the date column since we will not be employing it further. In the next two steps, we perform a train-test split, keeping in mind temporal progression. We then instantiate, fit, and test a random forest classifier in <em><span>Steps</span> 8</em> and <em>9</em>. Depending on the application, the accuracy achieved is a good starting point. A promising direction to improve performance is to account for the source and destination IPs. The reasoning is that, intuitively, where a connection is coming from should have a significant bearing on whether it is part of a DDoS.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Credit card fraud detection</h1>
+                </header>
+            
+            <article>
+                
+<p>Credit card companies must monitor for fraudulent transactions in order to keep their customers from being charged for items they have not purchased. Such data is unique in being extremely imbalanced, with the particular dataset we will be working on in this chapter having fraud constituting 0.172% of the total transactions. It contains only numeric input variables, which are the result of a PCA transformation, and the features <em>Time</em> and <em>Amount</em>. The <em>Time</em> feature contains the seconds elapsed between each transaction and the first transaction in the dataset. The <em>Amount</em> feature is the amount transaction, a feature that we will use, for instance, in cost-sensitive learning. The <em>Class</em> feature is the response parameter and, in case of fraud, it takes the value <kbd>1</kbd>, and <kbd>0</kbd> otherwise.</p>
+<p class="mce-root"/>
+<p>So what is example-dependent, cost-senstive learning? Consider the costs associated with each type of classification. If the program does not identify a fraudulent transaction, the money will be wasted and the card holder must be reimbursed for the entire amount of the transaction. If a payment is considered fraudulent by the program, the transaction will be stopped. In that situation, administrative costs arise due to the need to contact the card holder and the card needs to be replaced (if the transaction was correctly labeled fraudulent) or reactivated (if the transaction was actually legitimate). Let's assume, for simplicity's sake, that administrative costs are always the same. If the system finds the transaction valid, then the transaction will automatically be accepted and there will be no charge. This results in the following costs associated with each prediction scenario:</p>
+<table style="border-collapse: collapse;width: 797px;height: 325px" border="1">
+<tbody>
+<tr style="height: 57.8516px">
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">Fraud</p>
+<p>y = 1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">Benign</p>
+<p>y = 0</p>
+</td>
+</tr>
+<tr style="height: 60px">
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">Predicted fraud</p>
+<p>y_pred = 1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">TP</p>
+<p>cost = administrative</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">FP</p>
+<p>cost = administrative</p>
+</td>
+</tr>
+<tr style="height: 60px">
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">Predicted benign</p>
+<p>y_pred = 0</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">FN</p>
+<p>cost = transaction amount</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p class="mce-root">TN</p>
+<p>cost = $0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p>Unlike most scenarios, our interest is to minimize the total cost, derived from the above considerations, rather than accuracy, precision, or recall.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd>, <kbd>pandas</kbd>, and <kbd>matplotlib</kbd> in <kbd>pip</kbd>, as well as a new package called <kbd><span>costcla</span></kbd>. <span>The command is as follows</span>:</p>
+</div>
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas matplotlib costcla</strong></pre>
+<p>In preparation for this recipe, download the credit card transactions dataset from <a href="https://www.kaggle.com/mlg-ulb/creditcardfraud/downloads/creditcardfraud.zip/3">https://www.kaggle.com/mlg-ulb/creditcardfraud/downloads/creditcardfraud.zip/3</a> (open database license).</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, we will build an example-dependent, cost-sensitive classifier using the <kbd>costcla</kbd> <span>library</span> on credit card transaction data:</p>
+<ol>
+<li>Import <kbd>pandas</kbd> and read the data pertaining to transactions into a data frame:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>fraud_df = pd.read_csv("FinancialFraudDB.csv", index_col=None)</pre>
+<ol start="2">
+<li>Set a cost to <kbd>false</kbd> positives and <kbd>false</kbd> negatives:</li>
+</ol>
+<pre style="padding-left: 60px">card_replacement_cost = 5<br/>customer_freeze_cost = 3</pre>
+<ol start="3">
+<li>Define a cost matrix corresponding to the figure:</li>
+</ol>
+<pre style="padding-left: 60px">import numpy as np<br/><br/>cost_matrix = np.zeros((len(fraud_df.index), 4))<br/>cost_matrix[:, 0] = customer_freeze_cost * np.ones(len(fraud_df.index))<br/>cost_matrix[:, 1] = fraud_df["Amount"].values<br/>cost_matrix[:, 2] = card_replacement_cost * np.ones(len(fraud_df.index))</pre>
+<ol start="4">
+<li>Create labels and feature matrices:</li>
+</ol>
+<pre style="padding-left: 60px">y = fraud_df.pop("Class").values<br/>X = fraud_df.values</pre>
+<ol start="5">
+<li>Create a train-test split:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>sets = train_test_split(X, y, cost_matrix, test_size=0.25, random_state=11)<br/>X_train, X_test, y_train, y_test, cost_matrix_train, cost_matrix_test = sets</pre>
+<ol start="6">
+<li>Import the decision tree, fit it to the training data, and then predict on the testing set:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn import tree<br/><br/>y_pred_test_dt = tree.DecisionTreeClassifier().fit(X_train, y_train).predict(X_test)</pre>
+<ol start="7">
+<li>Import the cost-sensitive decision tree, fit it to the training data, and then predict on the testing set:</li>
+</ol>
+<pre style="padding-left: 60px">from costcla.models import CostSensitiveDecisionTreeClassifier<br/><br/>y_pred_test_csdt = CostSensitiveDecisionTreeClassifier().fit(X_train, y_train, cost_matrix_train).predict(X_test)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="8">
+<li>Calculate the savings score of the two models:</li>
+</ol>
+<pre style="padding-left: 60px">from costcla.metrics import savings_score<br/><br/>print(savings_score(y_test, y_pred_test_dt, cost_matrix_test))<br/>print(savings_score(y_test, y_pred_test_csdt, cost_matrix_test))</pre>
+<div>
+<p style="padding-left: 60px">The following is the output:</p>
+</div>
+<pre style="padding-left: 60px"><span>0.5231523713991505<br/></span>0.5994028394464614</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>The first step is simply to load the data. In <em>Step 2</em>, we set an administrative cost based on the expected cost of replacing a credit card. In addition, we estimate the business cost of freezing a customer's banking operations until all transactions are verified. In practice, you should obtain an accurate figure that is appropriate to the credit card company or business use case in question. Using the parameters we have defined, we define a cost matrix in <em>Step 3</em> that takes into account the administrative cost of replacing a credit card, business interruption from freezing a customer, and so on. In <em>Steps 4</em> and <em>5</em>, we train-test split our data. Next, we would like to see how the example-dependent, cost-sensitive classifier performs as compared with a vanilla classifier. To that end, we instantiate a simple classifier, train it, and then use it to predict on the testing set in <em>Step 6</em>, and then utilize the cost-sensitive random forest model from the <kbd>costcla</kbd> library in <em>Step 7</em> to do the same. Finally, in <em>Step 8</em>, we utilize the <kbd>savings_score</kbd> function from <kbd>costcla</kbd> to calculate the savings cost of using <kbd>y_pred</kbd> on <kbd>y_true</kbd> with a cost matrix. The higher the number, the larger the cost savings. Consequently, we see that the cost-sensitive random forest model outperformed the vanilla model.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Counterfeit bank note detection</h1>
+                </header>
+            
+            <article>
+                
+<p>Counterfeit money is a currency created without the state or government's legal sanction, usually in a deliberate attempt to imitate the currency and to deceive its user. In this recipe, you will train a machine learning classifier to distinguish between genuine and fake bank notes.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> and <kbd>pandas</kbd> in <kbd>pip</kbd>. <span>The command is as follows</span>:</p>
+</div>
+</div>
+</div>
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas</strong></pre>
+<p>In preparation for this recipe, download the banknote authentication dataset from UCI's machine learning repository: <a href="https://archive.ics.uci.edu/ml/datasets/banknote+authentication" target="_blank">https://archive.ics.uci.edu/ml/datasets/banknote+authentication</a>.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following steps, you will download a labeled dataset of counterfeit and legitimate bank notes and construct a classifier to detect counterfeit currency:</p>
+<ol>
+<li>Obtain a labeled dataset of authentic and counterfeit bank notes.<a href="https://archive.ics.uci.edu/ml/datasets/banknote+authentication" target="_blank"/></li>
+<li>Read in the bank note dataset using <kbd>pandas</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>df = pd.read_csv("data_banknote_authentication.txt", header=None)<br/>df.columns = ["0", "1", "2", "3", "label"]</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<div>
+<pre style="padding-left: 60px"><strong>feature 1 feature 2 feature 3 feature 4 label</strong><br/><strong>0 3.62160 8.6661 -2.8073 -0.44699 0</strong><br/><strong>1 4.54590 8.1674 -2.4586 -1.46210 0</strong><br/><strong>2 3.86600 -2.6383 1.9242 0.10645 0</strong><br/><strong>3 3.45660 9.5228 -4.0112 -3.59440 0</strong><br/><strong>4 0.32924 -4.4552 4.5718 -0.98880 0</strong></pre></div>
+<ol start="3">
+<li>Create a train-test split:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>df_train, df_test = train_test_split(df)</pre>
+<ol start="4">
+<li>Collect the features and labels into arrays:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px">y_train = df_train.pop("label").values<br/>X_train = df_train.values<br/>y_test = df_test.pop("label").values<br/>X_test = df_test.values</pre>
+<ol start="5">
+<li>Instantiate a random forest classifier:</li>
+</ol>
+</div>
+<div>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier()</pre></div>
+<div>
+<div>
+<ol start="6">
+<li>Train and test the classifier:</li>
+</ol>
+<pre style="padding-left: 60px">clf.fit(X_train, y_train)<br/>print(clf.score(X_test, y_test))</pre>
+<p style="padding-left: 60px">The following is the output:</p>
+</div>
+</div>
+<div>
+<div>
+<pre style="padding-left: 60px"><strong>0.9825072886297376</strong></pre></div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<div>
+<p>The greatest potential for a counterfeiting solution lies in obtaining a large dataset of images and using deep learning technology. In a regime where the dataset is relatively small, as is the case here, however, feature-engineering is mandatory. We begin attacking our problem by loading and then reading in a dataset into pandas (<em>Steps 1</em> and <em>2</em>). In the case of this dataset, a wavelet transform tool was used to extract features from the images. Next, in <em>Steps 3</em> and <em>4</em>, we train-test split the data and gather it into arrays. Finally, we fit and test a basic classifier on the dataset in <em>Steps 5</em> and <em>6</em>. The high score (98%) suggests that the features extracted for this dataset are indeed able to distinguish between authentic and counterfeit notes.</p>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Ad blocking using machine learning</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<p>Ad blocking is the operation of removing or altering online advertising in a web browser or an application. In this recipe, you will utilize machine learning to detect ads so that they can be blocked and you can browse hassle-free!</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<p><span>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> and <kbd>pandas</kbd> in <kbd>pip</kbd>. The command is as follows:</span></p>
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas</strong></pre>
+<p>In preparation for this recipe, download the internet advertisements dataset from UCI's machine learning repository: <a href="https://archive.ics.uci.edu/ml/datasets/internet+advertisements">https://archive.ics.uci.edu/ml/datasets/internet+advertisements</a>.<a href="https://archive.ics.uci.edu/ml/datasets/internet+advertisements"/></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>The following steps show how ad blocking is implemented using machine learning:</p>
+<ol>
+<li>Collect a dataset of internet advertisements.</li>
+<li>Import the data into a data frame using <kbd>pandas</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>df = pd.read_csv("ad.data", header=None)<br/>df.rename(columns={1558: "label"}, inplace=True)</pre>
+<ol start="3">
+<li>The data is dirty in the sense of having missing values. Let's find all the rows that have a missing value:</li>
+</ol>
+<pre style="padding-left: 60px">improper_rows = []<br/>for index, row in df.iterrows():<br/>    for col in df.columns:<br/>        val = str(row[col]).strip()<br/>        if val == "?":<br/>            improper_rows.append(index)</pre>
+<ol start="4">
+<li>In the case at hand, it makes sense to drop the rows with missing values, as seen in the following code:</li>
+</ol>
+<div>
+<pre style="padding-left: 60px">df = df.drop(df.index[list(set(improper_rows))])</pre>
+<ol start="5">
+<li>Convert the label into numerical form:</li>
+</ol>
+<pre style="padding-left: 60px">def label_to_numeric(row):<br/>    """Binarize the label."""<br/>    if row["label"] == "ad.":<br/>        return 1<br/>    else:<br/>        return 0<br/><br/>df["label"] = df.apply(label_to_numeric, axis=1)</pre>
+<ol start="6">
+<li>Split the data into training and testing data:</li>
+</ol>
+</div>
+<div>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>df_train, df_test = train_test_split(df)</pre>
+<ol start="7">
+<li>Distribute the data into feature arrays and label arrays:</li>
+</ol>
+</div>
+<div>
+<pre style="padding-left: 60px">y_train = df_train.pop("label").values<br/>y_test = df_test.pop("label").values<br/>X_train = df_train.values<br/>X_test = df_test.values</pre>
+<ol start="8">
+<li>Instantiate a random forest classifier and train it:</li>
+</ol>
+</div>
+<div>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier()<br/>clf.fit(X_train, y_train)</pre>
+<ol start="9">
+<li>Score the classifier on the testing data:</li>
+</ol>
+</div>
+<div>
+<pre style="padding-left: 60px">clf.score(X_test, y_test)</pre></div>
+<p style="padding-left: 60px">The following is the output:</p>
+<pre style="padding-left: 60px"><strong>0.9847457627118644</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<p>We begin our recipe for blocking unwanted ads by importing the dataset. The data we have used in this recipe has been feature-engineered for us. In <em>Step 2</em>, we import the data into a data frame. Looking at the data, we see that it consists of 1,558 numerical features and an ad or non-ad <span>label</span>:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/53966614-0e11-4d70-ac4b-cf54579b9517.png" style="width:37.83em;height:11.75em;"/></p>
+</div>
+<div>
+<p>The features encode the geometry of the image, sentences in the URL, the URL of the image, alt text, anchor text, and words near the anchor text. Our goal is to predict whether an image is an advertisement (ad) or not (non-ad). We proceed to clean our data by dropping rows with missing values in <em>Steps</em>3 and <em>4</em>. Generally, it may make sense to use other techniques to impute missing values, such as using an average or most common value. Proceeding to <em>Step 5</em>, we convert our target to numerical form. Then, we train-test split our data in preparation for learning in <em>Steps 6</em> and <em>7</em>. Finally, in <em>Steps 8</em> and <em>9</em>, we fit and test a basic classifier on the data. The results suggest that the features do provide high discrimination power.</p>
+</div>
+<div>
+<p>Recent approaches have utilized deep learning on screen images to tackle ads. The approach is very promising, but so far has been unsuccessful due to deep learning's adversarial sensitivity. With robustness to adversarial attacks improving in the field, deep learning-based ad blockers may become commonplace.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Wireless indoor localization</h1>
+                </header>
+            
+            <article>
+                
+<p>Tales of a hacker parked outside a home, and hacking into their network for malice, are legendary. Though these tales may exaggerate the ease and motivation of this scenario, there are many situations where it is best to only permit users inside the home, or, in the case of an enterprise environment, in a designated area, to have specified network privileges. In this recipe, you will utilize machine learning to localize an entity based on the Wi-Fi signal. The dataset we will be working with was collected in an indoor space by observing signal strengths of seven Wi-Fi signals visible on a smartphone. One of the four rooms is the decision factor.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<div>
+<div class="a-b-r">
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<p>Preparation for this recipe involves installing <kbd>scikit-learn</kbd> and <kbd>pandas</kbd>. In your Python environment, run the following command:</p>
+</div>
+</div>
+</div>
+<div class="a-b-r-Tl a-b-va-Zf">
+<div class="a-b-r-Ec a-b-tb-Ce">
+<div class="a-b-r-x">
+<pre><strong>pip install sklearn pandas</strong></pre>
+<p>In preparation for this recipe, download the wireless indoor localization dataset from UCI's machine learning repository: <a href="https://archive.ics.uci.edu/ml/datasets/Wireless+Indoor+Localization">https://archive.ics.uci.edu/ml/datasets/Wireless+Indoor+Localization.</a></p>
+<p><a href="https://archive.ics.uci.edu/ml/datasets/Wireless+Indoor+Localization"/></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p><span>To localize an entity based on the Wi-Fi signal using machine learning, observe the following steps:</span></p>
+<ol start="1">
+<li>Collect a dataset of Wi-Fi signal strengths from different locations in the area of interest.</li>
+<li>Load the data into a d<span>ata frame</span> using <kbd>pandas</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">import pandas as pd<br/><br/>df = pd.read_csv("wifi_localization.txt", sep="\t", header=None)<br/>df = df.rename(columns={7: "room"})</pre>
+<ol start="3">
+<li>Train-test split the data frame:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/><br/>df_train, df_test = train_test_split(df)</pre>
+<ol start="4">
+<li>Distribute the features and labels into an array:</li>
+</ol>
+<pre style="padding-left: 60px">y_train = df_train.pop("room").values<br/>y_test = df_test.pop("room").values<br/>X_train = df_train.values<br/>X_test = df_test.values</pre>
+<ol start="5">
+<li>Instantiate a random forest classifier:</li>
+</ol>
+<pre style="padding-left: 60px">from sklearn.ensemble import RandomForestClassifier<br/><br/>clf = RandomForestClassifier()</pre>
+<ol start="6">
+<li>Fit the classifier to the training data:</li>
+</ol>
+<pre style="padding-left: 60px">clf.fit(X_train, y_train)</pre>
+<ol start="7">
+<li>Predict on the testing dataset and print out the confusion matrix:</li>
+</ol>
+<pre style="padding-left: 60px">y_pred = clf.predict(X_test)<br/>from sklearn.metrics import confusion_matrix<br/><br/>print(confusion_matrix(y_test, y_pred))</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p style="padding-left: 60px">The following output shows us the confusion matrix:</p>
+<pre style="padding-left: 60px"><strong>[[124   0   0   0]</strong><br/><strong>  [  0 124   4   0]</strong><br/><strong>  [  0   2 134   0]</strong><br/><strong>  [  1   0   0 111]]</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p><em>Step 1</em> consists of assembling a dataset of Wi-Fi signal strengths from different locations in the area of interest. This is something that can be done relatively easily, simply by walking through a room with a GPS-enabled phone, and running a script to record the strength of the Wi-Fi. In <em>Step 2</em>, we read the data into a data frame, and then rename the target column to <kbd>room</kbd> so we know what it refers to. Moving on, in <em>Step</em>3, we train-test split our data in preparation for learning. We divide up the features and labels into arrays (<em>Step</em>4). Finally, in <em>Steps</em>5 and 6, we train and test a basic classifier. Observe that the performance of the model is very high. This suggests that it is not a difficult task to localize a device based on the strength of the Wi-Fi signals that it is able to pick up, provided the region has been learned <span>previously</span>.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

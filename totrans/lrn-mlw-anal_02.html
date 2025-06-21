@@ -1,0 +1,854 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Static Analysis</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"> Static analysis is the technique of analyzing the suspect file without executing it. It is an initial analysis method that involves extracting useful information from the suspect binary to make an informed decision on how to classify or analyze it and where to focus your subsequent analysis efforts. This chapter covers various tools and techniques to extract valuable information from the suspect binary.</p>
+<p class="calibre2">In this chapter, you will learn the following:</p>
+<ul class="calibre11">
+<li class="calibre12">Identifying the malware's target architecture</li>
+<li class="calibre12">Fingerprinting the malware</li>
+<li class="calibre12">Scanning the suspect binary with anti-virus engines</li>
+<li class="calibre12">Extracting strings, functions, and metadata associated with the file</li>
+<li class="calibre12">Identifying the obfuscation techniques used to thwart analysis</li>
+<li class="calibre12">Classifying and comparing the malware samples</li>
+</ul>
+<p class="calibre2">These techniques can reveal different information about the file. It is not required to follow all these techniques, and they need not be followed in the order presented. The choice of techniques to use depends on your goal and the context surrounding the suspect file.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1. Determining the File Type</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">During your analysis, determining the file type of a suspect binary will help you identify the malware's target operating system (Windows, Linux, and so on) and architecture (32-bit or 64-bit platforms). For example, if the suspect binary has a file type of <em class="calibre17">Portable Executable</em> (<em class="calibre17">PE</em>), which is the file format for Windows executable files (<kbd class="calibre13">.exe</kbd>, <kbd class="calibre13">.dll</kbd>, <kbd class="calibre13">.sys</kbd>, <kbd class="calibre13">.drv</kbd>, <kbd class="calibre13">.com</kbd>, <kbd class="calibre13">.ocx</kbd>, and so on), then you can deduce that the file is designed to target the Windows operating system.</p>
+<p class="calibre2">Most Windows-based malware are executable files ending with extensions such as <kbd class="calibre13">.exe</kbd>, <kbd class="calibre13">.dll</kbd>, <kbd class="calibre13">.sys</kbd>, and so on. But relying on file extensions alone is not recommended. File extension is not the sole indicator of file type. Attackers use different tricks to hide their file by modifying the file extension and changing its appearance to trick users into executing it. Instead of relying on file extension, <em class="calibre17">File signature</em> can be used to determine the file type.</p>
+<p class="calibre2">A <em class="calibre17">file signature</em> is a unique sequence of bytes that is written to the file's header. Different files have different signatures, which can be used to identify the type of file. The Windows executable files, also called <em class="calibre17">PE files</em> (such as the files ending with <kbd class="calibre13">.exe</kbd>, <kbd class="calibre13">.dll</kbd>, <kbd class="calibre13">.com</kbd>, <kbd class="calibre13">.drv</kbd>, <kbd class="calibre13">.sys</kbd>, and so on), have a file signature of <kbd class="calibre13">MZ</kbd> or hexadecimal characters <kbd class="calibre13">4D 5A</kbd> in the first two bytes of the file.</p>
+<div class="packt_tip">A handy resource for determining the file signatures of different file types based on their extension is available at <a href="http://www.filesignatures.net/" class="calibre20">http://www.filesignatures.net/</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.1 Identifying File Type Using Manual Method</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The manual method of determining the file type is to look for the <em class="calibre17">file signature</em> by opening it in a hex editor. A <em class="calibre17">hex editor</em> is a tool that allows an examiner to inspect each byte of the file; most hex editors provide many functionalities that help in the analysis of a file. The following screenshot shows the file signature of <kbd class="calibre13">MZ</kbd> in the first two bytes when an executable file is opened with the <em class="calibre17">HxD hex editor</em><strong class="calibre5"> </strong> (<a href="https://mh-nexus.de/en/hxd/" class="calibre10">https://mh-nexus.de/en/hxd/</a>):</p>
+<div class="cdpaligncenter"><img src="../images/00013.jpeg" class="calibre35"/></div>
+<div class="packt_infobox">You have many options when it comes to choosing hex editors for Windows; these hex editors offer different features. For a list and comparison of various hex editors, refer to this link: <a href="https://en.wikipedia.org/wiki/Comparison_of_hex_editors" class="calibre20">https://en.wikipedia.org/wiki/Comparison_of_hex_editors</a>.</div>
+<p class="calibre2">On Linux systems, to look for the file signature, the <kbd class="calibre13">xxd</kbd> command can be used, which generates a hex dump of the file as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> xxd -g 1 log.exe | more</strong><br class="title-page-name"/>0000000: <strong class="calibre1">4d 5a</strong> 90 00 03 00 00 00 04 00 00 00 ff ff 00 00  <strong class="calibre1">MZ</strong>..............<br class="title-page-name"/>0000010: b8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00  ........@.......<br class="title-page-name"/>0000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................<br class="title-page-name"/>0000030: 00 00 00 00 00 00 00 00 00 00 00 00 e8 00 00 00  ................</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.2 Identifying File Type Using Tools</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The other convenient method of determining the file type is to use file identification tools. On Linux systems, this can be achieved using the <em class="calibre17">file</em> utility. In the following example, the file command was run on two different files. From the output, it can be seen that even though the first file does not have any extension, it is detected as a 32-bit executable file (<kbd class="calibre13">PE32</kbd>) and the second file is a 64-bit (<kbd class="calibre13">PE32+</kbd>) executable:</p>
+<pre class="calibre18">$ <strong class="calibre1">file mini</strong><br class="title-page-name"/>mini: <strong class="calibre1">PE32</strong> executable (GUI) Intel 80386, for MS Windows<br class="title-page-name"/><br class="title-page-name"/>$<strong class="calibre1"> file notepad.exe</strong><br class="title-page-name"/>notepad.exe: <strong class="calibre1">PE32+</strong> executable (GUI) x86-64, for MS Windows</pre>
+<p class="calibre2">On Windows, <em class="calibre17">CFF Explorer</em>, part of <em class="calibre17">Explorer Suite</em> (<a href="http://www.ntcore.com/exsuite.php" target="_blank" class="calibre10">http://www.ntcore.com/exsuite.php</a>), can be used to determine the file type; it is not just limited to determining file type. It is also a great tool for inspecting executable files (both 32-bit and 64-bit) and allows you to examine the PE internal structure, modify fields, and extract resources.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1.3 Determining File Type Using Python</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In Python, the <kbd class="calibre13">python-magic</kbd> module can be used to determine the file type. The installation of this module on Ubuntu Linux VM was covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17"><span class="calibre7">Introduction to Malware Analysis</span>.</em> On Windows, to install the <kbd class="calibre13">python-magic</kbd> module, you can follow the procedure mentioned at <a href="https://github.com/ahupp/python-magic" class="calibre10">https://github.com/ahupp/python-magic</a>.</p>
+<p class="calibre2">Once the <kbd class="calibre13">python-magic</kbd> is installed, the following commands can be used in the script to determine the file type:</p>
+<pre class="calibre18">$<strong class="calibre1"> python<br class="title-page-name"/></strong>Python 2.7.12 (default, Nov 19 2016, 06:48:10)<strong class="calibre1"><br class="title-page-name"/>&gt;&gt;&gt; import magic</strong><br class="title-page-name"/><strong class="calibre1">&gt;&gt;&gt; m = magic.open(magic.MAGIC_NONE)</strong><br class="title-page-name"/><strong class="calibre1">&gt;&gt;&gt; m.load()</strong><br class="title-page-name"/><strong class="calibre1">&gt;&gt;&gt; ftype = m.file(r'log.exe')</strong><br class="title-page-name"/><strong class="calibre1">&gt;&gt;&gt; print ftype</strong><br class="title-page-name"/>PE32 executable (GUI) Intel 80386, for MS Windows</pre>
+<p class="calibre2">To demonstrate the use of detecting file type, let's take an example of a file that was made to look like a <em class="calibre17">Word document</em> by changing the extension from <kbd class="calibre13">.exe</kbd> to <kbd class="calibre13">.doc.exe</kbd>. In this case, attackers took advantage of the fact that, by default, <em class="calibre17">"Hide extension for known file types</em>" is enabled in the <em class="calibre17">"Windows folder view options"</em>; this option prevents the file extension from being displayed to the user. The following screenshot shows the appearance of the file with <em class="calibre17">"Hide extension for known file types</em>" enabled:</p>
+<div class="cdpaligncenter"><img src="../images/00014.jpeg" class="calibre36"/></div>
+<p class="calibre2">Opening the file in the <em class="calibre17">CFF Explorer</em> reveals that it is a 32-bit executable file and not a word document, as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00015.jpeg" class="calibre37"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2. Fingerprinting the Malware</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Fingerprinting involves generating the cryptographic hash values for the suspect binary based on its file content. The cryptographic hashing algorithms such as <em class="calibre17">MD5</em>, <em class="calibre17">SHA1</em> or <em class="calibre17">SHA256</em> are considered the de facto standard for generating file hashes for the malware specimens. The following list outlines the use of cryptographic hashes:</p>
+<ul class="calibre11">
+<li class="calibre12">Identifying a malware specimen based on filename is ineffective because the same malware sample can use different filenames, but the cryptographic hash that is calculated based on the file content will remain the same. Hence, a cryptographic hash for your suspect file serves as a unique identifier throughout the course of analysis.</li>
+<li class="calibre12">During dynamic analysis, when malware is executed, it can copy itself to a different location or drop another piece of malware. Having the cryptographic hash of the sample can help in identifying whether the newly dropped/copied sample is the same as the original sample or a different one. This information can assist you in deciding whether the analysis needs to be performed on a single sample or multiple samples.</li>
+<li class="calibre12">File hash is frequently used as an indicator to share with other security researchers to help them identify the sample.</li>
+<li class="calibre12">File hash can be used to determine <span>whether </span>the sample has been previously detected by searching online or searching the database of multi Anti-virus scanning service like <em class="calibre19">VirusTotal</em>.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.1 Generating Cryptographic Hash Using Tools</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">On a Linux system, file hashes can be generated using the <kbd class="calibre13">md5sum</kbd>, <kbd class="calibre13">sha256sum</kbd>, and <kbd class="calibre13">sha1sum</kbd> utilities:</p>
+<pre class="calibre18">$<strong class="calibre1"> md5sum log.exe</strong><br class="title-page-name"/>6e4e030fbd2ee786e1b6b758d5897316  log.exe<br class="title-page-name"/><br class="title-page-name"/>$<strong class="calibre1"> sha256sum log.exe</strong><br class="title-page-name"/>01636faaae739655bf88b39d21834b7dac923386d2b52efb4142cb278061f97f  log.exe<br class="title-page-name"/><br class="title-page-name"/>$<strong class="calibre1"> sha1sum log.exe</strong><br class="title-page-name"/>625644bacf83a889038e4a283d29204edc0e9b65  log.exe</pre>
+<p class="calibre2">For Windows, various tools for generating file hashes can be found online. <em class="calibre17">HashMyFiles</em> (<a href="http://www.nirsoft.net/utils/hash_my_files.html" class="calibre10">http://www.nirsoft.net/utils/hash_my_files.html</a>) is one such tool that generates hash values for single or multiple files, and it also highlights identical hashes with same colors. In the following screenshot, it can be seen that <kbd class="calibre13">log.exe</kbd> and <kbd class="calibre13">bunny.exe</kbd> are the same samples based on their hash values:</p>
+<div class="cdpaligncenter"><img src="../images/00016.jpeg" class="calibre38"/></div>
+<div class="packt_tip">You can get a list and comparison of various hashing tools here: <a href="https://en.wikipedia.org/wiki/Comparison_of_file_verification_software#Program_hash_function_support" class="calibre20">https://en.wikipedia.org/wiki/Comparison_of_file_verification_software</a>. Feel free to choose the ones that best suit your needs after a careful review.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2.2 Determining Cryptographic Hash in Python</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In Python, it is possible to generate file hashes using the <kbd class="calibre13">hashlib</kbd> module, as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> python</strong><br class="title-page-name"/>Python 2.7.12 (default, Nov 19 2016, 06:48:10)<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">import hashlib</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">content = open(r"log.exe","rb").read()</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print hashlib.md5(content).hexdigest()</strong><br class="title-page-name"/>6e4e030fbd2ee786e1b6b758d5897316<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print hashlib.sha256(content).hexdigest()</strong><br class="title-page-name"/>01636faaae739655bf88b39d21834b7dac923386d2b52efb4142cb278061f97f<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print hashlib.sha1(content).hexdigest()</strong><br class="title-page-name"/>625644bacf83a889038e4a283d29204edc0e9b65</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3. Multiple Anti-Virus Scanning</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Scanning the suspect binary with multiple anti-virus scanners helps in determining whether malicious code signatures exist for the suspect file. The signature name for a particular file can provide additional information about the file and its capabilities. By visiting the respective antivirus vendor websites or searching for the signature in search engines, you can yield further details about the suspect file. Such information can help in your subsequent investigation and can reduce the analysis time.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.1 Scanning the Suspect Binary with VirusTotal</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">VirusTotal</em> (<a href="http://www.virustotal.com" class="calibre10">http://www.virustotal.com</a>) is a popular web-based malware scanning service. It allows you to upload a file, which is then scanned with various anti-virus scanners, and the scan results are presented in real time on the web page. In addition to uploading files for scanning, the VirusTotal web interface provides you the ability to search their database using <em class="calibre17">hash</em>, <em class="calibre17">URL</em>, <em class="calibre17">domain, or IP address</em>. VirusTotal offers another useful feature called <em class="calibre17">VirusTotal Graph</em>, built on top of the VirusTotal dataset. Using VirusTotal Graph, you can visualize the relationship between the file that you submit and its associated indicators such as <em class="calibre17">domains</em>, <em class="calibre17">IP addresses</em>, and <em class="calibre17">URLs</em>. It also allows you to pivot and navigate over each indicator; this feature is extremely useful if you want to quickly determine the indicators associated with a malicious binary. For more information on <em class="calibre17">VirusTotal Graph</em>, refer to the documentation: <a href="https://support.virustotal.com/hc/en-us/articles/115005002585-VirusTotal-Graph" target="_blank" class="calibre10">https://support.virustotal.com/hc/en-us/articles/115005002585-VirusTotal-Graph</a>.</p>
+<p class="calibre2">The following screenshot shows the detection names for a malware binary, and it can be seen that the binary was scanned with 67 Anti-virus engines; 60 of them detected this binary as malicious. If you wish to use the <em class="calibre17">VirusTotal Graph</em> on the binary to visualize indicator relationships, just click on the <span class="calibre7">VirusTotal Graph</span> icon and sign in with your VirusTotal (community) account:</p>
+<div class="cdpaligncenter"><img src="../images/00017.jpeg" class="calibre39"/></div>
+<div class="packt_tip">VirusTotal offers different private (paid) services (<a href="https://support.virustotal.com/hc/en-us/articles/115003886005-Private-Services" target="_blank" class="calibre20">https://support.virustotal.com/hc/en-us/articles/115003886005-Private-Services</a>), which allow you to perform threat hunting and download samples submitted to it.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.2 Querying Hash Values Using VirusTotal Public API</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"> VirusTotal also provides scripting capabilities via its public API (<a href="https://www.virustotal.com/en/documentation/public-api/" class="calibre10">https://www.virustotal.com/en/documentation/public-api/</a>); it allows you to automate file submission, retrieve file/URL scan reports, and retrieve domain/IP reports.</p>
+<p class="calibre2">The following is a Python script that demonstrates the use of VirusTotal's public API. This script takes the hash value (<em class="calibre17">MD5/SHA1/SHA256</em>) as input and queries the VirusTotal database. To use the following script, you need to use a <em class="calibre17">Python 2.7.x</em> version; you must be connected to the internet and must have a VirusTotal public API key (which can be obtained by signing up for a <em class="calibre17">VirusTotal</em> account). Once you have the API key, just update the <kbd class="calibre13">api_key</kbd> variable with your API key:</p>
+<div class="packt_infobox">The following script and most of the scripts written in this book are used to demonstrate the concept; they do not perform input validation or error handling. If you wish to use them for production, you should consider modifying the script to follow the best practices mentioned here: <a href="https://www.python.org/dev/peps/pep-0008/" class="calibre20">https://www.python.org/dev/peps/pep-0008/</a>.</div>
+<pre class="calibre18">import urllib<br class="title-page-name"/>import urllib2<br class="title-page-name"/>import json<br class="title-page-name"/>import sys<br class="title-page-name"/><br class="title-page-name"/>hash_value = sys.argv[1]<br class="title-page-name"/>vt_url = "https://www.virustotal.com/vtapi/v2/file/report"<br class="title-page-name"/><strong class="calibre1">api_key = "&lt;update your api key here&gt;"</strong><br class="title-page-name"/>parameters = {'apikey': api_key, 'resource': hash_value}<br class="title-page-name"/>encoded_parameters = urllib.urlencode(parameters)<br class="title-page-name"/>request = urllib2.Request(vt_url, encoded_parameters)<br class="title-page-name"/>response = urllib2.urlopen(request)<br class="title-page-name"/>json_response = json.loads(response.read())<br class="title-page-name"/>if json_response['response_code']:<br class="title-page-name"/>    detections = json_response['positives']<br class="title-page-name"/>    total = json_response['total']<br class="title-page-name"/>    scan_results = json_response['scans']<br class="title-page-name"/>    print "Detections: %s/%s" % (detections, total)<br class="title-page-name"/>    print "VirusTotal Results:"<br class="title-page-name"/>    for av_name, av_data in scan_results.items():<br class="title-page-name"/>        print "\t%s ==&gt; %s" % (av_name, av_data['result'])<br class="title-page-name"/>else:<br class="title-page-name"/>    print "No AV Detections For: %s" % hash_value</pre>
+<p class="calibre2">Running the preceding script by giving it an MD5 hash of a binary shows the antivirus detections and the signature names for the binary.</p>
+<pre class="calibre18">$<strong class="calibre1"> md5sum 5340.exe</strong><br class="title-page-name"/>5340fcfb3d2fa263c280e9659d13ba93 5340.exe</pre>
+<pre class="calibre18">$<strong class="calibre1"> python vt_hash_query.py 5340fcfb3d2fa263c280e9659d13ba93</strong><br class="title-page-name"/>Detections: 44/56<br class="title-page-name"/>VirusTotal Results:<br class="title-page-name"/>  Bkav ==&gt; None<br class="title-page-name"/>  MicroWorld-eScan ==&gt; Trojan.Generic.11318045<br class="title-page-name"/>  nProtect ==&gt; Trojan/W32.Agent.105472.SJ<br class="title-page-name"/>  CMC ==&gt; None<br class="title-page-name"/>  CAT-QuickHeal ==&gt; Trojan.Agen.r4<br class="title-page-name"/>  ALYac ==&gt; Trojan.Generic.11318045<br class="title-page-name"/>  Malwarebytes ==&gt; None<br class="title-page-name"/>  Zillya ==&gt; None<br class="title-page-name"/>  SUPERAntiSpyware ==&gt; None<br class="title-page-name"/>  TheHacker ==&gt; None<br class="title-page-name"/>  K7GW ==&gt; Trojan ( 001d37dc1 )<br class="title-page-name"/>  K7AntiVirus ==&gt; Trojan ( 001d37dc1 )<br class="title-page-name"/>  NANO-Antivirus ==&gt; Trojan.Win32.Agent.cxbxiy<br class="title-page-name"/>  F-Prot ==&gt; W32/Etumbot.K<br class="title-page-name"/>  Symantec ==&gt; Trojan.Zbot<br class="title-page-name"/>  [.........Removed..............]</pre>
+<p class="calibre2">The other alternative is to use PE analysis tools such as <em class="calibre17">pestudio</em> (<a href="https://www.winitor.com/" class="calibre10">https://www.winitor.com/</a>) or <em class="calibre17">PPEE</em> (<a href="https://www.mzrst.com/" class="calibre10">https://www.mzrst.com/</a>). Upon loading the binary, the hash value of the binary is automatically queried from the VirusTotal database and the results are displayed, as shown in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00018.jpeg" class="calibre40"/></div>
+<div class="packt_tip">Online scanners such as <em class="calibre22">VirSCAN</em> (<a href="http://www.virscan.org/" class="calibre20">http://www.virscan.org/</a>), <em class="calibre22">Jotti Malware Scan</em> (<a href="https://virusscan.jotti.org/" class="calibre20">https://virusscan.jotti.org/</a>), and <em class="calibre22">OPSWAT's Metadefender</em> (<a href="https://www.metadefender.com/#!/scan-file" class="calibre20">https://www.metadefender.com/#!/scan-file</a>) allow you to scan a suspect file with multiple anti-virus scanning engines, and some of them also allow you to do hash lookups.</div>
+<p class="calibre2">There are a few factors/risks to consider when scanning a binary with Anti-Virus scanners or when submitting a binary to online anti-virus scanning services:</p>
+<ul class="calibre11">
+<li class="calibre12">If a suspect binary does not get detected by the Anti-Virus scanning engines, it does not necessarily mean that the suspect binary is safe. These anti-virus engines rely on signatures and heuristics to detect malicious files. The malware authors can easily modify their code and use obfuscation techniques to bypass these detections, because of which some of the anti-virus engines might fail to detect the binary as malicious.</li>
+<li class="calibre12">When you upload a binary to a public site, the binary you submit may be shared with third parties and vendors. The suspect binary may contain sensitive, personal, or proprietary information specific to your organization, so it is not advisable to submit a binary that is part of a confidential investigation to public anti-virus scanning services. Most web-based anti-virus scanning services allow you to search their existing database of scanned files using cryptographic hash values (MD5, SHA1, or SHA256); so an alternative to submitting the binary is to search based on the cryptographic hash of the binary.</li>
+<li class="calibre12">When you submit a binary to the online antivirus scanning engines, the scan results are stored in their database, and most of the scan data is publicly available and can be queried later. Attackers can use the search feature to query the hash of their sample to check whether their binary has been detected. Detection of their sample may cause the attackers to change their tactics to avoid detection.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4. Extracting Strings</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Strings are ASCII and Unicode-printable sequences of characters embedded within a file. Extracting strings can give clues about the program functionality and indicators associated with a suspect binary. For example, if a malware creates a file, the <em class="calibre17">filename</em> is stored as a string in the binary. Or, if a malware resolves a <em class="calibre17">domain name</em> controlled by the attacker, then the domain name is stored as a string. Strings extracted from the binary can contain references to filenames, URLs, domain names, IP addresses, attack commands, registry keys, and so on. Although strings do not give a clear picture of the purpose and capability of a file, they can give a hint about what malware is capable of doing.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.1 String Extraction Using Tools</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To extract strings from a suspect binary, you can use the strings utility on Linux systems. The s<em class="calibre17">trings</em> command, by default, extracts the ASCII strings that are at least four characters long. With the <kbd class="calibre13">-a</kbd> option it is possible to extract strings from the entire file. The following ASCII strings extracted from the malicious binary show reference to an <em class="calibre17">IP address.</em> This indicates that when this malware is executed, it probably establishes a connection with that IP address:</p>
+<pre class="calibre18">$<strong class="calibre1"> strings -a log.exe</strong><br class="title-page-name"/>!This program cannot be run in DOS mode.<br class="title-page-name"/>Rich<br class="title-page-name"/>.text<br class="title-page-name"/>`.rdata<br class="title-page-name"/>@.data<br class="title-page-name"/>L$"%<br class="title-page-name"/>h4z@<br class="title-page-name"/><strong class="calibre1">128.91.34.188</strong><br class="title-page-name"/>%04d-%02d-%02d %02d:%02d:%02d %s</pre>
+<p class="calibre2">In the following example, the <em class="calibre17">ASCII</em> strings extracted from a malware called <em class="calibre17">Spybot</em> give an indication of its <em class="calibre17">DOS</em> and <em class="calibre17">Key logging</em> capabilities:</p>
+<pre class="calibre18">$<strong class="calibre1"> strings -a spybot.exe</strong><br class="title-page-name"/>!This program cannot be run in DOS mode.<br class="title-page-name"/>.text<br class="title-page-name"/>`.bss<br class="title-page-name"/>.data<br class="title-page-name"/>.idata<br class="title-page-name"/>.rsrc<br class="title-page-name"/>]_^[<br class="title-page-name"/><strong class="calibre1">keylog.txt</strong><br class="title-page-name"/>%s (Changed window<br class="title-page-name"/><strong class="calibre1">Keylogger Started</strong><br class="title-page-name"/>HH:mm:ss]<br class="title-page-name"/>[dd:MMM:yyyy,<br class="title-page-name"/><strong class="calibre1">SynFlooding: %s port: %i delay: %i times:%i.</strong><br class="title-page-name"/><strong class="calibre1">bla bla blaaaasdasd</strong><br class="title-page-name"/><strong class="calibre1">Portscanner startip: %s port: %i delay: %ssec.</strong><br class="title-page-name"/><strong class="calibre1">Portscanner startip: %s port: %i delay: %ssec. logging to: %s</strong><br class="title-page-name"/>kuang<br class="title-page-name"/>sub7<br class="title-page-name"/>%i.%i.%i.0<br class="title-page-name"/>scan<br class="title-page-name"/>redirect %s:%i &gt; %s:%i)<br class="title-page-name"/><strong class="calibre1">Keylogger logging to %s</strong><br class="title-page-name"/><strong class="calibre1">Keylogger active output to: DCC chat</strong><br class="title-page-name"/><strong class="calibre1">Keylogger active output to: %s</strong><br class="title-page-name"/><strong class="calibre1">error already logging keys to %s use "stopkeylogger" to stop</strong><br class="title-page-name"/><strong class="calibre1">startkeylogger</strong><br class="title-page-name"/>passwords</pre>
+<p class="calibre2">Malware specimens also use <em class="calibre17">Unicode</em> (2 bytes per character) strings. To get useful information from the binary, sometimes you need to extract both <em class="calibre17">ASCII</em> and <em class="calibre17">Unicode</em> strings. To extract Unicode strings using the <em class="calibre17">strings</em> command, use the <kbd class="calibre13">-el </kbd>option.</p>
+<p class="calibre2">In the following example, the malware sample did not reveal unusual <em class="calibre17">ASCII</em> strings, but extracting the <em class="calibre17">Unicode</em> strings showed references to the <em class="calibre17">domain name</em>, and the <em class="calibre17">Run registry key</em> (which is frequently used by malware to survive the reboot); and it <span class="calibre7">also </span>highlights a malware's possible capability to add a program to the firewall whitelist:</p>
+<pre class="calibre18">$<strong class="calibre1"> strings -a -el multi.exe</strong><br class="title-page-name"/>AppData<br class="title-page-name"/>44859ba2c98feb83b5aab46a9af5fefc<br class="title-page-name"/><strong class="calibre1">haixxdrekt.dyndns.hu</strong><br class="title-page-name"/>True<br class="title-page-name"/><strong class="calibre1">Software\Microsoft\Windows\CurrentVersion\Run</strong><br class="title-page-name"/>Software\<br class="title-page-name"/>.exe<br class="title-page-name"/>SEE_MASK_NOZONECHECKS<br class="title-page-name"/><strong class="calibre1">netsh firewall add allowedprogram</strong> "</pre>
+<p class="calibre2">On Windows, <em class="calibre17">pestudio</em> (<a href="https://www.winitor.com" target="_blank" class="calibre10">https://www.winitor.com</a>) is a handy tool that displays both ASCII and Unicode strings. pestudio is an excellent PE analysis tool for performing initial malware assessment of a suspect binary, and is designed to retrieve various pieces of useful information from a PE executable. Various other features of this tool will be covered in subsequent sections.</p>
+<p class="calibre2">The following screenshot shows some of the <em class="calibre17">ASCII</em> and <em class="calibre17">Unicode</em> strings listed by pestudio; it assists you by highlighting some of the notable strings in the blacklisted column, which allows you to focus on the interesting strings in the binary:</p>
+<div class="cdpaligncenter"><img src="../images/00019.jpeg" class="calibre41"/></div>
+<div class="packt_infobox">The <em class="calibre22">strings</em> utility ported to Windows by Mark Russinovich (<a href="https://technet.microsoft.com/en-us/sysinternals/strings.aspx" class="calibre20">https://technet.microsoft.com/en-us/sysinternals/strings.aspx</a>) and <em class="calibre22">PPEE</em> (<a href="https://www.mzrst.com/" class="calibre20">https://www.mzrst.com/</a>) are some of the other tools that can be used to extract both ASCII and Unicode strings.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4.2 Decoding Obfuscated Strings Using FLOSS</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Most of the times, malware authors use simple string obfuscation techniques to avoid detection. In such cases, those obfuscated strings will not show up in the strings utility and other string extraction tools. <em class="calibre17">FireEye Labs Obfuscated String Solver</em> (<em class="calibre17">FLOSS</em>) is a tool designed to identify and extract obfuscated strings from malware automatically. It can help you determine the strings that malware authors want to hide from string extraction tools. <em class="calibre17">FLOSS</em> can also be used just like the strings utility to extract human-readable strings (ASCII and Unicode). You can download <em class="calibre17">FLOSS</em> for Windows or Linux from <a href="https://github.com/fireeye/flare-floss" target="_blank" class="calibre10">https://github.com/fireeye/flare-floss</a>.</p>
+<p class="calibre2">In the following example, running a <em class="calibre17">FLOSS</em> standalone <em class="calibre17">binary</em> on a malware specimen not only extracted the human-readable strings but also decoded the obfuscated strings and extracted <em class="calibre17">stack strings</em> missed by the strings utility and other string extraction tools. The following output shows reference to an <em class="calibre17">executable</em>, <em class="calibre17">Excel file</em>, and <em class="calibre17">Run registry key:</em></p>
+<pre class="calibre18"><strong class="calibre1">$ chmod +x floss<br class="title-page-name"/>$ ./floss 5340.exe</strong><br class="title-page-name"/>FLOSS static ASCII strings<br class="title-page-name"/>!This program cannot be run in DOS mode.<br class="title-page-name"/>Rich<br class="title-page-name"/>.text<br class="title-page-name"/>`.rdata<br class="title-page-name"/>@.data<br class="title-page-name"/>[..removed..]<br class="title-page-name"/><br class="title-page-name"/><strong class="calibre1">FLOSS decoded 15 strings</strong><br class="title-page-name"/>kb71271.log<br class="title-page-name"/>R6002<br class="title-page-name"/>- floating point not loaded<br class="title-page-name"/>\Microsoft<br class="title-page-name"/><strong class="calibre1">winlogdate.exe</strong><br class="title-page-name"/><strong class="calibre1">~tasyd3.xls</strong><br class="title-page-name"/>[....REMOVED....]<br class="title-page-name"/><br class="title-page-name"/><strong class="calibre1">FLOSS extracted 13 stack strings</strong><br class="title-page-name"/>BINARY<br class="title-page-name"/>ka4a8213.log<br class="title-page-name"/>afjlfjsskjfslkfjsdlkf<br class="title-page-name"/>'Clt<br class="title-page-name"/>~tasyd3.xls<br class="title-page-name"/>"%s"="%s"<br class="title-page-name"/>regedit /s %s<br class="title-page-name"/><strong class="calibre1">[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run]</strong><br class="title-page-name"/>[.....REMOVED......]</pre>
+<div class="packt_tip">If you are only interested in the <em class="calibre22">decoded/stack strings</em> and want to exclude the static strings (ASCII and Unicode) from the FLOSS output, then provide it the <kbd class="calibre42">–-no-static-strings</kbd> switch. Detailed information about the workings of FLOSS and its various usage options is available at <a href="https://www.fireeye.com/blog/threat-research/2016/06/automatically-extracting-obfuscated-strings.html" class="calibre20">https://www.fireeye.com/blog/threat-research/2016/06/automatically-extracting-obfuscated-strings.html</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5. Determining File Obfuscation</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Even though string extraction is an excellent technique to harvest valuable information, often malware authors obfuscate or armor their malware binary. Obfuscation is used by malware authors to protect the inner workings of the malware from security researchers, malware analysts, and reverse engineers. These obfuscation techniques make it difficult to detect/analyze the binary; extracting the strings from such binary results in very fewer strings, and most of the strings are obscure. Malware authors often use programs such as <em class="calibre17">Packers</em> and <em class="calibre17">Cryptors</em> to obfuscate their file to evade detection from security products such as anti-virus and to thwart analysis.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5.1 Packers and Cryptors</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A <em class="calibre17">Packer</em> is a program that takes the executable as input, and it uses compression to obfuscate the executable's content. This obfuscated content is then stored within the structure of a new executable file; the result is a new executable file (packed program) with obfuscated content on the disk. Upon execution of the packed program, it executes a decompression routine, which extracts the original binary in memory during runtime and triggers the execution.</p>
+<p class="calibre2">A <em class="calibre17">Cryptor</em> is similar to a <em class="calibre17">Packer,</em> but instead of using compression, it uses encryption to obfuscate the executable's content, and the encrypted content is stored in the new executable file. Upon execution of the encrypted program, it runs a decryption routine to extract the original binary in the memory and then triggers the execution.</p>
+<p class="calibre2">To demonstrate the concept of file obfuscation, let's take an example of a malware sample called <em class="calibre17">Spybot</em> (not packed); extracting strings from <em class="calibre17">Spybot</em> show, references to suspicious executable names and IP addresses, as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> strings -a spybot.exe</strong><br class="title-page-name"/>[....removed....]<br class="title-page-name"/>EDU_Hack.exe<br class="title-page-name"/>Sitebot.exe<br class="title-page-name"/>Winamp_Installer.exe<br class="title-page-name"/>PlanetSide.exe<br class="title-page-name"/>DreamweaverMX_Crack.exe<br class="title-page-name"/>FlashFXP_Crack.exe<br class="title-page-name"/>Postal_2_Crack.exe<br class="title-page-name"/>Red_Faction_2_No-CD_Crack.exe<br class="title-page-name"/>Renegade_No-CD_Crack.exe<br class="title-page-name"/>Generals_No-CD_Crack.exe<br class="title-page-name"/>Norton_Anti-Virus_2002_Crack.exe<br class="title-page-name"/>Porn.exe<br class="title-page-name"/>AVP_Crack.exe<br class="title-page-name"/>zoneallarm_pro_crack.exe<br class="title-page-name"/>[...REMOVED...]<br class="title-page-name"/>209.126.201.22<br class="title-page-name"/>209.126.201.20<strong class="calibre1"><br class="title-page-name"/></strong></pre>
+<p class="calibre2">The Spybot sample was then run through a popular packer <em class="calibre17">UPX</em> (<a href="https://upx.github.io/" class="calibre10">https://upx.github.io/</a>), which resulted in a new packed executable file (<kbd class="calibre13">spybot_packed.exe</kbd>). The following command output shows the size discrepancy between the original and the packed binary.<em class="calibre17"> </em>UPX uses compression, because of which the size of the packed binary is lower than the original binary:</p>
+<pre class="calibre18">$<strong class="calibre1"> upx -o spybot_packed.exe</strong> <strong class="calibre1">spybot.exe</strong><br class="title-page-name"/>                       Ultimate Packer for eXecutables<br class="title-page-name"/>                          Copyright (C) 1996 - 2013<br class="title-page-name"/>UPX 3.91 Markus Oberhumer, Laszlo Molnar &amp; John Reiser Sep 30th 2013<br class="title-page-name"/>File size Ratio Format Name<br class="title-page-name"/>-------------------- ------ ----------- -----------<br class="title-page-name"/>44576 -&gt; 21536 48.31% win32/pe <strong class="calibre1">spybot_packed.exe</strong><br class="title-page-name"/>Packed 1 file.<br class="title-page-name"/><br class="title-page-name"/>$ <strong class="calibre1">ls -al</strong><br class="title-page-name"/>total 76<br class="title-page-name"/>drwxrwxr-x 2 ubuntu ubuntu 4096 Jul 9 09:04 .<br class="title-page-name"/>drwxr-xr-x 6 ubuntu ubuntu 4096 Jul 9 09:04 ..<br class="title-page-name"/>-rw-r--r-- 1 ubuntu ubuntu <strong class="calibre1">44576</strong> Oct 22 2014 <strong class="calibre1">spybot.exe</strong><br class="title-page-name"/>-rw-r--r-- 1 ubuntu ubuntu <strong class="calibre1">21536</strong> Oct 22 2014 <strong class="calibre1">spybot_packed.exe</strong></pre>
+<p class="calibre2">Running the strings command on the packed binary shows obscured strings and does not reveal much valuable information; this is one of the reasons why attackers obfuscate their files:</p>
+<pre class="calibre18">$<strong class="calibre1"> strings -a spybot_packed.exe</strong><br class="title-page-name"/>!This program cannot be run in DOS mode.<br class="title-page-name"/>UPX0<br class="title-page-name"/>UPX1<br class="title-page-name"/>.rsrc<br class="title-page-name"/>3.91<br class="title-page-name"/>UPX!<br class="title-page-name"/>t ;t<br class="title-page-name"/>/t:VU<br class="title-page-name"/>]^M <br class="title-page-name"/>9-lh<br class="title-page-name"/>:A$m<br class="title-page-name"/>hAgo .<br class="title-page-name"/>C@@f.<br class="title-page-name"/>Q*vPCi<br class="title-page-name"/>%_I;9<br class="title-page-name"/>PVh29A<br class="title-page-name"/>[...REMOVED...]</pre>
+<div class="packt_tip">UPX is a common packer, and many times you will come across malware samples packed with UPX. In most cases, it is possible to unpack the sample using the <kbd class="calibre42">-d</kbd><em class="calibre22"> </em>option<em class="calibre22">. </em>An example command is <kbd class="calibre42">upx -d -o spybot_unpacked.exe spybot_packed.exe</kbd> .</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5.2 Detecting File Obfuscation Using Exeinfo PE</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Most legitimate executables do not obfuscate content, but some executables may do it to prevent others from examining their code. When you come across a sample that is packed, there is a high chance of it being malicious. To detect packers on Windows, you can use a freeware tool such as <em class="calibre17">Exeinfo PE</em> (<a href="http://exeinfo.atwebpages.com/" class="calibre10">http://exeinfo.atwebpages.com/</a>); it has an easy-to-use GUI. At the time of writing this book, it uses more than 4,500 signatures (stored in <kbd class="calibre13">userdb.txt</kbd> in the same directory) to detect various compilers, packers, or cryptors utilized to build the program. In addition to detecting Packers, another interesting feature of <em class="calibre17">Exeinfo PE</em> is that it gives information/references on how to unpack the sample.</p>
+<p class="calibre2">Loading the packed <em class="calibre17">Spybot</em> malware sample into <em class="calibre17">Exeinfo PE</em> shows that it is packed with UPX, and it also gives a hint on which command to use to decompress the obfuscated file; this can make your analysis much easier:</p>
+<div class="cdpaligncenter"><img src="../images/00020.jpeg" class="calibre43"/></div>
+<div class="packt_infobox">Other CLI and GUI tools that can help you with packer detections include <em class="calibre22">TrID </em>(<a href="http://mark0.net/soft-trid-e.html" class="calibre20">http://mark0.net/soft-trid-e.html</a>), <em class="calibre22">TRIDNet</em> (<a href="http://mark0.net/soft-tridnet-e.html" class="calibre20">http://mark0.net/soft-tridnet-e.html</a>), <em class="calibre22">Detect It Easy </em>(<a href="http://ntinfo.biz/" class="calibre20">http://ntinfo.biz/</a>), <em class="calibre22">RDG Packer Detector</em> (<a href="http://www.rdgsoft.net/" class="calibre20">http://www.rdgsoft.net/</a>), <em class="calibre22">packerid.py</em> (<a href="https://github.com/sooshie/packerid" class="calibre20">https://github.com/sooshie/packerid</a>), and <em class="calibre22">PEiD</em> (<a href="http://www.softpedia.com/get/Programming/Packers-Crypters-Protectors/PEiD-updated.shtml" class="calibre20">http://www.softpedia.com/get/Programming/Packers-Crypters-Protectors/PEiD-updated.shtml</a>).</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6. Inspecting PE Header Information</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Windows executables must conform to the <em class="calibre17">PE/COFF (Portable Executable/Common Object File Format)</em>. The PE file format is used by the Windows executable files (such as <kbd class="calibre13">.exe</kbd>, <kbd class="calibre13">.dll</kbd>, <kbd class="calibre13">.sys</kbd>, <kbd class="calibre13">.ocx</kbd>, and <kbd class="calibre13">.drv</kbd>) and such files are generally called <em class="calibre17">Portable Executable (PE)</em> files. The PE file is a series of structures and sub-components that contain the information required by the operating system to load it into memory.</p>
+<p class="calibre2">When an executable is compiled, it includes a header (PE header), which describes its structure. When the binary is executed, the operating system loader reads the information from the PE header and then loads the binary content from the file into the memory. The PE header contains information such as where the executable needs to be loaded into memory, the address where the execution starts, the list of libraries/functions on which the application relies on, and the resources used by the binary. Examining the PE header yields a wealth of information about the binary, and its functionalities.</p>
+<p class="calibre2">This book does not cover the basics of PE file structure. However, the concepts that are relevant to malware analysis will be covered in the following sub-sections; various resources can help in understanding the PE file structure. The following are some of the great resources for understanding the PE file structure:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">An In-Depth Look into the Win32 Portable Executable File Format - Part 1:</em> <br class="title-page-name"/>
+<a href="http://www.delphibasics.info/home/delphibasicsarticles/anin-depthlookintothewin32portableexecutablefileformat-part1" class="calibre10">http://www.delphibasics.info/home/delphibasicsarticles/anin-depthlookintothewin32portableexecutablefileformat-part1</a></li>
+<li class="calibre12"><em class="calibre19">An In-Depth Look into the Win32 Portable Executable File Format - Part 2:</em><br class="title-page-name"/>
+<a href="http://www.delphibasics.info/home/delphibasicsarticles/anin-depthlookintothewin32portableexecutablefileformat-part2" class="calibre10">http://www.delphibasics.info/home/delphibasicsarticles/anin-depthlookintothewin32portableexecutablefileformat-part2</a></li>
+<li class="calibre12"><em class="calibre19">PE Headers and structures:</em><br class="title-page-name"/>
+<a href="http://www.openrce.org/reference_library/files/reference/PE%20Format.pdf" class="calibre10">http://www.openrce.org/reference_library/files/reference/PE%20Format.pdf</a></li>
+<li class="calibre12"><em class="calibre19">PE101 - A Windows Executable Walkthrough:</em><br class="title-page-name"/>
+<a href="https://github.com/corkami/pics/blob/master/binary/pe101/pe101.pdf" class="calibre10">https://github.com/corkami/pics/blob/master/binary/pe101/pe101.pdf</a></li>
+</ul>
+<p class="calibre2">You can get a clear understanding of the PE file format by loading a suspect file into PE analysis tools. The following are the some of the tools that allow you to examine and modify the PE structure and its sub-components:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">CFF Explorer:</em> <a href="http://www.ntcore.com/exsuite.php" class="calibre10">http://www.ntcore.com/exsuite.php</a></li>
+<li class="calibre12"><em class="calibre19">PE Internals:</em> <a href="http://www.andreybazhan.com/pe-internals.html" class="calibre10">http://www.andreybazhan.com/pe-internals.html</a></li>
+<li class="calibre12"><em class="calibre19">PPEE(puppy):</em> <a href="https://www.mzrst.com/" class="calibre10">https://www.mzrst.com/</a></li>
+<li class="calibre12"><em class="calibre19">PEBrowse Professional:</em> <a href="http://www.smidgeonsoft.prohosting.com/pebrowse-pro-file-viewer.html" class="calibre10">http://www.smidgeonsoft.prohosting.com/pebrowse-pro-file-viewer.html</a></li>
+</ul>
+<p class="calibre2">The subsequent sections will cover some of the important PE file attributes that are useful for malware analysis. A tool such as <em class="calibre17">pestudio</em> (<a href="https://www.winitor.com" class="calibre10">https://www.winitor.com</a>) or <em class="calibre17">PPEE (puppy</em><strong class="calibre5">: </strong><a href="https://www.mzrst.com/" class="calibre10">https://www.mzrst.com/</a>) can assist you with exploring interesting artifacts from the PE file.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.1 Inspecting File Dependencies and Imports</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Usually, malware interacts with the file, registry, network, <span class="calibre7">and so on</span>. To perform such interactions, malware frequently depends on the functions exposed by the operating system. Windows exports most of its functions, called <em class="calibre17">Application Programming Interfaces (API),</em> required for these interactions in <em class="calibre17">Dynamic Link Libary (DLL)</em> files. Executables import and call these functions typically from various DLLs that provide different functionality. The functions that an executable imports from other files (mostly DLLs) are called <em class="calibre17">imported functions</em> (or <em class="calibre17">imports</em>)<em class="calibre17">.</em></p>
+<p class="calibre2">For example, if a malware executable wants to create a file on disk, on Windows, it can use an API <kbd class="calibre13">CreateFile()</kbd>, which is exported in <kbd class="calibre13">kernel32.dll</kbd>. To call the API, it first has to load <kbd class="calibre13">kernel32.dll</kbd> into its memory and then call the <kbd class="calibre13">CreateFile()</kbd> function.</p>
+<p class="calibre2">Inspecting the DLLs that a malware relies upon and the API functions that it imports from the DLLs can give an idea about the functionality and capability of malware and what to anticipate during its execution. The file dependencies in Windows executables are stored in the import table of the PE file structure.</p>
+<p class="calibre2">In the following example, the <em class="calibre17">spybot</em> sample was loaded in pestudio. Clicking on the <span class="calibre7">libraries</span> button in pestudio displays all the DLL files the executable depends on and the number of imported functions imported from each DLL. These are the DLL files that will be loaded into the memory when the program is executed:</p>
+<div class="cdpaligncenter"><img src="../images/00021.jpeg" class="calibre41"/></div>
+<p class="calibre2">Clicking on the <span class="calibre7">imports</span> button in pestudio displays the API functions imported from those DLLs. In the following screenshot, the malware imports network-related API functions (such as <kbd class="calibre13">connect</kbd>, <kbd class="calibre13">socket</kbd>, <kbd class="calibre13">listen</kbd>, <kbd class="calibre13">send</kbd>, and so on) from <kbd class="calibre13">wsock32.dll</kbd>, indicating that the malware, upon execution, will most likely connect to the Internet or perform some network activity. pestudio highlights the API functions that are frequently used by malwares in the blacklisted column. In subsequent chapters, the techniques to inspect API functions will be covered in more detail:</p>
+<div class="cdpaligncenter"><img src="../images/00022.jpeg" class="calibre41"/></div>
+<p class="calibre2">Sometimes, malware can load a DLL explicitly during runtime using API calls such as <kbd class="calibre13">LoadLibrary()</kbd> or <kbd class="calibre13">LdrLoadDLL()</kbd>, and it can resolve the function address using the <kbd class="calibre13">GetProcessAdress()</kbd> API. Information about the DLLs loaded during runtime will not be present in the import table of the PE file and therefore will not be displayed by the tools.</p>
+<div class="packt_infobox">Information about an API function and what it does can be determined from <em class="calibre22">MSDN (Microsoft Developer Network)</em>. Enter the API name in the search bar (<a href="https://msdn.microsoft.com/en-us/default.aspx" class="calibre20">https://msdn.microsoft.com/en-us/default.aspx</a>) to get detailed information about the API.</div>
+<p class="calibre2">In addition to determining the malware functionality, imports can help you detect whether a malware sample is obfuscated. If you come across a malware with very few imports, then it is a strong indication of a packed binary.</p>
+<p class="calibre2">To demonstrate that, let's compare the imports between the <em class="calibre17">unpacked sample of spybot</em> and the <em class="calibre17">packed spybot sample</em>. The following screenshot shows 110 imports in the unpacked spybot sample:</p>
+<div class="cdpaligncenter"><img src="../images/00023.jpeg" class="calibre41"/></div>
+<p class="calibre2">On the other hand, the <em class="calibre17">packed sample</em> of spybot shows only 12 imports:</p>
+<div class="cdpaligncenter"><img src="../images/00024.jpeg" class="calibre44"/></div>
+<p class="calibre2">Sometimes you might want to use Python to enumerate DLL files and imported functions (probably to work with a large number of files); this can be done using Ero Carerra's <em class="calibre17">pefile</em> module (<a href="https://github.com/erocarrera/pefile" class="calibre10">https://github.com/erocarrera/pefile</a>). The installation of the <em class="calibre17">pefile</em> module on Ubuntu Linux VM was covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17"><span class="calibre7">Introduction to Malware Analysis.</span></em> If you are using any other operating system, then it can be installed using pip (<kbd class="calibre13">pip install pefile</kbd>). The following Python script demonstrates the use of the <em class="calibre17">pefile</em> module to enumerate the DLLs and the imported API functions:</p>
+<pre class="calibre18">import pefile<br class="title-page-name"/>import sys<br class="title-page-name"/><br class="title-page-name"/>mal_file = sys.argv[1]<br class="title-page-name"/>pe = pefile.PE(mal_file)<br class="title-page-name"/>if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):<br class="title-page-name"/>    for entry in pe.DIRECTORY_ENTRY_IMPORT:<br class="title-page-name"/>        print "%s" % entry.dll<br class="title-page-name"/>        for imp in entry.imports:<br class="title-page-name"/>            if imp.name != None:<br class="title-page-name"/>                print "\t%s" % (imp.name)<br class="title-page-name"/>            else:<br class="title-page-name"/>                print "\tord(%s)" % (str(imp.ordinal))<br class="title-page-name"/>        print "\n"</pre>
+<p class="calibre2">The following is the result of running the preceding script against the <kbd class="calibre13">spybot_packed.exe</kbd> sample; from the output, you can see the list of DLLs and imported functions:</p>
+<pre class="calibre18">$<strong class="calibre1"> python enum_imports.py spybot_packed.exe</strong><br class="title-page-name"/>KERNEL32.DLL<br class="title-page-name"/>  LoadLibraryA<br class="title-page-name"/>  GetProcAddress<br class="title-page-name"/>  VirtualProtect<br class="title-page-name"/>  VirtualAlloc<br class="title-page-name"/>  VirtualFree<br class="title-page-name"/>  ExitProcess<br class="title-page-name"/><br class="title-page-name"/>ADVAPI32.DLL<br class="title-page-name"/>  RegCloseKey<br class="title-page-name"/><br class="title-page-name"/>CRTDLL.DLL<br class="title-page-name"/>  atoi<br class="title-page-name"/>[...REMOVED....]</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.2  Inspecting Exports</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The executable and DLL can export functions, which can be used by other programs. Typically, a DLL exports functions (<em class="calibre17">exports</em>) that are imported by the executable. A DLL cannot run on its<span class="calibre7"> own and depends on a host process for executing its code. An attacker often creates a DLL that exports functions containing malicious functionality. To run the malicious functions within the DLL, it is somehow made to be loaded by a process that calls these malicious functions. DLLs can also import functions from other libraries (DLLs) to perform system operations.</span></p>
+<p class="calibre2">Inspecting the exported functions can give you a quick idea of the DLL's capabilities. In the following example, loading a DLL associated with malware called <em class="calibre17">Ramnit</em> in pestudio shows its exported functions, giving an indication of its capabilities. When a process loads this DLL, at some point, these functions will be called to perform malicious activities:</p>
+<div class="cdpaligncenter"><img src="../images/00025.jpeg" class="calibre45"/></div>
+<div class="packt_tip">Export function names may not always give an idea of a malware's capabilities. An attacker may use random or fake export names to mislead your analysis or to throw you off track.</div>
+<p class="calibre2">In Python, the exported functions can be enumerated using the <em class="calibre17">pefile module</em>, as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> python</strong><br class="title-page-name"/>Python 2.7.12 (default, Nov 19 2016, 06:48:10)<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">import pefile</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">pe = pefile.PE("rmn.dll")</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">if hasattr(pe, 'DIRECTORY_ENTRY_EXPORT'):</strong><br class="title-page-name"/>...     <strong class="calibre1">for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:</strong><br class="title-page-name"/>...         <strong class="calibre1">print "%s" % exp.name</strong><br class="title-page-name"/>... <br class="title-page-name"/>AddDriverPath<br class="title-page-name"/>AddRegistryforME<br class="title-page-name"/>CleanupDevice<br class="title-page-name"/>CleanupDevice_EX<br class="title-page-name"/>CreateBridgeRegistryfor2K<br class="title-page-name"/>CreateFolder<br class="title-page-name"/>CreateKey<br class="title-page-name"/>CreateRegistry<br class="title-page-name"/>DeleteDriverPath<br class="title-page-name"/>DeleteOemFile<br class="title-page-name"/>DeleteOemInfFile<br class="title-page-name"/>DeleteRegistryforME<br class="title-page-name"/>DuplicateFile<br class="title-page-name"/>EditRegistry<br class="title-page-name"/>EnumerateDevice<br class="title-page-name"/>GetOS<br class="title-page-name"/>[.....REMOVED....]</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.3  Examining PE Section Table And Sections</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The actual content of the PE file is divided into sections. The sections are immediately followed by the PE header. These sections represent <span class="calibre7">either</span><span class="calibre7"> </span><em class="calibre17">code</em> <span class="calibre7">or</span> <em class="calibre17">data</em> <span class="calibre7">and they have in-memory attributes such as read/write</span><span class="calibre7">. The section representing code contains instructions that will be executed by the processor, whereas the section containing data can represent different types of data, such as read/write program data (global variables), import/export tables, resources, and so on. Each section has a distinct name that conveys the purpose of the section. For example, a section with name</span> <kbd class="calibre13">.text</kbd> <span class="calibre7">indicates code and has an attribute of</span> <kbd class="calibre13">read-execute</kbd><span class="calibre7">; a section with name</span> <kbd class="calibre13">.data</kbd> <span class="calibre7">indicates global data and has an attribute of</span> <kbd class="calibre13">read-write</kbd><span class="calibre7">.</span></p>
+<p class="calibre2">During the compilation of the executable, consistent section names are added by the compilers. The following table outlines some of the common sections in a PE file:</p>
+<table border="1" class="calibre46">
+<tbody class="calibre47">
+<tr class="calibre48">
+<td class="calibre49"><strong class="calibre1">Section Name</strong></td>
+<td class="calibre49"><strong class="calibre1">Description</strong></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">.text</kbd> or <kbd class="calibre13">CODE</kbd></td>
+<td class="calibre49">Contains executable code.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">.data</kbd> or <kbd class="calibre13">DATA</kbd></td>
+<td class="calibre49">Typically Contains read/write data and global variables.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">.<kbd class="calibre13">rdata</kbd></td>
+<td class="calibre49">
+<p class="calibre2">Contains read-only data. Sometimes it also contains import and export information. </p>
+</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">.idata</kbd></td>
+<td class="calibre49">If present, contains the import table. If not present, then the import information is stored in <kbd class="calibre13">.rdata</kbd> section.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">.edata</kbd></td>
+<td class="calibre49">If present, contains export information<span>. If not present,</span> then the export information is found in <kbd class="calibre13">.rdata</kbd> section.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49"><kbd class="calibre13">.rsrc</kbd></td>
+<td class="calibre49">This section contains the resources used by the executable such as icons, dialogs, menus, strings, and so on.</td>
+</tr>
+</tbody>
+</table>
+<p class="calibre2"> </p>
+<p class="calibre2">These section names are mainly for humans and are not used by the operating system, which means it is possible for an attacker or an obfuscation software to create sections with different names. If you come across section names that are not common, then you should treat them with suspicion, and further analysis is required to confirm maliciousness.</p>
+<p class="calibre2">Information about these sections (such as section name, where to find the section, and its characteristics) is present in the <em class="calibre17">section table</em> in the PE header. Examining a section table will give information about the section and its characteristics.</p>
+<p class="calibre2">When you load an executable in <em class="calibre17">pestudio</em> and click on <span class="calibre7">sections</span>, it displays the section information extracted from the section table and its attributes (read/write <span class="calibre7">and so on</span>). The next screenshot from pestudio shows the section information for an executable, and some relevant fields from the screenshot are explained here:</p>
+<table border="1" class="calibre46">
+<tbody class="calibre47">
+<tr class="calibre48">
+<td class="calibre49"><strong class="calibre1">Field</strong></td>
+<td class="calibre49"><strong class="calibre1">Description</strong></td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Names</td>
+<td class="calibre49">Displays section names. In this case, the executable contains four sections (<kbd class="calibre13">.text</kbd>, <kbd class="calibre13">.data</kbd>, <kbd class="calibre13">.rdata</kbd> and <kbd class="calibre13">.rsrc</kbd>).</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Virtual-Size</td>
+<td class="calibre49">Indicates the size of the section when loaded into memory.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Virtual-Address</td>
+<td class="calibre49">This is the relative virtual address (that is, offset from the base address of the executable) where the section can be found in memory.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Raw-size</td>
+<td class="calibre49">Indicates the size of the section on the disk.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Raw-data</td>
+<td class="calibre49">Indicates the offset in the file where the section can be found.</td>
+</tr>
+<tr class="calibre48">
+<td class="calibre49">Entry-point</td>
+<td class="calibre49"><span>This </span>is the RVA (relative virtual address) where the code starts executing. In this case, the entry point is in the <kbd class="calibre13">.text</kbd> section, which is normal. </td>
+</tr>
+</tbody>
+</table>
+<div class="cdpaligncenter"><img src="../images/00026.jpeg" class="calibre50"/></div>
+<p class="calibre2">Examining the section table can also help in identifying any anomaly in the PE file. The following screenshot shows the section names of a malware packed with UPX; the malware sample contains the following discrepancies:</p>
+<ul class="calibre11">
+<li class="calibre12">The section names do not contain common sections added by the compiler (such as <kbd class="calibre13">.text</kbd>, <kbd class="calibre13">.data</kbd>, and so on) but contain section names <kbd class="calibre13">UPX0</kbd> and <kbd class="calibre13">UPX1</kbd>.</li>
+<li class="calibre12">The entry point is in the <kbd class="calibre13">UPX1</kbd> section, indicating that execution will start in this section (decompression routine).</li>
+<li class="calibre12">Typically, <kbd class="calibre13">raw-size</kbd> and the <kbd class="calibre13">virtual-size</kbd> should be almost equal, but small differences are normal due to section alignment. In this case, <kbd class="calibre13">raw-size</kbd> is <kbd class="calibre13">0</kbd>, indicating that this section will not take up space on the disk, but <kbd class="calibre13">virtual-size</kbd> specifies that, in memory, it takes up more space (around <kbd class="calibre13">127 kb</kbd>). This is a strong indication of a packed binary. The reason for this discrepancy is that when a packed binary is executed, the decompression routine of the packer will copy decompressed data or instructions into the memory during runtime.</li>
+</ul>
+<div class="cdpaligncenter"><img src="../images/00027.jpeg" class="calibre51"/></div>
+<p class="calibre2">The following Python script demonstrates the use of the <em class="calibre17">pefile</em> module to display the section and its characteristics:</p>
+<pre class="calibre18">import pefile<br class="title-page-name"/>import sys<br class="title-page-name"/><br class="title-page-name"/>pe = pefile.PE(sys.argv[1])<br class="title-page-name"/>for section in pe.sections:<br class="title-page-name"/>    print "%s %s %s %s" % (section.Name,<br class="title-page-name"/>                           hex(section.VirtualAddress),<br class="title-page-name"/>                           hex(section.Misc_VirtualSize),<br class="title-page-name"/>                           section.SizeOfRawData)<br class="title-page-name"/>print "\n"</pre>
+<p class="calibre2">The following is the output after running the preceding Python script:</p>
+<pre class="calibre18">$<strong class="calibre1"> python display_sections.py olib.exe</strong><br class="title-page-name"/>UPX0 0x1000 0x1f000 0<br class="title-page-name"/>UPX1 0x20000 0xe000 53760<br class="title-page-name"/>.rsrc 0x2e000 0x6000 24576</pre>
+<div class="packt_infobox"><em class="calibre22">pescanner</em> by Michael Ligh and Glenn P. Edwards is an excellent tool to detect suspicious PE files based on the PE file attributes; it uses heuristics instead of using signatures and can help you identify packed binaries even if there are no signatures for it. A copy of the script can be downloaded from <a href="https://github.com/hiddenillusion/AnalyzePE/blob/master/pescanner.py" class="calibre20">https://github.com/hiddenillusion/AnalyzePE/blob/master/pescanner.py</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.4 Examining the Compilation Timestamp</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The PE header contains information that specifies when the binary was compiled; examining this field can give an idea of when the malware was first created. This information can be useful in building a timeline of the attack campaign. It is also possible that an attacker modifies the timestamp to prevent an analyst from knowing the actual timestamp. A compile timestamp can sometimes be used to classify suspicious samples. The following example shows a malware binary whose timestamp was modified to a future date in 2020. In this case, even though the actual compilation timestamp could not be detected, such characteristics can help you identify anomalous behavior:</p>
+<div class="cdpaligncenter"><img src="../images/00028.jpeg" class="calibre41"/></div>
+<div class="title-page-name">
+<p class="calibre2">In Python, you can determine the compile timestamp using the following Python commands:</p>
+</div>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import pefile</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">import time</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">pe = pefile.PE("veri.exe")</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">timestamp = pe.FILE_HEADER.TimeDateStamp</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(timestamp))</strong><br class="title-page-name"/>2020-01-06 08:36:17</pre>
+<div class="packt_tip">All Delphi binaries have a compile timestamp set to June 19, 1992, making it hard to detect the actual compile timestamp. If you are investigating a malware binary set to this date, there is a high possibility that you are looking at Delphi binary. The blog post at a <a href="http://www.hexacorn.com/blog/2014/12/05/the-not-so-boring-land-of-borland-executables-part-1/" target="_blank" class="calibre20">http://www.hexacorn.com/blog/2014/12/05/the-not-so-boring-land-of-borland-executables-part-1/</a> gives information on how it may be possible to get the <span class="calibre21">compilation timestamp from a Delphi binary.</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.5 Examining PE Resources</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The resources required by the executable file such as icons, menu, dialog, and strings are stored in the resource section (<kbd class="calibre13">.rsrc</kbd>) of an executable file. Often, attackers store information such as additional binary, and decoy documents, configuration data in the resource section, so examining the resource can reveal valuable information about a binary. The resource section also contains version information that can reveal information about the origin, company name, program author details, and copyright information.</p>
+<p class="calibre2"><em class="calibre17">Resource Hacker</em> (<a href="http://www.angusj.com/resourcehacker/" class="calibre10">http://www.angusj.com/resourcehacker/</a>) is a great tool to examine, view, and extract the resource from a suspect binary. Let's take an example of binary that looks like an Excel file on the disk (notice how the file extension is changed to <kbd class="calibre13">.xls.exe</kbd>), as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00029.jpeg" class="calibre52"/></div>
+<p class="calibre2">Loading a malicious binary in resource hacker shows three resources (<em class="calibre17">Icon</em>, <em class="calibre17">Binary,</em> and <em class="calibre17">Icon Group</em>). The malware specimen uses the icon of Microsoft Excel (to give the appearance of an excel sheet):</p>
+<div class="cdpaligncenter"><img src="../images/00030.jpeg" class="calibre53"/></div>
+<p class="calibre2">The executable also contains binary data; one of them has a file signature of <kbd class="calibre13">D0 CF 11 E0 A1 B1 1A E1</kbd>. This sequence of bytes represents the file signature for a Microsoft Office document file. The attackers, in this case, stored a decoy excel sheet in the resource section. Upon execution, the malware is executed in the background, and this decoy excel sheet is displayed to the user as a diversion:</p>
+<div class="cdpaligncenter"><img src="../images/00031.jpeg" class="calibre54"/></div>
+<p class="calibre2">To save the binary to disk, right-click on the resource that you want to extract and click on <span class="calibre7">Save Resource to a *.bin</span> file as shown in the following screenshot. In this case, the resource was saved as <kbd class="calibre13">sample.xls</kbd><em class="calibre17">. </em>The following screenshot shows the decoy excel sheet that will be displayed to the user:</p>
+<div class="cdpaligncenter"><img src="../images/00032.jpeg" class="calibre55"/></div>
+<p class="calibre2">Just by exploring the contents of the resource section, a lot can be learned about the malware characteristics.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7. Comparing And Classifying The Malware</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">During your malware investigation, when you come across a malware sample, you may want to know whether the malware sample belongs to a particular malware family or if it has characteristics that match with the previously analyzed samples. Comparing the suspect binary with previously analyzed samples or the samples stored in a public or private repository can give an understanding of the malware family, its characteristics, and the similarity with the previously analyzed samples.</p>
+<p class="calibre2">While cryptographic hashing (<em class="calibre17">MD5/SHA1/SHA256</em>) is a great technique to detect identical samples, it does not help in identifying similar samples. Very often, malware authors change minute aspects of malware, which changes the hash value completely. The following sections describe some of the techniques that can help in comparing and classifying the suspect binary:</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.1 Classifying Malware Using Fuzzy Hashing</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Fuzzy hashing</em> is a great method to compare files for similarity. <em class="calibre17">ssdeep</em> (<a href="http://ssdeep.sourceforge.net" class="calibre10">http://ssdeep.sourceforge.net</a>) is a useful tool to generate the fuzzy hash for a sample, and it also helps in determining percentage similarity between the samples. This technique is useful in comparing a suspect binary with the samples in a repository to identify the samples that are similar; this can help in identifying the samples that belong to the same malware family or the same actor group.</p>
+<p class="calibre2">You can use <em class="calibre17">ssdeep</em> to calculate and compare fuzzy hashes. Installation of <em class="calibre17">ssdeep</em> on Ubuntu Linux VM was covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, To determine a fuzzy hash of a sample, run the following command:</p>
+<pre class="calibre18">$ <strong class="calibre1">ssdeep veri.exe</strong><br class="title-page-name"/>ssdeep,1.1--blocksize:hash:hash,filename<br class="title-page-name"/>49152:op398U/qCazcQ3iEZgcwwGF0iWC28pUtu6On2spPHlDB:op98USfcy8cwF2bC28pUtsRptDB,"/home/ubuntu/Desktop/veri.exe"</pre>
+<p class="calibre2">To demonstrate the use of fuzzy hashing, let's take an example of a directory consisting of three malware samples. In the following output, you can see that all three files have completely different MD5 hash values:</p>
+<pre class="calibre18">$ <strong class="calibre1">ls</strong><br class="title-page-name"/>aiggs.exe jnas.exe veri.exe<br class="title-page-name"/><br class="title-page-name"/>$ <strong class="calibre1">md5sum *</strong><br class="title-page-name"/>48c1d7c541b27757c16b9c2c8477182b aiggs.exe<br class="title-page-name"/>92b91106c108ad2cc78a606a5970c0b0 jnas.exe<br class="title-page-name"/>ce9ce9fc733792ec676164fc5b2622f2 veri.exe</pre>
+<p class="calibre2">The pretty matching mode (<kbd class="calibre13">-p</kbd> option) in ssdeep can be used to determine percentage similarity. From the following output, out of the three samples, two samples have 99% similarity, suggesting that these two samples probably belong to the same malware family:</p>
+<pre class="calibre18">$<strong class="calibre1"> ssdeep -pb *</strong><br class="title-page-name"/>aiggs.exe matches jnas.exe (<strong class="calibre1">99</strong>)<br class="title-page-name"/>jnas.exe matches aiggs.exe (<strong class="calibre1">99</strong>)</pre>
+<p class="calibre2">As demonstrated in the preceding example, cryptographic hashes were not helpful in determining the relationship between the samples, whereas the fuzzy hashing technique identified the similarity between the samples.</p>
+<p class="calibre2">You might have a directory containing many malware samples. In that case, it is possible to run <kbd class="calibre13">ssdeep</kbd> on directories and subdirectories containing malware samples using the recursive mode (<kbd class="calibre13">-r</kbd>) as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> ssdeep -lrpa samples/</strong><br class="title-page-name"/>samples//aiggs.exe matches samples//crop.exe (0)<br class="title-page-name"/>samples//aiggs.exe matches samples//jnas.exe (99)<br class="title-page-name"/><br class="title-page-name"/>samples//crop.exe matches samples//aiggs.exe (0)<br class="title-page-name"/>samples//crop.exe matches samples//jnas.exe (0)<br class="title-page-name"/><br class="title-page-name"/>samples//jnas.exe matches samples//aiggs.exe (99)<br class="title-page-name"/>samples//jnas.exe matches samples//crop.exe (0)<br class="title-page-name"/><br class="title-page-name"/></pre>
+<p class="calibre2">You can also match a suspect binary with a list of file hashes. In the following example, the ssdeep hashes of all the binaries were redirected to a text file (<kbd class="calibre13">all_hashes.txt</kbd>), and then the suspect binary (<kbd class="calibre13">blab.exe</kbd>) is matched with all the hashes in the file. From the following output, it can be seen that the suspect binary (<kbd class="calibre13">blab.exe</kbd>) is identical to <kbd class="calibre13">jnas.exe</kbd> (100% match) and has 99% similarity with <kbd class="calibre13">aiggs.exe</kbd>. You can use this technique to compare any new file with the hashes of previously analyzed samples:</p>
+<pre class="calibre18">$ <strong class="calibre1">ssdeep * &gt; all_hashes.txt</strong><br class="title-page-name"/>$ <strong class="calibre1">ssdeep -m all_hashes.txt blab.exe</strong><br class="title-page-name"/>/home/ubuntu/blab.exe matches all_hashes.txt:/home/ubuntu/aiggs.exe (<strong class="calibre1">99</strong>)<br class="title-page-name"/>/home/ubuntu/blab.exe matches all_hashes.txt:/home/ubuntu/jnas.exe (<strong class="calibre1">100</strong>)</pre>
+<p class="calibre2">In Python, the fuzzy hash can be computed using <em class="calibre17">python-ssdeep</em> (<a href="https://pypi.python.org/pypi/ssdeep/3.2" class="calibre10">https://pypi.python.org/pypi/ssdeep/3.2</a>). The installation of the <em class="calibre17">python-ssdeep</em> module on Ubuntu Linux VM was covered in <a target="_blank" href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17">Introduction to Malware Analysis</em>. To calculate and compare fuzzy hashes, the following commands can be used in the script:</p>
+<pre class="calibre18"><strong class="calibre1">$ python</strong><br class="title-page-name"/>Python 2.7.12 (default, Nov 19 2016, 06:48:10) <br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">import ssdeep</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">hash1 = ssdeep.hash_from_file('jnas.exe')</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print hash1</strong><br class="title-page-name"/>384:l3gexUw/L+JrgUon5b9uSDMwE9Pfg6NgrWoBYi51mRvR6JZlbw8hqIusZzZXe:pIAKG91Dw1hPRpcnud<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">hash2 = ssdeep.hash_from_file('aiggs.exe')</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">print hash2</strong><br class="title-page-name"/>384:l3gexUw/L+JrgUon5b9uSDMwE9Pfg6NgrWoBYi51mRvR6JZlbw8hqIusZzZWe:pIAKG91Dw1hPRpcnu+<br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">ssdeep.compare(hash1, hash2)</strong><br class="title-page-name"/>99<br class="title-page-name"/>&gt;&gt;&gt; </pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.2 Classifying Malware Using Import Hash</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Import Hashin</em>g is another technique that can be used to identify related samples and the samples used by the same threat actor groups. <em class="calibre17">Import hash</em> (or <em class="calibre17">imphash</em>) is a technique in which hash values are calculated based on the library/imported function (API) names and their particular order within the executable. If the files were compiled from the same source and in the same manner, those files would tend to have the same <em class="calibre17">imphash</em> value. During your malware investigation, if you come across samples that have the same imphash values, it means that they have the same import address table and are probably related.</p>
+<div class="packt_infobox">For detailed information on import hashing, and how it can be used to track threat actor groups, read <a href="https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html" class="calibre20">https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html</a>.</div>
+<p class="calibre2">When you load an executable into <em class="calibre17">pestudio</em>, it calculates the imphash as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00033.jpeg" class="calibre41"/></div>
+<p class="calibre2">In Python, imphash can be generated using the <em class="calibre17">pefile</em> module. The following Python script takes the sample as input and calculates its imphash:</p>
+<pre class="calibre18">import pefile<br class="title-page-name"/>import sys<br class="title-page-name"/><br class="title-page-name"/>pe = pefile.PE(sys.argv[1])<br class="title-page-name"/>print pe.get_imphash()</pre>
+<p class="calibre2">The output as a result of running the preceding script against a malware sample is shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> python get_imphash.py 5340.exe</strong><br class="title-page-name"/>278a52c6b04fae914c4965d2b4fdec86</pre>
+<div class="packt_infobox">You should also take a look at <a href="http://blog.jpcert.or.jp/2016/05/classifying-mal-a988.html" class="calibre20">http://blog.jpcert.or.jp/2016/05/classifying-mal-a988.html</a> which covers details of using import API and the fuzzy hashing technique (impfuzzy) to classify malware samples.</div>
+<p class="calibre2">To demonstrate the use of import hashing, let's take the example of two samples from the same threat actor group. In the following output, the samples have different cryptographic hash values (MD5), but the impash of these samples are identical; this indicates that they were probably compiled from the same source and in the same manner:</p>
+<pre class="calibre18">$<strong class="calibre1"> md5sum *</strong><br class="title-page-name"/>3e69945e5865ccc861f69b24bc1166b6 maxe.exe<br class="title-page-name"/>1f92ff8711716ca795fbd81c477e45f5 sent.exe<br class="title-page-name"/><br class="title-page-name"/>$<strong class="calibre1"> python get_imphash.py samples/maxe.exe</strong><br class="title-page-name"/>b722c33458882a1ab65a13e99efe357e<br class="title-page-name"/>$<strong class="calibre1"> python get_imphash.py samples/sent.exe</strong><br class="title-page-name"/>b722c33458882a1ab65a13e99efe357e</pre>
+<div class="packt_tip">Files having the same <em class="calibre22">imphash</em> does not necessarily mean they are from the same threat group; you might have to correlate information from various sources to classify your malware. For example, it is possible that the malware samples were generated using a common builder kit that is shared among groups; in such cases, samples might have the same <em class="calibre22">imphash.</em></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.3 Classifying Malware Using Section Hash</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Similar to import hashing, section hashing can also help in identifying related samples. When an executable is loaded in <em class="calibre17">pestudio</em>, it calculates the <em class="calibre17">MD5</em> of each section (<kbd class="calibre13">.text</kbd>, <kbd class="calibre13">.data</kbd>, <kbd class="calibre13">.rdata</kbd>, and so on.). To view the section hashes, click on <span class="calibre7">sections</span> as shown here:</p>
+<div class="cdpaligncenter"><img src="../images/00034.jpeg" class="calibre41"/></div>
+<p class="calibre2">In Python, pefile module can be used to determine the sections hashes as shown here:</p>
+<pre class="calibre18">&gt;&gt;&gt; <strong class="calibre1">import pefile</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">pe = pefile.PE("5340.exe")</strong><br class="title-page-name"/>&gt;&gt;&gt; <strong class="calibre1">for section in pe.sections:</strong><br class="title-page-name"/>...     <strong class="calibre1">print "%s\t%s" % (section.Name, section.get_hash_md5())</strong><br class="title-page-name"/>... <br class="title-page-name"/>.text b1b56e7a97ec95ed093fd6cfdd594f6c<br class="title-page-name"/>.rdata a7dc36d3f527ff2e1ff7bec3241abf51<br class="title-page-name"/>.data 8ec812e17cccb062515746a7336c654a<br class="title-page-name"/>.rsrc 405d2a82e6429de8637869c5514b489c</pre>
+<div class="packt_tip">When you are analyzing a malware sample, you should consider generating the fuzzy hash, imphash, and section hashes for the malicious binary and store them in a repository; that way, when you come across a new sample, it can be compared with these hashes to determine similarity.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.4 Classifying Malware Using YARA</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A malware sample can contain many strings or binary indicators; recognizing the strings or binary data that are unique to a malware sample or a malware family can help in malware classification. Security researchers classify malware based on the unique strings and the binary indicators present in the binary. Sometimes, malware can also be classified based on general characteristics.</p>
+<p class="calibre2"><em class="calibre17">YARA</em> (<a href="http://virustotal.github.io/yara/" class="calibre10">http://virustotal.github.io/yara/</a>) is a powerful malware identification and classification tool. Malware researchers can create YARA rules based on textual or binary information contained within the malware specimen. These YARA rules consist of a set of strings and a Boolean expression, which determines its logic. Once the rule is written, you can use those rules to scan files using the YARA utility or you can use <kbd class="calibre13">yara-python</kbd> to integrate with your tools. This book does not cover all the details on writing yara rules but it includes enough information, and its use to get you started. For details on writing YARA rules, read the YARA documentation (<a href="http://yara.readthedocs.io/en/v3.7.0/writingrules.html" target="_blank" class="calibre10">http://yara.readthedocs.io/en/v3.7.0/writingrules.html</a>).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.4.1 Installing YARA</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">You can download and install <em class="calibre17">YARA</em> from (<a href="http://virustotal.github.io/yara/" class="calibre10">http://virustotal.github.io/yara/</a>). Installation of YARA on Ubuntu Linux VM was covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>,<em class="calibre17"><span class="calibre7"> Introduction to Malware Analysis</span></em>. If you would like to install YARA on any other operating system then refer to the installation documentation: <a href="http://yara.readthedocs.io/en/v3.3.0/gettingstarted.html" class="calibre10">http://yara.readthedocs.io/en/v3.3.0/gettingstarted.html</a> </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.4.2 YARA Rule Basics</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Once installed, the next step is to create YARA rules; these rules can be generic or very specific, and they can be created using any text editor. To understand the YARA rule syntax, let's take an example of a simple YARA rule that looks for suspicious strings in any file, as follows:</p>
+<pre class="calibre18">rule suspicious_strings<br class="title-page-name"/>{ <br class="title-page-name"/>strings:<br class="title-page-name"/>    $a = "Synflooding"<br class="title-page-name"/>    $b = "Portscanner"<br class="title-page-name"/>    $c = "Keylogger"<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>    ($a or $b or $c)<br class="title-page-name"/>}</pre>
+<p class="calibre2">The YARA rule consists of the following components:</p>
+<ul class="calibre11">
+<li class="calibre12"><em class="calibre19">Rule identifier:</em> This is a name that describes the rule (<kbd class="calibre13">suspicious_strings</kbd> in the preceding example). The rule identifiers can contain any alphanumeric character and the underscore character, but the first character cannot be a digit. The rule identifiers are case-sensitive and cannot exceed 128 characters.</li>
+<li class="calibre12"><em class="calibre19">String Definition:</em> This is the section where the strings (text, hexadecimal, or regular expressions) that will be part of the rule are defined. This section can be omitted if the rule does not rely on any strings. Each string has an identifier consisting of a <kbd class="calibre13">$</kbd> character followed by a sequence of alphanumeric characters and underscores. From the preceding rule, think of <kbd class="calibre13">$a</kbd>, <kbd class="calibre13">$b</kbd>, and <kbd class="calibre13">$c</kbd> as variables containing values. These variables are then used in the condition section.</li>
+<li class="calibre12"><em class="calibre19">Condition Section:</em> This is not an optional section, and this is where the logic of the rule resides. This section must contain a Boolean expression that specifies the condition under which the rule will match or not match.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.4.3 Running YARA</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Once you have the rule ready, the next step is to use the yara utility to scan the files using the YARA rules. In the preceding example, the rule looked for three suspicious strings (defined in <kbd class="calibre13">$a</kbd>, <kbd class="calibre13">$b</kbd> and <kbd class="calibre13">$c</kbd>), and based on the condition, the rule matched if any of the three strings is present in a file. The rule was saved as <kbd class="calibre13">suspicious.yara</kbd>, and running the yara against a directory containing malware samples returned two malware samples matching the rule:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara -r suspicious.yara samples/</strong><br class="title-page-name"/>suspicious_strings samples//spybot.exe<br class="title-page-name"/>suspicious_strings samples//wuamqr.exe</pre>
+<p class="calibre2">The preceding YARA rule, by default, will match on ASCII strings, and it performs the case-sensitive match. If you want the rule to detect both ASCII and Unicode (wide character) strings, then you specify the <kbd class="calibre13">ascii</kbd> and <kbd class="calibre13">wide</kbd> modifier next to string. The <kbd class="calibre13">nocase</kbd> modifier will perform a case-insensitive match (that is, it will match Synflooding, synflooding, sYnflooding, and so on). The modified rule to implement case-insensitive match and to look for ASCII and Unicode strings is shown here:</p>
+<pre class="calibre18">rule suspicious_strings<br class="title-page-name"/>{<br class="title-page-name"/>strings:<br class="title-page-name"/>    $a = "Synflooding" ascii wide nocase<br class="title-page-name"/>    $b = "Portscanner" ascii wide nocase<br class="title-page-name"/>    $c = "Keylogger"   ascii wide nocase<br class="title-page-name"/>condition:<br class="title-page-name"/>    ($a or $b or $c)<br class="title-page-name"/>}</pre>
+<p class="calibre2">Running the preceding rule detected the two executable files containing ASCII strings, and it also identified a document (<kbd class="calibre13">test.doc</kbd>) containing Unicode strings:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara suspicious.yara samples/</strong><br class="title-page-name"/>suspicious_strings samples//test.doc<br class="title-page-name"/>suspicious_strings samples//spybot.exe<br class="title-page-name"/>suspicious_strings samples//wuamqr.exe</pre>
+<p class="calibre2">The preceding rule matches any file containing those ASCII and Unicode strings. The document (<kbd class="calibre13">test.doc</kbd>) that it detected was a legitimate document that had those strings in its content.</p>
+<p class="calibre2">If your intention is to look for strings in an executable file, you can create a rule as shown below. In the following rule, the <kbd class="calibre13">$mz</kbd><em class="calibre17"> at</em> <kbd class="calibre13">0</kbd> in the condition specifies YARA to look for the signature <kbd class="calibre13">4D 5A</kbd> (first two bytes of PE file) at the beginning of the file; this ensures that the signature triggers only for PE executable files. Text strings are enclosed in double quotes, whereas hex strings are enclosed in curly braces as in the <kbd class="calibre13">$mz</kbd> variable:</p>
+<pre class="calibre18">rule suspicious_strings<br class="title-page-name"/>{<br class="title-page-name"/>strings:<br class="title-page-name"/>    $mz = {4D 5A}<br class="title-page-name"/>    $a = "Synflooding" ascii wide nocase<br class="title-page-name"/>    $b = "Portscanner" ascii wide nocase<br class="title-page-name"/>    $c = "Keylogger" ascii wide nocase<br class="title-page-name"/>condition:<br class="title-page-name"/>    ($mz at 0) and ($a or $b or $c)<br class="title-page-name"/>}</pre>
+<p class="calibre2">Now, running the preceding rule only detected the executable files:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara -r suspicious.yara samples/</strong><br class="title-page-name"/>suspicious_strings samples//spybot.exe<br class="title-page-name"/>suspicious_strings samples//wuamqr.exe</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">7.4.4 Applications of YARA</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Let's take another example of the sample that was previously used in <em class="calibre17">Section 6.5</em>, <em class="calibre17">Examining PE resources</em>. The sample (<kbd class="calibre13">5340.exe</kbd>) stored a decoy excel document in its resource section; some malware programs store a decoy document to present it to the user upon execution. The following YARA rule detects an executable file containing an embedded Microsoft Office document in it. The rule will trigger if the hex string is found at an offset greater than <kbd class="calibre13">1024</kbd> bytes in the file (this skips the PE header), and the <kbd class="calibre13">filesize</kbd> specifies the end of the file:</p>
+<pre class="calibre18">rule embedded_office_document<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>description = "Detects embedded office document"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>    $mz = { 4D 5A }<br class="title-page-name"/>    $a = { D0 CF 11 E0 A1 B1 1A E1 }<br class="title-page-name"/>condition:<br class="title-page-name"/>    ($mz at 0) and $a in (1024..filesize)<br class="title-page-name"/>}</pre>
+<p class="calibre2">Running the preceding yara rule detected only the sample that contained the embedded excel document:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara -r embedded_doc.yara samples/</strong><br class="title-page-name"/>embedded_office_document samples//5340.exe</pre>
+<p class="calibre2">The following example detects a malware sample called <em class="calibre17">9002 RAT</em> using the serial number of its digital certificate. RAT 9002 used a digital certificate with a serial number <kbd class="calibre13">45 6E 96 7A 81 5A A5 CB B9 9F B8 6A CA 8F 7F 69</kbd> (<a href="https://blog.cylance.com/another-9002-trojan-variant" class="calibre10">https://blog.cylance.com/another-9002-trojan-variant</a>). The serial number can be used as a signature to detect samples that have the same digital certificate:</p>
+<pre class="calibre18">rule mal_digital_cert_9002_rat<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>    description = "Detects malicious digital certificates used by RAT 9002"<br class="title-page-name"/>    ref = "http://blog.cylance.com/another-9002-trojan-variant"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>    $mz = { 4D 5A }<br class="title-page-name"/>    $a = { 45 6e 96 7a 81 5a a5 cb b9 9f b8 6a ca 8f 7f 69 }<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>    ($mz at 0) and ($a in (1024..filesize))<br class="title-page-name"/>}</pre>
+<p class="calibre2">Running the rule detected all samples with the same digital certificate, and all of these samples turned out to be <em class="calibre17">RAT 9002</em> samples:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara -r digi_cert_9002.yara samples/</strong><br class="title-page-name"/>mal_digital_cert_9002_rat samples//ry.dll<br class="title-page-name"/>mal_digital_cert_9002_rat samples//rat9002/Mshype.dll<br class="title-page-name"/>mal_digital_cert_9002_rat samples//rat9002/bmp1f.exe</pre>
+<p class="calibre2">YARA rules can also be used to detect packers. In <em class="calibre17">Section 5</em>, <em class="calibre17">Determining file obfuscation</em>, we looked at how to detect packers using the <em class="calibre17">Exeinfo PE</em> tool. <em class="calibre17">Exeinfo PE</em> uses signatures stored in a plain text file called <kbd class="calibre13">userdb.txt</kbd>. The following is an example signature format used by <em class="calibre17">Exeinfo PE</em> to detect the <em class="calibre17">UPX</em> packer:</p>
+<pre class="calibre18">[UPX 2.90 (LZMA)]<br class="title-page-name"/>signature = 60 BE ?? ?? ?? ?? 8D BE ?? ?? ?? ?? 57 83 CD FF EB 10 90 90 90 90 90 90 8A 06 46 88 07 47 01 DB 75 07 8B 1E 83 EE FC 11 DB 72 ED B8 01 00 00 00 01 DB 75 07 8B 1E 83 EE FC 11 DB 11 C0 01 DB<br class="title-page-name"/>ep_only = true</pre>
+<p class="calibre2">The <kbd class="calibre13">ep_only=true</kbd> in the preceding signature means that <em class="calibre17">Exeinfo PE</em> should only check for the signature at the program's address of the entry point (which is where the code starts executing). The preceding signature can be converted to a YARA rule. The new versions of YARA support the <em class="calibre17">PE</em> module, which allows you to create rules for PE files by using attributes and features of the PE file format. If you are using newer versions of YARA, the Exeinfo PE signature can be translated to a YARA rule as shown here:</p>
+<pre class="calibre18">import "pe"<br class="title-page-name"/>rule UPX_290_LZMA<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>    description = "Detects UPX packer 2.90"<br class="title-page-name"/>    ref = "userdb.txt file from the Exeinfo PE"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>    $a = { 60 BE ?? ?? ?? ?? 8D BE ?? ?? ?? ?? 57 83 CD FF EB 10 90 90 90 90 90 90 8A 06 46 88 07 47 01 DB 75 07 8B 1E 83 EE FC 11 DB 72 ED B8 01 00 00 00 01 DB 75 07 8B 1E 83 EE FC 11 DB 11 C0 01 DB }<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>    $a at pe.entry_point<br class="title-page-name"/>} </pre>
+<p class="calibre2">If you are using older versions of YARA (which do not have support for the PE module), then use the following rule:</p>
+<pre class="calibre18">rule UPX_290_LZMA<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>    description = "Detects UPX packer 2.90"<br class="title-page-name"/>    ref = "userdb.txt file from the Exeinfo PE"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>    $a = { 60 BE ?? ?? ?? ?? 8D BE ?? ?? ?? ?? 57 83 CD FF EB 10 90 90 90 90 90 90 8A 06 46 88 07 47 01 DB 75 07 8B 1E 83 EE FC 11 DB 72 ED B8 01 00 00 00 01 DB 75 07 8B 1E 83 EE FC 11 DB 11 C0 01 DB }<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>    $a at entrypoint<br class="title-page-name"/>} </pre>
+<p class="calibre2">Now, running a yara rule on the samples directory detected the samples that were packed with UPX:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara upx_test_new.yara samples/</strong><br class="title-page-name"/>UPX_290_LZMA samples//olib.exe<br class="title-page-name"/>UPX_290_LZMA samples//spybot_packed.exe</pre>
+<p class="calibre2">Using the preceding method, all the packer signatures in Exeinfo PE's <kbd class="calibre13">userdb.txt</kbd> can be converted to YARA rules.</p>
+<div class="packt_tip"><em class="calibre22">PEiD</em> is another tool that detects packers (this tool is no longer supported); it stores the signature in a text file, <kbd class="calibre42">UserDB.txt</kbd>. Python scripts <em class="calibre22">peid_to_yara.py</em> written by Matthew Richard (part of Malware Analyst's Cookbook) and Didier Steven's peid<em class="calibre22">-</em>userdb<em class="calibre22">-to-yara-rules.py</em> (<a href="https://github.com/DidierStevens/DidierStevensSuite/blob/master/peid-userdb-to-yara-rules.py" class="calibre20">https://github.com/DidierStevens/DidierStevensSuite/blob/master/peid-userdb-to-yara-rules.py</a>) convert <kbd class="calibre42">UserDB.txt</kbd> signatures to YARA rules.</div>
+<p class="calibre2">YARA can be used to detect patterns in any file. The following YARA rule detects communication of different variants of the <em class="calibre17">Gh0stRAT</em> malware:</p>
+<pre class="calibre18">rule Gh0stRat_communications<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>Description = "Detects the Gh0stRat communication in Packet Captures"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>$gst1 = {47 68 30 73 74 ?? ?? 00 00 ?? ?? 00 00 78 9c}<br class="title-page-name"/>$gst2 = {63 62 31 73 74 ?? ?? 00 00 ?? ?? 00 00 78 9c}<br class="title-page-name"/>$gst3 = {30 30 30 30 30 30 30 30 ?? ?? 00 00 ?? ?? 00 00 78 9c}<br class="title-page-name"/>$gst4 = {45 79 65 73 32 ?? ?? 00 00 ?? ?? 00 00 78 9c}<br class="title-page-name"/>$gst5 = {48 45 41 52 54 ?? ?? 00 00 ?? ?? 00 00 78 9c}<br class="title-page-name"/>$any_variant = /.{5,16}\x00\x00..\x00\x00\x78\x9c/<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>any of ($gst*) or ($any_variant)<br class="title-page-name"/>}</pre>
+<p class="calibre2">Running the preceding rule on a directory containing network packet captures (pcaps), detecting the GhostRAT pattern in some of the pcaps as shown here:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara ghost_communications.yara pcaps/</strong><br class="title-page-name"/>Gh0stRat_communications pcaps//Gh0st.pcap<br class="title-page-name"/>Gh0stRat_communications pcaps//cb1st.pcap<br class="title-page-name"/>Gh0stRat_communications pcaps//HEART.pcap</pre>
+<p class="calibre2">After you analyze the malware, you can create signatures to identify its components; the following code shows an example YARA rule to detect the driver and the DLL components of <em class="calibre17">Darkmegi Rootkit</em>:</p>
+<pre class="calibre18">rule Darkmegi_Rootkit<br class="title-page-name"/>{<br class="title-page-name"/>meta:<br class="title-page-name"/>Description = "Detects the kernel mode Driver and Dll component of Darkmegi/waltrodock rootkit"<br class="title-page-name"/><br class="title-page-name"/>strings:<br class="title-page-name"/>$drv_str1 = "com32.dll"<br class="title-page-name"/>$drv_str2 = /H:\\RKTDOW~1\\RKTDRI~1\\RKTDRI~1\\objfre\\i386\\RktDriver.pdb/<br class="title-page-name"/>$dll_str1 = "RktLibrary.dll"<br class="title-page-name"/>$dll_str2 = /\\\\.\\NpcDark/<br class="title-page-name"/>$dll_str3 = "RktDownload"<br class="title-page-name"/>$dll_str4 = "VersionKey.ini"<br class="title-page-name"/><br class="title-page-name"/>condition:<br class="title-page-name"/>(all of them) or (any of ($drv_str*)) or (any of ($dll_str*))<br class="title-page-name"/>}</pre>
+<p class="calibre2">The preceding rule was created after analyzing a single sample of <em class="calibre17">Darkmegi</em>; however, running the preceding rule on a directory containing malware samples detected all the <em class="calibre17">Darkmegi</em> rootkit samples matching the pattern:</p>
+<pre class="calibre18">$<strong class="calibre1"> yara darkmegi.yara samples/</strong><br class="title-page-name"/>Darkmegi_Rootkit samples//63713B0ED6E9153571EB5AEAC1FBB7A2<br class="title-page-name"/>Darkmegi_Rootkit samples//E7AB13A24081BFFA21272F69FFD32DBF-<br class="title-page-name"/>Darkmegi_Rootkit samples//0FC4C5E7CD4D6F76327D2F67E82107B2<br class="title-page-name"/>Darkmegi_Rootkit samples//B9632E610F9C91031F227821544775FA<br class="title-page-name"/>Darkmegi_Rootkit samples//802D47E7C656A6E8F4EA72A6FECD95CF<br class="title-page-name"/>Darkmegi_Rootkit samples//E7AB13A24081BFFA21272F69FFD32DBF<br class="title-page-name"/>[......................REMOVED..............................]</pre>
+<p class="calibre2">YARA is a powerful tool; creating YARA rules to scan a repository of known samples can identify and classify samples having same characteristics.</p>
+<div class="packt_tip">The strings that you use in the rule might create false positives. It is a good idea to test your signatures against known good files and also to think of situations that might trigger false positives. To write sound YARA rules, read <a href="https://www.bsk-consulting.de/2015/02/16/write-simple-sound-yara-rules/" class="calibre20">https://www.bsk-consulting.de/2015/02/16/write-simple-sound-yara-rules/</a>. For generating YARA rules, you might consider using Florian Roth's <em class="calibre22">yarGen</em> (<a href="https://github.com/Neo23x0/yarGen" class="calibre20">https://github.com/Neo23x0/yarGen</a>) or Joe Security's YARA rule generator (<a href="https://www.yara-generator.net/" class="calibre20">https://www.yara-generator.net/</a>).</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Summary</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Static analysis is the first step in malware analysis; it allows you to extract valuable information from the binary and helps in comparing and classifying the malware samples. This chapter introduced you to various tools and techniques, using which different aspects of malware binary can be determined without executing it. In the next chapter, <em class="calibre17">Dynamic Analysis</em>, you will learn how to determine the behavior of malware by executing it within an isolated environment.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

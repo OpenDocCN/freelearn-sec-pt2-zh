@@ -1,0 +1,561 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Dynamic Analysis</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Dynamic analysis (behavioral analysis) involves analyzing a sample by executing it in an isolated environment and monitoring its activities, interaction, and effect on the system. In the previous chapter, you learned the tools, concepts, and techniques to examine the different aspects of the suspect binary without executing it. In this chapter, we will build on that information to further explore the nature, purpose, and functionality of the suspect binary using dynamic analysis.</p>
+<p class="calibre2">You will learn the following topics:</p>
+<ul class="calibre11">
+<li class="calibre12">Dynamic analysis tools and their features</li>
+<li class="calibre12">Simulating internet services</li>
+<li class="calibre12">Steps involved in dynamic analysis</li>
+<li class="calibre12">Monitoring the malware activity and understanding its behavior</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">1. Lab Environment Overview</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">When performing dynamic analysis, you will be executing the malware specimen, so you need to have a safe and secure lab environment to prevent your production system from being infected. To demonstrate the concepts, I will be using the isolated lab environment that was configured in <a target="_blank" href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17"><span class="calibre7">Introduction to Malware Analysis</span></em>. The following diagram shows the lab environment that will be used to perform dynamic analysis and the same lab architecture is used throughout the book:</p>
+<div class="cdpaligncenter"><img src="../images/00035.jpeg" class="calibre56"/></div>
+<p class="calibre2">In this setup, both the Linux and Windows VM were configured to use the host-only network configuration mode. The Linux VM was preconfigured to an IP address of <kbd class="calibre13">192.168.1.100</kbd>, and the IP address of the Windows VM was set to <kbd class="calibre13">192.168.1.50</kbd>. The default gateway and the DNS of the Windows VM were set to the IP address of the Linux VM (<kbd class="calibre13">192.168.1.100</kbd>), so all the Windows network traffic is routed through the Linux VM.</p>
+<p class="calibre2">The Windows VM will be used to execute the malware sample during analysis, and the Linux VM will be used to monitor the network traffic and will be configured to simulate internet services (such as DNS, HTTP, and so on) to provide the appropriate response when malware requests these services.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">2. System And Network Monitoring</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">When malware is executed, it can interact with a system in various ways and perform different activities. For example, when executed, a malware can spawn a child process, drop additional files on the filesystem, create registry keys and values for its persistence, and download other components or take commands from the command and control server. Monitoring a malware's interaction with the system and network will help in gaining a better understanding of the nature and purpose of the malware.</p>
+<p class="calibre2">During dynamic analysis, when the malware is executed, you will carry out various monitoring activities. The objective is to gather real-time data related to malware behavior and its the impact on the system. The following list outlines different types of monitoring carried out during dynamic analysis:</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Process monitoring</strong>: Involves monitoring the process activity and examining the properties of the result process during malware execution.</li>
+<li class="calibre12"><strong class="calibre1">File system monitoring</strong>: Includes monitoring the real-time file system activity during malware execution.</li>
+<li class="calibre12"><strong class="calibre1">Registry monitoring</strong>: Involves monitoring the registry keys accessed/modified and registry data that is being read/written by the malicious binary.</li>
+<li class="calibre12"><strong class="calibre1">Network monitoring</strong>: Involves monitoring the live traffic to and from the system during malware execution.</li>
+</ul>
+<p class="calibre2">The monitoring activities explained in the preceding points will help in gathering host and network information related to the malware's behavior. The upcoming sections will cover the practical use of these activities. In the next section, you will understand various tools that can be used to perform these monitoring activities.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3. Dynamic Analysis (Monitoring) Tools</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Before performing dynamic analysis, it is essential to understand the tools that you will use to monitor the malware's behavior. In this chapter and throughout this book, various malware analysis tools will be covered. If you have setup your lab environment as described in <a target="_blank" href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, you can download these tools to your <em class="calibre17">host machine</em> and then transfer/install those tools to your virtual machines and take a new, clean snapshot.</p>
+<p class="calibre2">This section covers various dynamic analysis tools and some of their features. Later in this chapter, you will understand how to use these tools to monitor the behavior of the malware while it is executing. You will need to run these tools with administrator privileges; this can be done by right-clicking on the executable and selecting <span class="calibre7">Run as administrator</span>. While you are reading, it is recommended that you run these tools and get familiar with their features.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.1 Process Inspection with Process Hacker</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Process Hacker</em> (<a href="http://processhacker.sourceforge.net/" class="calibre10">http://processhacker.sourceforge.net/</a>) is an open source, multi-purpose tool that helps in monitoring system resources. It is a great tool for examining the processes running on the system and to inspect the process attributes. It can also be used to explore services, network connections, disk activity, and so on.</p>
+<p class="calibre2">Once the malware specimen is executed, this tool can help you identify the newly created malware process (its process name and process ID), and by right-clicking on a process name and selecting <span class="calibre7">P<span class="calibre7">roperties</span></span>, you will be able to examine various process attributes. You can also right-click on a process and terminate it.</p>
+<p class="calibre2">The following screenshot shows Process Hacker listing all the processes <span class="calibre7"> running </span>on the system, and the properties of <kbd class="calibre13">wininit.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00036.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.2 Determining System Interaction with Process Monitor</h1>
+                
+            
+            <article>
+                
+<p class="calibre2"><em class="calibre17">Process Monitor</em> (<a href="https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx" class="calibre10">https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx</a>) is an advanced monitoring tool that shows the real-time interaction of the processes with the filesystem, registry, and process/thread activity.</p>
+<p class="calibre2">When you run this tool (run as Administrator), you will immediately notice that it captures all the system events, as shown in the following screenshot. To stop capturing the events, you can press <span class="calibre7">Ctrl + E</span>, and to clear all the events you can press <span class="calibre7">Ctrl+ X</span>. The following screenshot shows the activities captured by <span class="calibre7">Process Monitor</span> on a clean system:</p>
+<div class="cdpaligncenter"><img src="../images/00037.jpeg" class="calibre41"/></div>
+<p class="calibre2">From the events captured by the <span class="calibre7">Process Monitor</span>, you can see that lots of activity gets generated on a clean system. When performing malware analysis, you will only be interested in the activities produced by the malware. To reduce noise, you can use the filtering features which hides unwanted entries and allows you to filter on specific attributes. To access this feature, select the <span class="calibre7">F<span class="calibre7">ilter</span></span> menu and then click on <span class="calibre7">Filter</span> (or press <span class="calibre7">Ctrl + L</span>). In the following screenshot, the filter is configured to display events only related to the process, <kbd class="calibre13">svchost.exe</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00038.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.3 Logging System Activities Using Noriben</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Even though Process Monitor is a great tool to monitor a malware's interaction with the system, it can be very noisy, and manual effort is required to filter the noise. <em class="calibre17">Noriben</em> (<a href="https://github.com/Rurik/Noriben" class="calibre10">https://github.com/Rurik/Noriben</a>) is a Python script that works in conjunction with Process Monitor and helps in collecting, analyzing, and reporting runtime indicators of the malware. The advantage of using Noriben is that it comes with pre-defined filters that assist in reducing noise and allow you to focus on the malware-related events.</p>
+<p class="calibre2">To use Noriben, download it to your Windows VM, extract it to a folder, and copy Process Monitor (<kbd class="calibre13">Procmon.exe</kbd>) into the same folder before running the <kbd class="calibre13">Noriben.py</kbd> Python script, as shown in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00039.jpeg" class="calibre41"/></div>
+<p class="calibre2">When you run <em class="calibre17">Noriben</em>, it launches <em class="calibre17">Process Monitor</em>. Once you are done with the monitoring, you can stop Noriben by pressing <span class="calibre7">Ctrl + C</span>, which will terminate Process Monitor. Once terminated, Noriben stores the results in a <em class="calibre17">text file</em> (<kbd class="calibre13">.txt</kbd>) and a <em class="calibre17">CSV file</em> (<kbd class="calibre13">.csv</kbd>) in the same directory. The <em class="calibre17">text file</em> contains events segregated based on the categories (like process, file, registry, and network activity) in separate sections, as shown in the following screenshot. Also, note that the number of events is much less because it applied predefined filters that reduced most of the unwanted noise:</p>
+<div class="cdpaligncenter"><img src="../images/00040.jpeg" class="calibre41"/></div>
+<p class="calibre2">The <em class="calibre17">CSV file</em> contains all the events (process, file, registry, and network activity) sorted by the timeline (the order in which the events occurred), as shown in the following screenshot:</p>
+<div class="cdpaligncenter"><img src="../images/00041.jpeg" class="calibre41"/></div>
+<p class="calibre2">The <em class="calibre17">text file</em> and the <em class="calibre17">CSV</em> file can give different perspectives. If you are interested in the summary of events based on the category then you can look at the text file; if you are interested in the sequence of events in the order in which it occurred then you can view the <em class="calibre17">CSV</em> file.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.4 Capturing Network Traffic With Wireshark</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">When the malware is executed, you will want to capture the network traffic generated as a result of running the malware; this will help you understand the communication channel used by the malware and will also help in determining network-based indicators. <em class="calibre17">Wireshark</em> (<a href="https://www.wireshark.org/" class="calibre10">https://www.wireshark.org/</a>) is a packet sniffer that allows you to capture the network traffic. Installation of Wireshark on the <em class="calibre17">Linux VM </em>was covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17"><span class="calibre7">Introduction to Malware Analysis</span></em>). To invoke Wireshark on Linux, run the following command:</p>
+<pre class="calibre18"><strong class="calibre1">$ sudo wireshark</strong></pre>
+<p class="calibre2">To start capturing the traffic on a network interface, click on <span class="calibre7"><span class="calibre7">Capture</span> | <span class="calibre7"><strong class="calibre5">Options</strong></span></span> ( Or press <em class="calibre17"><span class="calibre7">Ctrl + K</span></em>), select the network interface, and click on <span class="calibre7">Start</span>:</p>
+<div class="cdpaligncenter"><img src="../images/00042.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">3.5 Simulating Services with INetSim</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Most malware, when executed, reach out to the internet (command and control server), and it is not a good idea to allow the malware to connect to its C2 server, and also sometimes these servers may be unavailable. During malware analysis, you need to determine the behavior of the malware without allowing it to contact the actual <em class="calibre17">command and control (C2)</em> server, but at the same time, you need to provide all the services required by the malware so that it can continue its operation.</p>
+<p class="calibre2"><em class="calibre17">INetSim</em> is a free Linux-based software suite for simulating standard internet services (such as DNS, HTTP/HTTPS, and so on). The steps to install and configure <em class="calibre17">INetSim</em> on the <em class="calibre17">Linux VM</em> were covered in <a href="part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 1</a>, <em class="calibre17"><span class="calibre7">Introduction to Malware Analysis</span></em>. Once INetSim is launched, it simulates various services, as shown in the following output, and it also runs a dummy service that handles connections directed at nonstandard ports:</p>
+<pre class="calibre18">$ <strong class="calibre1">sudo inetsim</strong><br class="title-page-name"/>INetSim 1.2.6 (2016-08-29) by Matthias Eckert &amp; Thomas Hungenberg<br class="title-page-name"/>Using log directory: /var/log/inetsim/<br class="title-page-name"/>Using data directory: /var/lib/inetsim/<br class="title-page-name"/>Using report directory: /var/log/inetsim/report/<br class="title-page-name"/>Using configuration file: /etc/inetsim/inetsim.conf<br class="title-page-name"/>Parsing configuration file.<br class="title-page-name"/>Configuration file parsed successfully.<br class="title-page-name"/>=== INetSim main process started (PID 2758) ===<br class="title-page-name"/>Session ID: 2758<br class="title-page-name"/>Listening on: 192.168.1.100<br class="title-page-name"/>Real Date/Time: 2017-07-09 20:56:44<br class="title-page-name"/>Fake Date/Time: 2017-07-09 20:56:44 (Delta: 0 seconds)<br class="title-page-name"/> Forking services...<br class="title-page-name"/>  * irc_6667_tcp - started (PID 2770)<br class="title-page-name"/>  * dns_53_tcp_udp - started (PID 2760)<br class="title-page-name"/>  * time_37_udp - started (PID 2776)<br class="title-page-name"/>  * time_37_tcp - started (PID 2775)<br class="title-page-name"/>  * dummy_1_udp - started (PID 2788)<br class="title-page-name"/>  * smtps_465_tcp - started (PID 2764)<br class="title-page-name"/>  * dummy_1_tcp - started (PID 2787)<br class="title-page-name"/>  * pop3s_995_tcp - started (PID 2766)<br class="title-page-name"/>  * ftp_21_tcp - started (PID 2767)<br class="title-page-name"/>  * smtp_25_tcp - started (PID 2763)<br class="title-page-name"/>  * ftps_990_tcp - started (PID 2768)<br class="title-page-name"/>  * pop3_110_tcp - started (PID 2765)<br class="title-page-name"/>  [...............REMOVED.<br class="title-page-name"/>..............]<br class="title-page-name"/>  * http_80_tcp - started (PID 2761)<br class="title-page-name"/>  * https_443_tcp - started (PID 2762)<br class="title-page-name"/> done.<br class="title-page-name"/>Simulation running.</pre>
+<p class="calibre2">Apart from simulating services, INetSim can log communications, and it can also be configured to respond to HTTP/HTTPS requests and return any files based on the extensions. For example, if malware requests an executable (<kbd class="calibre13">.exe</kbd>) file from the C2 server, INetSim can return a dummy executable file to the malware. That way, you get to know what malware does with the executable file after downloading it from the C2 server.</p>
+<p class="calibre2">The following example demonstrates the use of INetSim. In this example, a malware sample was executed on the <em class="calibre17">Windows VM</em>, and the network traffic was captured using <em class="calibre17">Wireshark</em> on the <em class="calibre17">Linux VM</em> without invoking <em class="calibre17">INetSim</em>. The following screenshot displays the traffic captured by Wireshark. It shows that the infected Windows system (<kbd class="calibre13">192.168.1.50</kbd>) is trying to communicate with the C2 server by first resolving the C2 domain, but because our Linux VM does not have a DNS server running, that domain could not be resolved (as indicated by the Port Unreachable message):</p>
+<div class="cdpaligncenter"><img src="../images/00043.jpeg" class="calibre41"/></div>
+<p class="calibre2">This time, the malware was executed, and the network traffic was captured on the Linux VM with INetSim running (simulating services). From the following screenshot, it can be seen that the malware first resolves the C2 domain, which is resolved to the Linux VM's IP address of <kbd class="calibre13">192.168.1.100</kbd>. Once resolved, it then makes an HTTP communication to download a file (<kbd class="calibre13">settings.ini</kbd>):</p>
+<div class="cdpaligncenter"><img src="../images/00044.jpeg" class="calibre41"/></div>
+<p class="calibre2">From the following screenshot, it can be seen that the HTTP response was given by the HTTP server simulated by INetSim. In this case, the <kbd class="calibre13">User-Agent</kbd> field in the HTTP request suggests that the standard browser did not initiate the communication and such an indicator can be used to create network signatures:</p>
+<div class="cdpaligncenter"><img src="../images/00045.jpeg" class="calibre57"/></div>
+<p class="calibre2">By simulating the services, it was possible to determine that the malware downloads a file from the C2 server after execution. A tool such as INetSim allows a security analyst to quickly determine the malware's behavior and capture its network traffic without having to manually configure all the services (such as DNS, HTTP and so on).</p>
+<div class="packt_infobox">Another alternative to <em class="calibre22">INetSim</em> is <em class="calibre22">FakeNet-NG</em> (<a href="https://github.com/fireeye/flare-fakenet-ng" class="calibre20">https://github.com/fireeye/flare-fakenet-ng</a>), which allows you to intercept and redirect all or specific network traffic by simulating network services.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">4. Dynamic Analysis Steps</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">During dynamic analysis (behavioral analysis)<em class="calibre17">,</em> you will follow a sequence of steps to determine the functionality of the malware. The following list outlines the steps involved in the dynamic analysis:</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Reverting to the clean snapshot</strong>: This includes reverting your virtual machines to a clean state.</li>
+<li class="calibre12"><strong class="calibre1">Running the monitoring/dynamic analysis tools</strong>: In this step, you will run the monitoring tools before executing the malware specimen. To get the most out of the monitoring tools covered in the previous section, you need to run them with administrator privileges.</li>
+<li class="calibre12"><strong class="calibre1">Executing the malware specimen</strong>: In this step, you will run the malware sample with administrator privileges.</li>
+<li class="calibre12"><strong class="calibre1">Stopping the monitoring tools</strong>: This involves terminating the monitoring tools after the malware binary is executed for a specified time.</li>
+<li class="calibre12"><strong class="calibre1">Analyzing the results</strong>: This involves collecting the data/reports from the monitoring tools and analyzing them to determine the malware's behavior and functionality.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5. Putting it All Together: Analyzing a Malware Executable</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Once you have an understanding of the dynamic analysis tools and steps involved in dynamic analysis, these tools can be used together to glean maximum information from the malware sample. In this section, we will perform both static and dynamic analysis to determine the characteristics and behavior of a malware sample (<kbd class="calibre13">sales.exe</kbd>).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5.1 Static Analysis of the Sample</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Let's start the examination of the malware sample with static analysis. In static analysis, since the malware sample is not executed, it can be performed on either the <em class="calibre17">Linux VM</em> or the <em class="calibre17">Windows VM</em>, using the tools and techniques covered in <a href="part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485" class="calibre10">Chapter 2</a>, <em class="calibre17"><span class="calibre7">Static Analysis</span></em>. We will start by determining the <em class="calibre17">file type</em> and the <em class="calibre17">cryptographic hash</em>. Based on the following output, the malware binary is a 32-bit executable file:</p>
+<pre class="calibre18">$ <strong class="calibre1">file sales.exe</strong> <br class="title-page-name"/>sales.exe: <strong class="calibre1">PE32</strong> executable (GUI) Intel 80386, for MS Windows</pre>
+<pre class="calibre18">$ <strong class="calibre1">md5sum sales.exe</strong><br class="title-page-name"/>51d9e2993d203bd43a502a2b1e1193da sales.exe</pre>
+<p class="calibre2">The ASCII strings extracted from the binary using the <em class="calibre17">strings</em> utility contains references to a set of batch commands, which looks like a command to delete files. The strings also show a reference to a batch file (<kbd class="calibre13">_melt.bat</kbd>), which indicates that upon execution, the malware probably creates a batch (<kbd class="calibre13">.bat</kbd>) file and executes those batch commands. The strings also have references to the <kbd class="calibre13">RUN</kbd> registry key; this is interesting because most malware adds an entry in the <kbd class="calibre13">RUN</kbd> registry key to persist on the system after reboot:</p>
+<pre class="calibre18">!This program cannot be run in DOS mode.<br class="title-page-name"/>Rich<br class="title-page-name"/>.text<br class="title-page-name"/>`.rdata<br class="title-page-name"/>@.data<br class="title-page-name"/>.rsrc<br class="title-page-name"/>[....REMOVED....]<br class="title-page-name"/>:over2<br class="title-page-name"/><strong class="calibre1">If not exist "</strong><br class="title-page-name"/><strong class="calibre1">" GoTo over1</strong><br class="title-page-name"/><strong class="calibre1">del "</strong><br class="title-page-name"/><strong class="calibre1">GoTo over2</strong><br class="title-page-name"/><strong class="calibre1">:over1</strong><br class="title-page-name"/><strong class="calibre1">del "</strong><br class="title-page-name"/><strong class="calibre1">_melt.bat</strong><br class="title-page-name"/>[....REMOVED....]<br class="title-page-name"/><strong class="calibre1">Software\Microsoft\Windows\CurrentVersion\Run<br class="title-page-name"/></strong></pre>
+<p class="calibre2">Examining the imports shows references to <em class="calibre17">file system</em>-and <em class="calibre17">registry-</em>related API calls, indicating the malware's ability to perform file system and registry operations, as highlighted in the following output. The presence of API calls <kbd class="calibre13">WinExec</kbd> and <kbd class="calibre13">ShellExecuteA</kbd>, suggest the malware's capability to invoke other programs (create a new process):</p>
+<pre class="calibre18">kernel32.dll<br class="title-page-name"/>  [.....REMOVED......]<br class="title-page-name"/>  SetFilePointer<br class="title-page-name"/>  SizeofResource<br class="title-page-name"/>  <strong class="calibre1">WinExec</strong><br class="title-page-name"/>  <strong class="calibre1">WriteFile</strong><br class="title-page-name"/>  lstrcatA<br class="title-page-name"/>  lstrcmpiA<br class="title-page-name"/>  lstrlenA<br class="title-page-name"/>  <strong class="calibre1">CreateFileA</strong><br class="title-page-name"/>  <strong class="calibre1">CopyFileA</strong><br class="title-page-name"/>  LockResource<br class="title-page-name"/>  CloseHandle<br class="title-page-name"/><br class="title-page-name"/>shell32.dll<br class="title-page-name"/>  SHGetSpecialFolderLocation<br class="title-page-name"/>  SHGetPathFromIDListA<br class="title-page-name"/>  <strong class="calibre1">ShellExecuteA</strong><br class="title-page-name"/><br class="title-page-name"/>advapi32.dll<br class="title-page-name"/><strong class="calibre1">  RegCreateKeyA</strong><br class="title-page-name"/><strong class="calibre1">  RegSetValueExA</strong><br class="title-page-name"/><strong class="calibre1">  RegCloseKey</strong></pre>
+<p class="calibre2">Querying the hash value from the <em class="calibre17">VirusTotal</em> database shows 58 antivirus detections, and signature names suggest that we are probably dealing with a malware sample called <em class="calibre17">PoisonIvy</em>. To perform the hash search from VirusTotal, you need internet access, and if you want to use the VirusTotal public API, then you need an API key, which can be obtained by signing up for a VirusTotal account:</p>
+<pre class="calibre18">$ <strong class="calibre1">python vt_hash_query.py 51d9e2993d203bd43a502a2b1e1193da</strong><br class="title-page-name"/>Detections: <strong class="calibre1">58/64</strong><br class="title-page-name"/>VirusTotal Results:<br class="title-page-name"/>  Bkav ==&gt; None<br class="title-page-name"/>  MicroWorld-eScan ==&gt; Backdoor.Generic.474970<br class="title-page-name"/>  nProtect ==&gt; Backdoor/W32.Poison.11776.CM<br class="title-page-name"/>  CMC ==&gt; Backdoor.Win32.Generic!O<br class="title-page-name"/>  CAT-QuickHeal ==&gt; Backdoor.Poisonivy.EX4<br class="title-page-name"/>  ALYac ==&gt; Backdoor.Generic.474970<br class="title-page-name"/>  Malwarebytes ==&gt; None<br class="title-page-name"/>  Zillya ==&gt; Dropper.Agent.Win32.242906<br class="title-page-name"/>  AegisLab ==&gt; Backdoor.W32.Poison.deut!c<br class="title-page-name"/>  TheHacker ==&gt; Backdoor/Poison.ddpk<br class="title-page-name"/>  K7GW ==&gt; Backdoor ( 04c53c5b1 )<br class="title-page-name"/>  K7AntiVirus ==&gt; Backdoor ( 04c53c5b1 )<br class="title-page-name"/>  Invincea ==&gt; heuristic<br class="title-page-name"/>  Baidu ==&gt; Win32.Trojan.WisdomEyes.16070401.9500.9998<br class="title-page-name"/>  Symantec ==&gt; Trojan.Gen<br class="title-page-name"/>  TotalDefense ==&gt; Win32/Poison.ZR!genus<br class="title-page-name"/>  TrendMicro-HouseCall ==&gt; TROJ_GEN.R047C0PG617<br class="title-page-name"/>  Paloalto ==&gt; generic.ml<br class="title-page-name"/>  ClamAV ==&gt; Win.Trojan.Poison-1487<br class="title-page-name"/>  Kaspersky ==&gt; Trojan.Win32.Agentb.jan<br class="title-page-name"/>  NANO-Antivirus ==&gt; Trojan.Win32.Poison.dstuj<br class="title-page-name"/>  ViRobot ==&gt; Backdoor.Win32.A.Poison.11776<br class="title-page-name"/>  [..................REMOVED...........................]</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">5.2 Dynamic Analysis of the Sample</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To understand the malware's behavior, the dynamic analysis tools discussed in this chapter were used, and the following dynamic analysis steps were followed:</p>
+<ol class="calibre14">
+<li value="1" class="calibre12">Both the Windows VM and the Linux VM were reverted to the clean snapshots.</li>
+<li class="calibre12" value="2">On Windows VM, <em class="calibre19">Process Hacker</em> was started with administrator privileges to determine process attributes, and the <em class="calibre19">Noriben</em> Python script was executed (which in turn started <em class="calibre19">Process Monitor</em>) to inspect the malware's interaction with the system.</li>
+<li class="calibre12" value="3">On the Linux VM, <em class="calibre19">INetSim</em> was launched to simulate network services, and <em class="calibre19">Wireshark</em> was executed and configured to capture the network traffic on the network interface.</li>
+<li class="calibre12" value="4">With all the monitoring tools running, the malware was executed with administrator privileges (right click <span>| <span>Run as Administrator</span></span>) for around 40 seconds.</li>
+<li class="calibre12" value="5">After 40 seconds, Noriben was stopped on the Windows VM. INetSim and Wireshark were stopped on the Linux VM.</li>
+<li class="calibre12" value="6">Results from the monitoring tools were collected and examined to understand the malware's behavior.</li>
+</ol>
+<p class="calibre2">After performing dynamic analysis, the following information about the malware was determined from different monitoring tools:</p>
+<ol class="calibre14">
+<li value="1" class="calibre12">Upon executing the malware sample (<kbd class="calibre13">sales.exe</kbd>), a new process, <kbd class="calibre13">iexplorer.exe</kbd>, was created with a process ID of <kbd class="calibre13">1272</kbd>. The process executable is located in the <kbd class="calibre13">%Appdata%</kbd> directory. The following screenshot is the output from <em class="calibre19">Process Hacker</em> showing the newly created process:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00046.jpeg" class="calibre41"/></div>
+<ol start="2" class="calibre14">
+<li class="calibre12" value="2">By examining the Noriben logs, it can be determined that the malware dropped a file called <kbd class="calibre13">iexplorer.exe</kbd> in the <kbd class="calibre13">%AppData%</kbd> directory. The name of the file (<kbd class="calibre13">iexplorer.exe</kbd>) is similar to the file name of the Internet Explorer (<kbd class="calibre13">iexplore.exe</kbd>) browser. This technique is a deliberate attempt by the attacker to make the malicious binary look like a legitimate executable:</li>
+</ol>
+<pre class="calibre18">[<strong class="calibre1">CreateFile</strong>] sales.exe:3724 &gt; %AppData%\iexplorer.exe</pre>
+<p class="calibre2">After dropping the file, the malware executed the dropped file. As a result of that, a new process <kbd class="calibre13">iexplorer.exe</kbd> was created. This was the process that was displayed by the <em class="calibre17">Process Hacker:</em></p>
+<pre class="calibre18">[<strong class="calibre1">CreateProcess</strong>] sales.exe:3724 &gt; "%AppData%\iexplorer.exe"</pre>
+<p class="calibre2">The malware then drops another file called <kbd class="calibre13">MDMF5A5.tmp_melt.bat</kbd>, as shown in the following output. At this point, it can be deduced that the  <kbd class="calibre13">_melt.bat</kbd> string that we found during static analysis is concatenated with another string called <kbd class="calibre13">MDMF5A5.tmp</kbd>, which is used to generate a file name,<kbd class="calibre13"> MDMF5A5.tmp_melt.bat</kbd>. Once the filename is generated, the malware drops a file with this name on the disk:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateFile</strong>] sales.exe:3724 &gt; %LocalAppData%\Temp\MDMF5A5.tmp_melt.bat</pre>
+<p class="calibre2">It then executes the dropped batch (<kbd class="calibre13">.bat</kbd>) script by invoking cmd.exe:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateProcess</strong>] sales.exe:3724 &gt; "%WinDir%\system32\<strong class="calibre1">cmd.exe</strong> /c %LocalAppData%\Temp\<strong class="calibre1">MDMF5A5.tmp_melt.bat</strong>"</pre>
+<p class="calibre2">As a result of <kbd class="calibre13">cmd.exe</kbd> executing the batch script, both the original file (<kbd class="calibre13">sales.exe</kbd>) and the batch script (<kbd class="calibre13">MDMF5A5.tmp_melt.bat</kbd>) were deleted, as shown in the following code snippet. This behavior confirms the delete functionality of the batch (<kbd class="calibre13">.bat</kbd>) file (if you recall, batch commands to delete files were found during the string extraction process):</p>
+<pre class="calibre18">[<strong class="calibre1">DeleteFile</strong>] cmd.exe:3800 &gt; %UserProfile%\Desktop\sales.exe<br class="title-page-name"/>[<strong class="calibre1">DeleteFile</strong>] cmd.exe:3800 &gt; %LocalAppData%\Temp\MDMF5A5.tmp_melt.bat</pre>
+<p class="calibre2">The malicious binary then adds the path of the dropped file, as an entry in the <kbd class="calibre13">RUN</kbd> registry key for persistence, which allows the malware to start even after the system reboots:</p>
+<pre class="calibre18">[<strong class="calibre1">RegSetValue</strong>] iexplorer.exe:1272 &gt; HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\<strong class="calibre1">Run\HKLM Key = C:\Users\test\AppData\Roaming\iexplorer.exe</strong></pre>
+<ol start="3" class="calibre14">
+<li value="3" class="calibre12">From the network traffic captured by <em class="calibre19">Wireshark</em>, it can be seen that the malware resolves the C2 domain and establishes a connection on port <kbd class="calibre13">80</kbd>:</li>
+</ol>
+<div class="cdpaligncenter"><img src="../images/00047.jpeg" class="calibre41"/></div>
+<p class="calibre2">The TCP stream of the port 80 communication, as shown in the following screenshot, is not standard HTTP traffic; this suggests that the malware probably uses a custom protocol or encrypted communication. In most cases, the malware uses a custom protocol or encrypts its network traffic to bypass network-based signatures. You need to perform code analysis of malicious binaries to determine the nature of the network traffic. In the upcoming chapters, you will learn the techniques to perform code analysis in order to gain an insight into the inner workings of a malware binary:</p>
+<div class="cdpaligncenter"><img src="../images/00048.jpeg" class="calibre41"/></div>
+<p class="calibre2">Comparing the cryptographic hash of the dropped sample (<kbd class="calibre13">iexplorer.exe</kbd>) and the original binary (<kbd class="calibre13">sales.exe</kbd>) shows that they are identical:</p>
+<pre class="calibre18">$ <strong class="calibre1">md5sum sales.exe iexplorer.exe</strong><br class="title-page-name"/>51d9e2993d203bd43a502a2b1e1193da sales.exe<br class="title-page-name"/>51d9e2993d203bd43a502a2b1e1193da iexplorer.exe</pre>
+<p class="calibre2">To summarize, when malware is executed, it copies itself into the <kbd class="calibre13">%AppData%</kbd> directory as <kbd class="calibre13">iexplorer.exe</kbd> and then drops a batch script whose job is to delete the original binary and itself. The malware then adds an entry into the registry key so that it can start every time the system starts. The malicious binary possibly encrypts its network traffic and communicates with the <em class="calibre17">command and control (C2)</em> server on port 80 using a non-standard protocol.</p>
+<p class="calibre2">By combining both static and dynamic analysis, it was possible to determine the characteristics and the behavior of the malicious binary. These analysis techniques also helped in identifying the network and host-based indicators associated with the malware sample.</p>
+<div class="packt_tip">Incident response teams use the indicators determined from the malware analysis to create the network and host-based signatures to detect additional infections on the network. When performing malware analysis, note down those indicators that can help you or your incident response team to detect infected hosts on your network.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6. Dynamic-Link Library (DLL) Analysis</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">A <em class="calibre17">Dynamic-Link Library (DLL)</em> is a module that contains functions (called <em class="calibre17">exported functions</em> or <em class="calibre17">exports</em>) that can be used by another program (such as an Executable or DLL). An executable can use the functions implemented in a DLL by importing it from the DLL.</p>
+<p class="calibre2">The Windows operating system contains many DLLs that export various functions called <em class="calibre17">Application Programming Interfaces (APIs)</em>. The functions contained in these DLLs are used by the processes to interact with the file system, process, registry, network, and the graphical user interface (GUI).</p>
+<p class="calibre2">To display the exported functions in <em class="calibre17">CFF Explorer</em> tool, load the PE file that export functions and click on <span class="calibre7">Export Directory</span>. The following screenshot show some of the functions exported by <kbd class="calibre13">Kernel32.dll</kbd> (it is an operating system DLL and is located in the <kbd class="calibre13">C:\Windows\System32</kbd> directory). One of the functions exported by <kbd class="calibre13">Kernel32.dll</kbd> is <kbd class="calibre13">CreateFile</kbd>; this API function is used to create or open a file:</p>
+<div class="cdpaligncenter"><img src="../images/00049.jpeg" class="calibre41"/></div>
+<p class="calibre2">In the following screenshot, it can be seen that <kbd class="calibre13">notepad.exe</kbd> imports some of the functions exported by <kbd class="calibre13">kernel32.dll</kbd>, including the <kbd class="calibre13">CreateFile</kbd> function. When you open or create a file with Notepad, it calls the <kbd class="calibre13">CreateFile</kbd> API implemented in <kbd class="calibre13">Kernel32.dll</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00050.jpeg" class="calibre41"/></div>
+<p class="calibre2">In the preceding example, <kbd class="calibre13">notepad.exe</kbd> did not have to implement the functionality to create or open the file in its code. To do that, it just imports and calls the <kbd class="calibre13">CreateFile</kbd> API implemented in <kbd class="calibre13">Kernel32.dll</kbd>. The advantage of implementing the DLL is that its code can be shared by multiple applications. If an application wants to call an API function, it must first load a copy of DLL that exports the API into its memory space.</p>
+<div class="packt_infobox">If you wish to know more about Dynamic-Link Libraries, read the following documents: <a href="https://support.microsoft.com/en-us/help/815065/what-is-a-dll" class="calibre20">https://support.microsoft.com/en-us/help/815065/what-is-a-dll</a> and <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx" class="calibre20">https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.1 Why Attackers Use DLLs</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">You will often see malware authors distributing their malicious code as DLL instead of executable files. The following list outlines some of the reasons why attackers implement their malicious code as DLLs:</p>
+<ul class="calibre11">
+<li class="calibre12">A DLL cannot be executed by double-clicking; DLL needs a host process to run. By distributing the malicious code as a DLL, a malware author can load his/her DLL into any process, including a legitimate process such as <kbd class="calibre13">Explorer.exe</kbd>, <kbd class="calibre13">winlogon.exe</kbd>, and so on. This technique gives the attacker the capability to hide a malware's actions, and all the malicious activity performed by the malware will appear to originate from the host process.</li>
+<li class="calibre12">Injecting a DLL into an already running process provides the attacker with the capability to persist on the system.</li>
+<li class="calibre12">When a DLL is loaded by a process into its memory space, the DLL will have access to the entire process memory space, thereby giving it the ability to manipulate the process's functionality. For example, an attacker can inject a DLL into a browser process and steal credentials by redirecting its API function.</li>
+<li class="calibre12">Analyzing a DLL is not straightforward and can be tricky compared to analyzing an executable.</li>
+</ul>
+<p class="calibre2">Most malware samples drop or download a DLL and then load the DLL into the memory space of another process. After loading the DLL, the dropper/loader component deletes itself. As a result, when performing a malware investigation, you may only find the DLL. The following section covers the techniques to analyze the DLL.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.2 Analyzing the DLL Using rundll32.exe</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">To determine the malware's behavior and to monitor its activity using dynamic analysis, it is essential to understand how to execute the DLL. As previously mentioned, a DLL needs a process to run. On Windows, <kbd class="calibre13">rundll32.exe</kbd> can be used to launch a DLL and to invoke functions exported from the DLL. The following is a syntax to launch a DLL and to invoke an export function using <kbd class="calibre13">rundll32.exe</kbd><em class="calibre17">:</em></p>
+<pre class="calibre18">rundll32.exe &lt;full path to dll&gt;,&lt;export function&gt; &lt;optional arguments&gt;</pre>
+<p class="calibre2">The parameters associated with <kbd class="calibre13">rundll32.exe</kbd> are explained as follows:</p>
+<ul class="calibre11">
+<li class="calibre12"><strong class="calibre1">Full path to DLL:</strong> Specifies the full path to the DLL, and this path cannot contain spaces or special characters.</li>
+<li class="calibre12"><strong class="calibre1">Export function</strong>: This is a function in the DLL that will be called after the DLL is loaded.</li>
+<li class="calibre12"><strong class="calibre1">Optional arguments</strong>: The arguments are optional, and if supplied, these arguments will be passed to the export function when it is called.</li>
+<li class="calibre12"><strong class="calibre1">The comma</strong>: This is put between the full path to the DLL and the export function. The export function is required for the syntax to be correct.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.2.1 Working of rundll32.exe</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Understanding the workings of <kbd class="calibre13">rundll32.exe</kbd> is important to avoid any mistakes while running the DLL. When you launch <kbd class="calibre13">rundll32.exe</kbd> using the command-line arguments mentioned previously, the following steps are performed by <kbd class="calibre13">rundll32.exe</kbd>:</p>
+<ol class="calibre14">
+<li class="calibre12" value="1">Command-line arguments passed to <kbd class="calibre13">rundll32.exe</kbd> are first validated; if the syntax is incorrect, <kbd class="calibre13">rundll32.exe</kbd> terminates.</li>
+<li class="calibre12" value="2">If the syntax is correct, it loads the supplied DLL. As a result of loading the DLL, the DLL entry point function gets executed (which in turn invokes the <kbd class="calibre13">DLLMain</kbd> function). Most malware implement their malicious code in the <kbd class="calibre13">DLLMain</kbd> function.</li>
+<li class="calibre12" value="3">After loading the DLL, it obtains the address of the export function and calls the function. If the address of the function cannot be determined, then <kbd class="calibre13">rundll32.exe</kbd> terminates.</li>
+<li class="calibre12" value="4">If the optional arguments are provided, then the optional arguments are supplied to the export function when calling it.</li>
+</ol>
+<div class="packt_infobox">Detailed information about the rundll32 interface and its working is explained in this article: <a href="https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface" class="calibre20">https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface</a>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.2.2 Launching the DLL Using rundll32.exe</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">During malware investigation, you will come across different variations of DLLs. Understanding how to recognize and analyze them is essential in determining their malicious actions. The following examples cover different scenarios involving DLLs.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Example 1 – Analyzing a DLL With No Exports</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Whenever a DLL is loaded, its entry point function gets called (which in turn calls its <kbd class="calibre13">DLLMain</kbd> function). An attacker can implement malicious functionality (such as keylogging, information stealing, and so on) in the <kbd class="calibre13">DLLMain</kbd> function without exporting any functions.</p>
+<p class="calibre2">In the following example, the malicious DLL (<kbd class="calibre13">aa.dll</kbd>) does not contain any exports, which tells you that, all the malicious functionality may be implemented in its <kbd class="calibre13">DLLmain</kbd> function, which will be executed (called from the <kbd class="calibre13">DLL entry point</kbd>) when the DLL gets loaded. From the following screenshot, it can be seen that the malware imports functions from <kbd class="calibre13">wininet.dll</kbd> (which exports the function related to HTTP or FTP). This indicates that the malware probably calls these network functions within the <kbd class="calibre13">DLLMain</kbd> function, to interact with the C2 server using HTTP or FTP protocol:</p>
+<div class="cdpaligncenter"><img src="../images/00051.jpeg" class="calibre58"/></div>
+<p class="calibre2">You might assume that, because there is no export, a DLL can be executed using the following syntax:</p>
+<pre class="calibre18">C:\&gt;rundll32.exe C:\samples\aa.dll</pre>
+<p class="calibre2">When you run a DLL with the preceding syntax, the DLL will not execute successfully; at the same time, you will not receive any error. The reason for this is that when <kbd class="calibre13">rundll32.exe</kbd> validates the command-line syntax (s<em class="calibre17">tep 1</em> mentioned in the <em class="calibre17">Section 6.2.1</em> <em class="calibre17">Working of rundll32.exe</em>), it fails the syntax check. As a result, <kbd class="calibre13">rundll32.exe</kbd> exits without loading the DLL.</p>
+<p class="calibre2">You need to make sure that the command-line syntax is correct to load a DLL successfully. The command shown in the following output should run the DLL successfully. In the following command, <kbd class="calibre13">test</kbd> is a dummy name, and there is no such export function, it is just used to make sure the command-line syntax is correct. Before running the following command, the various monitoring tools that we covered in this chapter (Process Hacker, Noriben, Wireshark, Inetsim) were started:</p>
+<pre class="calibre18">C:\&gt;rundll32.exe C:\samples\aa.dll,test</pre>
+<p class="calibre2">After running the command, the following error was received, but the DLL was successfully executed. In this case, because the syntax is correct, <kbd class="calibre13">rundll32.exe</kbd> loaded the DLL (<em class="calibre17">step 2,</em> <span class="calibre7">mentioned in the </span><em class="calibre17">Section 6.2.1</em><span class="calibre7"> </span><em class="calibre17">Working of rundll32.exe</em>). As a result, its <kbd class="calibre13">DLL entry point</kbd> function was called (which in turn called <kbd class="calibre13">DLLMain</kbd>, containing the malicious code). Then <kbd class="calibre13">rundll32.exe</kbd> tries to find the address of the export function <kbd class="calibre13">test</kbd> (which is <em class="calibre17">step 3,</em> <span class="calibre7">mentioned in the </span><em class="calibre17">Section 6.2.1</em><span class="calibre7"> </span><em class="calibre17">Working of rundll32.exe</em>). Since it cannot find the address of <kbd class="calibre13">test</kbd>, the following error was displayed. Even though the error message was displayed, the DLL was successfully loaded (that's exactly what we wanted for monitoring its activity):</p>
+<div class="cdpaligncenter"><img src="../images/00052.jpeg" class="calibre59"/></div>
+<p class="calibre2">Upon execution, the malware establishes an HTTP connection with the C2 domain and downloads a file (<kbd class="calibre13">Thanksgiving.jpg</kbd>), as shown in the following <em class="calibre17">Wireshark</em> output:</p>
+<div class="cdpaligncenter"><img src="../images/00053.jpeg" class="calibre41"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Example 2 – Analyzing a DLL Containing Exports</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">In this example, we will look at another malicious DLL (<kbd class="calibre13">obe.dll</kbd>). The following screenshot shows two functions (<span class="calibre7"><kbd class="calibre13">DllRegisterServer</kbd> and <kbd class="calibre13">DllUnRegisterServer</kbd>) </span>exported by the DLL:</p>
+<div class="cdpaligncenter"><img src="../images/00054.jpeg" class="calibre41"/></div>
+<p class="calibre2">The DLL sample was run with the following command. Even though <kbd class="calibre13">obe.dll</kbd> was loaded into the memory of <kbd class="calibre13">rundll32.exe</kbd>, it did not trigger any behavior. This is because DLL's entry point function does not implement any functionality:</p>
+<pre class="calibre18">C:\&gt;rundll32.exe c:\samples\obe.dll,test</pre>
+<p class="calibre2">On the other hand, running the sample with the <kbd class="calibre13">DllRegisterServer</kbd> function as shown below, triggered an HTTPS communication to the C2 server. From this, it can be deduced that <kbd class="calibre13">DLLRegisterServer</kbd> implements the network functionality:</p>
+<pre class="calibre18">C:\&gt;rundll32.exe c:\samples\obe.dll,DllRegisterServer</pre>
+<p class="calibre2">The following screenshot shows the network traffic captured by Wireshark:</p>
+<div class="cdpaligncenter"><img src="../images/00055.jpeg" class="calibre41"/></div>
+<div class="packt_tip">You can write a script to determine all the exported functions (as covered in <a href="part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485" class="calibre20">Chapter 2</a>, <em class="calibre22"><span class="calibre21">Static Analysis</span></em>) in a DLL and call them in sequence while running the monitoring tools. This technique can help in understanding the functionality of each exported function. DLLRunner (<a href="https://github.com/Neo23x0/DLLRunner" class="calibre20">https://github.com/Neo23x0/DLLRunner</a>) is a Python script that executes all exported functions in a DLL.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Example 3 – Analyzing a DLL Accepting Export Arguments</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">The following example shows how you can analyze a DLL that accepts export arguments. The DLL used in this example was delivered via powerpoint, as described in this link: <a href="https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/" class="calibre10">https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/</a>.</p>
+<p class="calibre2">The DLL (<kbd class="calibre13">SearchCache.dll</kbd>) consists of an export function, <kbd class="calibre13">_flushfile@16</kbd>, whose functionality is to delete a file. This export function accepts an argument, which is the file to delete:</p>
+<div class="cdpaligncenter"><img src="../images/00056.jpeg" class="calibre41"/></div>
+<p class="calibre2">To demonstrate the delete functionality, a test file (<kbd class="calibre13">file_to_delete.txt</kbd>) was created, and the monitoring tools were launched. The test file was passed an argument to the export function <kbd class="calibre13">_flushfile@16</kbd> using the following command. After running the following command, the test file was deleted from the disk:</p>
+<pre class="calibre18">rundll32.exe c:\samples\SearchCache.dll,_flushfile@16 C:\samples\file_to_delete.txt</pre>
+<p class="calibre2">The following is the output from the Noriben logs showing <kbd class="calibre13">rundll32.exe</kbd> deleting the file <kbd class="calibre13">(file_to_delete.txt)</kbd>:</p>
+<pre class="calibre18">Processes Created:<strong class="calibre1"><br class="title-page-name"/></strong>[CreateProcess] cmd.exe:1100 &gt; "rundll32.exe  c:\samples\SearchCache.dll,_flushfile@16 C:\samples\file_to_delete.txt" [Child PID: 3348]<br class="title-page-name"/><br class="title-page-name"/>File Activity:<strong class="calibre1"><br class="title-page-name"/>[DeleteFile] rundll32.exe:3348 &gt; C:\samples\file_to_delete.txt</strong></pre>
+<div class="packt_infobox">To determine the parameters and the type of parameters accepted by an export function, you will need to perform code analysis. You will be learning code analysis techniques in the upcoming chapters.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">6.3 Analyzing a DLL with Process Checks</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Most of the time, launching a DLL with <kbd class="calibre13">rundll32.exe</kbd> will work fine, but some DLLs check if they are running under a particular process (such as <kbd class="calibre13">explorer.exe</kbd> or <kbd class="calibre13">iexplore.exe</kbd>) and might change their behavior or terminate themselves if they are running under any other process (including <kbd class="calibre13">rundll32.exe</kbd>). In such cases, you will have to inject the DLL into the specific process to trigger the behavior.</p>
+<p class="calibre2">A tool such as <em class="calibre17">RemoteDLL</em> (<a href="http://securityxploded.com/remotedll.php" class="calibre10">http://securityxploded.com/remotedll.php</a>) allows you to inject a DLL into any running process on the system. It allows you to inject a DLL using three different methods; this is useful because if one method fails, you can try another method.</p>
+<p class="calibre2">The DLL (<kbd class="calibre13">tdl.dll</kbd>) used in the following example, is a component of <em class="calibre17">TDSS Rootkit</em>. This DLL does not contain any exports; all of the malicious behavior is implemented in the DLL's <kbd class="calibre13">entry point</kbd> function. Running the DLL using the following command generated an error stating that the DLL initialization routine failed, this is an indication that the <kbd class="calibre13">DLL entry point</kbd> function was not successfully executed:</p>
+<div class="cdpaligncenter"><img src="../images/00057.jpeg" class="calibre60"/></div>
+<p class="calibre2">To understand the condition that triggered the error, static code analysis (reverse engineering) was carried out. After analyzing the code, it was found that the DLL, in its entry point function, performed a check to determine if it is running under <kbd class="calibre13">spoolsv.exe</kbd> (the print spooler service). If it is running under any other process, the DLL initialization fails:</p>
+<div class="packt_infobox">For now, don't worry about how to perform code analysis. You will learn the techniques to perform code analysis in the upcoming chapters.</div>
+<div class="cdpaligncenter"><img src="../images/00058.jpeg" class="calibre61"/></div>
+<p class="calibre2">To trigger the behavior, malicious DLL had to be injected into the <kbd class="calibre13">spoolsv.exe</kbd> process using the <em class="calibre17">RemoteDLL</em> tool. After injecting the DLL into <kbd class="calibre13">spoolsv.exe</kbd>, the following activities were captured by the monitoring tools. The malware created a folder (<kbd class="calibre13">resycled</kbd>) and a file <kbd class="calibre13">autorun.inf</kbd> on the <kbd class="calibre13">C:\</kbd> drive. It then dropped a file <kbd class="calibre13">boot.com</kbd> in the newly created folder <kbd class="calibre13">C:\resycled</kbd>:</p>
+<pre class="calibre18">[<strong class="calibre1">CreateFile</strong>] spoolsv.exe:1340 &gt; C:\<strong class="calibre1">autorun.inf</strong><br class="title-page-name"/>[<strong class="calibre1">CreateFolder</strong>] spoolsv.exe:1340 &gt; C:\<strong class="calibre1">resycled</strong><br class="title-page-name"/>[<strong class="calibre1">CreateFile</strong>] spoolsv.exe:1340 &gt; C:\<strong class="calibre1">resycled\boot.com</strong></pre>
+<p class="calibre2">The malware added the following registry entries; from the added entries you can tell that the malware is storing some encrypted or configuration data in the registry:</p>
+<pre class="calibre18">[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\extravideo\CLSID\(Default) = {6BF52A52-394A-11D3-B153-00C04F79FAA6}<br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\msqpdxvx\msqpdxpff = 8379<br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\msqpdxvx\msqpdxaff = 3368<br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\msqpdxvx\msqpdxinfo =}gx~yc~dedomcyjloumllqYPbc<br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\msqpdxvx\msqpdxid = qfx|uagbhkmohgn""YQVSVW_,(+<br class="title-page-name"/>[<strong class="calibre1">RegSetValue</strong>] spoolsv.exe:1340 &gt; HKCR\msqpdxvx\msqpdxsrv = 1745024793</pre>
+<p class="calibre2">The following screenshot shows malware's C2 communication on port <kbd class="calibre13">80</kbd>:</p>
+<div class="cdpaligncenter"><img src="../images/00059.jpeg" class="calibre41"/></div>
+<div class="packt_tip">During malware investigation, you will come across DLL, that will run only when it is loaded as a service. This type of DLL is called a <em class="calibre22">service DLL</em>. To fully understand the working of a service DLL, knowledge of code analysis and the Windows API is required, which will be covered in later chapters.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    </header><h1 class="header-title" id="calibre_pb_0">Summary</h1>
+                
+            
+            <article>
+                
+<p class="calibre2">Dynamic analysis is a great technique to understand the behavior of malware and to determine its network and host-based indicators. You can use dynamic analysis to validate findings obtained during static analysis. Combining static  analysis and dynamic analysis helps you gain a better understanding of the malware binary. Basic dynamic analysis has its limitations, and to gain a deeper insight into the workings of the malware binary, you will have to perform code analysis (reverse engineering).</p>
+<p class="calibre2">For example, most malware samples used in this chapter used encrypted communication to communicate with their C2 server. Using dynamic analysis, we were only able to determine the encrypted communication, but to understand how the malware is encrypting the traffic and what data it is encrypting, you need to learn how to perform code analysis.</p>
+<p class="calibre2">In the next few chapters, you will learn the basics, tools, and techniques to perform code analysis.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
