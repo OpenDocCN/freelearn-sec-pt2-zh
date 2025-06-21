@@ -1,7 +1,9 @@
 - en: Detecting Advanced Malware Using Memory Forensics
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 检测使用内存取证技术的高级恶意软件
 - en: In the previous chapter, we looked at different Volatility plugins, which help
     in extracting valuable information from the memory image. In this chapter, we
     will continue our journey of memory forensics and we will look at a few more plugins
@@ -11,12 +13,17 @@
     next section discusses some of the concepts already covered in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485),* Code
     Injection and Hooking,* so it is highly recommended to read that chapter before
     reading the next section.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前一章中，我们查看了不同的 Volatility 插件，这些插件有助于从内存镜像中提取有价值的信息。在本章中，我们将继续探讨内存取证，并将介绍几个插件，这些插件将帮助您从感染了使用隐蔽和隐藏技术的高级恶意软件的内存镜像中提取取证物证。在接下来的部分中，我们将专注于使用内存取证检测代码注入技术。下一部分讨论了在[第
+    8 章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)*代码注入与挂钩*中已经涵盖的一些概念，因此强烈建议在阅读下一部分之前先阅读该章节。
 - en: 1\. Detecting Code Injection
+  id: totrans-2
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1\. 检测代码注入
 - en: 'If you recall from Chapter 8, *Code Injection and Hooking*, code injection
     is a technique used for injecting malicious code (such as EXE, DLL, or shellcode)
     into legitimate process memory and executing the malicious code within the context
@@ -42,15 +49,25 @@
     of each contiguous process memory range, and it can also give information about
     a memory region containing a memory-mapped image file (such as an executable or
     DLL):'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你还记得第 8 章中的*代码注入与挂钩*，代码注入是一种用于将恶意代码（如 EXE、DLL 或 shellcode）注入到合法进程内存并在合法进程上下文中执行的技术。为了将代码注入到远程进程中，恶意软件通常会分配一个带有`读`、`写`和`执行`权限的内存（`PAGE_EXECUTE_READWRITE`），然后将代码注入到远程进程的已分配内存中。要检测注入到远程进程中的代码，可以根据内存保护和内存内容查找可疑内存范围。一个引人注目的问题是，什么是可疑的内存范围，如何获取关于进程内存范围的信息？如果你还记得上一章（在*检测隐藏的
+    DLL 使用 ldrmodules* 部分），Windows 在内核空间维护了一个名为*虚拟地址描述符（VADs）*的二叉树结构，每个 VAD 节点描述了进程内存中的一个虚拟连续内存区域。如果进程内存区域包含内存映射文件（如可执行文件、DLL
+    等），则其中一个 VAD 节点存储有关其基地址、文件路径和内存保护的信息。以下描绘并非 VAD 的精确表示，但应有助于理解该概念。在以下屏幕截图中，内核空间中的一个
+    VAD 节点描述了关于进程可执行文件（`explorer.exe`）加载位置、完整路径及内存保护的信息。类似地，其他 VAD 节点将描述进程内存范围，包括包含映射的可执行映像（如
+    DLL）的范围。这意味着 VAD 可用于确定每个连续进程内存范围的内存保护，并且还可以提供关于包含内存映像文件（如可执行文件或 DLL）的内存区域的信息：
 - en: '![](../images/00345.jpeg)'
+  id: totrans-4
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00345.jpeg)'
 - en: 1.1 Getting VAD Information
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.1 获取 VAD 信息
 - en: 'To get VAD information from the memory image, you can use the `vadinfo` Volatility
     plugin. In the following example, `vadinfo` is used to display the memory regions
     of an `explorer.exe` process using its process ID `(pid 2180)`. In the following
@@ -63,21 +80,30 @@
     the third node at address `0x8723fb78` displays the information about the process
     memory range of `0x77690000-0x777cbfff`, which contains `ntdll.dll` and its memory
     protection:'
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 要从内存映像中获取VAD信息，可以使用`vadinfo` Volatility插件。在以下示例中，`vadinfo`用于显示`explorer.exe`进程的内存区域，通过其进程ID`(pid
+    2180)`。在以下输出中，位于内核内存中地址`0x8724d718`的第一个VAD节点描述了进程内存中`0x00db0000-0x0102ffff`的内存范围及其内存保护`PAGE_EXECUTE_WRITECOPY`。由于第一个节点描述的是包含内存映射可执行镜像（`explorer.exe`）的内存范围，因此它还给出了其在磁盘上的完整路径。第二个节点`0x8723fb50`描述了`0x004b0000-0x004effff`的内存范围，该范围不包含任何内存映射文件。类似地，位于地址`0x8723fb78`的第三个节点显示了`0x77690000-0x777cbfff`的进程内存范围的信息，其中包含`ntdll.dll`及其内存保护：
 - en: '[PRE0]'
+  id: totrans-7
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: To get the VAD information of a process using the Windbg kernel debugger, first,
     you need to switch the context to the desired process using the `.process` command
     followed by the address of the `_EPROCESS` structure. After switching the context,
     use the `!vad` extension command to display the process memory regions.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用Windbg内核调试器获取进程的VAD信息，首先需要使用`.process`命令切换到所需的进程上下文，并跟随`_EPROCESS`结构的地址。切换上下文后，使用`!vad`扩展命令显示进程的内存区域。
 - en: 1.2 Detecting Injected Code Using VAD
+  id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.2 使用VAD检测注入的代码
 - en: 'An important point to note is that when an executable image (such as EXE or
     DLL) is normally loaded into the memory, that memory region is given a memory
     protection of `PAGE_EXECUTE_WRITECOPY(WCX)` by the operating system. An application
@@ -94,11 +120,16 @@
     malware injects code into a legitimate `explorer.exe` process (`pid 1608`)`.`
     The `vadinfo` plugin shows two memory ranges in the `explorer.exe` process having
     a suspicious memory protection of `PAGE_EXECUTE_READWRITE`:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个重要的点是，当可执行镜像（如EXE或DLL）正常加载到内存时，操作系统会为该内存区域分配`PAGE_EXECUTE_WRITECOPY(WCX)`的内存保护。应用程序通常不允许使用像`VirtualAllocEx`这样的API调用来分配具有`PAGE_EXECUTE_WRITECOPY`保护的内存。换句话说，如果攻击者想要注入PE文件（如EXE或DLL）或shellcode，那么需要分配具有`PAGE_EXECUTE_READWRITE(RWX)`保护的内存。通常，你会发现很少有内存范围具有`PAGE_EXECUTE_READWRITE`的内存保护。具有`PAGE_EXECUTE_READWRITE`保护的内存范围不一定是恶意的，因为程序可能会出于合法目的分配具有该保护的内存。为了检测代码注入，我们可以查找包含`PAGE_EXECUTE_READWRITE`内存保护的内存范围，并检查和验证其内容以确认是否存在恶意代码。为了帮助你理解这一点，我们来看一个被*SpyEye*感染的内存映像的例子。该恶意软件将代码注入到合法的`explorer.exe`进程（`pid
+    1608`）中。`vadinfo`插件显示了在`explorer.exe`进程中两个具有可疑`PAGE_EXECUTE_READWRITE`内存保护的内存范围：
 - en: '[PRE1]'
+  id: totrans-11
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'Just from the memory protection, it is hard to conclude if the preceding memory
     regions contain any malicious code. To determine if there is any malicious code,
     we can dump the contents of these memory regions. To display the contents of a
@@ -112,22 +143,32 @@
     and the presence of the PE file is a clear indication that the executable was
     not normally loaded but was injected into the address space of the `explorer.exe`
     process:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 仅通过内存保护，难以得出前述内存区域是否包含恶意代码的结论。为了确定是否有恶意代码，我们可以转储这些内存区域的内容。要显示内存区域的内容，可以使用`volshell`插件。以下命令在`explorer.exe`进程（`pid
+    1608`）的上下文中调用`volshell`（交互式 Python shell）。`db`命令将转储给定内存地址的内容。要获取帮助信息并显示支持的`volshell`命令，只需在`volshell`中输入`hh()`。使用`db`命令转储内存地址`0x03120000`（前面`vadinfo`输出中的第一个条目）的内容，显示出`PE`文件的存在。`PAGE_EXECUTE_READWRITE`的内存保护和
+    PE 文件的存在明显表明可执行文件并非正常加载，而是被注入到`explorer.exe`进程的地址空间中：
 - en: '[PRE2]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Sometimes, displaying the contents of a memory region may not be enough to
     identify malicious code. This is especially true when the shellcode is injected,
     and in that case, you need to disassemble the content. For instance, if you dump
     the contents of the address `0x03110000` (the second entry from the preceding
     `vadinfo` output) using the `db` command, you will see the following hex dump.
     From the output, it is not easy to say if this is a malicious code:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时候，仅显示内存区域的内容不足以识别恶意代码。尤其是当 shellcode 被注入时，这种情况尤为常见。在这种情况下，你需要对内容进行反汇编。例如，如果你使用`db`命令转储地址`0x03110000`的内容（这是前面`vadinfo`输出中的第二个条目），你将看到以下的十六进制转储。从输出来看，很难判断这是否是恶意代码：
 - en: '[PRE3]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'If you suspect that the memory region contains a shellcode, you can use the  `dis`
     command in `volshell` to disassemble the code at a given address. From the disassembly
     output that''s shown in the following code, you can probably tell that a shellcode
@@ -135,15 +176,22 @@
     To verify if the memory region contains any malicious code, you need to analyze
     it further in order to determine the context. This is because injected code can
     also look similar to the legitimate code:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你怀疑内存区域包含 shellcode，可以在`volshell`中使用`dis`命令对给定地址的代码进行反汇编。从以下代码显示的反汇编输出来看，你可能会发现
+    shellcode 已经被注入到此内存区域，因为它包含有效的 CPU 指令。为了验证内存区域是否包含恶意代码，你需要进一步分析，以确定其上下文。因为注入的代码也可能与合法代码相似：
 - en: '[PRE4]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 1.3 Dumping The Process Memory Region
+  id: totrans-18
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.3 转储进程内存区域
 - en: 'After you have identified the injected code (PE file or shellcode) in the process
     memory, you may want to dump it to disk for further analysis (for extracting strings,
     to perform YARA scans, or for disassembly). To dump a region of memory described
@@ -152,23 +200,35 @@
     supply the `-b (--base)` option followed by the base address, as follows. If you
     don’t specify the `-b (--base)` option, the plugin dumps all memory regions into
     separate files:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在识别到进程内存中的注入代码（PE 文件或 shellcode）后，你可能希望将其转储到磁盘以便进一步分析（例如提取字符串、进行 YARA 扫描或反汇编）。要转储由
+    VAD 节点描述的内存区域，可以使用`vaddump`插件。例如，如果你想转储位于地址`0x03110000`的包含 shellcode 的内存区域，可以提供`-b
+    (--base)`选项，并跟上基地址，如下所示。如果不指定`-b (--base)`选项，插件将把所有内存区域转储到单独的文件中：
 - en: '[PRE5]'
+  id: totrans-20
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: Some malware programs use stealth techniques to bypass detection. For example,
     a malware program may inject a PE file and wipe out the PE header after it is
     loaded into the memory. In that case, if you are looking at the hex dump, it will
     not give you any indication of the presence of PE file; some level of manual analysis
     may be required to verify the code. An example of such a malware sample is mentioned
     in a blog post titled *"Recovering CoreFlood Binaries with Volatility"* ([http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html](http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html)).
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些恶意软件程序使用隐蔽技术来绕过检测。例如，某个恶意软件可能会注入一个 PE 文件，并在加载到内存后擦除 PE 头。在这种情况下，如果你查看十六进制转储，它不会显示
+    PE 文件的任何迹象；可能需要某些手动分析来验证代码。有关此类恶意软件样本的示例，可以参考一篇名为 *"用 Volatility 恢复 CoreFlood
+    二进制文件"* 的博客文章 ([http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html](http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html))。
 - en: 1.4 Detecting Injected Code Using malfind
+  id: totrans-22
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.4 使用 malfind 检测注入的代码
 - en: 'So far, we have looked at identifying suspicious memory regions manually using
     `vadinfo`. You have also understood how to dump a region of memory using `vaddump`.
     There is another Volatility plugin named `malfind`, which automates the process
@@ -179,15 +239,24 @@
     to that, it also displayed the hex dump and the disassembly starting at the base
     address. If you do not specify the `-p (--pid)` option, `malfind` will identify
     suspicious memory ranges of all the processes running on the system:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们已经了解了如何使用 `vadinfo` 手动识别可疑的内存区域。你也已经理解了如何使用 `vaddump` 转储内存区域。还有另一个 Volatility
+    插件叫做 `malfind`，它基于之前讲解的内存内容和 VAD 特征自动化了识别可疑内存区域的过程。在以下示例中，当 `malfind` 在被 *SpyEye*
+    感染的内存镜像上运行时，它会自动识别出可疑的内存区域（包含 PE 文件和 shellcode）。除此之外，它还显示了从基地址开始的十六进制转储和反汇编。如果你没有指定
+    `-p (--pid)` 选项，`malfind` 会识别系统上所有正在运行的进程的可疑内存区域：
 - en: '[PRE6]'
+  id: totrans-24
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 2\. Investigating Hollow Process Injection
+  id: totrans-25
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2\. 调查空洞进程注入
 - en: In the case of code injection techniques covered in the previous sections, the
     malicious code is injected into the process address space of a legitimate process.
     *Hollow Process Injection* (or *Process Hollowing*) is also a code injection technique,
@@ -199,60 +268,84 @@
     Code Injection and Hooking (section)*. You can also look at the author's presentation
     and video demos on hollow process injection ([https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/](https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/))
     for a better understanding of the subject.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面章节中讲解的代码注入技术中，恶意代码被注入到合法进程的进程地址空间中。*空洞进程注入*（或称 *进程空洞化*）也是一种代码注入技术，但不同之处在于，在这种技术中，合法进程的进程可执行文件会被恶意可执行文件替换。在进入空洞进程注入的检测之前，先让我们了解一下它是如何工作的。在下一节中将详细介绍空洞进程注入的工作原理。空洞进程注入的详细信息已在
+    *[第8章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)，代码注入与钩子（章节）* 中讲解。你还可以查看作者关于空洞进程注入的演示和视频演示
+    ([https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/](https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/))，以便更好地理解这个主题。
 - en: 2.1 Hollow Process Injection Steps
+  id: totrans-27
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.1 空洞进程注入步骤
 - en: 'The following steps describe how malware normally performs process hollowing.
     Let’s assume that there are two processes, A and B. In this case, process A is
     the malicious process and process B is the legitimate process (also known as a
     remote process) such as `explorer.exe`:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下步骤描述了恶意软件通常如何执行进程空洞化。假设有两个进程，A 和 B。在这种情况下，进程 A 是恶意进程，进程 B 是合法进程（也称为远程进程），例如
+    `explorer.exe`：
 - en: Process A starts a legitimate process, B, in the suspended mode. As a result
     of that, the executable section of process B is loaded in the memory, and the
     `PEB` (Process Environment Block) identifies the full path to the legitimate process.
     The PEB structure's `ImageBaseAddress` field points to the base address where
     the legitimate process executable is loaded.
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 启动合法进程 B，并使其处于挂起模式。结果，进程 B 的可执行区段被加载到内存中，`PEB`（进程环境块）标识了合法进程的完整路径。PEB 结构中的
+    `ImageBaseAddress` 字段指向合法进程可执行文件加载的基地址。
 - en: Process A gets the malicious executable that will be injected into the remote
     process. This executable can come from the resource section of the malware process
     or from the file on the disk.
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 获取将要注入远程进程的恶意可执行文件。这个可执行文件可以来自恶意软件进程的资源区段，也可以来自磁盘上的文件。
 - en: Process A determines the base address of the legitimate process B so that it
     can unmap the executable section of the legitimate process. Malware can determine
     the base address by reading the `PEB` (in our case, `PEB.ImageBaseAddress`).
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 确定合法进程 B 的基址，以便它可以取消映射合法进程的可执行区段。恶意软件可以通过读取 `PEB`（在我们的例子中是 `PEB.ImageBaseAddress`）来确定基址。
 - en: Process A then deallocates the executable section of the legitimate process.
+  id: totrans-32
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 然后解除分配合法进程的可执行区段。
 - en: Process A then allocates the memory in the legitimate process B with `read`,
     `write`, and `execute` permission. This memory allocation is normally done at
     the same address where the executable was previously loaded.
+  id: totrans-33
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 然后在合法进程 B 中分配内存，并赋予`读`、`写`和`执行`权限。这个内存分配通常是在可执行文件先前加载的相同地址上进行的。
 - en: Process A then writes the PE header and PE sections of the malicious executable
     to be injected into the allocated memory.
+  id: totrans-34
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 然后将恶意可执行文件的 PE 头和 PE 区段写入分配的内存中。
 - en: Process A then changes the start address of the suspended thread to the address
     of the entry point of the injected executable and resumes the suspended thread
     of the legitimate process. As a result of that, the legitimate process now starts
     executing malicious code.
+  id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程 A 然后将挂起线程的起始地址更改为注入的可执行文件入口点的地址，并恢复合法进程的挂起线程。结果，合法进程现在开始执行恶意代码。
 - en: '*Stuxnet* is one such malware that performs hollow process injection using
     the preceding steps. To be specific, Stuxnet creates the legitimate `lsass.exe`
     process in the suspended mode. As a result, `lsass.exe` is loaded into memory
@@ -269,16 +362,27 @@
     before hollowing `(WCX)` and after hollowing `(RWX).` The following diagram should
     help you visualize what happens before hollowing, and the discrepancy it creates
     in `PEB` and `VAD` after hollowing the process:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: '*Stuxnet* 就是一个执行空洞进程注入的恶意软件，它使用上述步骤。具体来说，Stuxnet 在挂起模式下创建了合法的 `lsass.exe` 进程。结果，`lsass.exe`
+    以 `PAGE_EXECUTE_WRITECOPY(WCX)` 保护加载到内存中。此时（空洞前），`PEB` 和 `VAD` 都包含有关 lsass.exe
+    内存保护、基址和完整路径的相同元数据。接着，Stuxnet 将合法进程可执行文件（`lsass.exe`）空洞化，并在与 `lsass.exe` 先前加载的相同区域中分配一个具有
+    `PAGE_EXECUTE_READWRITE (RWX)` 保护的新内存，随后将恶意可执行文件注入已分配的内存中并恢复挂起的线程。由于空洞化进程可执行文件，它在
+    `VAD` 和 `PEB` 之间创建了进程路径信息的不一致，即 `PEB` 中的进程路径仍然包含 `lsass.exe` 的完整路径，而 `VAD` 中则不显示完整路径。此外，空洞前后的内存保护存在不一致：空洞前是
+    `(WCX)`，空洞后是 `(RWX)`。下面的图示将帮助你理解空洞前发生的情况，以及空洞化进程后在 `PEB` 和 `VAD` 中创建的不一致。'
 - en: '![](../images/00346.jpeg)The complete analysis of Stuxnet, using memory forensics,
     was covered by Michael Hale Ligh in the following blog post: [http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html](http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html).'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](../images/00346.jpeg)对Stuxnet的完整分析，使用内存取证技术，由Michael Hale Ligh在以下博客文章中介绍：[http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html](http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html)。'
 - en: 2.2 Detecting Hollow Process Injection
+  id: totrans-38
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.2 检测空洞进程注入
 - en: 'To detect hollow process injection, you can look for the discrepancies created
     between `PEB` and `VAD`, as well as the memory protection discrepancy. You can
     also look for the discrepancy in the parent-child process relationship. In the
@@ -290,92 +394,132 @@
     suspicious process because, on a clean system, `winlogon.exe` will be the parent
     process of `lsass.exe` on pre-Vista machines and `wininit.exe` will be the parent
     process of `lsass.exe` on Vista and later systems:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检测空洞进程注入，可以查看`PEB`和`VAD`之间的差异，以及内存保护的差异。还可以检查父子进程关系的差异。在下面的*Stuxnet*示例中，您可以看到系统上有两个`lsass.exe`进程正在运行。第一个`lsass.exe`进程（`pid
+    708`）的父进程是`winlogon.exe`（`pid 652`），而第二个`lsass.exe`进程（`pid 1732`）的父进程（`pid 1736`）已经终止。根据进程信息，您可以判断`pid
+    1732`的`lsass.exe`是可疑进程，因为在干净的系统中，`lsass.exe`的父进程在Vista之前的系统上是`winlogon.exe`，而在Vista及以后的系统上是`wininit.exe`：
 - en: '[PRE7]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'As mentioned earlier, you can detect hollow process injection by comparing
     the `PEB` and `VAD` structure. The `dlllist` plugin, which gets module information
     from the `PEB`, shows the full path to `lsass.exe` (`pid 1732`) and the base address
     `(0x01000000)` where it is loaded:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，通过比较`PEB`和`VAD`结构，您可以检测到空洞进程注入。`dlllist`插件从`PEB`中获取模块信息，显示了`lsass.exe`（`pid
+    1732`）的完整路径和其加载的基地址`(0x01000000)`：
 - en: '[PRE8]'
+  id: totrans-42
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The `ldrmodules` plugin, which relies on VAD in the kernel, does not show the
     full path name to the `lsass.exe.` As a result of malware unmapping the `lsass.exe`
     process executable section, the full path name is no longer associated with the
     address `0x01000000`:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: '`ldrmodules`插件依赖于内核中的VAD，但没有显示`lsass.exe`的完整路径名称。由于恶意软件解除映射了`lsass.exe`进程的可执行部分，完整路径名称不再与地址`0x01000000`关联：'
 - en: '[PRE9]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Since the malware normally allocates memory with `PAGE_EXECUTE_READWRITE` permission
     after hollowing and before injecting the executable, you can look for that memory
     protection. The `malfind` plugin identified the suspicious memory protection at
     the same address `(0x01000000)` where the executable `lsass.exe` was loaded:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于恶意软件通常会在空洞化并注入可执行文件之前，分配具有`PAGE_EXECUTE_READWRITE`权限的内存，因此可以查找该内存保护。`malfind`插件在同一地址`(0x01000000)`识别到可疑的内存保护，这正是可执行文件`lsass.exe`被加载的地方：
 - en: '[PRE10]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: If you wish to dump the suspicious memory regions detected by `malfind` to disk,
     you can specify `-D`  followed by the directory name where all the suspicious
     memory regions will be dumped.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您希望将`malfind`检测到的可疑内存区域转储到磁盘，您可以指定`-D`，后跟目录名，将所有可疑的内存区域转储到该目录。
 - en: 2.3 Hollow Process Injection Variations
+  id: totrans-48
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.3 空洞进程注入变种
 - en: 'In the following example, we will look at a malware named *Skeeyah*, which
     performs hollow process injection in a slightly different way. This is the same
     sample which was covered in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485),* Code
     Injection and Hooking (section 3.6 Hollow Process Injection)*. The following are
     the steps performed by *Skeeyah*:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，我们将介绍一个名为*Skeeyah*的恶意软件，它以略微不同的方式执行空洞进程注入。这是与[第8章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)中介绍的相同样本，*代码注入和钩子（第3.6节
+    空洞进程注入）*。以下是*Skeeyah*执行的步骤：
 - en: It starts the `svchost.exe` process in the suspended mode. As a result, `svchost.exe`
     is loaded into the memory (in this case, at address `0x1000000`).
+  id: totrans-50
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它以挂起模式启动`svchost.exe`进程。结果，`svchost.exe`被加载到内存中（在此案例中，加载到地址`0x1000000`）。
 - en: It determines the base address of `svchost.exe` by reading `PEB.ImageBaseAddress`
     and then deallocates the executable section of `svchost.exe`.
+  id: totrans-51
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它通过读取`PEB.ImageBaseAddress`确定`svchost.exe`的基地址，然后释放`svchost.exe`的可执行部分。
 - en: Instead of allocating memory in the same region where the `svchost.exe` was
     previously loaded (`0x1000000`), it allocates memory in a different address, `0x00400000`,
     with `read`, `write`, and `execute` permission.
+  id: totrans-52
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它并没有在`svchost.exe`之前加载的相同区域（`0x1000000`）分配内存，而是分配了一个不同的地址`0x00400000`，并且具有`read`、`write`和`execute`权限。
 - en: It then overwrites the `PEB.ImageBaseAdress` of the `svchost.exe` process with
     the newly allocated address, `0x00400000.` This changes the base address of `svchost.exe`
     in the `PEB` from `0x1000000` to `0x00400000` (which contains injected executables).
+  id: totrans-53
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它随后用新分配的地址`0x00400000`覆盖了`svchost.exe`进程的`PEB.ImageBaseAdress`。这将`svchost.exe`在`PEB`中的基地址从`0x1000000`更改为`0x00400000`（该地址包含注入的可执行文件）。
 - en: It then changes the start address of the suspended thread to the address of
     the entry point of the injected executable and resumes the thread.
+  id: totrans-54
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 然后，它将挂起线程的起始地址更改为注入的可执行文件入口点的地址，并恢复该线程。
 - en: 'The following screenshot shows the discrepancy before and after hollowing.
     To be specific, the PEB after hollowing thinks that `svchost.exe` is loaded at
     `0x00400000`.  The `VAD` node that previously represented `svchost.exe` (loaded
     at `0x1000000`) is no longer present, because when the malware hollowed out the
     `svchost.exe` process executable, the entry for that was removed from the `VAD`
     tree:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图显示了进程空洞化前后的差异。具体来说，空洞化后的PEB认为`svchost.exe`被加载到`0x00400000`。之前表示`svchost.exe`（加载地址为`0x1000000`）的`VAD`节点不再存在，因为当恶意软件将`svchost.exe`进程可执行文件空洞化时，相关的条目已从`VAD`树中移除：
 - en: '![](../images/00347.jpeg)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00347.jpeg)'
 - en: 'To detect this variation of hollow process injection, you can follow the same
     methodology. Depending on how the hollow process injection is performed, the results
     will vary. The process listing shows multiple instances of the `svchost.exe` process,
@@ -385,45 +529,68 @@
     the parent process of `svchost.exe` `(pid 1824)` you can see that its parent process
     is terminated. Based on the process information, you can tell that the last `svchost.exe
     (pid 1824)` is suspicious:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检测这种空洞进程注入变种，可以遵循相同的方法论。根据空洞进程注入的执行方式，结果会有所不同。进程列表显示了多个`svchost.exe`进程实例，这是正常的。除了最后一个`svchost.exe
+    (pid 1824)`，所有`svchost.exe`进程的父进程都是`services.exe`（`pid 696`）。在干净的系统上，所有`svchost.exe`进程都是由`services.exe`启动的。当你查看`svchost.exe`（`pid
+    1824`）的父进程时，你会发现其父进程已终止。根据进程信息，你可以判断最后一个`svchost.exe (pid 1824)`是可疑的：
 - en: '[PRE11]'
+  id: totrans-58
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: The `dlllist` plugin (which relies on `PEB`) shows the full path to `svchost.exe`
     (`pid 1824`) and reports the base address as `0x00400000`.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 依赖于`PEB`的`dlllist`插件显示了`svchost.exe`（`pid 1824`）的完整路径，并报告基地址为`0x00400000`。
 - en: '[PRE12]'
+  id: totrans-60
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'On the other hand, the `ldrmodules` plugin (which relies on VAD in the kernel)
     does not show any entry for `svchost.exe`, as shown in the following screenshot:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一方面，依赖于内核中的`VAD`的`ldrmodules`插件并未显示`svchost.exe`的任何条目，如下图所示：
 - en: '![](../images/00348.jpeg)'
+  id: totrans-62
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00348.jpeg)'
 - en: '`malfind` shows the presence of a PE file at address `0x00400000` with a suspicious
     memory protection of `PAGE_EXECUTE_READWRITE`, indicating that this executable
     was injected and not normally loaded:'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '`malfind`显示在地址`0x00400000`存在一个PE文件，并且具有可疑的内存保护`PAGE_EXECUTE_READWRITE`，这表明该可执行文件是被注入的，而不是正常加载的：'
 - en: '[PRE13]'
+  id: totrans-64
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'Attackers use different variations of hollow process injection to bypass, deflect,
     and divert forensic analysis. For detailed information on how these evasive techniques
     work and how to detect them using a custom Volatility plugin, watch the author''s
     Black Hat presentation titled: *"What Malware Authors Don''t Want You to Know
     - Evasive Hollow Process Injection"* ([https://youtu.be/9L9I1T5QDg4](https://youtu.be/9L9I1T5QDg4)).
     Alternatively, you can read the author''s blog post at the following link: [https://cysinfo.com/detecting-deceptive-hollowing-techniques/](https://cysinfo.com/detecting-deceptive-hollowing-techniques/)'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者使用不同变种的空洞进程注入来绕过、偏转和转移取证分析。有关这些规避技术的详细信息，以及如何使用自定义Volatility插件来检测它们，请观看作者在Black
+    Hat上的演讲：*“恶意软件作者不希望你知道的——空洞进程注入的规避技巧”*（[https://youtu.be/9L9I1T5QDg4](https://youtu.be/9L9I1T5QDg4)）。另外，你也可以阅读作者的博客文章，链接如下：[https://cysinfo.com/detecting-deceptive-hollowing-techniques/](https://cysinfo.com/detecting-deceptive-hollowing-techniques/)
 - en: 3\. Detecting API Hooks
+  id: totrans-66
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3. 检测API钩子
 - en: 'After injecting the malicious code into the target process, malware can hook
     API calls made by the target process to control its execution path and reroute
     it to the malicious code. The details of hooking techniques were covered in [Chapter
@@ -434,11 +601,17 @@
     plugin. In the following example of *Zeus bot*, an executable is injected into
     the `explorer.exe` process''s memory at address `0x2c70000`, as detected by the
     `malfind` plugin:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 在将恶意代码注入目标进程后，恶意软件可以挂钩目标进程的 API 调用，以控制其执行路径并将其重定向到恶意代码。挂钩技术的详细内容在[第8章](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)中讨论，*代码注入与挂钩*（在*挂钩技术*部分）。在本节中，我们将主要关注如何使用内存取证技术检测此类挂钩技术。为了识别进程和内核内存中的
+    API 挂钩，可以使用 `apihooks` Volatility 插件。在以下*Zeus bot*的示例中，一个可执行文件被注入到 `explorer.exe`
+    进程的内存中，地址为 `0x2c70000`，这一点通过 `malfind` 插件检测到：
 - en: '[PRE14]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'In the following output, the `apihooks` plugin detects the hook in the user-mode
     API `HttpSendRequestA` (in `wininet.dll`). The hooked API is then redirected to
     address `0x2c7ec48` (hook address). The hook address falls within the address
@@ -447,15 +620,24 @@
     be specific, at the start address (`0x753600fc`) of the API function `HttpSendRequestA`,
     there is a jump instruction which redirects the execution flow of `HttpSendRequestA`
     to address `0x2c7ec48` within the injected executable:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下输出中，`apihooks` 插件检测到用户模式 API `HttpSendRequestA`（在 `wininet.dll` 中）的挂钩。被挂钩的
+    API 随后被重定向到地址 `0x2c7ec48`（挂钩地址）。挂钩地址位于注入的可执行文件（挂钩模块）的地址范围内。挂钩模块的名称未知，因为它通常不是从磁盘加载的（而是被注入的）。具体来说，在
+    API 函数 `HttpSendRequestA` 的起始地址（`0x753600fc`）处，有一条跳转指令，将 `HttpSendRequestA` 的执行流重定向到注入可执行文件中的地址
+    `0x2c7ec48`：
 - en: '[PRE15]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 4\. Kernel Mode Rootkits
+  id: totrans-71
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4\. 内核模式根套件
 - en: A malicious program such as rootkit can load a kernel driver to run the code
     in kernel mode. Once it's running in the kernel space, it has access to the internal
     operating system code and it can monitor system events, evade detection by modifying
@@ -464,8 +646,11 @@
     A kernel driver is normally loaded by creating a service of type *Kernel Driver
     Service* (as described in [Chapter 7](part0219.html#6GRB60-ac10ba3f98854c44bac1c2c5641ca485)*,
     Malware Functionalities and Persistence, *in the *Service* section).
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 像根套件这样的恶意程序可以加载一个内核驱动程序，在内核模式下运行代码。一旦它在内核空间中运行，就可以访问操作系统的内部代码，监控系统事件，通过修改内部数据结构、挂钩函数和修改调用表来规避检测。内核模式驱动程序通常具有
+    `.sys` 扩展名，并驻留在 `%windir%\system32\drivers` 目录下。内核驱动程序通常通过创建一个*内核驱动程序服务*（如[第7章](part0219.html#6GRB60-ac10ba3f98854c44bac1c2c5641ca485)中描述的，恶意软件功能与持久性，*在*服务*部分）来加载。
 - en: Windows has implemented various security mechanisms that are designed to prevent
     the execution of unauthorized code in the kernel space. This makes it difficult
     for a rootkit to install the kernel drivers. On 64-bit Windows, Microsoft implemented
@@ -483,15 +668,18 @@
     we will assume that an attacker has managed to install the kernel mode driver
     (using *Bootkit* or by exploiting a kernel-level vulnerability), and we will focus
     on kernel memory forensics, which involves identifying the malicious driver.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
 - en: On a clean windows system, you will find hundreds of kernel modules, so finding
     the malicious kernel module requires some work. In the following sections, we
     will look at some of the common techniques to locate and extract malicious kernel
     modules. We will start by listing the kernel modules.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
 - en: 5\. Listing Kernel Modules
+  id: totrans-75
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -508,6 +696,7 @@
     which means that if a rootkit driver was recently installed, you are very likely
     to find that module at the end of the list, provided the module is not hidden
     and the system was not rebooted before the memory image was acquired.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
 - en: 'In the following example of a memory image infected with the *Laqma* rootkit,
@@ -518,11 +707,14 @@
     as the NT kernel module (`ntkrnlpa.exe` or `ntoskrnl.exe`) and the hardware abstraction
     layer `(hal.dll)` are loaded first, followed by the boot drivers (such as `kdcom.dll`)
     which start automatically at the boot time and then followed by other drivers:'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-78
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'Since walking the doubly linked list is susceptible to DKOM attacks (described
     in [Chapter 10](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)*, Hunting
     Malware Using Memory Forensics, section 4.2.1 Direct Kernel Object Manipulation
@@ -538,18 +730,24 @@
     space, and not based on the order in which they were loaded. In the following
     example of the *Necurs* rootkit, the `modscan` plugin displays the malicious kernel
     driver (`2683608180e436a1.sys`) whose name is composed entirely of hex characters:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-80
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'When you run the `modules` plugin against the memory image infected with the *Necurs*
     rootkit, it does not display that malicious driver (`2683608180e436a1.sys`):'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE18]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'Since `modscan` uses the pool tag scanning approach, which can detect unloaded
     modules (provided that the memory has not been overwritten), it is possible that
     the malicious driver, `2683608180e436a1.sys` was quickly loaded and unloaded,
@@ -563,12 +761,16 @@
     code). The `unloadedmodules` plugin can prove to be useful during the investigation
     to detect the rootkit''s attempt to quickly load and unload the driver so that
     it does not show up in the module listing:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE19]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 5.1 Listing Kernel Modules Using driverscan
+  id: totrans-85
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -584,29 +786,39 @@
     with the *Necurs* rootkit. The `driverscan` plugin is another way of listing the
     kernel modules and can be useful when the rootkit tries to hide from the `modules`
     and the `modscan` plugin:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE20]'
+  id: totrans-87
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'To list the kernel modules with the kernel debugger (Windbg), use the `lm k`
     command as follows. For verbose output, you can use the `lm kv` command:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE21]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'After you identify the malicious kernel module, you can dump it from memory
     to disk using the `moddump` plugin. To dump the module to disk, you need to specify
     the base address of the module, which you can get from the `modules`, `modscan`,
     or `driverscan` plugins. In the following example, the malicious driver of the *Necurs
     rootkit* is dumped to disk using its base address, as follows:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE22]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 6\. I/O Processing
+  id: totrans-92
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -621,6 +833,7 @@
     it is essential to understand how these communications work and the components
     involved. This section will help you understand the communication mechanism and
     lays the foundation for the upcoming topics.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
 - en: 'Let''s try to understand what happens when a user-mode application performs
@@ -635,24 +848,29 @@
     on the kernel-space components (mainly the device driver and the I/O manager).
     The following diagram illustrates the flow of the write request (other types of
     I/O requests, such as read, are similar; they just use different APIs):'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00349.jpeg)'
+  id: totrans-95
   prefs: []
   type: TYPE_IMG
 - en: 'The following points discuss the role of the device driver and the I/O manager
     at a high level:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
 - en: The device driver typically creates a device or multiple devices and specifies
     what type of operations (open, read, and write) it can handle for the device.
     It also specifies the address of routines that handle these operations. These
     routines are called dispatch routines or IRP handlers.
+  id: totrans-97
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: After creating the device, the driver advertises that device so that it is accessible
     to user-mode applications.
+  id: totrans-98
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -661,6 +879,7 @@
     device using the `ReadFile` and `WriteFile` APIs. APIs, such as `CreateFile`,
     `ReadWrite`, and `WriteFile`, that are used to perform I/O operations on the file
     also work on a device. This is because the device is treated as a virtual file.
+  id: totrans-99
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -669,21 +888,25 @@
     the driver that handles the device and requests the driver to complete the operation
     by passing an IRP (I/O request packet). An IRP is a data structure that contains
     information on what operation to perform and the buffer required for the I/O operation.
+  id: totrans-100
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The driver reads the IRP, verifies it, and completes the requested operation
     before notifying the I/O manager about the status of the operation. The I/O manager
     then returns the status and the data back to the user application.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
 - en: 'At this stage, the preceding points might seem foreign to you, but don''t let
     it discourage you: it will be clear by the time you complete this section. Next,
     we will look at the role of the device driver, followed by the role of the I/O
     manager.'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
 - en: 6.1 The Role Of The Device Driver
+  id: totrans-103
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -706,11 +929,14 @@
     equivalent of `\dev\null` in the Unix environment. When the system starts during
     the kernel initialization phase, `null.sys` gets loaded into the system. In the
     kernel module listing, you can see that `null.sys` is loaded at base address `8bcde000`:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE23]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'Since `null.sys` is already loaded, its driver object (`DRIVER_OBJECT` structure)
     will be populated with metadata information during the driver initialization.
     Let''s look at its driver object to understand what kind of information it contains.
@@ -719,11 +945,14 @@
     `86a33180.` The value `86aa2750` below `Device Object list` is the pointer to
     the device object created by `null.sys`. If the driver creates multiple devices,
     you will see multiple entries under the `Device Object list`:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE24]'
+  id: totrans-107
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'You can use the driver object address `86a33180` to examine the `_DRIVER_OBJECT`
     structure of `null.sys` using the `dt (display type)` command. From the following
     output, you can see that the `DriverStart` field holds the base address (`0x8bcde000`)
@@ -738,47 +967,60 @@
     in this section. The `driverscan` plugin covered earlier performs pool tag scanning
     for the driver objects and gets the information related to the kernel module such
     as base address, size, and the driver name by reading some of these fields:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE25]'
+  id: totrans-109
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'The `DeviceObject` field in the `DRIVER_OBJECT` structure contains the pointer
     to the device object created by the driver (`null.sys`). You can use the device
     object address `0x86aa2750` to determine the name of the device created by the
     driver. In this case, `Null` is the name of the device created by the driver `null.sys`:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE26]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'You can also look at the actual `DEVICE_OBJECT` structure by specifying the
     device object address next to the `display type (dt)` command, as shown in the
     following code. If the driver creates more than one device, then the `NextDevice`
     field in the `DEVICE_OBJECT` structure will point to the next device object. Since
     the `null.sys` driver creates only one device, the `NextDevice` field is set to
     `null`:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE27]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'From the preceding output, you can see that the `DEVICE_OBJECT` contains a `DriverObject` field
     that points back to the driver object. In other words, the associated driver can
     be determined from the device object. This is how the I/O manager can determine
     the associated driver when it receives the I/O request for a specific device.
     This concept can be visualized using the following diagram:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00350.jpeg)'
+  id: totrans-115
   prefs: []
   type: TYPE_IMG
 - en: 'You can use a GUI tool such as *DeviceTree* ([http://www.osronline.com/article.cfm?article=97](http://www.osronline.com/article.cfm?article=97))
     to look at the devices created by the driver. The following is a screenshot of
     the tool showing the `Null` device created by the `null.sys` driver:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00351.jpeg)'
+  id: totrans-117
   prefs: []
   type: TYPE_IMG
 - en: 'When a driver creates a device, the device objects are placed in the `\Device`
@@ -787,9 +1029,11 @@
     The following screenshot shows the device (`Null`) created by `null.sys` in the
     `\Device` directory. You can also see the devices that have been created by other
     drivers:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00352.jpeg)'
+  id: totrans-119
   prefs: []
   type: TYPE_IMG
 - en: 'The device created under the `\Device` directory is not accessible to the applications
@@ -807,9 +1051,11 @@
     also be viewed using the *WinObj* tool. In the following screenshot, you can see
     that `NUL` is the name of the symbolic link created for the `\Device\Null` device
     by the `null.sys` driver:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00353.jpeg)'
+  id: totrans-121
   prefs: []
   type: TYPE_IMG
 - en: 'The symbolic link is also referred to as an MS-DOS device name. A user mode
@@ -824,9 +1070,11 @@
     are performed on virtual files. In other words, devices, directories, pipes, and
     files are all treated as virtual files (that can be opened using the `CreateFile`
     function):'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00354.jpeg)'
+  id: totrans-123
   prefs: []
   type: TYPE_IMG
 - en: At this point, you know that the driver, during its initialization, creates
@@ -848,6 +1096,7 @@
     of the dispatch routine that will handle this request. In the same manner for
     the read operation, `IRP_MJ_READ` is used as the index to determine the address
     of the dispatch routine.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following `!drvobj` commands displays the dispatch routine array populated
@@ -863,16 +1112,21 @@
     routine. In the case of `null.sys`, all the supported operations are dispatched
     to the same address, `8bce107c`. Normally, that is not the case; you will see
     different routine addresses for handling different operations:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE28]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'You can also look at the supported operations in the *DeviceTree* tool, as
     shown the following screenshot:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00355.jpeg)'
+  id: totrans-128
   prefs: []
   type: TYPE_IMG
 - en: At this point, you know that the driver creates the device, advertises it to
@@ -880,9 +1134,11 @@
     (major function table) to tell the I/O manager what operation it supports. Now,
     let's look at what the role of the I/O manager is and understand how the I/O request
     received from the user application is dispatched to the driver.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
 - en: 6.2 The Role Of The I/O Manager
+  id: totrans-130
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -905,15 +1161,18 @@
     frees the IRP if the job is complete or passes the IRP to the next driver in the
     device stack to complete the IRP. Upon completion of the job, the I/O manager
     returns the status and the data to the user mode application.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
 - en: 'At this point, you should have an understanding of the role of the I/O manager.
     For detailed information on the I/O system and device drivers, refer to the book
     *"Windows Internals, Part 1: 7th Edition"* by Pavel Yosifovich, Alex Ionescu,
     Mark E. Russinovich, and David A. Solomon.'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
 - en: 6.3 Communicating With The Device Driver
+  id: totrans-133
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -925,9 +1184,11 @@
     To monitor launch the `IrpTracker` as an Administrator, click on File | Select
     Driver and enter the name of the driver (in this case, `null`), as shown in the
     following screenshot, and select the OK button:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00356.jpeg)'
+  id: totrans-135
   prefs: []
   type: TYPE_IMG
 - en: 'Now, to trigger the I/O operation, you can open the Command Prompt and type
@@ -935,11 +1196,14 @@
     As mentioned earlier, the symbolic link name is what a user-mode application (such
     as `cmd.exe`) can use; that is the reason I''m specifying the symbolic link name
     of the device (NUL) to write the content:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE29]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'A device is treated as a virtual file and before writing to the device, handles
     to the device will be opened using `CreateFile()` (an API that''s used to create/open
     a file or device). The `CreateFile()` API will eventually call `NtCreateFile()`
@@ -952,9 +1216,11 @@
     major function code. The following screenshot shows calls to the driver''s dispatch
     routines that are corresponding to `IRP_MJ_CREATE` and `IRP_MJ_WRITE` and their
     completion status:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00357.jpeg)'
+  id: totrans-139
   prefs: []
   type: TYPE_IMG
 - en: 'At this point, you should have an understanding of how the user-mode code that
@@ -979,12 +1245,15 @@
     containing the IOCTL code, and then it routes it to the kernel dispatch routine
     identified by `IRP_MJ_DEVICE_CONTROL.` The following diagram illustrates this
     concept of communication between user-mode code and the kernel-mode driver:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00358.jpeg)'
+  id: totrans-141
   prefs: []
   type: TYPE_IMG
 - en: 6.4 I/O Requests To Layered Drivers
+  id: totrans-142
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -993,19 +1262,24 @@
     of drivers; I/O processing for the layered drivers happens in much the same way.
     The following screenshot illustrates an example of how an I/O request might travel
     through layered drivers before reaching the hardware-based devices:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00359.jpeg)'
+  id: totrans-144
   prefs: []
   type: TYPE_IMG
 - en: 'This concept is better understood with an example, so let''s trigger a write
     operation to `c:\abc.txt` using the following command. When this command is executed,
     `netstat` will open the handle to `abc.txt` and write to it:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE30]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'A point to note here is that the filename *(*`C:\abc.txt`*)* also includes
     the name of the device where the file resides, that is, volume `C:` is the symbolic
     link name for the device, `\Device\HarddiskVolume1` (you can verify it using the `WinObj`
@@ -1016,20 +1290,25 @@
     the handle to `netstat.exe.` The following screenshot from the `ProcessHacker`
     tool displays the handle to `C:\abc.txt` that has been opened by `netstat.exe.`
     The object address `0x85f78ce8` represents the file object:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00360.jpeg)'
+  id: totrans-148
   prefs: []
   type: TYPE_IMG
 - en: 'You can examine the file object (`FILE_OBJECT`) using the object address as
     follows. From the output, you can see that the `FileName` field contains the name
     of the file, and the `DeviceObject` field contains the pointer to the device object
     `(DEVICE_OBJECT)`:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE31]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'As mentioned earlier, from the device object, one can determine the name of
     the device and the associated driver. This is how the I/O manager determines which
     driver to pass the I/O request to. The following output displays the name of the
@@ -1037,11 +1316,14 @@
     field tells you that there is an unnamed device object (`868e7b28`) associated
     with the `fvevol.sys` driver sitting on top of the device object `HarddiskVolume1`
     in the device stack:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE32]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'To determine the layers of drivers through which the I/O request goes through,
     you can use the `!devstack` kernel debugger command and pass the device object
     address to display the device stack (of layered device objects) associated with
@@ -1053,19 +1335,24 @@
     by the I/O manager. Depending on the type of request, `volsnap.sys` can handle
     the IRP request and send the request down to other drivers in the stack, which
     finally reaches `volmgr.sys`:'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE33]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'To view the device tree, you can use the GUI tool *DeviceTree* (which we mentioned
     earlier). The tool displays the driver on the outer edge of the tree, and their
     devices are indented one level. The attached devices are further intended, as
     shown in the following screenshot. You can compare the following screenshot with
     the preceding `!devstack` output to get an idea of how to interpret the information:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00361.jpeg)'
+  id: totrans-156
   prefs: []
   type: TYPE_IMG
 - en: It is important to understand this layered approach, because sometimes, a rookit
@@ -1073,20 +1360,25 @@
     `IRP`. Using this technique, a rootkit driver can log or modify the `IRP` before
     passing it on to the legitimate driver. For example, a keylogger can log strokes
     by inserting a malicious driver that sits above the keyboard function driver.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
 - en: 7\. Displaying Device Trees
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'You can use the `devicetree` plugin in Volatility to display the device tree
     in the same format as the *DeviceTree* tool. The following highlighted entries
     show the device stack of `HarddiskVolume1` that is associated with `volmgr.sys`:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE34]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: 'To help you understand the use of the `devicetree` plugin in forensic investigation,
     let''s take a look at a malware which creates its own device to store its malicious
     binary. In the following example of the Z*eroAccess* *rootkit*, I have used the
@@ -1094,11 +1386,14 @@
     in determining the full path of a process (you can also use the `dlllist` plugin).
     From the output, you can see that the last `svchost.exe` process is running from
     a suspicious namespace:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE35]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'From the earlier discussion, if you remember, `\\.\<symbolic link name>` is
     the convention used to access a device from the user-mode using the name of the
     symbolic link. When a driver creates a symbolic link for the device, it is added
@@ -1112,11 +1407,14 @@
     To identify the driver which created this device, you can use the `devicetree`
     plugin. From the following output, you can tell that the `svchost.exe` device
     was created by the `00015300.sys` driver:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE36]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'In the following example of *BlackEnergy* malware, it replaces the legitimate
     `aliide.sys` driver on the disk with the malicious driver to hijack the existing
     service (as covered in [Chapter 10](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485),* Hunting
@@ -1125,11 +1423,14 @@
     the malicious user-mode component (DLL injected into the legitimate `svchost.exe`)
     process. The following `devicetree` output shows the device created by the malicious
     driver:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE37]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'To get an idea of the type of operations supported by the malicious driver.
     You can use Volatility''s `driverirp` plugin, since it displays the major IRP
     functions associated with a particular driver or all the drivers. From the following
@@ -1139,12 +1440,16 @@
     to `IopInvalidDeviceRequest` in the `ntoskrnl.exe`, which is the reason you are
     seeing all other non-supported operations pointing to `0xfffff80002a5865c` in
     `ntoskrnl.exe`:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE38]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 8\. Detecting Kernel Space Hooking
+  id: totrans-169
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1164,9 +1469,11 @@
     of the malicious component, bypass security software, or  intercept the execution
     path. In this section, we will understand different hooking techniques in the
     kernel space and how to detect such techniques using memory forensics.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
 - en: 8.1 Detecting SSDT Hooking
+  id: totrans-171
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1178,9 +1485,11 @@
     thread running in the kernel mode consults the *SSDT* to determine the address
     of the kernel function to invoke. The following screenshot illustrates this concept
     with an example of `WriteFile()` (the concept is similar for other APIs):'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00362.jpeg)'
+  id: totrans-173
   prefs: []
   type: TYPE_IMG
 - en: 'In general, `ntoskrnl.exe` exports core kernel API functions such as `NtReadFile()`, `NtWrite()File`,
@@ -1193,29 +1502,37 @@
     displays the contents of the SSDT. The entries in the table contain the pointers
     to the functions implemented by `ntoskrnl.exe` (`nt`). The order and the number
     of entries vary across operating system versions:'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE39]'
+  id: totrans-175
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'There is a second table, similar to the SSDT, known as *SSDT shadow*. This
     table stores the pointers to the GUI-related functions exported by `win32k.sys.`
     To display the entries of both the tables, you can use the `ssdt` volatility plugin,
     as shown here. `SSDT[0]` refers to the native *SSDT table* and `SSDT[1]` refers
     to *SSDT shadow*:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE40]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'In the case of SSDT hooking, an attacker replaces the pointer of a specific
     function with the address of the malicious function. For instance, if an attacker
     wishes to intercept the data that is written to a file, the pointer to `NtWriteFile()`
     can be changed to point to the address of the malicious function of an attacker''s
     choice. This is illustrated in the following diagram:'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00363.jpeg)'
+  id: totrans-179
   prefs: []
   type: TYPE_IMG
 - en: 'To detect SSDT hooking, you can look for the entries in the SSDT table that
@@ -1224,20 +1541,25 @@
     and points them to the malicious driver `core.sys.` At this stage, you can determine
     the base address of `core.sys` using `modules`, `modscan`, or `driverscan` and
     then dump it to disk for further analysis using the `moddump` plugin:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE41]'
+  id: totrans-181
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: The disadvantage of using SSDT hooking for an attacker is that it is easy to
     detect, and the 64-bit release of Windows prevents SSDT hooking due to the **Kernel
     Patch Protection** (**KPP**) mechanism, also known as *PatchGuard* ([https://en.wikipedia.org/wiki/Kernel_Patch_Protection](https://en.wikipedia.org/wiki/Kernel_Patch_Protection)).
     Since the entries in the SSDT vary across different versions of Windows and are
     subject to change in newer versions, it becomes difficult for a malware author
     to write a rootkit that is reliable.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
 - en: 8.2 Detecting IDT Hooking
+  id: totrans-183
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1251,25 +1573,33 @@
     system, the interrupt handler at `0xC3` points to an address that resides in the
     memory of `ntoskrnl.exe`. The following output shows the entry from the clean
     system:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE42]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'The following output displays the hooked entry. You can see that the `0xC3`
     entry in the IDT is pointing to an address in the `UNKNOWN` module. In other words,
     the hooked entry resides outside the range of the `ntoskrnl.exe` module:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE43]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: For detailed analysis of Uroburos rootkit and to understand the technique used
     by the rootkit to trigger the hooked interrupt handler, refer to the following
     blog post: [https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg](https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg).
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: 8.3 Identifying Inline Kernel Hooks
+  id: totrans-189
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1284,11 +1614,14 @@
     to the `0xb878dfb2` and `0xb878e6bb` addresses within a malicious module whose
     name is unknown (possibly because it is hiding by unlinking the `KLDR_DATA_TABLE_ENTRY`
     structure):'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE44]'
+  id: totrans-191
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: 'Even though the name of the hooking module is unknown, it is still possible
     to detect the malicious kernel module. In this case, we know the API functions
     are redirected to addresses starting with `0xb87` within the malicious module,
@@ -1301,12 +1634,16 @@
     that the hook addresses `0xb878dfb2` and `0xb878e6bb` fall within the address
     range of `TDSSserv.sys`. At this point, we have successfully identified the malicious
     driver. You can now dump the driver to disk for further analysis:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE45]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: 8.4 Detecting IRP Function Hooks
+  id: totrans-194
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1315,9 +1652,11 @@
     the malicious module. For example, a rookit can inspect the data buffer that is
     written to a disk or network by overwriting the address corresponding to `IRP_MJ_WRITE`
     in a driver''s major function table. The following diagram illustrates this concept:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00364.jpeg)'
+  id: totrans-196
   prefs: []
   type: TYPE_IMG
 - en: 'Normally, the IRP handler functions of a driver point within their own module.
@@ -1325,11 +1664,14 @@
     to an address in `null.sys`, however, sometimes a driver will forward the handler
     function to another driver. The following is an example of the disk driver forwarding
     handler functions to `CLASSPNP.SYS` (the storage class device driver):'
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE46]'
+  id: totrans-198
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'To detect IRP hooks, you can focus on IRP handler functions that point to another
     driver, and since the driver can forward an IRP handler to another driver, you
     need to further investigate it to confirm the hook. If you are analyzing the rootkit
@@ -1338,19 +1680,25 @@
     image for any modifications. In the following example, the *ZeroAccess rootkit*
     hooks the IRP functions of the disk driver and redirects them to the functions
     within a malicious module whose address is unknown (because the module is hidden):'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE47]'
+  id: totrans-200
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: 'The following output from the `modscan` displays the malicious driver (with
     a suspicious name) associated with *ZeroAccess* and the base address where it
     is loaded in the memory (which can be used to dump the driver to disk):'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE48]'
+  id: totrans-202
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE48]'
 - en: 'Some rootkits use indirect IRP hooking to avoid suspicion. In the following
     example, the *Gapz* Bootkit hooks the `IRP_MJ_DEVICE_CONTROL` of `null.sys`. At
     first glance, it may look like everything is normal because the IRP handler address
@@ -1360,15 +1708,19 @@
     case, it is pointing to `0x880ee040` in `null.sys`. After disassembling the address `0x880ee040`
     (using the `volshell` plugin), you can see the jump to an address of `0x8518cad9`,
     which is outside the range of `null.sys`:'
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE49]'
+  id: totrans-204
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE49]'
 - en: 'For detailed information on the stealth techniques used by the Gapz Bootkit,
     read the whitepaper ([https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf](https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf))
     titled "*Mind the Gapz: The Most Complex Bootkit Ever Analyzed"* by Eugene Rodionov
     and Aleksandr Matrosov.'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
 - en: As discussed so far, detecting standard hooking techniques is fairly straightforward.
@@ -1386,9 +1738,11 @@
     code to blend in with other legitimate drivers and reduce the risk of detection.
     In the next section, we will look at some of the supported techniques used by
     the rootkits.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
 - en: 9\. Kernel Callbacks And Timers
+  id: totrans-207
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1411,6 +1765,7 @@
     and so on) in the *Windows Driver Kit (WDK)*. The quickest method to get details
     on the documented kernel functions is to do a quick Google search, which should
     take you to the appropriate link in the WDK online documentation.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
 - en: The way callbacks work is that a particular driver creates a callback object,
@@ -1424,6 +1779,7 @@
     system, you will typically see many callbacks installed by various drivers, which
     means not all entries in the `callbacks` output are malicious; further analysis
     is required to identify the malicious driver from a suspect memory image.
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
 - en: 'In the following example, the *Mader rootkit* as which performed *SSDT hooking*
@@ -1437,17 +1793,24 @@
     identified the malicious driver, you can further investigate it or you can dump
     it to disk for further analysis (disassembly, AV scanning, string extraction,
     and so on), as shown in the `moddump` command here:'
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE50]'
+  id: totrans-211
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE50]'
 - en: '[PRE51]'
+  id: totrans-212
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE51]'
 - en: '[PRE52]'
+  id: totrans-213
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE52]'
 - en: 'In the following example, the *TDL3 rootkit* installs process callback and
     image load callback notifications. This allows the rootkit to monitor process
     events and to get notifications when an executable image (EXE, DLL, or kernel
@@ -1457,11 +1820,14 @@
     or if a rootkit is running an orphan thread (a thread that is hidden or detached
     from the kernel module). In such cases, the `UNKNOWN` entry makes it easy for
     you to spot the suspicious entry:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE53]'
+  id: totrans-215
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE53]'
 - en: 'Even though the module name is `UNKNOWN`, based on the callback routine address,
     we can deduce that the malicious module should be residing somewhere in the memory
     region starting with address `0xb878`. From the output of the `modules` plugin,
@@ -1470,11 +1836,14 @@
     of `0x11000`. Clearly, all the callback routine addresses fall within the range
     of this module. Now that the base address of the kernel module is known, you can
     dump it using the `moddump` plugin for further analysis:'
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE54]'
+  id: totrans-217
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE54]'
 - en: Like callbacks, a rootkit driver may create a timer and get notified when the
     specified time elapses. A rootkit driver may use this functionality to schedule
     operations to be performed periodically. The way it works is that the rootkit
@@ -1483,6 +1852,7 @@
     is invoked, the rootkit can perform malicious actions. In other words, the timer
     is another way by which a rootkit can get to execute its malicious code. For detailed
     information on how the kernel timer works, refer to the following Microsoft documentation: [https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs).
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
 - en: 'To list the kernel timers, you can use the `timers` Volatility plugin. A point
@@ -1496,36 +1866,48 @@
     is invoked. The `UNKNOWN` in the `Module` column tells us that the module is probably
     hidden, but the routine address points you to the memory range where the malicious
     code is present:'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE55]'
+  id: totrans-220
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE55]'
 - en: 'In addition to timers, *ZeroAccess* also installs callbacks to monitor registry
     operations. Again, the callback routine address points to the same memory range
     (starting with `0x814f`):'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE56]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE56]'
 - en: 'Trying to find the `UNKNOWN` module using the `modules`, `modscan`, and `driverscan`
     plugins does not return any results:'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE57]'
+  id: totrans-224
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE57]'
 - en: 'Inspecting the driverscan listing revealed suspicious entries where the base
     address and the size are zeroed out (which is not normal and could be a bypass
     trick). Zeroing out the base address explains why `modules`, `modscan`, and `driverscan`
     did not return any results. The output also reveals that the name of the malicious
     driver is composed only of numbers, which adds to the suspicion:'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE58]'
+  id: totrans-226
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE58]'
 - en: 'By zeroing out the base address, the rootkit is making it hard for the forensic
     analyst to determine the start address of the kernel module, which also prevents
     us from dumping the malicious module. We still know where the malicious code is
@@ -1544,23 +1926,31 @@
     turns out to be `0xd000` bytes in hex. In other words, the module starts at address
     `0x814f1b80` and ends at `0x814feb80`. All the callback addresses fall within
     the address range of this module:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE59]'
+  id: totrans-228
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE59]'
 - en: '[PRE60]'
+  id: totrans-229
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE60]'
 - en: 'To confirm that the dumped module is malicious, it was submitted to *VirusTotal*.
     The results from AV vendors confirm it to be the *ZeroAccess Rootkit* (also known
     as *Sirefef*):'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00365.jpeg)'
+  id: totrans-231
   prefs: []
   type: TYPE_IMG
 - en: Summary
+  id: totrans-232
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1575,5 +1965,6 @@
     so it is not enough just to know how to use the tools; it becomes important to
     understand the underlying concepts to recognize the efforts by the attackers to
     bypass the forensic tools.
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
