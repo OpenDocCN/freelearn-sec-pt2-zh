@@ -1,0 +1,1570 @@
+- en: Debugging Malicious Binaries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Debugging is a technique in which malicious code is executed in a controlled
+    manner. A debugger is a program that gives you the ability to inspect malicious
+    code at a more granular level. It provides full control over the malware's runtime
+    behavior and allows you to execute a *single instruction*, *multiple instructions*,
+    or *select functions* (instead of executing the entire program), while studying
+    the malware's every action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will mainly learn the debugging features offered by *IDA
+    Pro (commercial disassembler/debugger)* and *x64dbg (open source x32/x64 debugger)*.
+    You will learn about the features offered by these debuggers, and how to use them
+    to inspect the runtime behavior of a program. Depending on the resources available,
+    you will be free to choose either of these debuggers or both, for debugging the
+    malicious binary. When you are debugging a malware, proper care needs to be taken,
+    as you will be running the malicious code on a system. It is highly recommended
+    that you perform any malware debugging in an isolated environment (as covered
+    in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485), *Introduction
+    to Malware Analysis*). At the end of this chapter, you will also see how to debug
+    a .NET application using a .NET decompiler/debugger, *dnSpy* ([https://github.com/0xd4d/dnSpy](https://github.com/0xd4d/dnSpy)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other popular disassemblers/debuggers include *radare2* ([http://rada.re/r/index.html](http://rada.re/r/index.html)),
+    the *WinDbg* part of debugging tools for Windows ([https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/](https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/)), *Ollydbg*
+    ([http://www.ollydbg.de/version2.html](http://www.ollydbg.de/version2.html)),
+    *Immunity Debugger* ([https://www.immunityinc.com/products/debugger/](https://www.immunityinc.com/products/debugger/)),
+    *Hopper* ([https://www.hopperapp.com/](https://www.hopperapp.com/)), and *Binary
+    Ninja* ([https://binary.ninja/](https://binary.ninja/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. General Debugging Concepts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we delve into the features offered by these debuggers (*IDA Pro*, *x64dbg*,
+    and *DnSpy*), It is essential to understand some of the common features that most
+    debuggers provide. In this section, you will mainly see the general debugging
+    concepts; in the subsequent sections, we will focus on the essential features
+    of *IDA Pro*, *x64dbg,* and *dnSpy*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.1 Launching And Attaching To Processes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Debugging normally begins by selecting the program to debug. There are two ways
+    to debug a program: *(a) attach the debugger to a running process,* and *(b) launch
+    a new process*. When you attach the debugger to a running process, you will not
+    be able to control or monitor the process's initial actions, because by the time
+    you have a chance to attach to the process, all of its startup and initialization
+    code will have already been executed. When you attach the debugger to a process,
+    the debugger suspends the process, giving you a chance to inspect the process's
+    resources or set a breakpoint before resuming the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, launching a new process allows you to monitor or debug every
+    action the process takes, and you will also be able to monitor the process's initial
+    actions. When you start the debugger, the original binary will be executed with
+    the privileges of the user running the debugger. When the process is launched
+    under a debugger, the execution will pause at the *program's entry point*. A program's
+    entry point is the address of the first instruction that will be executed. In
+    later sections, you will learn how to *launch* and *attach* to a process using
+    *IDA Pro*, *x64dbg*, and *dnSpy*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A program's entry point is not necessarily the `main` or `WinMain` function;
+    before transferring control to `main` or `WinMain`, the initialization routine
+    (startup routine) is executed. The purpose of the startup routine is to initialize
+    the program's environment before passing control to the `main` function. This
+    initialization is designated, by the debuggers, as the entry point of the program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2 Controlling Process Execution
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A debugger gives you the ability to control/modify the behavior of the process
+    while it is executing. The two important capabilities offered by a debugger are: *(a)
+    the ability to control execution,* and *(b) the ability to interrupt execution
+    (using breakpoints)*. Using a debugger, you can execute one or more instructions
+    (or select functions) before returning control to the debugger. During analysis,
+    you will combine both the debugger's controlled execution and the interruption
+    (breakpoint) feature to monitor a malware's behavior. In this section, you will
+    learn about the common *execution control* functionalities offered by the debuggers;
+    in later sections, you will learn how to use these features in *IDA Pro*, *x64dbg*,
+    and *dnSpy.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are some of the common execution control options provided by
+    the debuggers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Continue (Run)**: This executes all of the instructions, until a breakpoint
+    is reached or an exception occurs. When you load a malware into a debugger and
+    use the *continue (Run)* option without setting the breakpoint, it will execute
+    all of the instructions without giving you any control; so, you normally use this
+    option along with breakpoint, to interrupt the program at the breakpoint location.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Step into and Step over**: Using *step into* and *step over,* you can execute
+    a single instruction. After executing the single instruction, the debugger stops,
+    giving you a chance to inspect the process''s resources. The difference between
+    *step into* and *step over* occurs when you are executing an instruction that
+    calls a function. For example, in the following code, at ➊, there is a call to
+    the function `sub_401000`. When you use the *step into* option on this instruction,
+    the debugger will stop at the start of the function (at the address `0x401000`),
+    whereas when you use *step over*, the entire function will be executed, and the
+    debugger will pause at the next instruction, ➋ (that is, the address `0x00401018`).
+    You will normally use *step into* to get inside a function, to understand its
+    inner workings. S*tep over* is used when you already know what a function does
+    (such as in an API function) and would like to skip over it:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Execute till Return (Run until return)**: This option allows you to execute
+    all of the instructions in the current function, until it returns. This is useful
+    if you accidentally step into a function (or step into a function that is not
+    interesting) and would like to come out of it. Using this option inside a function
+    will take you to the end of the function (`ret` or `retn`), after which you can
+    use either the *step into* or *step over* option to return to the calling function.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Run to cursor (Run until selection)**: This allows you to execute instructions
+    until the *current cursor location,* or until the *selected instruction* is reached.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 1.3 Interrupting a Program with Breakpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A *breakpoint* is a debugger feature that allows you to interrupt program execution
+    at a very specific location within a program. Breakpoints can be used to pause
+    the execution at a particular instruction, or when the program calls a function/API
+    function, or when the program reads, writes, or executes from a memory address.
+    You can set multiple breakpoints all over a program, and execution will be interrupted
+    upon reaching any of the breakpoints. Once a breakpoint has been reached, it is
+    possible to monitor/modify various aspects of the process. Debuggers typically
+    allow you to set different types of breakpoints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Software Breakpoints**: By default, debuggers make use of software breakpoints.
+    Software breakpoints are implemented by replacing the instruction at a breakpoint
+    address with a software breakpoint instruction, such as the `int 3` instruction
+    (having an opcode of `0xCC`). When a software breakpoint instruction (such as `int
+    3`) is executed, the control is transferred to the debugger, which is debugging
+    the interrupted process. The advantage of using software breakpoints is that you
+    can set an unlimited number of breakpoints. The disadvantage is that malware can
+    look for the breakpoint instruction (`int 3`) and modify it to change the normal
+    operation of an attached debugger.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Hardware Breakpoints**: A CPU, such as x86, supports hardware breakpoints
+    through the use of the CPU''s debug registers, `DR0 - DR7`. You can set a maximum
+    of four hardware breakpoints using `DR0-DR3`; the other remaining debug registers
+    are used to specify additional conditions on each breakpoint. In the case of hardware
+    breakpoints, no instruction is replaced, but the CPU decides whether the program
+    should be interrupted, based on the values contained within the debug registers.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Memory Breakpoints**: These breakpoints allow you to pause the execution
+    when an instruction accesses (*reads from* or *writes to*) the memory, rather
+    than the execution. This is useful if you want to know when a particular memory
+    is accessed (*read* or *write*), and to know which instruction accesses it. For
+    example, if you find an interesting string or data in the memory, you can set
+    a memory breakpoint on that address to determine under what circumstances the
+    memory is accessed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Conditional Breakpoints**: Using conditional breakpoints, you can specify
+    the condition that must be satisfied to trigger the breakpoint. If a conditional
+    breakpoint is reached but the condition is not satisfied, the debugger automatically
+    resumes the execution of the program. Conditional breakpoints are not an instruction
+    feature or a CPU feature; they are a feature offered by the debugger. You can
+    therefore specify conditions for both software and hardware breakpoints. When
+    the conditional breakpoint is set, it is the debugger''s responsibility to evaluate
+    the conditional expression and determine whether the program needs to be interrupted
+    or not.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 1.4 Tracing Program Execution
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Tracing* is a debugging feature that allows you to record (*log*) specific
+    events while the process is executing. Tracing gives you detailed execution information
+    on a binary. In later sections, you will learn about the different types of tracing
+    capabilities provided by *IDA* and *x64dbg*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2\. Debugging a Binary Using x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*x64dbg* ([https://x64dbg.com](https://x64dbg.com)) is an open source debugger.
+    You can use *x64dbg* to debug both 32-bit and 64-bit applications. It has an easy-to-use
+    GUI and offers various debugging features ([https://x64dbg.com/#features](https://x64dbg.com/#features)).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you will see some of the debugging features offered by *x64dbg,*
+    and how to use it to debug a malicious binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1 Launching a New Process in x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *x64dbg*, to load an executable, select File | Open and browse to the file
+    that you wish to debug; this will start the process, and the debugger will pause
+    at the *System Breakpoint*, the *TLS callback,* or the *program entry point* function,
+    depending on the configuration settings. You can access the settings dialog by
+    choosing Options | Preferences | Events. The default settings dialog is shown
+    as follows, with the default settings when the executable is loaded. The debugger
+    first breaks in the system function (because the System Breakpoint* option is
+    checked). Next, after you run the debugger, it will pause at the *TLS Callback*
+    function, if present (because the TLS callbacks* option is checked). This is sometimes
+    useful, because some anti-debugger tricks contain TLS entries that allow malware
+    to execute code before the main application runs. If you further execute the program,
+    the execution pauses at the entry point of the program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00125.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If you want the execution to pause directly at the *program''s entry point*,
+    then uncheck the System Breakpoint* and TLS Callbacks* options (this configuration
+    should work fine for most malware programs, unless the malware uses anti-debugging
+    tricks). To save the configuration settings, just click the save button. With
+    this configuration, when an executable is loaded, the process starts, and execution
+    is paused at the *program''s entry point,* as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00126.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.2 Attaching to an Existing Process Using x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To attach to an existing process in *x64dbg*, select File | Attach (or *Alt *+
+    *A*); this will bring up a dialog displaying the running processes, as follows.
+    Choose the process that you wish to debug and click on the Attach button. When
+    the debugger is attached, the process is suspended, giving you time to set breakpoints
+    and inspect the process''s resources. When you close the debugger, the attached
+    process will terminate. If you do not want the attached process to terminate,
+    you can detach a process by selecting File | Detach (*Ctrl* + *Alt* + *F2*); this
+    ensures that the attached process is not terminated when you close the debugger:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00127.jpeg)Sometimes, when you try attaching the debugger to
+    a process, you will find that not all of the processes are listed in the dialog.
+    In that case, make sure that you are running the debugger as an *administrator; *you
+    need to enable the *debug privilege* settings by selecting Options | Preferences and,
+    in the Engine tab, checking the Enable Debug Privilege option.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 x64dbg Debugger Interface
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When you load a program in *x64dbg*, you will be presented with a debugger
+    display, as follows. The debugger display contains multiple tabs; each tab displays
+    different windows. Each window contains different information regarding the debugged
+    binary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00128.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Disassembly Window (CPU Window)**: This shows the disassembly of all of the
+    instructions of the debugged program. This window presents the disassembly in
+    a linear fashion, and it is synchronized with the current value of the instruction
+    pointer register (`eip` or `rip`). The left portion of this window displays an
+    *arrow* to indicate the program''s non-linear flow (such as *branching* or *looping*).
+    You can display the control flow graph by pressing the *G* hotkey. The control
+    graph is shown as follows; conditional jumps use *green* and *red* arrows. The
+    green arrow indicates that the jump will be taken if the condition is true, and
+    the red arrow indicates that the jump will not be taken. The blue arrow is used
+    for unconditional jumps, and a loop is indicated by the upward (backward) blue
+    arrow:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00129.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Registers Window**: This window displays the current state of the CPU registers.
+    The value in a register can be modified by double-clicking on the register and
+    entering a new value (you can also right-click and modify the value of a register
+    to *zero* or *increment*/*decrement* the value of the register). You can toggle
+    the flag bits *on* or *off* by double-clicking on the values of the flag bits.
+    You cannot change the value of the instruction pointer (`eip` or `rip`). As you
+    are debugging the program, the register values can change; the debugger highlights
+    register values with a *red color,* to indicate a change since the last instruction.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stack Window**: The *stack view* displays the data contents of the process''s
+    runtime stack. During malware analysis, you will typically inspect the stack before
+    calling a function, to determine the number of arguments passed to the function
+    and the types of the function arguments (such as *integer* or *character pointer*).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Dump Window**: This displays the standard hex dump of the memory. You can
+    use the dump window to examine the contents of any valid memory address in the
+    debugged process. For example, if a stack location, register, or instruction contains
+    a valid memory location, to examine the memory location, right-click on the address
+    and choose the Follow in Dump option.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Memory Map Window**: You can click on the Memory Map tab to display the contents
+    of the *Memory Map* *window*. This provides the layout of the process memory and
+    gives you the details of the allocated memory segments in the process. It is a
+    great way to see where the executables and their sections are loaded in the memory.
+    This window also contains information about the process DLLs and their sections
+    in the memory. You can double-click on any entry to relocate the display to the
+    corresponding memory location:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00130.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Symbols Window**: You can click on the Symbols tab to display the contents
+    of the *Symbols window*. The left pane displays a list of the loaded modules (the
+    executable and its DLLs); clicking on a module entry will display its *import*
+    and *export* functions in the right pane, as follows. This window can be useful
+    in determining where the import and export functions reside in the memory:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00131.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**References Window**: This window displays the references to the API calls.
+    Clicking on the References tab will not display the references to the API by default.
+    To populate this window, right-click anywhere in the *disassembly (CPU)* window
+    (with the executable loaded), then select Search for | Current Module | Intermodular
+    calls; this will populate the *references window* with the references to all of
+    the API calls in the program. The following screenshot displays references to
+    the multiple API functions; the first entry tells you that at the address `0x00401C4D`, the
+    instruction calls the `CreateFileA` API (which is exported by `Kernel32.dll`).
+    Double-clicking on the entry will take you to the corresponding address (in this
+    case, `0x00401C4D`). You can also set a breakpoint at this address; once the breakpoint
+    is hit, you can inspect the parameters passed to the `CreateFileA` function:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00132.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Handles Window**: You can click on the Handles tab to bring up the *handles
+    window*; to display the contents, right-click inside the handles window and selectRefresh (or
+    *F5*). This displays the details of all of the open handles. In the previous chapter,
+    when we discussed the Windows API, you learned that the process can open handles
+    to an object (such as the *file*, *registry*, and so on), and these handles can
+    be passed to functions, such as `WriteFile`, to perform subsequent operations.
+    The handles are useful when you are inspecting an API, such as `WriteFile`, that
+    will tell you the object associated with the handle. For example, when debugging
+    a malware sample, it is determined that the `WriteFile` API call accepts a handle
+    value of `0x50`. Inspecting the handles window shows that the handle value `0x50` is
+    associated with the file `ka4a8213.log`, as shown here:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00133.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Threads Window**: This displays the list of threads in the current process.
+    You can right-click on this window and *suspend* a thread/threads or *resume*
+    a suspended thread.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 2.4 Controlling Process Execution Using x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In S*ection 1.2*, *Controlling Process Execution*, we looked at the different
+    execution control features provided by the debuggers. The following table outlines
+    the common execution options and how to access these options in *x64dbg*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Functionality | Hotkey | Menu |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Run | *F9* | Debugger &#124; Run |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Step into | *F7* | Debugger &#124; Step into |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Step over | *F8* | Debugger &#124; Step over |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Run until selection | *F4* | Debugger &#124; Run until selection |'
+  prefs: []
+  type: TYPE_TB
+- en: 2.5 Setting a Breakpoint in x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *x64dbg*, you can set a software breakpoint by navigating to the address
+    where you want the program to pause and pressing the *F2* key (or right-clicking
+    and selecting Breakpoint | Toggle). To set a hardware breakpoint, right-click
+    on the location where you want to set the breakpoint and select Breakpoint | Set
+    Hardware on Execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also use hardware breakpoints to break on *write* or break on *read/write*
+    (access) to a memory location. To set a hardware breakpoint on memory access,
+    in the dump pane, right-click on the desired address and select Breakpoint | Hardware,
+    Access, and then choose the appropriate data type (such as byte, word, dword,
+    or qword), as shown in the following screenshot. In the same manner, you can set
+    the hardware breakpoint on memory write by choosing the Breakpoint | Hardware,
+    Write option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00134.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In addition to hardware memory breakpoints, you can also set memory breakpoints
+    in the same manner. To do that, in the dump pane, right-click on the desired address
+    and select Breakpoint | Memory, Access (for memory access) or Breakpoint | Memory,
+    Write (for memory write).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To view all of the active breakpoints, just click on the Breakpoints tab; this
+    will list all of the software, hardware, and memory breakpoints in the Breakpoints
+    window. You can also right-click on any instruction inside the Breakpoints window
+    and remove a single breakpoint, or all of the breakpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more information on the options available in *x64dbg,* refer to the *x64dbg*
+    online documentation at [http://x64dbg.readthedocs.io/en/latest/index.html](http://x64dbg.readthedocs.io/en/latest/index.html).
+    You can also access the *x64dbg* help manual by pressing *F1* while you are in
+    the *x64dbg* interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6 Debugging 32-bit Malware
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With an understanding of debugging features, let''s look at how debugging can
+    help us to understand malware behavior. Consider a code excerpt from a malware
+    sample, where the malware calls the `CreateFileA` function to create a file. To
+    determine the name of the file that it creates, you can set a breakpoint at the
+    call to the `CreateFileA` function and execute the program until it reaches the
+    breakpoint. When it reaches the breakpoint (that is, before calling `CreateFileA`),
+    all of the parameters to the function will be pushed onto the stack; we can then
+    examine the *first parameter* on the stack to determine the name of the file.
+    In the following screenshot, when the execution is paused at the breakpoint, *x64dbg*
+    adds a comment (if it''s a string) next to the instruction and next to the argument
+    on the stack, to indicate what parameter is being passed to the function. From
+    the screenshot, you can tell that the malware creates an executable file, `winlogdate.exe`,
+    in the `%Appdata%\Microsoft` directory. You can also get this information by right-clicking
+    on the first argument in the stack window and selecting the follow DWORD in dump
+    option, which displays the contents in the hex window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00135.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After creating the executable file, the malware passes the handle value (`0x54`)
+    returned by the `CreateFile` as the first parameter to the `WriteFile`, and writes
+    the executable content (which is passed as the second parameter), as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00136.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s assume that you do not know which object is associated with the handle `0x54`,
+    probably because you set a breakpoint directly on `WriteFile` without initially
+    setting a breakpoint on `CreateFile`. To determine the object that is associated
+    with a handle value, you can look it up in the Handles window. In this case, the
+    handle value `0x54`, passed as the first parameter to the `WriteFile`, is associated
+    with `winlogdate.exe`, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00137.gif)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.7 Debugging 64-bit Malware
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will use the same technique to debug a 64-bit malware; the difference is,
+    you will be dealing with *extended registers*, *64-bit memory addresses/pointers*,
+    and slightly different *calling conventions*. If you recall (from [Chapter 4](part0088.html#2JTHG0-ac10ba3f98854c44bac1c2c5641ca485), *Assembly
+    Language and Disassembly Primer*), a 64-bit code uses the `FASTCALL` calling convention
+    and passes the first four parameters to the function in the registers (`rcx`, `rdx`, `r8`,
+    and `r9`), and the rest of the parameters are placed on the stack. While debugging
+    the call to a function/API, depending on the parameter you are inspecting, you
+    will have to inspect the *register* or the *stack*. The calling convention mentioned
+    previously is applicable to compiler-generated code. An attacker writing code
+    in the assembly language need not follow these rules; as a result, the code can
+    exhibit unusual behavior. When you come across code that is not compiler-generated,
+    a further investigation of the code may be required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we debug a 64-bit malware, let''s try to understand the behavior of
+    a 64-bit binary with the following trivial C program, which was compiled for the
+    64-bit platform using the *Microsoft Visual C/C++* compiler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the preceding program, the `printf` function takes eight arguments; this
+    program was compiled and opened in *x64dbg*, and a breakpoint was set at the `printf` function.
+    The following screenshot shows the program, which is paused before the call to
+    the `printf` function. In the registers window, you can see that the first four
+    parameters are placed in the `rcx`, `rdx`, `r8`, and `r9` registers. When the
+    program calls a function, the function reserves `0x20` (`32` bytes) of space on
+    the stack (space for four items, each `8` bytes in size); this is to make sure
+    that the called function has the necessary space, if it needs to save the register
+    parameters (`rcx`, `rdx`, `r8`, and `r9`). This is the reason the next four parameters
+    (the 5^(th), 6^(th), 7^(th), and 8^(th) parameters) are placed on the stack, starting
+    from the fifth item (`rsp+0x20`). We are showing you this example to give you
+    an idea of how to find the parameters on the stack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00138.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the case of a 32-bit function, the stack grows as the arguments are *pushed*,
+    and shrinks when the items are *popped*. In a 64-bit function, the stack space
+    is allocated at the beginning of the function, and does not change until the end
+    of the function. The allocated stack space is used to store the local variables
+    and the function parameters. In the preceding screenshot, note how the first instruction, `sub
+    rsp,48`, allocates `0x48` (`72`) bytes of space on the stack, after which no stack
+    space is allocated in the middle of the function; also, instead of using `push` and `pop` instructions,
+    the `mov` instructions are used to place the 5^(th), 6^(th), 7^(th), and 8^(th)
+    parameters on the stack (highlighted in the preceding screenshot). The lack of `push` and `pop` instructions
+    makes it difficult to determine the number of parameters accepted by the function,
+    and it is also hard to say whether the memory address is being used as a local
+    variable or a parameter to the function. Another challenge is, if the values are
+    moved into the registers `rcx` and `rdx` before the function call, it's hard to
+    say whether they are parameters passed to the function, or if they are moved into
+    registers for any other reason.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even though there are challenges in reverse engineering a 64-bit binary, you
+    should not have too much difficulty analyzing the API calls, because the API documentation
+    tells you the *number of function parameters*, the *data types of the parameters,*
+    and what *type of data* they return. Once you have an idea of where to find the
+    function parameters and the return values, you can set a breakpoint at the API
+    call and inspect its parameters to understand the malware functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at an example of a 64-bit malware sample that calls `RegSetValueEx` to
+    set some value in the registry. In the following screenshot, the breakpoint is
+    triggered before the call to the `RegSetValueEx`. You will need to look at the
+    values in the registers and the stack window (as mentioned previously) to examine
+    the parameters passed to the function; this will help you determine what registry
+    value is set by the malware. In *x64dbg*, the easiest way to get a quick summary
+    of function parameters is to look at the Default Window (below the registers window),
+    which is highlighted in the following screenshot. You can set a value in the Default
+    window to display the number of parameters. In the following screenshot, the value
+    is set to `6`, because from the API documentation ([https://msdn.microsoft.com/en-us/library/windows/desktop/ms724923(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724923(v=vs.85).aspx)),
+    you can tell that the `RegSetValueEx` API takes `6` parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00139.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The first parameter value, `0x2c`, is the handle to the open registry key.
+    Malware can open a handle to the registry key by calling either the `RegCreateKey` or `RegOpenKey` API.
+    From the handles window, you can tell that the handle value `0x2c` is associated
+    with the registry key shown in the following screenshot. From the handle information,
+    and through inspecting the 1^(st,) 2^(nd), and 5^(th) parameters, you can tell
+    that malware modifies the registry key, `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon\shell`, and
+    adds an entry, `"explorer.exe,logoninit.exe"`. On a clean system, this registry
+    key points to `explorer.exe` (the default Windows shell). When the system starts,
+    the `Userinit.exe` process uses this value to launch the Windows shell (`explorer.exe`).
+    By adding `logoninit.exe`, along with `explorer.exe`, the malware makes sure that `logoninit.exe` is
+    also launched by `Userinit.exe`; this is another type of persistence mechanism
+    used by the malware:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00140.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, you should have an understanding of how to debug a malicious
+    executable to understand its functionality. In the next section, you will learn
+    how to debug a malicious DLL to determine its behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8 Debugging a Malicious DLL Using x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485),* Dynamic
+    Analysis*, you learned techniques to execute a DLL to perform dynamic analysis.
+    In this section, you will use some of the concepts that you learned in [chapter
+    3](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522),* Dynamic
+    Analysis*, to debug a DLL using *x64dbg*. If you are not already familiar with
+    the dynamic analysis of a DLL, it is highly recommended to read S*ection 6*, *Dynamic-Link
+    Library (DLL) Analysis*, from [Chapter 3](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522),* Dynamic
+    Analysis,* before proceeding further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To debug a DLL, launch *x64dbg* (preferably with administrator privileges)
+    and load the DLL (via File | Open). When you load the DLL, *x64dbg* drops an executable
+    (named `DLLLoader32_xxxx.exe`, where `xxxx` are random hexadecimal characters)
+    into the same directory where your DLL is located; this executable acts as a generic
+    host process, which will be used to execute your DLL (in the same manner as `rundll32.exe`).
+    After you load the DLL, the debugger may pause at the `System Breakpoint`, `TLS
+    callback`, or `DLL entry point` function, depending on the configuration settings
+    (mentioned earlier, in the *Launching a New Process in x64dbg* section). With
+    the System Breakpoint* and TLS callback* options unchecked, the execution will
+    pause at the *DLL''s entry point* upon loading the DLL, as shown in the following
+    screenshot. Now, you can debug the DLL like any other program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00141.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.8.1 Using rundll32.exe to Debug the DLL in x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another effective method is to use `rundll32.exe` to debug the DLL (let''s
+    suppose that you want to debug a malware DLL named `rasaut.dll`). To do so, first
+    load `rundll32.exe` from the system32 directory (via File | Open) into the debugger,
+    which will pause the debugger at the `system breakpoint` or the `Entry point` of `rundll32.exe` (depending
+    on the settings mentioned earlier). Then, select Debug | Change Command Line and
+    specify the command-line arguments to `rundll32.exe` (specify the full path to
+    the DLL and the export function), as follows, and click on OK:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00142.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, select the Breakpoints tab, right-click inside the Breakpoints window,
+    and choose the Add DLL breakpoint option, which will bring up a dialog window
+    prompting you to enter the module name. Enter the DLL name (in this case, `rasaut.dll`),
+    shown as follows. This will tell the debugger to break when the DLL (`rasaut.dll`)
+    is loaded. After configuring these settings, close the debugger:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00143.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, reopen the debugger and load `rundll32.exe` again; when you load it again,
+    the previous command-line settings will still be intact. Now, select Debug | Run
+    (*F9*), till you break at the entry point of the DLL (you may have to select Run
+    (*F9)* multiple times, till you reach the DLL entry point). You can keep track
+    of where the execution has paused every time you run (*F9*), by looking at the
+    *comment* next to the *breakpoint address. Y*ou can also find the same comment
+    next to the `eip` register. In the following screenshot, you can see that the
+    execution has paused at the entry point of `rasaut.dll`. At this point, you can
+    debug the DLL like any other program. You can also set breakpoints on any function
+    exported by the DLL. You can find the export functions by using the Symbols window;
+    after you have found the desired *export* function, double-click on it (which
+    will take you to the code of the export function in the disassembly window). Then,
+    set a breakpoint at the desired address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00144.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.8.2 Debugging a DLL in a Specific Process
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes, you may want to debug a DLL that only runs in a specific process
+    (such as `explorer.exe`). The procedure is similar to the one covered in the previous
+    section. First, *launch the process* or *attach* to the desired host process using
+    x64dbg; this will pause the debugger. Allow the process to run by selecting Debug
+    | Run (*F9*). Next, select the Breakpoints tab, right-click inside the Breakpoints
+    window, and select the Add DLL breakpoint option, which will bring up a dialog
+    window prompting you to enter the module name. Enter the DLL name (as covered
+    in the previous section); this will tell the debugger to break when the DLL is
+    loaded. Now, you need to inject the DLL into the host process. This can be done
+    using a tool like *RemoteDLL* ([https://securityxploded.com/remotedll.php](https://securityxploded.com/remotedll.php)).
+    When the DLL is loaded, the debugger will pause somewhere in `ntdll.dll`; just
+    hit Run (*F9*) till you reach the entry point of the injected DLL (you might have
+    to run multiple times before you reach the entry point). You can keep track of
+    where the execution has paused every time you hit **Run** (*F9*) by looking at
+    the comment next to the breakpoint address or next to the `eip` register, as mentioned
+    in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.9 Tracing Execution in x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Tracing* allows you to log events while the process is executing. x64dbg supports *trace
+    into* and *trace over* conditional tracing options. You can access these options
+    via Trace | Trace into (*Ctrl*+*Alt*+*F7*) and **Trace | Trace over** (*Ctrl+Alt+F8*).
+    In *trace into*, the debugger internally traces the program by setting *step into* breakpoint,
+    until a condition is satisfied or the maximum number of steps is reached. In *trace
+    over*, the debugger traces the program by setting *step over* breakpoint, until
+    the condition is satisfied or the maximum number of steps is reached. The following
+    screenshot shows the Trace into dialog (the same options are provided in the Trace
+    over dialog). To trace the logs, at a minimum, you need to specify the *log text* and
+    the full path to the log file (via the Log File button) where the trace events
+    will be redirected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00145.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following includes brief descriptions of some of the fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Breakpoint Condition**: You can specify a condition in this field. This field
+    defaults to a value of `0` (`false`). To specify the condition, you need to specify
+    any valid expression ([http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html](http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html))
+    that evaluates to a non zero value (`true`). Expressions that evaluate to non-zero
+    values are considered `true`, thereby triggering the breakpoint. The debugger
+    continues tracing by evaluating the provided expression, and stops when the specified
+    condition is satisfied. If the condition is not satisfied, the tracing continues
+    until the *maximum trace count* is reached.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Log Text**: This field is used to specify the format that will be used to
+    log the trace events in the log file. The valid formats that can be used in this
+    field are mentioned at [http://help.x64dbg.com/en/latest/introduction/Formatting.html](http://help.x64dbg.com/en/latest/introduction/Formatting.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Log Condition**: This field defaults to a value of `1`. You can optionally
+    provide a log condition that will tell the debugger to log an event only when
+    a specific condition is met. The log condition needs to be a valid expression
+    ([http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html](http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html)).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Maximum Trace Count**: This fields specifies the maximum step count to trace
+    before the debugger gives up. The default value is set to `50000`, and you can
+    increase or decrease this value, as required.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Log File Button**: You can use this button to specify the full path to the
+    log file where the trace logs will be saved.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'x64dbg does not have specific *instruction tracing* and *function tracing*
+    features, but the *trace into* and *trace over* options can be used to perform
+    instruction tracing and function tracing. You can control the tracing by adding
+    breakpoints. In the following screenshot, the `eip` is pointing at the 1^(st)
+    instruction, and a breakpoint is set at the 5^(th) instruction. When the tracing
+    has initiated, the debugger starts tracing from the first instruction, and pauses
+    at the breakpoint. If there is no breakpoint, the tracing continues until the
+    program ends, or until the maximum trace count is reached. You can choose *trace
+    into* if you want to trace the instructions that are inside the function, or *trace
+    over* to step over the function and trace the rest of the instructions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00146.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.9.1 Instruction Tracing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To perform *instruction tracing* (for example, *trace into*) on the previous
+    program, you can use the following settings in the Trace into dialog. As mentioned
+    previously, to capture the trace events in a log file, you need to specify the
+    full path to the log file and the Log Text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00147.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The Log Text value in the preceding screenshot (`0x{p:cip} {i:cip}`) is in
+    the string format, which specifies the debugger to log the *address* and the *disassembly*
+    of all the traced instructions. The following is the trace log of the program.
+    As a result of choosing the *Trace into* option, the instructions inside the function
+    (`0xdf1000`) are also captured (highlighted in the following code). Instruction
+    tracing is useful to get a quick idea of a program''s execution flow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 2.9.2 Function Tracing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To demonstrate *function tracing*, consider the program shown in the following
+    screenshot. In this program, the `eip` is pointing to the first instruction, the
+    breakpoint is set at the fifth instruction (to stop tracing at this point), and
+    the third instruction calls a function at `0x311020`. We can use function tracing
+    to determine what other functions are called by the function (`0x311020`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00148.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To perform function tracing (Trace into was chosen in this case), the following
+    setting is used. This is similar to *instruction tracing*, except that in the
+    Log Condition field, an expression, telling the debugger to log only the function
+    call is specified:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00149.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following are the events captured in the log file, as a result of *function
+    tracing*. From the following events, you can tell that the function `0x311020` calls
+    two other functions, at `0x311000` and `0x311010`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding examples, the breakpoints were used to control the tracing.
+    When the debugger reaches the breakpoint, the execution is paused, and the *instructions/functions*
+    till the breakpoint are logged. When you resume the debugger, the rest of the
+    instructions are executed, but not logged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.10 Patching in x64dbg
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'While performing malware analysis, you may want to modify the binary to change
+    its functionality or reverse its logic to suit your needs. x64dbg allows you to
+    modify data in the memory or instructions of a program. To modify the data in
+    a memory, navigate to the memory address and select the sequence of bytes you
+    want to modify, then right-click and choose Binary | Edit (*Ctrl* + *E*), which
+    will bring up a dialog (shown as follows) that you can use to modify the data
+    as ASCII, UNICODE, or a sequence of hex bytes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00150.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the code excerpt from the *TDSS rootkit* DLL
+    (this is the same binary that was covered in the previous chapter, in the section
+    *Patching the Binary Using IDA*). If you recall, this DLL used string comparison
+    to perform a check to ensure that it was running under the `spoolsv.exe` process.
+    If the string comparison fails (that is, if the DLL is not running under `spoolsv.exe`),
+    then the code jumps to the end of the function and returns from the function without
+    exhibiting malicious behavior. Suppose that you want this binary to run under
+    any process (not just `spoolsv.exe`). You can modify the *conditional jump* instruction
+    (`JNE tdss.10001Cf9`) with a `nop` instruction, to remove the process restriction.
+    To do that, right-click on the conditional jump instruction and select Assemble,
+    which will bring up the dialog shown as follows, using which you can enter the
+    instructions. Note that, in the screenshot, the fill with NOP''s option is checked,
+    to make sure that the instruction alignment is correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00151.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After you have modified the data in the memory or the instruction, you can
+    apply the patch to the file by choosing File | Patch file, which will bring up
+    a patches dialog showing all of the modifications made to the binary. Once you
+    are satisfied with the modifications, click on Patch file and save the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00152.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3\. Debugging a Binary Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at the disassembly features of *IDA Pro*.
+    In this chapter, you will learn about IDA's debugging capabilities. The commercial
+    version of IDA can debug both 32-bit and 64-bit applications, whereas the demo
+    version only allows you to debug a 32-bit Windows binary. In this section, you
+    will see some of the debugging features offered by IDA Pro, and you will learn
+    how to use it to debug a malicious binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.1 Launching a New Process in IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are different ways to launch a new process; one method is to directly
+    launch the debugger, without initially loading the program. To do that, launch
+    IDA (without loading the executable), then select Debugger | Run | Local Windows
+    debugger; this will bring up a dialog where you can choose the file to debug.
+    If the executable takes any parameters, you can specify them in the Parameters
+    field. This method will start a new process, and the debugger will pause the execution
+    at the program's *entry point:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00153.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The second method of launching a process is to first load the executable in
+    IDA (which performs the initial analysis and displays the disassembled output).
+    First, choose the correct debugger via Debugger | Select debugger (or *F9*); then,
+    you can place the cursor on the first instruction (or the instruction where you
+    want the execution to pause) and select Debugger | Run to cursor (or *F4*). This
+    will start a new process, and will execute until the current cursor location (in
+    this case, the breakpoint is automatically set at the current cursor location).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.2 Attaching to an Existing Process Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The way you attach to a process depends on whether the program has already
+    loaded or not. When a program has not loaded, select Debugger | Attach | Local
+    Windows debugger. This will list all of the running processes. Simply select the
+    process to attach to. After attaching, the process will be paused immediately,
+    giving you the chance to inspect the process''s resources and set breakpoints,
+    prior to resuming execution of the process. In this method, IDA will not be able
+    to perform its initial auto-analysis of the binary, because IDA''s loader will
+    not get a chance to load the executable image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00154.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: An alternate method of *attaching to a process* is loading the executable associated
+    with a process into IDA before attaching to that process. To achieve this, load
+    the associated executable using IDA; this allows IDA to perform its initial analysis.
+    Then, select **Debugger** | **Select debugger** and check the Local Win32 debugger (or
+    Local Windows debugger) option, and click OK. Then, select Debugger | Attach to
+    process again, and choose the process to attach the debugger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.3 IDA's Debugger Interface
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After you launch the program in the IDA debugger, the process will pause, and
+    the following debugger display will be presented to you:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00155.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When the process is under debugger control, the disassembly toolbar is replaced
+    with the debugger toolbar. This toolbar consists of buttons related to the debugging
+    functionality (such as *process control* and *breakpoint*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Disassembly Window**: This window is synchronized with the current value
+    of the *instruction pointer* register (`eip` or `rip`). The disassembly windows
+    offer the same functionality that you learned in the previous chapter. You can
+    also switch between the *graph view* and the *text view* modes by pressing the
+    *spacebar* key.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Register Window**: This window displays the current contents of the CPU''s
+    general-purpose register. You can right-click a register value and click Modify
+    value, Zero value, Toggle value, Increment, or Decrement value. Toggling a value
+    is particularly useful if you want to change the states of CPU flag bits. If the
+    value of the register is a valid memory location, the *right-angle arrow* next
+    to the register''s value will be active; clicking on this arrow will relocate
+    the view to the corresponding memory location. If you ever find that you have
+    navigated to a different location and would like to go to the location pointed
+    to by the *instruction pointer,* then just click on the *right-angle arrow* next
+    to the value of the instruction pointer register (`eip` or `rip`).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stack View**: The *stack view* displays the data contents of the process''s
+    runtime stack. Inspecting the stack before calling a function can yield information
+    about the number of function arguments and the types of function arguments.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Hex View**: This displays the standard hex dump of the memory. *Hex view*
+    is useful if you want to display the contents of a valid memory location (contained
+    within a *register*, a *stack*, or the *instruction*).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Modules View**: This displays the list of modules (*executables* and their *shared
+    libraries*) loaded into the process memory. Double-clicking any module in the
+    list displays a list of symbols exported by that module. This is an easy way to
+    navigate to the functions within the loaded libraries.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Threads View**: Displays a list of threads in the current process. You can
+    right-click on this window to *suspend a thread* or *resume a suspended thread*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Segments Window**: The *s**egments window* is available via View | Open Subviews
+    | Segments (or *Shift* + *F7*). When you are debugging a program, the segments
+    window provides information regarding the allocated memory segments in a process.
+    This window displays the information about where the executable and its sections
+    are loaded in memory. It also contains details on all of the loaded DLLs, and
+    their section information. Double-clicking on any entry will take you to the corresponding
+    memory location in either the *disassembly window* or the *hex window*. You can
+    control where the contents of the memory address should be displayed (in the disassembly
+    or hex window); to do that, just place the cursor anywhere in the disassembly
+    or hex window, and then double-click on the entry. Depending on the cursor location,
+    the contents of the memory address will be displayed in the appropriate window:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](../images/00156.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Imports and Exports Window**: When the process is under debugger control,
+    the Imports and Exports windows are not displayed by default. You can bring up
+    these windows via Views | Open subviews. The Imports window lists all of the functions
+    imported by the binary, and the Exports window lists all of the exported functions.
+    The exported functions are normally found in the DLLs, so this window can be particularly
+    useful when you are debugging malicious DLLs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The other IDA windows, explained in the previous chapter, can also be accessed
+    via Views | Open Subviews.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4 Controlling Process Execution Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *Section 1.2*, *Controlling Process Execution*, we looked at the different
+    execution control features provided by the debuggers. The following table outlines
+    the common execution control functionalities that you can use in IDA when debugging
+    a program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Functionality | Hotkey | Menu Option |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Continue (Run) | *F9* | Debugger &#124; Continue process |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Step into | *F7* | Debugger &#124; Step into |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Step over | *F8* | Debugger &#124; Step over |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Run to cursor | *F4* | Debugger &#124; Run to cursor |'
+  prefs: []
+  type: TYPE_TB
+- en: 3.5 Setting a Breakpoint in IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To set a software breakpoint in IDA, you can navigate to the location where
+    you want the program to pause, and press the *F2 *key (or right-click and select Add
+    breakpoint). After you set the breakpoint, the addresses where breakpoints are
+    set are highlighted in a red color. You can remove the breakpoint by pressing *F2 *on
+    the line containing the breakpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following screenshot, the breakpoint was set at the address `0x00401013` (`call
+    sub_401000`). To pause the execution at the breakpoint address, first, choose
+    the debugger (such as Local Win32 Debugger), as mentioned previously, and then
+    run the program by selecting Debugger | Start Process (or the *F9* hotkey). This
+    will execute all of the instructions before reaching the breakpoint, and will
+    pause at the breakpoint address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00157.gif)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In IDA, you can set hardware and conditional breakpoints by editing the breakpoint
+    that is already set. To set a hardware breakpoint, right-click on an existing
+    breakpoint and select Edit breakpoint. In the dialog that pops up, check the Hardware
+    checkbox, shown as follows. IDA allows you to set more than four hardware breakpoints,
+    but only four of them will work; the additional hardware breakpoints will be ignored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00158.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: You can use hardware breakpoints to specify whether to *break on execute* (default),
+    *break on write,* or *break on read/write*. The *break on write* and *break on read/write* options
+    allow you to create memory breakpoints when the specified memory location is accessed
+    by any instruction. This breakpoint is useful if you want to know when your program
+    accesses a piece of data (read/write) from a memory location. The *break on execute* option
+    allows you to set a breakpoint when the specified memory location is executed.
+    In addition to specifying a mode, you must also specify a size. A hardware breakpoint's
+    size is combined with its address to form a range of bytes for which the breakpoint
+    may be triggered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can set a conditional breakpoint by specifying the condition in the condition
+    field. The condition can be an actual condition, or IDC or IDAPython expressions.
+    You can click on the ... button next to the condition field, which will open up
+    the editor, where you can use IDC or IDAPython scripting language to evaluate
+    the condition. You can find some examples of setting conditional breakpoints at [https://www.hex-rays.com/products/ida/support/idadoc/1488.shtml](https://www.hex-rays.com/products/ida/support/idadoc/1488.shtml).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can view all of the active breakpoints by navigating to Debugger | Breakpoints
+    | Breakpoint List (or typing *Ctrl* + *Alt* + *B*). You can right-click on the
+    breakpoint entry and *disable* or *delete* the breakpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.6 Debugging Malware Executables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we will look at how to use IDA to debug a malware binary.
+    Consider the disassembly listing from a 32-bit malware sample. The malware calls
+    the `CreateFileW` API to create a file, but, just by looking at the disassembly
+    listing, it is not clear what file the malware creates. From the MSDN documentation
+    for `CreateFile`, you can tell that the first parameter to `CreateFile` will contain
+    the name of the file; also, the suffix `W` in the `CreateFile` specifies that
+    the name of the file is a UNICODE string (details regarding the API were covered
+    in the previous chapter). To determine the name of the file, we can set a breakpoint
+    at the address where the call to the `CreateFileW` ➊ is made, and then run the
+    program (*F9*) till it reaches the breakpoint. When it reaches the breakpoint
+    (before calling `CreateFileW`), all of the parameters to the function will be
+    pushed onto the stack, so we can examine the first parameter on the stack to determine
+    the name of the file. After the call to `CreateFileW`, the handle to the file
+    will be returned in the `eax` register, which is copied into the `esi` register
+    at ➋:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following screenshot, the execution is paused at the call to the `CreateFileW` (as
+    a result of setting the breakpoint and running the program). The first parameter
+    to the function is the address (`0x003F538`) of the UNICODE string (`filename`).
+    You can use the Hex-View window in IDA to inspect the contents of any valid memory
+    location. Dumping the contents of the first argument, by right-clicking on the
+    address `0x003F538` and choosing the Follow in hex dump option, displays the filename
+    in the Hex-View window, shown as follows. In this case, the malware is creating
+    a file, `SHAMple.dat`, in the `C:\Users\test\AppData\Local\Temp` directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00159.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware, after creating the file, passes the file handle as the first argument
+    to the `WriteFile` function. This indicates that the malware writes some content
+    to the file `SHAmple.dat`. To determine what content it writes to the file, you
+    can inspect the second argument to the `WriteFile` function. In this case, it
+    is writing the string `FunFunFun` to the file, as shown in the following screenshot.
+    If the malware is writing executable content to the file, you will also be able
+    to see it using this method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00160.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.7 Debugging a Malicious DLL Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485), *Dynamic
+    Analysis*, you learned the techniques to execute a DLL to perform dynamic analysis.
+    In this section, you will use some of the concepts that you learned in [Chapter
+    3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485), *Dynamic Analysis*, to
+    debug a DLL using IDA. If you not familiar with dynamic analysis of a DLL, it
+    is highly recommended to read *S**ection 6*, *Dynamic-Link Library (DLL) Analysis,* from
+    [Chapter 3](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522),
+    *Dynamic Analysis,* before proceeding further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To debug a DLL using the IDA debugger, you first need to designate the executable
+    (such as `rundll32.exe`) that will be used to load the DLL. To debug a DLL, first,
+    load the DLL into IDA, which will likely display the disassembly of the `DLLMain` function.
+    Set a breakpoint (*F2*) at the first instruction in the `DLLMain` function, as
+    shown in the following screenshot. This ensures that when you run the DLL, the
+    execution will pause at the first instruction in the `DLLMain` function. You can
+    also set breakpoints on any function exported by the DLL by navigating to it from
+    IDA''s Exports window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00161.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After you have set the breakpoint on the desired address (where you want the
+    execution to pause), select the debugger via Debugger | Select debugger | Local
+    Win32 debugger (or **Debugger** | **Select debugger** | **Local Windows debugger**)
+    and click on OK. Next, select Debugger | Process options, which will bring up
+    the dialog shown in the following screenshot. In the Application field, enter
+    the full path to the executable that is used to load the DLL (`rundll32.exe`).
+    In the Input file field, enter the full path to the DLL that you wish to debug,
+    and in the Parameters field, enter the command-line arguments to pass to `rundll32.exe`, and
+    click on OK. Now, you can run the program to reach the breakpoint, after which
+    you can debug it, as you would debug any other program. The arguments that you
+    pass to `rundll32.exe` should have the correct syntax to successfully debug the
+    DLL (refer to the *Working of rundll32.exe *section in [Chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485),
+    *Dynamic Analysis*). A point to note is that `rundll32.exe` can also be used to
+    execute a 64-bit DLL, in the same manner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00162.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.7.1 Debugging a DLL in a Specific Process
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In *[Chapter 3](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522), Dynamic
+    Analysis*, you learned how some DLLs can perform process checks to determine whether
+    they are running under a particular process, such as `explorer.exe` or `iexplore.exe`.
+    In that case, you may want to debug a DLL inside a specific host process, rather
+    than`rundll32.exe`. To pause the execution at the DLL''s entry point, you can
+    either *start* a new instance of the host process or *attach* to the desired host
+    process using the debugger, and then select Debugger | Debugger options and check
+    the option Suspend on library load/unload. This option will tell the debugger
+    to pause whenever a new module is *loaded* or *unloaded*. After these settings,
+    you can resume the paused host process and let it run by pressing the *F9* hotkey. You
+    can now inject the DLL into the debugged host process with a tool like *RemoteDLL*. When
+    the DLL is loaded by the host process, the debugger will pause, giving you a chance
+    to set breakpoints in the address of the loaded module. You can get an idea of
+    where the DLL has loaded into the memory by looking at the Segments window, as
+    shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00163.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding screenshot, you can see that the injected DLL (`rasaut.dll`) has
+    loaded into the memory at the address `0x10000000` (the base address). You can
+    set a breakpoint at the address of the entry point by adding the base address (`0x10000000`) with
+    the value of the `AddressOfEntryPoint` field in the `PE header`. You can determine
+    the value of the address of the entry point by loading the DLL into a tool such
+    as *pestudio* or *CFFexplorer*. For example, if the `AddressOfEntryPoint` value
+    is `0x1BFB`, the DLL entry point can be determined by adding the base address (`0x10000000`) with
+    the value `0x1BFB`, which results in `0x10001BFB`. You can now navigate to the
+    address `0x10001BFB` (or jump to the address by pressing the *G* key) and set
+    a breakpoint at this address, and then resume the paused process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.8 Tracing Execution Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Tracing* allows you to record (log) specific events while a process is executing.
+    It can provide detailed execution information on a binary. IDA supports three
+    types of tracing:* instruction tracing*, *function tracing,* and *b**asic block
+    tracing*. To enable tracing in IDA, you need to set a breakpoint, then right-click
+    on the breakpoint address and choose Edit breakpoint, which will bring up a breakpoint
+    settings dialog. In the dialog, check the Enable tracing option, and choose the
+    appropriate Tracing type. Then, select the debugger via the **Debugger** | **Select
+    debugger** menu (as covered previously), and Run (*F9*) the program. The location
+    field in the following screenshot specifies the breakpoint being edited, and it
+    will be used as the starting address to perform tracing. The tracing will continue
+    until it reaches a breakpoint, or until it reaches the end of the program. To
+    indicate which instructions were traced, IDA highlights the instructions by color-coding
+    them. After tracing, you can view the results of the trace by selecting Debugger
+    | Tracing | Trace window. You can control the tracing options via Debugger | Tracing
+    | Tracing options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00164.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '***Instruction tracing*** records the execution of each instruction and displays
+    the modified register values. Instruction tracing is slower, because the debugger
+    internally *single-steps* through the process, to monitor and log all of the register
+    values. *Instruction tracing* is useful for determining the execution flow of
+    the program, and to know which registers were modified during the execution of
+    each instruction. You can control the tracing by adding breakpoints.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the program in the following screenshot. Let''s assume that you want
+    to trace the first four instructions (which also includes a function call, in
+    the third instruction). To do that, first, set a breakpoint at the first instruction
+    and another breakpoint at the fifth instruction, as shown in the following screenshot.
+    Then, edit the first breakpoint (at the address `0x00401010`) and enable instruction
+    tracing. Now, when you start debugging, the debugger traces the first four instructions
+    (including the instructions inside the function) and pauses at the fifth instruction.
+    If you don''t specify the second breakpoint, it will trace all of the instructions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00165.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the *instruction tracing* events in the trace
+    window, when the debugger paused at the fifth instruction. Note how the execution
+    flows from `main` to `sub_E41000`, and then back to `main`. If you wish to trace
+    the rest of the instructions, you can do that by resuming the paused process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00166.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Function Tracing**: This records all of the function calls and the return,
+    no register values are logged for function trace events. *Function tracing* is useful for determining
+    which *functions* and *sub-functions* are called by the program. You can perform
+    function tracing by setting the Tracing type to Functions and following the same
+    procedure as in *instruction tracing*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, the malware sample calls two functions. Let''s suppose
+    that we want to get a quick overview of what other functions are called by the
+    first function call. To do that, we can set the first breakpoint at the *first
+    instruction* and enable function tracing (by editing the breakpoint), and then
+    we can set another breakpoint at the *second instruction*. The second breakpoint
+    will act as the stop point (tracing will be performed until the second breakpoint
+    is reached). The following screenshot shows both of the breakpoints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00167.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the results of function tracing. From the traced
+    events, you can see that the function `sub_4014A0` calls registry-related API
+    functions; this tells you that the function is responsible for performing registry
+    operations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00168.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Sometimes, your tracing may take a long time and seem to never end; this happens
+    if the function is not returning to its caller and is running in a loop, waiting
+    for an event to occur. In such a case, you will still be able to see the trace
+    logs in the trace window.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Block Tracing**: IDA allows you to perform *block tracing*, which is useful
+    for knowing which blocks of code were executed during runtime. You can enable
+    block tracing by setting the Tracing type to Basic blocks. In the case of block
+    tracing, the debugger sets the breakpoint at the *last instructio*n of each basic
+    block of every function, and it also sets breakpoints at any call instructions
+    in the middle of the traced blocks. *Basic block tracing* is slower than normal
+    execution, but faster than *instruction* or *function tracing*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.9 Debugger Scripting Using IDAPython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You can use debugger scripting to automate routine tasks related to malware
+    analysis. In the previous chapter, we looked at examples of using IDAPython for
+    static code analysis. In this section, you will learn how to use IDAPython to
+    perform debugging-related tasks. The IDAPython scripts demonstrated in this section
+    make use of the new IDAPython API, meaning that if you are using older versions
+    of IDA (lower than IDA 7.0), these scripts will not work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following resources should help you get started with IDAPython debugger
+    scripting. Most of these resources (except the IDAPython documentation) demonstrate
+    scripting capabilities using the old IDAPython API, but they should be good enough
+    for you to get the idea. Anytime you get stuck, you can refer to IDAPython documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**IDAPython API Documentation**: [https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html](https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Magic Lantern Wiki**: [http://magiclantern.wikia.com/wiki/IDAPython](http://magiclantern.wikia.com/wiki/IDAPython)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**IDA Scriptable Debugger**: [https://www.hex-rays.com/products/ida/debugger/scriptable.shtml](https://www.hex-rays.com/products/ida/debugger/scriptable.shtml)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Using IDAPython to Make Your Life Easier (Series)**: [https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/](https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This section will give you a feel for how to use IDAPython for debugging-related
+    tasks. First, load the executable in IDA, and select the debugger (via Debugger
+    | Select debugger). For testing the following script commands, Local Windows debugger
+    was chosen. After the executable has loaded, you can execute the Python code snippets
+    mentioned in the following in IDA's Python shell, or by selecting File | Script
+    Command (*Shift* + *F2*) and choosing the Scripting language as Python (from the
+    drop-down menu). If you wish to run it as a standalone script, you may have to
+    import the appropriate modules (for example, `import idc`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code snippet sets a breakpoint at the current cursor location,
+    starts the debugger, waits for the `suspend debugger` event to occur, and then
+    prints the *address* and the *disassembly text* associated with the breakpoint
+    address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output generated as a result of executing the preceding
+    script commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code snippet *steps into* the next instruction and prints the
+    *address* and the *disassembly text*. In the same manner, you can use `idc.step_over()` to
+    *step over* the instruction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The results of executing the preceding script commands are shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: To get the value of a register,  you can use `idc.get_reg_value()`. The following
+    example gets the value of the `esp` register and prints it in the *output window:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get the `dword` value at the address `0x14fb04`, use the following code.
+    In the same manner, you can use `idc.read_dbg_byte(ea)`, `idc.read_dbg_word(ea)`,
+    and `idc.read_dbg_qword(ea)` to get the `byte`, `word`, and `qword` values at
+    a particular address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get an ASCII string at the address `0x01373000`, use the following. By default,
+    the `idc.get_strlit_contents()` function gets the ASCII string at a given address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get the UNICODE string, you can use the `idc.get_strlit_contents()` function
+    by setting its `strtype` argument to a constant value, `idc.STRTYPE_C_16`, as
+    follows. You can find the defined constant values in the `idc.idc` file, which
+    is located in your IDA installation directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code lists all of the loaded modules (executables and DLLs) and
+    their base addresses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result of executing the preceding script commands is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get the address of the `CreateFileA` function in `kernel32.dll`, use the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To resume a suspended process, you can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 3.9.1 Example – Determining Files Accessed by Malware
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, while discussing IDAPython, we wrote an IDAPython script
+    to determine all of the cross-references to the `CreateFileA` function (the address
+    where `CreateFileA` was called). In this section, let's enhance that script to
+    perform debugging tasks and determine the name of the file created (or opened)
+    by the malware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following script sets a breakpoint on all of the addresses where `CreateFileA` is
+    called within the program, and runs the malware. Before running the following
+    script, the appropriate debugger is selected (Debugger | Select debugger | Local
+    Windows debugger). When this script is executed, it pauses at each breakpoint
+    (in other words, before calls to `CreateFileA`), and it prints the first parameter
+    (`lpFileName`), the second parameter `(dwDesiredAccess)`, and    the fifth parameter `(dwCreationDisposition)`.
+    These parameters will give us the name of the file, a constant value that represents
+    the operation performed on the file (such as *read*/*write*), and another constant
+    value, indicating the action that will be performed (such as *create* or *open*).
+    When the breakpoint is triggered, the first parameter can be accessed at `[esp]`, the
+    second parameter at `[esp+0x4]`, and the fifth parameter at `[esp+0x10]`. In addition
+    to printing some of the parameters, the script also determines the `handle` to
+    the file (*return value*) by retrieving the value of the `EAX` register after
+    *stepping over* the `CreateFile` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the result of executing the preceding script. The `DesiredAccess`
+    values, `0x40000000` and `0x80000000`, represent the `GENERIC_WRITE` and `GENERIC_READ` operations,
+    respectively. The `createDisposition` values, `0x2` and `0x3`, signify `CREATE_ALWAYS` (create
+    a new file always) and `OPEN_EXISTING` (open a file, only if it exists), respectively.
+    As you can see, by using debugger scripting, it was possible to quickly determine
+    the filenames created/accessed by malware:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 4\. Debugging a .NET Application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When performing malware analysis, you will have to deal with analyzing a wide
+    variety of code. You are likely to encounter malware created using *Microsoft
+    Visual C/C++*, *Delphi*, and the *.NET framework*. In this section, we will take
+    a brief look at a tool called *dnSpy* ([https://github.com/0xd4d/dnSpy](https://github.com/0xd4d/dnSpy)),
+    which makes analyzing .NET binaries much easier. It is quite effective when it
+    comes to decompiling and debugging a .*NET application*. To load a .NET application,
+    you can drag and drop the application into *dnSpy,* or launch *dnSpy* and select
+    File | Open, giving it the path to the binary. Once the .NET application has loaded,
+    dnSpy decompiles the application, and you can access the program''s methods and
+    classes in the left-hand window, named Assembly explorer. The following screenshot
+    shows the `main` function of the decompiled .NET malicious binary (named `SQLite.exe`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00169.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once the binary has decompiled, you can either read the code (*static code
+    analysis*) to determine the malware''s functionality, or debug the code and perform
+    *dynamic code analysis*. To debug the malware, you can either click on the Start
+    button on the toolbar, or choose Debug | Debug an Assembly (*F5*); this will pop
+    up the dialog shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00170.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Using the Break at drop-down option, you can specify where to *break* when
+    the debugger starts. Once you are satisfied with the options, you can click on OK, which
+    will start the process under debugger control and pause the debugger at the entry
+    point. Now, you can access various debugger options (such as Step Over, Step into,
+    Continue, and so on) via the Debug menu, shown in the following screenshot. You
+    can also set a breakpoint by double-clicking on a line, or by choosing **Debug
+    | Toggle Breakpoint** (*F9*). While you are debugging, you can make use of the
+    Locals window to examine some of the local variables or memory locations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00171.jpeg)To get an idea of .NET binary analysis, and for a
+    detailed analysis of the previously mentioned binary (named `SQLite.exe`), you
+    can read the author''s blog post at [https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/](https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The debugging techniques covered in this chapter are effective methods for understanding
+    the inner workings of a malicious binary. The debugging features provided by code
+    analysis tools such as IDA, x64dbg, and dnSpy can greatly enhance your reverse
+    engineering process. During malware analysis, you will often combine both disassembly
+    and debugging techniques to determine malware functionalities and obtain valuable
+    information from a malicious binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will use the skills that we have learned so far to understand
+    various malware characteristics and functionalities.
+  prefs: []
+  type: TYPE_NORMAL

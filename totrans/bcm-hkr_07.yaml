@@ -1,0 +1,1134 @@
+- en: Chapter 7. Automated Testing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we'll be making our life a bit easier when looking at applications
+    through an attack proxy. Extending functionality through open-source plugins can
+    save precious time on short-term engagements and make sure we don't miss any low-hanging
+    fruit. There are always areas where we can automate something and make the whole
+    penetration testing process a bit more efficient. Luckily, we don't have to write
+    everything from scratch, as the hacking community has a solution for almost any
+    automation problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In previous chapters, we've discussed out-of-band exploitation and here we will
+    go through using Burp's cloud server to automate this type of vulnerability discovery.
+    We will also look at deploying our own instance of the Burp Collaborator server
+    in the cloud or on premises for greater control during an assessment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will expose you to valuable tools and by the end, you should be
+    able to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extend the attack proxy to automate tedious tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configure Burp to use the public Collaborator instance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploy our own Collaborator instance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extending Burp
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Burp Suite is a fantastic attack proxy and it comes with some great features
+    straight out of the box. As mentioned in previous chapters, Intruder is a flexible
+    brute-forcing tool, Repeater allows us to inspect and fine-tune attacks, and Decoder
+    streamlines data manipulation. What makes Burp great is the ability to expand
+    functionality through community-developed and community-maintained extensions.
+    PortSwigger, the creator of Burp Suite, also maintains an online directory for
+    extensions called the **BApp Store**. The BApp Store can be accessed via the Extender
+    tab in Burp Suite.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Extending Burp](graphics/B09238_07_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.1: The BApp Store'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With extensions, we can passively check for outdated libraries, custom build
+    sqlmap command-lines, and quickly check for authentication or authorization vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp extensions are typically written in either Java, Python, or Ruby. Since
+    Burp is a Java application, Java extensions will work straight out of the box.
+    For extensions written in Python or Ruby, we need to point Burp Suite to both
+    **Jython** and **JRuby** interfaces. Python and Ruby are very powerful languages
+    and some might argue simpler to develop than Java. The BApp Store is mostly extensions
+    written in Java and Jython, but the occasional JRuby requirement will come up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Additional Scanner Checks**, for example, is an extension written in Python.
+    As the name implies, this extension will augment the Burp Scanner module, with
+    a few extra checks. Before we can install it, however, Burp will prompt us to
+    download Jython. This means that the Extender Python environment was not configured
+    properly yet, which is common among new installations of Burp Suite.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can find Additional Scanner Checks in the BApp Store with the **Install**
+    button greyed out. The **BApp Store** page presents us with an option to go and
+    download Jython.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Extending Burp](graphics/B09238_07_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.2: Burp Suite BApp Store page for Additional Scanner Checks'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process to setup Burp for Jython and JRuby is straightforward. Both library
+    implementations come in standalone JAR files, which can be loaded straight into Burp.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Jython is available on [http://www.jython.org/downloads.html](http://www.jython.org/downloads.html)
+    as a standalone JAR file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: JRuby is available on [http://jruby.org/download](http://jruby.org/download)
+    as a complete JAR file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Options** tab of the Extender module, we can specify the freshly downloaded
+    standalone Jython and JRuby JAR files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Extending Burp](graphics/B09238_07_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.3: Configuring Jython and JRuby environments'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the environment properly configured, the BApp Store should now let us
+    install the Additional Scanner Checks extension. Hitting the **Refresh list**
+    button should pick up the configuration changes and enable the **Install** button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Extending Burp](graphics/B09238_07_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.4: The Install button is enabled after configuring environment prerequisites'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication and authorization abuse
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the most tedious application security tests is an authentication or
+    authorization check. The basic steps to verify for this type of vulnerability
+    go something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authenticate with a known-good account
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Capture the session ID
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Crawl the application with this session ID
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Open a new application session
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Authenticate with a separate known-good account
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Capture the session ID
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Replay the crawl with the new session ID:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Check for vertical or horizontal escalation
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Replay the crawl anonymously, without a session ID:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Check for authentication bypass issues
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To do this manually is a bit of a nightmare and wastes precious time. Thankfully,
+    within the BApp Store, an extension is available to help automate most of this
+    and alert us of any potential issues as early as step 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Autorize** will do the heavy lifting for us and we can quickly install it
+    through the Burp Suite interface.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Authentication and authorization abuse](graphics/B09238_07_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.5: Autorize in the BApp Store'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simply put, once configured, Autorize will replay each request we make to the
+    application two more times and compare the response to the original request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first replayed request will contain the session ID of a second known-good
+    account, while the second replayed request will be an anonymous request. The response
+    for the original request should succeed, while the two others should fail, prompting
+    a separate response, a `403` perhaps, or at the very least modifying the body
+    of the response to inform of an authorization error. Autorize will look at the
+    two responses and alert accordingly. If the first replayed request's response
+    matches the original request's response, this would mean both accounts can access
+    the page. If this is an administrative portal and only one of the accounts is
+    an administrator, we've just found a serious authorization problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Autorize can also help us find more serious vulnerabilities with the second
+    replayed request, which removes the `Cookie` header, making it an anonymous request.
+    If this request's response matches the original's, an authentication bypass issue
+    is present in the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Autorize flow
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A new request is made through the attack proxy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Replace the `Cookie` header with the other session ID
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Replay the request:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Does the response match the original request's? Alert [**Bypassed!**]
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remove the `Cookie` header
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Replay the request:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Does the response match the original request's? Alert [**Bypassed!**]
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once installed, Autorize has to be configured with the proper `Cookie` header
+    in order for it to be able to identify issues in the target application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we need to capture the `Cookie` header and the session ID for a user
+    with low privileges. This can be captured by opening a new browsing session and
+    looking at the server response. We will be traversing the application using an
+    administrative account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After logging in with the low-privileged account, we can grab the session value
+    from any of the requests to the application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's a good idea to grab the whole `Cookie` header, as some applications use
+    more than just one cookie to track the user session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Autorize** tab, we can enter this value in the **Configuration** section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The Autorize flow](graphics/B09238_07_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.6: The Autorize tab and Configuration screen'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's also a good idea to modify Autorize's interception filters to only target
+    our in-scope application. The browser can make hundreds of requests to external
+    or third-party applications during a normal crawl session. We don't want to generate
+    three times the traffic for out-of-scope items.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Autorize will start replaying requests once we click the enable button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The Autorize flow](graphics/B09238_07_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.7: The Autorize Cookie configuration pane'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we've configured the `Cookie` value, we can authenticate to the application
+    with a high-privileged user account and browse the administrative panel. All subsequent
+    requests will be tested with the low-privilege and anonymous sessions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clicking through the administration panel, Autorize was able to detect a vertical
+    privilege escalation in the `/admin/submit.php` page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The Autorize flow](graphics/B09238_07_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.8: Autorize detected an issue'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It appears that while this page is hidden from regular users by a `403` error
+    in the admin panel entry point, it is accessible directly and only checks whether
+    the user is logged in, and not whether they have administrative privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We didn't have to laboriously sift through all requests we've made, change the
+    session ID, and replay them. Autorize did it for us and the end result is an interesting
+    authorization abuse vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Swiss Army knife
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the more common tasks you'll find yourself doing is generating custom
+    wordlists based on some target-specific data. This increases your chance of success
+    but is also kind of tedious. It can be scripted with something like Python, but
+    why not do it in Burp directly?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another common task I find myself doing is launching sqlmap attacks against
+    a particular URL within the application. Authenticated SQL injection attacks require
+    that we send the session cookies on the command-line, and for attacks over `POST`,
+    this can make building the sqlmap command-line labor-intensive. CO2 is a Burp
+    Suite plugin that provides several enhancements to the attack proxy that integrate
+    well with the rest of the user interface and can create a nice flow between other
+    tools and the Burp.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I've said this before but as penetration testers and red teamers, we know time
+    is not a luxury we share with the bad guys. Engagements are often time-sensitive
+    and resources are stretched thin. Copying and pasting the `Cookie` header from
+    Burp into the terminal to launch a sqlmap attack doesn't seem like a big deal,
+    but it adds up. What if the target application has several potential SQL injection
+    points? What if you're testing three or four different applications that do not
+    share the same login credentials? Automation makes life easier and makes us more
+    efficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The CO2 plugin can be downloaded from the BApp Store or from GitHub at [https://github.com/portswigger/co2](https://github.com/portswigger/co2).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing CO2 is as easy as any other BApp Store plugin and it adds a few options
+    to the context menu in the Target, Proxy, Scanner, and other modules. Many of
+    the requests made through Burp can be sent directly to a few of the CO2 components.
+    Doing so will fill in most of the required parameters, saving us time and reducing
+    the potential for human error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: sqlmap helper
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'CO2 provides a sqlmap wrapper within the Burp user interface aptly titled **SQLMapper**.
+    If we spot a potential injection point, or perhaps Burp''s active scanner notified
+    us of a SQL injection vulnerability, we can send the request straight to CO2''s
+    SQLMapper component using the context menu:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![sqlmap helper](graphics/B09238_07_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.9: Sending the request to SQLMapper''s context menu from CO2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the CO2 extension tab, the SQLMapper section should be prepopulated with
+    some of the values from the selected URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we can configure the component to point to the appropriate `sqlmap`
+    script and `python` binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The Kali distribution comes with a fairly recent version of sqlmap already installed,
+    but the latest and greatest code can be cloned from GitHub at [https://github.com/sqlmapproject/sqlmap](https://github.com/sqlmapproject/sqlmap).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Config** button will allow us to point CO2 to the right binaries to execute
+    sqlmap from the user interface. The **Run** button will spawn a new terminal with
+    sqlmap and all of the options passed in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![sqlmap helper](graphics/B09238_07_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.10: CO2 SQLMap config popup'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On Kali, the sqlmap tool is located in the `/usr/bin` folder and does not have
+    the `.py` extension. If you're working with the bleeding edge from the GitHub
+    repository, you may want to specify the full path.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we can clone the latest and greatest sqlmap code from GitHub using the
+    `git clone` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `sqlmap.py` script will be in the cloned `sqlmap` directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: sqlmap is a full-featured tool with a ton of options to modify everything from
+    the user agent, to the injection technique, and even the level of aggression of
+    each probe. Typically, we'd have to look through the tool documentation to find
+    that one switch we need, but with CO2's SQLMapper plugin, we can find what we
+    need at a glance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we select the appropriate options and fill in the blanks, CO2 builds a sqlmap
+    command, which we can either run through the user interface, or copy and run directly
+    in a terminal of our choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![sqlmap helper](graphics/B09238_07_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.11: CO2''s SQLMapper plugin'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **Run** button will launch a new terminal window and start sqlmap with
+    the selected options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![sqlmap helper](graphics/B09238_07_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.12: sqlmap running with the selected options'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'sqlmap will save the session of each attack in a folder under the home directory:
+    `~/.sqlmap/output/[target]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Web shells
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The CO2 Swiss Army knife also provides an easy way to generate web shells for
+    a number of server-side languages. If we manage to upload a shell to one of these
+    boxes, we need a simple, somewhat secure shell to escalate privileges and ultimately
+    reach our goal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cue **Laudanum**, a collection of basic web shells for a variety of backends,
+    supporting ASP, JSP, ASPX, Java, and PHP. Laudanum also allows us to specify a
+    random connection token and restrict access by IP. These shells do allow for remote
+    code execution and it makes sense to protect them until a more robust reverse
+    shell can be established.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Laudanum component of CO2, we can specify the type of shell we'd like
+    to setup, the IPs that will be allowed to connect, and a randomized token used
+    for a bit more protection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The process to generate a shell is simple. First, we open the **Laudanum**
+    tab in CO2 and:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Select the type of shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**PHP Shell** in this scenario'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A comma-separated list of IPs, without spaces:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`127.0.0.1,192.168.1.123`'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Click the **Gen New Token** button for a random token value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Web shells](graphics/B09238_07_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.13: The Laudanum CO2 plugin'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To save the file somewhere on disk, click the **Generate File** button. The
+    contents of the generated shell will look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Web shells](graphics/B09238_07_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.14: The Laudanum shell source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once uploaded to the target, to access the shell we have to make sure our external
+    IP matches one of the whitelisted IPs and we also have to specify the randomly
+    generated token for every request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can pass this token using the `laudtoken` URL parameter and the command to execute
+    via `laudcmd`. Values for these parameters can also be passed via `POST`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should be noted that even with the correct token in the URL, a request from
+    an unknown IP will be rejected with a `404` response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we test a simple web request from a Windows machine using PowerShell's
+    `Invoke-WebRequest` commandlet. Since the request is not coming from a known IP (one
+    we've specified during the creation of the shell), the request is denied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Web shells](graphics/B09238_07_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.15: Rejected shell request from unknown IP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our client will appreciate the extra security checks; after all, we are here
+    to find vulnerabilities and not introduce new ones. It should go without saying,
+    but this is not foolproof; this file should be purged during cleanup just like
+    any other artifact we drop on the target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the proper external IP and the token in hand, we can gain control of the
+    shell using Burp Suite's Repeater module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To issue a request, we can fill in the minimum `GET` request headers, as shown
+    in the following screenshot. What we need to configure is the **Target**, in the
+    top-right corner of the **Repeater** tab; the URL requested via `GET`; and the
+    values for the `laudtoken` and `laudcmd`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Web shells](graphics/B09238_07_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.16: Successfully accessing the protected Laudanum shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obfuscating code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Laudanum shell generated by CO2 in the previous section worked just fine,
+    but if a defender looks a little too closely at the source code, it will definitely
+    raise some red flags. Ideally, we want to keep the file size as small as possible
+    and try to make the code more difficult to analyze. The comments, the properly
+    indented code, and descriptive variable names make figuring out what `ads.php`
+    actually does a breeze.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's make analysis a bit more complicated. Code obfuscators are commonly used
+    in digital rights management software, anti-piracy modules, and of course, malware.
+    While no code obfuscator will stop an experienced reverse engineer, it certainly
+    does slow things down; perhaps long enough for us to move on to another server
+    or application, but at least long enough to evade antivirus signatures. Ideally,
+    we remove the comments, rename the variables, and try to hide the shell's actual
+    functionality, but it's not a good idea to do this manually. Human error can introduce
+    code issues and obfuscation can cause more problems than it solves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obfuscators will transform the source code of an application (or in our case,
+    web shell) into a compact mess of code, stripped of comments, with random names
+    for variables, making it difficult to analyze. The beauty of this is that even
+    if the code is mangled and hard to comprehend by humans, the parser or compiler
+    will not care that much, as long as it is syntactically correct. The application
+    should have no issue running properly obfuscated code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are source code obfuscators for almost every programming language out
+    there. To obfuscate PHP, we can use naneau's fantastic application, PHP Obfuscator,
+    an easy-to-use command-line utility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: PHP Obfuscator can be cloned from [https://github.com/naneau/php-obfuscator](https://github.com/naneau/php-obfuscator).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will store the application in `~/tools/phpobfs` and clone it from GitHub
+    with `git clone`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'PHP Obfuscator requires composer, which can be quickly installed on Kali or
+    similar distributions using `apt-get install`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the newly cloned `phpobfs` directory, we can issue a `composer install`
+    command to generate an `obfuscate` tool in the `bin` folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: If everything ran successfully, we should have an executable script in `bin`
+    called `obfuscate`, which we can use to mangle our Laudanum shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can call the `obfuscate` tool with the `obfuscate` parameter, and pass in
+    the file to mangle, as well as the output directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we inspect the newly obfuscated `ads.php` file, we now see this blob of
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Obfuscating code](graphics/B09238_07_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.17: Obfuscated Laudanum shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some strings are still visible and we can see the IPs and token values are
+    still intact. The variables are changed to non-descriptive random words, the comments
+    are gone, and the result is really compact. The difference in size between the
+    two shells is also significant:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's not foolproof, but it should let us fly under the radar a bit longer. PHP
+    Obfuscate should work on all PHP code, including shells you may choose to write
+    yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp Collaborator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at finding obscure vulnerabilities in applications
+    that may not be obvious to attackers. If the application does not flinch when
+    we feed it unexpected input, it could be that it is not vulnerable and the code
+    properly validates input, but it could also mean that a vulnerability exists but
+    it's hidden. To identify these types of vulnerabilities, we passed in a payload
+    that forced the application to connect back to our C2 server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a very useful technique, but the process was manual. We passed in custom
+    payloads and waited for a ping from the server to confirm the existence of a vulnerability.
+    Most application assessments are time-limited and manually checking each input
+    on a large attack surface is not realistic. We have to automate this process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Luckily, the professional version of Burp Suite allows us to use a Collaborator
+    server infrastructure to help automate finding vulnerabilities out-of-band.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The free version does not support Collaborator; however, [Chapter 6](ch06.html
+    "Chapter 6. Out-of-Band Exploitation"), *Out-of-Band Exploitation*, described
+    the process and how to build a C2 infrastructure that can be used for the same
+    purpose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Collaborator server is similar to the C2 server we set up in [Chapter 6](ch06.html
+    "Chapter 6. Out-of-Band Exploitation"), *Out-of-Band Exploitation*, but has a
+    few more bells and whistles. Notably, it integrates with Burp's Scanner module
+    to check for these hard-to-find vulnerabilities automatically. It's also less
+    prone to false positives than the more manual approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Collaborator setting can be found under the **Project options** tab and
+    can be either disabled or enabled to use the default server or a private instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Collaborator, at a high-level, works like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Burp scanner generates a payload to detect SQL injection:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The application asynchronously executes the SQL query
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The SQL injection is successful
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The SQL server attempts to list the SMB share on the randomly generated `burpcollaborator.net`
+    domain
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'A DNS lookup is performed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Collaborator server logs this DNS request attempt
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'An SMB connection is made and dummy data is returned:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Collaborator server logs this SMB connection attempt as well
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Burp client checks in with the Collaborator server
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The Collaborator server reports two issues:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: An out-of-band DNS request was made
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An out-of-band service interaction for SMB was observed
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The beauty of Collaborator is that the randomly generated unique domain can
+    actually be linked to a specific request made by the scanner. This tells us exactly
+    which URL and which parameter is vulnerable to SQL injection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Public Collaborator server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The default Collaborator server is an instance operated by PortSwigger, the
+    Burp Suite developers. It resides on [burpcollaborator.net](http://burpcollaborator.net)
+    and support is built into Burp.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you'd expect, the default Collaborator instance is accessible by everyone
+    with a copy of the professional version of Burp and resources are shared among
+    all its users. From a privacy perspective, users cannot see each other's Collaborator
+    requests. Each payload is unique and crafted by Burp Suite for every request.
+    The communication is encrypted and a unique, per-user secret is required to retrieve
+    any data from the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Burp Collaborator takes several steps to ensure the data is safe. You can read
+    more about the whole process on [https://portswigger.net/burp/help/collaborator](https://portswigger.net/burp/help/collaborator).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To enable Collaborator, we can navigate to the **Misc** tab under **Project
+    options** and select the **Use the default Collaborator server** radial button,
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Public Collaborator server](graphics/B09238_07_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.18: Configuring the Burp Collaborator server'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use the public server, no further information is needed. We can issue a
+    health check to see whether the Burp Suite client can reach it before we begin
+    the test, by clicking the **Run health check…** button on the configuration page.
+    A new window will popup and display the ongoing health check, with the status
+    for each check, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Public Collaborator server](graphics/B09238_07_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.19: Burp Collaborator health check'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SMTP connection issues are common if you're behind an ISP that still blocks
+    outgoing connections on ports used by spam bots. Chances are that your target
+    is not on a domestic ISP and these types of restrictions are not in place, at
+    least not at the ISP level. Egress filtering can hinder out-of-band discovery,
+    which is where a private instance on the LAN comes in handy. We discuss deploying
+    a private Collaborator server later in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Service interaction
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To see Collaborator in action, we can point the Burp Active Scanner to a vulnerable
+    application and wait for it to execute one of the payloads generated, and perform
+    a connect back to the public Collaborator server [burpcollaborator.net](http://burpcollaborator.net).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The Damn Vulnerable Web Application is a good testing bed for Collaborator:
+    [http://www.dvwa.co.uk/](http://www.dvwa.co.uk/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Service interaction](graphics/B09238_07_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.20: Out-of-band vulnerabilities detected by Collaborator'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Burp Suite client will check in periodically with the Collaborator server
+    to ask about any recorded connections. In the preceding case, we can see that
+    the application, vulnerable to command injection, was tricked into connecting
+    to the Collaborator cloud instance by performing a DNS lookup on a unique domain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Collaborator server intercepted this DNS request from the vulnerable application,
+    recorded it, and notified us. Our Burp Suite client linked the service interaction
+    reported by Collaborator to a specific request and highlighted it for easy review.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This was all done automatically in the background. With Collaborator's help,
+    we can cover a large attack surface and find obscure bugs quickly and efficiently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp Collaborator client
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In certain situations, relying on Burp's Active Scanner to find these issues
+    may not be sufficient. Suppose we may suspect a particular component of the target
+    application is vulnerable to a blind SQL injection or stored XSS attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order for the exploit to trigger, it would have to be wrapped in some type
+    of encoding or encryption, and passed to the application to be later decoded,
+    or decrypted and executed. Burp's Active Scanner would not be able to confirm
+    this vulnerability because it is not aware of the custom requirements for the
+    payload delivery.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The good news is that we can still leverage Collaborator to help us identify
+    vulnerabilities in these difficult-to-reach areas of the application. Burp Suite
+    also comes bundled with the Collaborator client, which can generate a number of these
+    unique domains to be used in a custom Intruder attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Collaborator client can be launched from the Burp menu:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp Collaborator client](graphics/B09238_07_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.21: Launch Collaborator client from the Burp menu'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To generate unique domains for use in custom payloads, enter the desired number
+    and click **Copy to clipboard**. Burp will add the newline-separated domains to
+    the clipboard for further processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Once you close the Collaborator client window, the domains generated will be
+    invalidated and you may not be able to detect out-of-band service interactions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp Collaborator client](graphics/B09238_07_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.22: Burp Collaborator client window'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can grab one of these domains and feed it to our custom attack. The application
+    accepts the request but does not respond with any data. Our payload is a simple
+    XSS payload designed to create an `iframe` that navigates to the domain generated
+    by the Collaborator client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: If the application is vulnerable, this exploit will spawn a new HTML `iframe`,
+    which will connect back to a server we control, confirming the existence of a
+    vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp Collaborator client](graphics/B09238_07_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.23: Submitting the Collaborator domain in an XSS payload'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We hope that this payload is executed at some point, perhaps when an administrator
+    navigates to the page responsible for handling these requests. If the application
+    is vulnerable, the `iframe` will attempt to navigate to the injected URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This has the following side effects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A DNS request is made to the `src` domain
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An HTTP request is made to the IP associated with the `src` domain
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Collaborator client will poll the server every 60 seconds by default but
+    can be forced to check at any point. If a victim triggers exploit, Collaborator
+    will let us know:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp Collaborator client](graphics/B09238_07_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.24: Collaborator client shows service interaction'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It appears that the payload was executed successfully and with Collaborator's
+    help, we now have proof.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Private Collaborator server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are benefits to running our own instance of Collaborator. A private instance
+    is useful for tests where the target cannot reach the internet, or for the extra-paranoid
+    client who would prefer to take third-parties out of the equation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There''s also something to be said about stealth: outbound connections to a
+    [burpcollaborator.net](http://burpcollaborator.net) domain may raise some eyebrows.
+    A less conspicuous domain may be better suited for some engagements. I realize
+    the domain we''re about to use for our private instance, `c2.spider.ml`, is not
+    much better, but we''ll roll with it for the demo''s sake.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Collaborator server has many of the same requirements as the C2 server we
+    set up in the previous chapter. The only difference is the Burp server will run
+    its own services for DNS, HTTP, and SMTP, and we will not need INetSim.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have already delegated control of `c2.spider.ml` to our cloud instance on
+    which the Collaborator server will run. The DNS service should be able to respond
+    to all incoming DNS requests for any subdomain belonging to `c2.spider.ml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Collaborator can be a bit memory hungry and a micro-cloud instance may not be
+    enough for a production deployment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first time you run the Collaborator server, it will prompt you to enter
+    your license in order to perform activation. This value is stored in `~/.java/.userPrefs/burp/prefs.xml`
+    so make sure that this file is properly protected and is not world-readable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Collaborator server is actually built into the Burp Suite attack proxy.
+    We can copy the Burp Suite Professional JAR file and launch it from the command-line
+    with the `--collaborator-server` switch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this point, the Collaborator server is running with default configuration.
+    We will need to specify some custom options to get the most out of the private
+    instance. The configuration file is a simple text file in JSON format, with a
+    few options to specify listening ports, DNS authoritative zones, and SSL configuration
+    options. We can create this file anywhere on disk and reference it later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: You'll notice we had to specify the domain we'll be using along with our public
+    IP address. The log level is set to `DEBUG` until we can confirm the server is
+    functioning properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It is a good idea to filter incoming traffic to these ports and whitelist your
+    and your target's external IPs only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that the server is online, we can modify the **Project options** and point
+    to our private server, `c2.spider.ml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Private Collaborator server](graphics/B09238_07_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.25: Private Collaborator server configuration'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the **Run health check…** button, we should be able to force some interaction
+    with the new Collaborator server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Private Collaborator server](graphics/B09238_07_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.26: Burp Collaborator health check'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The server console log will reflect our connection attempts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The SMTP and SMTPS checks may fail depending on your ISP's firewall, but enterprise
+    clients should be able to reach it. The important part is the DNS configuration.
+    If the target can resolve the randomly generated subdomain for `c2.spider.ml`,
+    they should be able to connect outbound if no other egress filtering takes place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You'll also notice that the enforced HTTPS connection failed as well. This is
+    because by default, Collaborator uses a self-signed wildcard certificate to handle
+    encrypted HTTP connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get around this issue for targets whose trusted root certificate authorities
+    we don't control, we'd have to install a certificate signed by a public certificate
+    authority.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `config.json` would be modified slightly to point Collaborator to this
+    certificate and its private key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: In a subdirectory called `keys`, we'd have to drop the PKCS 8-encoded private
+    key, the corresponding publicly signed certificate, and any intermediate authority
+    certificates we may need to sever in order for the certificate chain to validate.
+    In the previous chapter, we were able to generate certificates for our C2 domain,
+    which we can use and play here as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter showcased a number of tools and techniques that work together to
+    make an otherwise-tedious part of the engagement seamless. Burp Suite, or the
+    free alternative OWASP ZAP, both provide ways to extend functionality and make
+    quick work of repetitive tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've also looked at an easy way to obfuscate code that may end up on a target
+    system. When dropping a custom shell on a server, it's a good idea to hide its
+    true function. A passing blue teamer may not look twice if the code looks overly
+    complex. We've used tools to quickly transform our generated backdoor into a less conspicuous
+    output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, building on the previous chapter's out-of-band vulnerability discovery
+    techniques, we leveraged Burp's Collaborator server to streamline the whole process.
+    Collaborator is an indispensable tool and, if possible, should always be enabled
+    when attacking web applications. In the next chapter, we will switch gears and
+    look at exploiting an interesting class of vulnerabilities related to object serialization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will switch gears and look at an increasingly common
+    vulnerability type, which could be devastating if exploited successfully. Deserialization
+    attacks are here to stay and we will dig a bit deeper into how they work and how
+    to exploit them.
+  prefs: []
+  type: TYPE_NORMAL

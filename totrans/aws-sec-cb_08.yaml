@@ -1,0 +1,1794 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Compliance with GuardDuty, Macie, Inspector, and Analyzer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Regularly checking for compliance within our account and being notified if anything
+    is not compliant is an important step toward keeping our account secure. In this
+    chapter, we will learn about some services within AWS that can help us in checking
+    compliance, with the help of additional intelligence and rules. We will learn
+    about **Amazon GuardDuty** , **Amazon Macie** , and **Amazon Inspector** , which
+    use machine learning and advanced algorithms to help us check for compliance.
+    AWS Config is another service that can help with compliance, but we already covered
+    it in [*Chapter 7*](B21384_07.xhtml#_idTextAnchor265) .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter includes the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon GuardDuty
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Aggregating findings from multiple accounts in GuardDuty
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon Macie
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon Inspector
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and using AWS Security Hub
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using IAM Analyzer to inspect unused access
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure that we have
+    the following requirements and knowledge in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS Account to complete the recipes within this chapter. If
+    we are using an AWS Organization, we can use the management account of the Organization
+    as we will be configuring many things at the AWS Organization level in this chapter.
+    I will be using the **aws-sec-cookbook-1** account that we created in the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we are working with.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter08](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter08)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon GuardDuty
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to set up and use Amazon GuardDuty. GuardDuty
+    analyzes data from sources such as CloudTrail management logs, VPC flow logs,
+    and Route 53 DNS logs, and uses machine learning, anomaly detection, and integrated
+    threat intelligence to find malicious activities and unauthorized behavior. Note
+    that if you use another DNS resolver, such as OpenDNS or GoogleDNS, or if you
+    set up your own DNS resolvers, GuardDuty cannot access and process data from these
+    sources. GuardDuty can be integrated with CloudWatch and SNS to raise alarms and
+    send notifications. GuardDuty can also aggregate data from multiple accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To successfully complete this recipe, we will need a working AWS account and
+    a user, as described in the *Technical requirements* section. We will also need
+    an S3 bucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we are using GuardDuty for the first time, we need to first enable GuardDuty.
+    Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **GuardDuty** service in the AWS management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we are using GuardDuty for the first time, we should see options such as
+    the following. If GuardDuty is already enabled, proceed to *Step 4* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Enabling GuardDuty](image/B21384_08_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.1 – Enabling GuardDuty
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **Amazon GuardDuty - all features** and click on **Get started** . We
+    should now see the **Welcome to GuardDuty** screen; click on **Enable GuardDuty**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Findings** in the left sidebar on the **GuardDuty** dashboard. We
+    can see the findings categorized as **High** , **Medium** , and **Low** here.
+    As we have just enabled it, you may not see any findings initially.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – The Findings screen](image/B21384_08_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.2 – The Findings screen
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can click on any of the events to see additional information provided about
+    that finding. We can then scroll down to the **Action** , **Target** , and **Additional
+    information** sections to learn more about the event.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will whitelist and blacklist IPs in GuardDuty.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whitelisting and blacklisting IPs in GuardDuty
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can whitelist and blacklist IPs in GuardDuty as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create and upload the following two files, one with trusted IPs and one with
+    threat lists, and upload them into an S3 bucket:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**trusted-ips.txt** : This is a text file with the list of IPs and CIDR ranges
+    we want to trust. Each IP or CIDR range should be on its own line.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 8.3 – The trusted-ips file](image/B21384_08_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.3 – The trusted-ips file
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**threat-lists.txt** : This is a text file with the list of IPs and CIDR ranges
+    we want to add to the suspicious IP list. Each IP or CIDR range should be on its
+    own line.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 8.4 – The threat-list file](image/B21384_08_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.4 – The threat-list file
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, go back to the **GuardDuty** dashboard. Click on **Lists** in the left
+    sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Trusted IP lists** , click on **Add a trusted** **IP list** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the pop-up screen named **Add a trusted IP list** , give a name to our list
+    in the **List name** field. For **Location** , enter the S3 URL of your trusted
+    IP list, which is of the **https://myguarddutydemo.s3.amazonaws.com/trusted-ips.txt**
+    form. For **Format** , select **Plaintext** . Then select the **I agree** checkbox.
+    Finally, click on **Add list** . We should now see our list under T **rusted**
+    **IP lists** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click the checkbox beside our list. Click on the **Action** dropdown and click
+    on **Activate** . We should see a success message indicating that the list has
+    been activated. It may take some time for the changes to take effect.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Threat IP lists** , click on **Add a threat IP list** . We should see
+    a pop-up screen named **Add a threat** **IP list** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat *Steps 3* *to* *5* but add our threat list instead of a trusted IP list.
+    We should see our list under **Threat** **IP lists** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To verify that the trusted and threat IP lists are working correctly, we can
+    simulate traffic from IPs in our lists and check the GuardDuty findings:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Whitelisted IPs** ( **Trusted IPs** ): Generate traffic from an IP address
+    that is in our **trusted-ips.txt** file. Monitor GuardDuty findings to ensure
+    that this traffic is not flagged as suspicious or malicious.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Blacklisted IPs** ( **Threat IPs** ): Generate traffic from an IP address
+    that is in our threat-lists.txt file. Check the GuardDuty findings to confirm
+    that this traffic is flagged as suspicious or malicious.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Review the GuardDuty dashboard and findings to ensure that the whitelisted IPs
+    are not generating any alerts and that the blacklisted IPs are flagged appropriately.
+    This will confirm that our lists are being used effectively by GuardDuty.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In this section, we whitelisted and blacklisted a few IP addresses by adding
+    them to the trusted IP lists and threat lists, respectively. We will learn more
+    about how they work in the *How it works...* section of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We first enabled GuardDuty. When we enabled GuardDuty, we granted it permissions
+    to analyze various logs and data sources, such as VPC Flow logs, AWS CloudTrail
+    management event logs, DNS query logs, AWS CloudTrail S3 data event logs, EKS
+    audit logs, Lambda network activity logs, and RDS login activity logs, to generate
+    security findings, as you should have seen while doing *Step 3* of the *How to
+    do it...* section for this recipe. Additionally, GuardDuty can analyze **Elastic
+    Block Storage** ( **EBS** ) volume data to detect malware. When we enable GuardDuty
+    in a supported region for the first time, our account is automatically enrolled
+    in a 30-day free trial, which may also include some protection plans by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, when we first enable GuardDuty, all protection plans are activated,
+    except for Runtime Monitoring and Malware Protection for S3. These can be enabled
+    through the GuardDuty console or APIs. Usage of GuardDuty’s Malware Protection
+    and Runtime Monitoring services is governed by the Amazon GuardDuty Service Terms.
+    We can suspend or disable GuardDuty or any specific protection plan at any time
+    to stop it from processing and analyzing data, events, and logs. However, suspending
+    or disabling GuardDuty does not affect Malware Protection for S3. To stop malware
+    scanning of our S3 buckets, we must individually delete the Malware Protection
+    plan for each bucket. Note that GuardDuty does not manage or provide access to
+    the logs and data it analyzes; we can configure these data sources through their
+    respective consoles or APIs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For testing purposes, we generated sample findings from the GuardDuty console;
+    GuardDuty generated 54 sample events (in my case – it could vary for you since
+    GuardDuty adds and deprecates finding types throughout the year). GuardDuty events
+    are categorized into three severity levels, from lowest to highest, denoted by
+    blue, yellow, and red icons, where blue is the least severe and red is the most
+    severe. Once we click on a finding, we will get additional information about the
+    finding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We whitelisted and blacklisted a few IP addresses by adding them to the trusted
+    IP and threat lists, respectively. GuardDuty will not generate findings for IP
+    addresses that are included in the trusted IP lists. This is done to avoid false
+    alarms, especially from company IP addresses. However, we need to keep in mind
+    that attacks can be internal too. Threat lists consist of known malicious IP addresses.
+    The addresses we provide will be used along with the ones already available with
+    AWS based on their research and experiences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can add an IP or a CIDR range to the trusted IP lists and threat lists in
+    various formats, such as plain text (an IP or a CIDR per line), **Structured Threat
+    Information Expression** ( **STIX** ), **Open Threat Exchange** ( **OTX** ) CSV,
+    FireEye iSIGHT Threat Intelligence CSV, Proofpoint ET Intelligence Feed CSV, and
+    AlienVault Reputation Feed. Currently, we can have up to 2,000 lines in a trusted
+    IP list and 250,000 lines in a threat list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As a new feature, Amazon GuardDuty Malware Protection for S3 detects malicious
+    file uploads to our selected Amazon S3 buckets. We can enable Malware Protection
+    for S3 for a bucket that belongs to our own account and monitor the malware scan
+    status using the embedded Amazon CloudWatch metrics in the GuardDuty console.
+    We have seen this option in *Figure 8* *.1* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s go through some important concepts related to GuardDuty:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: GuardDuty can detect compromised EC2 instances by analyzing VPC flow logs—for
+    example, GuardDuty can detect whether an instance is used in a **Denial of Service**
+    ( **DOS** ) attack.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: GuardDuty can detect whether our instances have been used for cryptocurrency
+    mining. It can also detect whether our credentials have been stolen by accessing
+    malicious IPs, using EC2 instance profiles outside of EC2, or making anomalous
+    API calls to AWS resources such as S3, EC2, RDS, and so on.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: GuardDuty can scan for and detect malicious artifacts in EC2 instances and EKS
+    infrastructure. It can also help identify malicious file uploads to S3 buckets.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: GuardDuty is a regional service. Even when multiple accounts are enabled and
+    multiple AWS regions are used, the GuardDuty security findings remain in the same
+    regions where the underlying data was generated.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can aggregate GuardDuty findings across different accounts into one account.
+    We will discuss this in the *Aggregating findings from multiple accounts in* *GuardDuty*
+    recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can export GuardDuty findings across different accounts and regions to an
+    Amazon S3 bucket to simplify the aggregation of all the findings. This is a new
+    feature and is different from aggregating findings across different accounts into
+    one account.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use CloudWatch and SNS to monitor GuardDuty findings and send notifications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'GuardDuty pricing is based on the amount of data analyzed:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For VPC flow log and DNS log analysis, GuardDuty charges us based on the size
+    of the data analyzed.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For CloudTrail events, GuardDuty charges us based on the number of events analyzed.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: GuardDuty supports the processing, storage, and transmission of credit card
+    data by a merchant or service provider, and has been validated as being compliant
+    with the **Payment Card Industry** ( **PCI** ) **Data Security** **Standard**
+    ( **DSS** )
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up Amazon EventBridge to monitor our findings from GuardDuty
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The steps to set up **Amazon EventBridge** to monitor our findings from GuardDuty
+    can be summarized as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **EventBridge** service in the management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: EventBridge was formerly known as Amazon CloudWatch Events. As of now, if we
+    navigate to CloudWatch and click on **Rules** under the **Events** section, we
+    will be redirected to the EventBridge console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Rules** under **Buses** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create rule** to go to the **Create** **rule** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Define rule detail** page, provide a name and description for our rule.
+    Leave the value for **Event bus** as **default** and **Rule type** as **Rule with
+    an event pattern** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Build event pattern** section, scroll down to **Event pattern** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event source** to **AWS events or Eventbridge** **partner events** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **AWS service** to **GuardDuty** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type** to **GuardDuty Finding** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on **Next** . Under **Targets** , do the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Select a target** , select **SNS topic** from the dropdown.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select a topic. You can create an SNS topic by following the *Creating an SNS
+    topic to send emails* recipe in [*Chapter 7*](B21384_07.xhtml#_idTextAnchor265)
+    .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, click **Add new tags** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the rule and click on **Create rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate back to the **GuardDuty** service and click on **Settings** on the
+    left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to **Sample findings** and click on **Generate sample findings**
+    . After some time, check the inbox of the email address we configured for our
+    SNS topic, and we should get an email about our GuardDuty findings.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To configure and modify the frequency with which GuardDuty updates Event Bridge
+    and S3, we can go to the **GuardDuty** service, click on **Settings** from the
+    left sidebar, and **Edit** in the **Findings export** **options** section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we have not yet configured the export to S3, we will be provided with a **Configure
+    now** option to configure it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about GuardDuty at [https://www.cloudericks.com/blog/getting-started-with-amazon-guardduty](https://www.cloudericks.com/blog/getting-started-with-amazon-guardduty)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Aggregating findings from multiple accounts in GuardDuty
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will configure GuardDuty to **aggregate findings** from multiple
+    AWS accounts into a single account. Aggregating findings from multiple accounts
+    into a single dedicated account provides a central place to query the findings
+    from all our accounts. We can also make configuration changes in one place for
+    all the accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two working AWS accounts are required. We will call them the aggregate account
+    and the logger account. The aggregate account will aggregate logs from the member
+    account.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note down the AWS account ID and the email address of the member account. If
+    we are using AWS Organizations and IAM Identity Center, as we saw in [*Chapter
+    1*](B21384_01.xhtml#_idTextAnchor020) , we can get these from the management account
+    within the AWS Organizations service or the IAM Identity Center service.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We should enable GuardDuty in the aggregate account and member by following
+    the *Setting up and using Amazon GuardDuty* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can configure GuardDuty to aggregate the findings from member accounts as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **GuardDuty** service in the management console of the aggregate account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Accounts** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add accounts** **by invitation** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter the AWS account ID and email address for the member account. Click on
+    **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should see our account on the **Accounts** page. The **Status** field will
+    have the **Invite not** **sent** value.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the account we just added, click on the **Actions** dropdown, and click
+    on **Invite** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the pop-up screen, you may optionally provide a message. Leave the selection
+    for **Also send an email notification to the root user on the invitee’s AWS account
+    and generate an alert in the invitee’s Personal Health Dashboard** unchecked and
+    click on **Send invitation.** The status of our account should change to **Invited**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **GuardDuty** service in the management console of the member account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we are enabling GuardDuty now, we will be taken to the **Invitations** page
+    after enabling. Otherwise, go to the **Accounts** page from the left sidebar and
+    click **Accept invitation** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Settings** from the left sidebar to go to the **Settings** page and
+    click on **Generate** **sample findings** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **GuardDuty** dashboard in the aggregator account and check for findings
+    from our member account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In this recipe, we configured a member account to send logs to an aggregator
+    account. The aggregate account will aggregate logs from the member account that
+    we added and any other member accounts we will add later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we logged in to the main account, which is the account that will aggregate
+    all GuardDuty findings. We then invited a member account. We had already noted
+    down the account ID, and so it should have known the root email address of this
+    account. We then logged in to our member account and accepted the invitation.
+    After that, we generated sample findings from the member account. Finally, we
+    logged back into our main account and verified that the findings from the member
+    account were now present in the main account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'GuardDuty retains the generated findings for 90 days. It exports the active
+    findings to Amazon EventBridge (EventBridge). Additionally, we have the option
+    to export these findings to an Amazon S3 bucket. This allows us to track historical
+    data of potentially suspicious activities in our account and assess the effectiveness
+    of the recommended remediation steps. We can do this by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Configure the KMS key as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Create or choose a KMS key** : Select an existing KMS key or create a new
+    one.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Attach a policy to the KMS key** : Attach a policy to the KMS key to grant
+    GuardDuty access. Refer to the **guardduty_kms_policy.json** file from the code
+    files for sample policy content.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Configure the S3 bucket as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Choose an S3 bucket** : Either create a new bucket or use an existing one.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Update the bucket policy** : Update the bucket policy to allow GuardDuty
+    uploads. Refer to the **guardduty_s3_bucket_policy.json** file from the code files
+    for sample policy content.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Configure findings export in GuardDuty Console as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Got to the GuardDuty dashboard.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate to **Settings** by clicking on the **Settings** option from the left
+    sidebar.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Configure **Export Options** as follows:'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to the **Finding export** **options** section.
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Configure now** .
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter the S3 bucket and KMS key ARNs. Provide the ARN of the S3 bucket where
+    the findings will be exported. Provide the ARN of the KMS key to encrypt the findings.
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Save** to apply the settings.
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: By following the preceding steps, we can configure AWS GuardDuty to export its
+    findings to an S3 bucket, ensuring that the data is aggregated and secured across
+    accounts and regions. Please make sure that you update the sample policy files
+    with actual values as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about the export findings feature in GuardDuty at [https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_exportfindings.html](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_exportfindings.html)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon Macie
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to set up and use Amazon Macie. Macie is a
+    machine learning-powered service in AWS and is used primarily to discover, classify,
+    and protect sensitive data. Macie can analyze data in S3 buckets to find sensitive
+    information, such as credentials, financial information, **Protected Health Information**
+    ( **PHI** ), **Personally Identifiable Information** ( **PII** ), **API keys**
+    , source code, and so on, and then classify them into different security levels.
+    Macie can be used with CloudWatch to raise alarms and send notifications. Macie
+    can also analyze API calls from CloudTrail to detect anomalies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will need a working AWS account and a user, as described in the *Technical*
+    *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need an S3 bucket. The bucket should be in the same region in which we configure
+    Macie. I have created a bucket in the **us-east-1** region.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Our S3 bucket should have the following files with fake sensitive data and
+    are provided with the code files associated with the chapter:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**credit-cards-data.txt** with sample credit card data'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**custom-data-license-plates.txt** with sample license plates'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can configure Macie to discover and classify risks in an S3 bucket as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Amazon Macie** service in the AWS management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are using Macie for the first time, we should see a page with a **Get
+    started** button. Click on **Get started** . Make sure that the region selected
+    is the same as our bucket, view the service role permissions, and enable Macie
+    to start a 30-day trial. We will then be taken to the **Summary** page. The 30-day
+    free trial of automated sensitive data discovery does not cover sensitive data
+    discovery jobs. If you initiate and execute a job, you will incur charges based
+    on the total volume of uncompressed data analyzed by the job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Jobs** in the left sidebar of the Macie dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we haven’t configured a repository for our sensitive data discovery results,
+    we will get a warning. We need to set up this repository within 30 days of enabling
+    Macie. Please note that Macie only stores our sensitive data discovery results
+    and findings for 90 days. We can click on **Configure** now to configure an existing
+    or new bucket as the repository for sensitive data discovery results, or we can
+    do it later (within 30 days) using the **Discovery results** menu item under **Settings**
+    on the left sidebar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create job** to initiate the job creation process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Choose S3 buckets** page, opt for **Select specific buckets** to select
+    the buckets you want to include in the job. We will select the bucket we created
+    in the *Getting ready* section of this recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For the **Review S3 buckets** page, review and verify our bucket selections,
+    and then choose **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For the **Refine the scope** page, choose **One-time job** , provide the **100%**
+    value for **Sampling depth** , and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of choosing **One-time job** , we can select the **Scheduled job** option
+    and set **Update frequency** to **Daily** , **Weekly** , or **Monthly** , but
+    let us select **One-time job** for this recipe. Under **Advanced settings** ,
+    we can specify criteria to include or exclude certain objects from the job’s analysis.
+    If no criteria are provided, the job will analyze all objects in the buckets.
+    For now, we should leave these settings as their defaults.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Managed data identifier options** , select **Recommended** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.5 – Managed data identifier options](image/B21384_08_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.5 – Managed data identifier options
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Custom data identifiers** , don’t add anything and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Select allow lists** , don’t add anything, and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Enter general settings** pane, enter **AWS Sec CB Demo** under **Job
+    name** . Optionally, provide a job description and add any tags as needed. Click
+    **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, take a moment to carefully examine the configuration
+    settings to ensure their accuracy, and review the estimated total cost of the
+    job. Click on **Submit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we go to the **Jobs** page, the status of our job will be **Active (Running)**
+    . Wait until the status is **Complete** . It could take 10 to 15 minutes.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the hyper-linked job name from the list, and from the **Show results**
+    dropdown, click on **Show findings** to view the findings. Click on the finding
+    to learn more about it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.6 – The Macie Findings tab](image/B21384_08_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.6 – The Macie Findings tab
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we saw how we can use Amazon Macie to find the S3 objects that
+    contain financial information such as bank account numbers or credit card numbers.
+    Next, we will see how we can use a custom Macie data identifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding a custom Macie data identifier
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can configure and use a custom Macie data identifier as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate back to the Macie service in the AWS Management Console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Custom data identifiers** in the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Provide **UKLicensePlates** under **Name** . For **Description - optional**
+    , enter **UK License Plates** , and set the **Regular expression** as the following:
+    **([0-9][a-zA-Z][a-zA-Z]-?[0-9][a-zA-Z][a-zA-Z])|([a-zA-Z][a-zA-Z][a-zA-Z]-?[0-9][0-9][0-9])|([a-zA-Z][a-zA-Z]-?[0-9][0-9]-?[a-zA-Z][a-zA-Z])|([0-9][0-9][0-9]-?[a-zA-Z][a-zA-Z][a-zA-Z])|([0-9][0-9][0-9]-?[0-9][a-zA-Z][a-zA-Z])**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave everything else as default and click **Submit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a new job by following the steps in the previous section; however, on
+    the **Custom data identifiers** page, select **UKLicensePlates** , which we created
+    in this section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – Selecting custom data identifiers](image/B21384_08_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.7 – Selecting custom data identifiers
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the status of the job is **Complete** on the **Jobs** page, from the **Show
+    results** dropdown, click on **Show findings** . We should be able to see a new
+    finding corresponding to our custom identifier job.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Macie can be used to analyze S3 buckets and CloudTrail logs. In this recipe,
+    we explored Amazon Macie, a machine learning-powered service in AWS that helps
+    discover, classify, and protect sensitive data stored in S3 buckets. We set up
+    Macie, initiated a discovery job to scan a specific S3 bucket, and observed how
+    it successfully identified pre-defined sensitive data types such as credit card
+    numbers. We then extended its capabilities by creating a custom data identifier
+    named **UKLicensePlates** using a regular expression to recognize a specific format
+    within our S3 bucket. This custom identifier was incorporated into a new discovery
+    job. Upon completion, we confirmed that Macie successfully recognized the six
+    license plates, showcasing its ability to discover both pre-defined and user-defined
+    sensitive data types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s go through some important concepts related to Macie:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Macie can be used within enterprises for a variety of use cases. Macie can detect
+    whether sensitive data or source code has been downloaded from unusual IP addresses.
+    Macie can detect which users are causing the most high-risk events. Macie can
+    group events by location and help us detect any activity from unknown locations.
+    Macie can also give a high-level breakdown of the type of CloudTrail events within
+    our account. If we see any unexpected calls, we can drill down to find out the
+    root cause.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Both Macie and GuardDuty have an overlap of functionalities related to analyzing
+    API calls. Unlike GuardDuty, the focus of Macie is more on access patterns, such
+    as uploading or downloading more data than is normally done. In general, it is
+    preferable to use Macie alongside GuardDuty for better protection.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Macie can be used alongside CloudWatch for raising alarms and sending notifications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Macie can aggregate data from multiple accounts. We can add additional accounts
+    from the **ACCOUNTS** tab on the **INTEGRATIONS** page after setting up the required
+    permissions as mentioned.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Macie currently charges us for S3 content classification and CloudTrail event
+    processing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Macie is a regional service. Macie must be enabled on a region-by-region basis
+    and helps you view findings across all your accounts within each region.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The steps to configure notifications for Macie alerts with Amazon EventBridge
+    and SNS can be summarized as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Amazon EventBridge** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Rules** under **Buses** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create rule** to go to the **Create** **rule** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Define rule detail** page, provide a name and description for our rule.
+    Leave **Event bus** and **Rule type** as **Rule with an event pattern** and click
+    on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Build event pattern** section, scroll down to **Event pattern** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event source** to **AWS services** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **AWS service** to **Macie** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type** to **Macie Finding** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Targets** section, under **Select a target** , select **SNS topic**
+    from the dropdown.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select a **Topic** . You can create an SNS topic by following the *Creating
+    an SNS topic to send emails* recipe in [*Chapter 7*](B21384_07.xhtml#_idTextAnchor265)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, click **Add new tags** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the rule and click on **Create rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate back to **Macie service** and create a job for our S3 bucket by following
+    the steps in the previous section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After some time, check the inbox of the email we configured for our SNS topic,
+    and we should get an email about our Macie findings.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'By default, Macie automatically sends its findings to Amazon EventBridge for
+    further processing and integration with other AWS services. You have the flexibility
+    to configure Macie to deliver findings to additional destinations and define how
+    frequently updates are sent to each destination by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the Macie console and click on **settings** on the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to **Publication of findings** and update the frequency for the
+    policy findings.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about Amazon Macie at [https://www.cloudericks.com/blog/getting-started-with-amazon-macie](https://www.cloudericks.com/blog/getting-started-with-amazon-macie)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up and using Amazon Inspector
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to set up and use Amazon Inspector. Inspector
+    is a service that performs automated **security assessments** to find vulnerabilities
+    or deviations from standard practices for applications deployed on AWS. We can
+    check the Inspector’s findings directly in the console or from the detailed assessment
+    report provided by the Inspector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need a working AWS account and a user, as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An EC2 instance in the default VPC, within a public subnet within the VPC, is
+    also required. For **Amazon Machine Image (AMI)** , select **Amazon Linux 2023
+    AMI** . For **Instance type** , select **t2.micro** . For **Key pair (login)**
+    , select an existing one you have access to or create a new one. Under **Network
+    settings** , make sure that the value for **Auto-assign public IP** is **Enable**
+    , and that **Create security group** is selected with the value for **Allow SSH
+    traffic from** set to **Anywhere** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can set up Inspector as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Amazon Inspector** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If we are logging in for the first time, we should see a **Get started** page.
+    Currently, there is a free 15-day trial for accounts that are new to Inspector.
+    Click on **Get started** . On the **Activate Inspector** page, we should see a
+    message that reads as follows: **When you activate Inspector, you grant Inspector
+    permissions to discover, classify, and protect sensitive data in AWS on your behalf
+    and to generate findings about potential security issues. This will activate Inspector
+    for your account only** . Click on **Activate Inspector** and wait until it is
+    fully activated. On the left sidebar, we should get options including the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.8 – Amazon Inspector’s left sidebar](image/B21384_08_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.8 – Amazon Inspector’s left sidebar
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we expand **Findings** , we can see options such as **By vulnerability**
+    , **By instance** , **By container image** , **By container repository** , **By
+    Lambda function** , and **All findings** . We should also see messages such as
+    the following, but it could be different in your case, as Amazon updates its user
+    interface and messages frequently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 8.9 – Messages post-activating Amazon Inspector](image/B21384_08_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.9 – Messages post-activating Amazon Inspector
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wait for some time, then click on **Account management** from the left sidebar,
+    go to the **Instances** tab, and verify that the status of our instance is **Actively
+    monitoring** . The **Monitored using** column will have a value of **Agentless**
+    as we are using an EBS-backed EC2 instance.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the left sidebar, expand **Findings** and click on **All findings** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.10 – Inspector’s Findings menu](image/B21384_08_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.10 – Inspector’s Findings menu
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we are using a newly launched EC2 instance with Amazon Linux, we won’t see
+    many findings, but we should see one with **Severity** as **Medium** for **Port
+    22 is reachable from an Internet Gateway –** **TCP** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: We quickly explored how to see the Inspector findings in this recipe. We will
+    look into more options available within Inspector’s dashboard in the *There’s
+    more...* section of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Amazon Inspector for EC2 scanning extracts metadata from instances and compares
+    it to security advisories to produce findings, focusing on package vulnerabilities
+    and network reachability issues. Network reachability scans occur every 24 hours,
+    while package vulnerability scans have variable frequencies based on the scan
+    method. Amazon Inspector employs both agent-based and agentless scan methods,
+    depending on the account’s scan mode settings, to collect software inventory and
+    detect vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Agent-based scans use the SSM agent to continuously collect software inventory
+    from eligible instances. These scans identify vulnerabilities in both operating
+    systems and application programming language packages in Linux instances. To perform
+    agent-based scans, instances must have a supported OS, be SSM managed, and not
+    be excluded by specific tags. Amazon Inspector uses various SSM associations and
+    plugins to gather inventory data and update vulnerability findings regularly.
+    Additionally, agentless scans, part of the hybrid scanning mode, utilize EBS snapshots
+    to collect inventory data from instances, scanning for operating system and application
+    package vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Amazon Inspector offers two scan modes: agent-based and hybrid scanning. The
+    agent-based mode provides continuous scans for SSM-managed instances, while hybrid
+    scanning combines both methods, using agent-based scans for SSM-managed instances
+    and agentless scans for eligible EBS-backed instances. Users can configure scan
+    modes, manage exclusions, and ensure proper SSM agent setup to optimize vulnerability
+    detection and maintain effective security monitoring for their EC2 instances.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We explored how EC2 instances are scanned in this recipe. Amazon Inspector
+    also supports scanning for the following resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amazon Elastic Container Registry** ( **ECR** ): Amazon Inspector scans container
+    images stored in Amazon ECR for vulnerabilities. This ensures that container images
+    used in your environment are secure and free from known issues.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWS Lambda** : Amazon Inspector scans AWS Lambda functions for vulnerabilities,
+    checking the code and dependencies to ensure serverless applications remain secure.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this recipe, we explored the **Findings** option in the left sidebar to
+    review the findings. The left sidebar also offers several other options, including
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Export SBOMs** : The **Software Bill of Materials** ( **SBOM** ) provides
+    a detailed list of software components and their relationships within a system.
+    Amazon Inspector can generate and export SBOMs, which are helpful for understanding
+    and managing software dependencies, ensuring compliance with security policies,
+    and identifying potential vulnerabilities. This helps organizations maintain a
+    comprehensive inventory of their software components.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Suppression rules** : Suppression rules in Amazon Inspector allow users to
+    manage findings by suppressing specific types or sources of findings. This helps
+    reduce noise and focus on critical vulnerabilities. Users can create suppression
+    rules based on criteria such as vulnerability ID, resource tags, or resource types
+    to ensure that only relevant findings are highlighted in security reports.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**On-demand scans** : On-demand scans allow users to manually initiate scans
+    for vulnerabilities or network reachability issues on EC2 instances as needed.
+    This is particularly useful after deploying new software or making significant
+    infrastructure changes. Under the **On-demand scans** menu, using the **CIS scans**
+    option, we can evaluate the compliance of EC2 instances with **Center for Internet
+    Security** ( **CIS** ) benchmarks, which are best practices for securing IT systems
+    and data. These scans help organizations adhere to security standards and improve
+    their security posture by identifying and addressing non-compliant configurations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note on Inspector Classic
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The Inspector dashboard currently has a sidebar link called **Switch to Inspector
+    Classic** . Inspector Classic was the original version of Amazon Inspector, designed
+    to help AWS users automate security assessments for their applications by checking
+    for vulnerabilities and compliance issues. Although Inspector Classic was initially
+    vital, it has largely been replaced by the new Amazon Inspector, which offers
+    enhanced features and a more comprehensive, streamlined approach to security assessments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inspector Classic remains available for users with existing dependencies, but
+    transitioning to the new Amazon Inspector is advisable for the latest features,
+    improved performance, and enhanced security capabilities. AWS continues to support
+    Inspector Classic for backward compatibility, but new users and assessments should
+    use the updated Amazon Inspector for optimal security management. For those interested
+    in working with Inspector Classic, refer to the first edition of this book or
+    the link provided in the *See* *also* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can read more about Amazon Inspector at [https://www.cloudericks.com/blog/a-deep-dive-into-amazon-inspector-capabilities-and-integrations](https://www.cloudericks.com/blog/a-deep-dive-into-amazon-inspector-capabilities-and-integrations)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read about Inspector Classic at [https://www.cloudericks.com/blog/understanding-inspector-classic-and-transitioning-to-the-new-amazon-inspector](https://www.cloudericks.com/blog/understanding-inspector-classic-and-transitioning-to-the-new-amazon-inspector)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and using AWS Security Hub
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will explore how to set up and utilize AWS Security Hub.
+    Security Hub aggregates findings from services such as Config, GuardDuty, Macie,
+    and Inspector, offering a centralized platform to manage security alerts and automate
+    compliance checks. Security Hub can do automated compliance checks using the CIS
+    AWS Foundations Benchmarks, which is enabled by default when we enable Security
+    Hub.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user, as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Set up AWS Config and enable recording as discussed in the *Setting up and using
+    AWS Config* recipe in [*Chapter 7*](B21384_07.xhtml#_idTextAnchor265) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Set up one or more of the following services: Amazon GuardDuty, Amazon Macie,
+    and Amazon Inspector, following the respective recipes in *Chapters 7* *and* *8*
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can set up Security Hub in a region as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Security Hub** service in the AWS management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we are using Security Hub for the first time, we should see a **Get started
+    with Security Hub** section. Click on **Go to Security Hub** . In the **Enable
+    AWS Config** section, we should see a message that AWS Config needs to be enabled
+    with recording along with possible steps, which I assume you have done as mentioned
+    in the *Getting* *ready* section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.11 – The Enable AWS Config message while enabling Security Hub](image/B21384_08_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.11 – The Enable AWS Config message while enabling Security Hub
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Security standards** section, select the security standards we want
+    to enable from the available options as we can see in *Figure 8* *.12* . In the
+    **Delegated Administrator** section, we can add a delegated administrator account
+    to manage Security Hub for this organization. Finally, click on **Enable** **Security
+    Hub** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.12 – Setting security standards while enabling Security Hub](image/B21384_08_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.12 – Setting security standards while enabling Security Hub
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should see a screen with sections for **Summary** , **Security standards**
+    , **Insights** , and so on. It may take some time for the findings to get updated.
+    So, wait for some time before proceeding with further steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Security standards** from the left sidebar. If we are following on
+    from *Step 2* , for the **AWS Foundational Security Best Practices v1.0.0** and
+    **CIS AWS Foundations Benchmark v1.2.0** standards, we should see the **View results**
+    and **Disable standard** options. For the rest of the standards that are not enabled,
+    we should see the **Enable Standard** option. If we are not following on from
+    *Step 2* , we should enable the **AWS Foundational Security Best Practices v1.0.0**
+    and **CIS AWS Foundations Benchmark v1.2.0** standards using the **Enable Standard**
+    option and wait for some time until we see the **Security score** for each standard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the **Security** score is available for the **AWS Foundational Security
+    Best Practices v1.0.0** , click on **View results** . We should see the **Security
+    score** and **Failed controls** values such as the following, but the exact details
+    could differ from account to account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.13 – Viewing the results for a security standard](image/B21384_08_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.13 – Viewing the results for a security standard
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Insights** on the left sidebar. We should see a list of existing
+    insights, which are saved filters that display related findings. We can either
+    select one of these existing insights or create a new one by clicking on the **Create**
+    **insight** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.14 – Insights](image/B21384_08_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.14 – Insights
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Findings** in the left sidebar to navigate to the **Findings** page.
+    Here, you can view a list of findings from various service integrations. You can
+    filter this list based on multiple criteria, such as the service that generated
+    the finding or the severity of the finding.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.15 – Findings](image/B21384_08_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.15 – Findings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Integrations** from the left sidebar to go to the **Integrations**
+    page, where we can see the list of integrations currently enabled and those that
+    are yet to be enabled. For integrations that are already enabled, we can disable
+    them from the **Integrations** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.16 – Integrations](image/B21384_08_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.16 – Integrations
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Usage** from the left sidebar to see the estimated usage and pricing,
+    including **Usage during** **trial period** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Configuration** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If central configuration is not enabled, we will see a link to **Start central
+    configuration** along with a warning message as follows: **Local configuration
+    gives you limited access to security settings for your organization, for new accounts
+    only. For additional configuration options, switch to central configuration. You
+    can now use configuration policies to configure Security Hub across multiple Regions,
+    accounts, and organizational units (OUs). When you switch, configuration policies
+    replace the limited configuration settings for new organization accounts. We recommend
+    central configuration for** **account management** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Accounts** section on the **Configuration** page, we can add additional
+    member accounts to share their findings with this account. An invitation will
+    be sent to the member accounts, and they must accept the invitation.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Custom actions** from the left sidebar to send selected insights
+    and findings to Amazon EventBridge.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Automations** from the left sidebar to update the Security Hub findings
+    based on criteria that we define.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Regions** in the left sidebar to view findings across multiple regions.
+    To start aggregating findings, click on the **Configure finding aggregation**
+    button to set an aggregation region and then link other regions to it for a consolidated
+    view of your security findings.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can also disable Security Hub by clicking on **General** from the left sidebar
+    and clicking on **Disable AWS Security Hub** . However, it is always recommended
+    to have Security Hub enabled for all regions if the applicable costs are not a
+    constraint.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: AWS Security Hub acts as a centralized platform for security monitoring and
+    management within the AWS environment. To get started, activate the service in
+    the AWS Management Console. Once enabled, configure Security Hub to gather findings
+    from a range of AWS services such as Amazon GuardDuty, AWS Inspector, and Amazon
+    Macie, along with third-party tools and custom integrations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The service provides continuous monitoring for security issues, collecting and
+    organizing findings on a unified dashboard. It prioritizes these findings based
+    on their severity and impact, helping users to address the most critical issues
+    first. Within the Security Hub console, users can investigate these findings to
+    gain insights into potential security threats and vulnerabilities. Additionally,
+    Security Hub supports automated responses through AWS Lambda integration, allowing
+    users to automate remediation actions for detected security issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In summary, AWS Security Hub offers a comprehensive solution for managing security
+    posture, compliance, and incident response, thereby streamlining security operations
+    and enhancing overall protection within the AWS environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts around Security Hub and its
+    related services:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Security Hub is a regional service. If cost is not a constraint, it is recommended
+    to enable it in all regions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Security Hub can integrate with third-party security tools such as Alert Logic,
+    Armor, Atlassian Opsgenie, and more.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can archive security findings from the **Findings** page so that older ones
+    won’t appear on the page.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The CIS provides security standards for different servers, applications, and
+    cloud providers. For example, they provide a set of security standards that are
+    specific to AWS security.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'CIS Benchmarks for AWS can be categorized into four categories: identity and
+    access management, logging, monitoring, and networking.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IAM Access Analyzer uses logic-based reasoning to analyze resource-based policies
+    in our AWS environment to inform us which resources in our account are shared
+    with external principals.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS Firewall Manager can be used to manage firewall rules across accounts and
+    applications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learning about and understanding the CIS security benchmark controls for AWS
+    will provide us with a better sense of security while working with AWS infrastructure.
+    These controls can also help us make better decisions at work and even during
+    exams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about AWS Security Hub at [https://www.cloudericks.com/blog/getting-started-with-aws-security-hub](https://www.cloudericks.com/blog/getting-started-with-aws-security-hub)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can find the list of CIS security standards supported by Security Hub at
+    [https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using IAM Access Analyzer to inspect unused access
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will demonstrate how to utilize IAM Access Analyzer to identify
+    and manage unused IAM resources within our environment. By focusing on detecting
+    unused roles, access keys, and other critical components, we ensure adherence
+    to security best practices. Through the process of configuring the analyzer to
+    scan for unused resources, and interpreting the findings it generates, we gain
+    valuable insights into potential security risks. By addressing any identified
+    unused resources, we mitigate the risk of unauthorized access or misuse, enhancing
+    the overall security posture of our IAM environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user, as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to have some IAM users and roles within our AWS account; we can create
+    these by referring to the recipes in *Chapters 1* *and* *2* .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can use IAM Analyzer to inspect unused access as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the **IAM** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Access reports** , click on **Access Analyzer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create analyzer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Analysis** section, we can see options for **External access analysis**
+    and **Unused access analysis** . Select the **Unused access** **analysis** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 8.17 – Configuring the Findings type](image/B21384_08_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.17 – Configuring the Findings type
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Analyzer details** section, leave the autogenerated **Name** for our
+    Analyzer as-is. For **Zone of trust** , select **Current organization** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down and click **Create analyzer** . Wait for some time for the findings
+    to be populated.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Access Analyzer** in the left sidebar to see the **Findings overview**
+    page that contains the findings summary.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Unused access** from the left sidebar. We should see findings related
+    to unused access.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using IAM Analyzer to inspect unused access works by employing it as a security
+    scanner for your IAM resources. It analyzes roles, access keys, and permissions
+    across your environment. By examining how recently these resources were used,
+    it identifies elements that haven’t been active for a specific period. This can
+    indicate unnecessary access or forgotten configurations, potentially posing security
+    vulnerabilities. With these insights, you can tighten access controls and improve
+    the security posture of your IAM environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While identifying unused resources is a valuable capability, IAM Analyzer offers
+    a broader range of functionalities to enhance your IAM security posture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Verifying Permissions** : IAM Analyzer can validate policies against best
+    practices and identify overly permissive settings that could grant unintended
+    access.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Monitoring External Sharing** : Keep track of resources shared with external
+    entities outside your AWS account. This helps identify potential security risks
+    associated with unintended access granted to external users or applications.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Custom Policy Checks** : Define your own security standards and leverage
+    IAM Analyzer to validate IAM policies against these custom checks. This empowers
+    you to enforce specific security requirements within your organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Automating Policy Generation** : Simplify policy creation by leveraging IAM
+    Analyzer’s ability to generate IAM policies based on access activity logs from
+    CloudTrail. This streamlines the process and helps ensure policies reflect actual
+    usage patterns.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Continuous Monitoring** : IAM Analyzer is not a one-time scan; it provides
+    ongoing monitoring of your IAM environment. This allows for the proactive identification
+    of potential security issues as your IAM configuration evolves.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The steps to set up Amazon EventBridge to monitor our findings from Access
+    Analyzer can be summarized as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Amazon EventBridge** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Rules** under **Buses** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create rule** to go to the **Create** **rule** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Define rule detail** page, provide a name and description for our rule.
+    Leave the **Event bus** as **default** and **Rule type** as **Rule with an event
+    pattern** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Build event pattern** section, scroll down to **Event pattern** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event source** to **AWS services** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **AWS service** to **Access Analyzer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type** to **Access** **Analyzer Finding** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type Specification 1** to **Any resource** **by ARN** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Next** . Under **Targets** , Choose **SNS topic** from the dropdown
+    under **Select** **a target** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select a topic. You can create an SNS topic by following the *Creating an SNS
+    topic to send emails* recipe in [*Chapter 7*](B21384_07.xhtml#_idTextAnchor265)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, click **Add new tags** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the rule and click on **Create rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read about essential tools to Secure IAM at [https://www.cloudericks.com/blog/essential-tools-to-secure-iam](https://www.cloudericks.com/blog/essential-tools-to-secure-iam)
+    .
+  prefs: []
+  type: TYPE_NORMAL

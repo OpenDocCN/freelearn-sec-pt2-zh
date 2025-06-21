@@ -1,0 +1,847 @@
+- en: Network Penetration Testing - Gaining Access
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far in this book, we haven't needed to connect to a network for anything.
+    In this chapter, as we take a step toward learning network penetration testing,
+    we will connect to a network. This will allow us to launch more powerful attacks
+    and get more accurate information. If a network doesn't use encryption (in other
+    words, if it's an open wireless network), we can connect to it and sniff out unencrypted
+    data. If a network is wired, we can still try to connect to it, perhaps through
+    changing our MAC address. The main issue we might encounter is a network using
+    encryption (such as WEP, WPA, or WPA2). If we do encounter encrypted data, we
+    need to know the key to decrypt it, that's the main purpose of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If your target network uses some sort of encryption, you can't really get anywhere
+    unless you decrypt it. In this chapter, we will discuss how to decrypt WEP, WPA,
+    and WPA2 encryptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WEP theory
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Basic web cracking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fake authentication attack
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ARP request replay
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WPA introduction
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WPA cracking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handshake theory
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Capturing handshakes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating wordlists
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Wordlist cracking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Securing network from attacks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WEP theory
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first encryption that we will discuss is **Wired Equivalent Privacy** (**WEP**)
+    encryption, because it's the oldest one, and also the easiest one to break. WEP
+    encryption uses an algorithm called RC4; each packet is encrypted at the **Access
+    Point** (**AP**), and then sent out into the air. Once the client receives it,
+    the client will be able to decrypt the packet and read the information inside
+    of it, since the client has the key. In short, the APencrypts the packet and sends
+    it, and the client receives and decrypts it. In the same way, when the client
+    itself sends the packet, the client encrypts it and then sends it out, and the
+    AP receives and decrypts it with a key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each packet that is sent out has a unique key stream. WEP ensures that the key
+    stream is unique by using a 24-bit **Initialization Vector** (**IV**). The IV
+    is a random number that is sent into each packet in plain text, which is not encrypted.
+    If we read the packet, we will be able to read a part of it in plain text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The problem with the IV is that it's very short (24-bits, which is not that
+    long). In a busy network, there will be a very large number of packets sent, the
+    possibilities of random IVs will be exhausted, and we will end up with two packets
+    that have the same IV. If this happens, we can employ `aircrack-ng`, which uses
+    statistical attacks to determine key streams; it will be able to determine the
+    WEP key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the preceding information, we know that the more IVs we collect, the more
+    likely we'll be to successfully crack the WEP key. Our main goal, when we try
+    to crack WEP, is to collect as many IVs as we can—because when we have a large
+    number of IVs, we will end up with two packets that use the same IV, and `aircrack-ng`
+    will be likely to determine the key stream and the WEP key for the target network.
+    In the next part of this chapter, we will see how this actually works, and it
+    should be easier to understand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic web cracking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Through the previous section, we know that to crack a WEP key, all we have to
+    do is sniff packets from the target network and gather as many IVs as possible.
+    Once we have done that, `aircrack-ng` will be able to use statistical attacks
+    to determine the key stream and the WEP key for the target network. Obviously,
+    when we have more than two packets, the method is going to work better, and our
+    chances of breaking the key will be higher—we're going to try to gather as many
+    IVs as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at the most basic case of cracking a WEP key. Wi-Fi card must be
+    in monitor mode, and the first thing we''re going to try to do is see all of the
+    networks that are within our Wi-Fi range; then, we''re going to target one of
+    those networks. We''re going to run `airodump-ng wlan0`, very basic command, where
+    `wlan0` stands for the interface. Following will be displayed as a output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/9b5bbad8-bb43-45ec-a170-496480a5f541.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The first network that has come up is `Test`; this is the network that we''re
+    going to perform our attacks on. We''re going to launch `airodump` against `Test`
+    network by using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we enter the `--bssid` and launch an `airodump` against `Test` AP. We
+    include the `--channel`, number `11`, and we add `--write` to store all of the
+    packets that we capture into a file, which is `basic-test-ap`. As we run the preceding
+    command, we will be able to see the output in the following screenshot, the target
+    network that we have as the data we gathered it is quite a busy one, also the
+    data and the frames are going:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/73eeae7a-5cf4-4f43-ba26-0dafe7066869.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It is a busy network; the following is the section where we can see the clients:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/7739e539-c2ea-4ad4-a3c9-eb52bd096a68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'All we have to do now is launch `aircrack-ng`, which is part of the `aircrack`
+    suite, against the file that `airodump` has created for us. We can launch `aircrack`
+    against it even if we didn''t stop `airodump`; it will keep reading the file,
+    and it will read the new packets that `airodump` is capturing. The command to
+    use is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we use `aircrack-ng`, we will put in the filename `basic-test-ap-01.cap`. While
+    the file is still being created, getting larger and larger with the inclusion
+    of new packets, we can run `aircrack-ng`, and it will keep getting updated, eventually
+    giving us the password we need for cracking. If `aircrack` fails to determine
+    the key, `aircrack` waits until it reaches 5,000 IVs, and then tries again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The number of IVs actually depends on the type of WEP encryption. There are
+    two types of WEP encryption: 128-bit and 64-bit. The only difference is the length
+    of the key; obviously, 64-bit requires a lower number of IVs than 128-bit. Remember
+    that when we discussed `aircrack`, we indicated that the more packets we get without
+    unique IVs, the higher our chances of cracking the WEP key are.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we basically wait until `aircrack` can successfully crack the WEP key.
+    Once it decrypts the key, we can press *Ctrl + C*. As we can see in the following
+    screenshot, `aircrack` has successfully managed to get the key within data packets;
+    this is because the target AP uses a 64-bit key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/b7ac1328-df6d-44dc-8178-9c5eb08589d8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s look at how we can use this key to connect to the network. We are going
+    to copy the key and use the key too connect. We can then connect to the target
+    network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/169fc046-5bc5-4a90-9079-a626f556d06a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see, our connection has been established; we successfully recovered
+    the WEP key from the target network. We can go ahead and confirm by pinging Google:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/2daa0386-1c60-4ddf-ae43-c38798733b7a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Fake authentication attack
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we saw how easy it is to crack a WEP key on a busy
+    network. In a busy network, the data increases very quickly. The problem is that
+    we're now going to fake as an AP that doesn't have any clients connected to it,
+    or an AP that has a client connected to it, but the client is not using the network
+    as heavily as the client in the previous section (perhaps the client is just reading
+    articles or going on Facebook, not using as much data as we saw last time).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at an example. We will run `airodump` against the target AP, `Test`,
+    to take a look at an idle AP. We now have `Test`, the same AP that we used before,
+    but the difference is that we've disconnected the device that was connected. As
+    we can see, in the second area (the client area), there are no clients connected.
+    Also, we can see that the `#Data` is `0`—it didn't even go to `1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will be the problem that we''ll face—we want to be able to crack a key
+    like this, with `0` data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/a4433ed4-b74a-4348-bc14-83fcd653a4be.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What we can do is inject packets into the traffic. When we inject packets into
+    the traffic, we can force the AP to create new packets with new IVs in them, then
+    capture the IVs. But before we can inject packets, we have to authenticate our
+    device with the target AP. APs have lists of all of the devices that are connected
+    to them, and they ignore any packets that come from a device that is not connected.
+    If a device doesn't have the key and it tries to send a packet to the router,
+    the router will just ignore it; it won't even try to read it, or to see what's
+    inside. Before we can inject packets into a router, we have to authenticate ourselves
+    with the router. We're going to use a method called fake authentication; it's
+    very simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We already executed `airodump` in the previous section. Let''s see how we can
+    use fake authentication. In the previous screenshot, we can see that there is
+    no value under `AUTH`. Once we have done fake authentication, we will see an `OPN`
+    show up there, which will mean that we have successfully falsely authenticated
+    our device with the target AP. To do that, we will use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: With `aireplay-ng`, we're going to use a `--fakeauth` attack; we include the
+    type of attack and the number of packets that we want to send, which is `--fakeauth
+    0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are just going to put `0`; some use a large number, when they're carrying
+    out an attack that will take 5 or 10 minutes, but for us, we will just use `0`,
+    and maybe change it later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to use the `-a` option and the target MAC address (that is, `54:B8:0A:9E:54:2D`).
+    Then we''re going to use `-h` to include our MAC address, so that our MAC address
+    which gets authenticated with the target network. To get our MAC address, we''re
+    going to run the `ifconfig wlan0` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/0f32a84b-85f6-4cb7-8080-15ccdf1764ae.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The name of our Wi-Fi card is `wlan0`. With `aireplay-ng`, the type of attack
+    that we''re trying to do, we''re trying to perform a fake authentication attack,
+    to authenticate our MAC address so that we can inject packets into the target
+    network. We''re going to send `0` (which means do it once), then `-a` (with the
+    MAC address of the AP), then `-h` (where we put the MAC address of the device
+    that we want to perform a fake authentication to), and then `wlan0`, the name
+    of the Wi-Fi card; now we hit *Enter*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f5b381a2-e28e-48da-ae11-6c65a19d48c9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see in the preceding screenshot, `-a` sent an authentication request,
+    and it was successful. The network became an open network, and our client (that
+    is, my attacking device) showed up as if it was a client connected to the network.
+    We''re not actually connected, but we are authenticated with the network and have
+    an association with it, so that we can inject packets into the AP—it will now
+    receive any request that we send to it. Following is the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/b55addb5-d9ac-4a59-b538-389206982c68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the next section, we will see how we can inject packets and how to make the
+    data increase very quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARP request replay
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The AP now accepts packets that we send to it, because it's not going to ignore
+    us now that we've successfully associated ourselves with it by using a fake authentication
+    attack. We are now ready to inject packets into the AP and make the data increase
+    very quickly, in order to decrypt the WEP key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first method of packet injection that we're going to talk about is ARP request
+    replay. In this method, we're going to wait for an ARP packet, capture the packet,
+    and inject it into the traffic. When we do this, the AP will be forced to create
+    a new packet with a new IV; we'll capture the new packet, inject it back into
+    the traffic again, and force the AP to create another packet with another IV.
+    We will keep doing this until the amount of data is high enough to crack the WEP
+    key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s do this in Kali Linux. The first thing we''re going to do is launch
+    `airodump-ng` with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're going to add a `--write` option to the command; let's call it `arp-request-reply-test`.
+    When it runs, we will see that the target network has `0` data, it has no clients
+    associated with it, and there is no traffic going through as no client is connected,
+    which means that it's not useful; we can't crack its key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing that we're going to do is fake authentication attack as shown
+    in the *Fake authentication* section, so that we can start injecting packets into
+    the network, and it will accept them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That leads us to our next step, which is the ARP request reply step, where
+    we will inject packets into the target network, forcing it to create new packets
+    with new IVs. The command is going to be the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is very similar to the previous command, but instead of `--fakeauth`,
+    we''re going to use `--arpreplay`. We will also include `-b`, for BSSID. With
+    this command, we are going to wait for an ARP packet, capture it, and then reinject
+    it out into the air. We can then see that we''ve captured an ARP packet, injected
+    it, captured another, injected it into the traffic, and so on; the AP then creates
+    new packets with new IVs, we receive them, we inject them again, and this happens
+    over and over:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/7e64c800-3bc2-4e8c-a674-50a181f65986.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When the amount of `Data` reaches 9,000, or above we can launch `aircrack-ng`.
+    When we use `aircrack-ng` and the filename, sure enough, we can see the WEP key,
+    and we are able to crack it after `15012` IVs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/7ded7457-9f50-4c4d-8f96-9351381a4188.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: WPA introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the upcoming parts of this chapter, we're going to discuss **Wi-Fi Protected
+    Access** (**WPA**) encryption. This encryption was designed after WEP, to address
+    all of the issues that made WEP very easy to crack. The main issue with WEP is
+    the short IV, which is sent in each packet as plain text. The short IV means that
+    the possibility of having a unique IV in each packet can be exhausted in active
+    networks, so that when we are injecting packets (or in natural, active networks),
+    we will end up with more than one packet that has the same IV. When it happens,
+    `aircrack-ng` can use statistical attacks to determine the key stream and the
+    WEP key for the network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In WPA, however, each packet is encrypted using a unique, temporary key. It
+    means that the number of data packets that we collect is irrelevant; even if we
+    are able to collect one million packets, these packets are not useful, because
+    they do not contain any information that can help us crack the WPA key. WPA2 is
+    the same; it works with the same method, and it can be cracked using the same
+    method. The only difference between WPA and WPA2 is that WPA2 uses an algorithm
+    called **Counter-Mode Cipher Block Chaining Message Authentication Code Protocol**
+    (**CCMP**) for encryption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: WPS cracking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Cracking WPA or WPA2 encrypted networks isn't simple, especially since all of
+    the packets that are sent out are not useful for us, as they do not contain any
+    information that can help us to determine the WPA key. Before we get into cracking
+    WPA and WPA2, we will look at a feature called WPS; it allows users and clients
+    to connect to the network by the push of a button. On Windows 8, if you look on
+    some Wi-Fi printers, they have a WPS button; if you press the WPS button and go
+    to your router and press the WPS button as well, or if you go to the configuration
+    page and press the WPS button, the client, printer, or Windows device will connect
+    to the network without having to enter the key. WPS is a feature that allows clients
+    to connect to a network easily, without having to enter the WPA key manually;
+    it's just a feature in routers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This feature authenticates the client using an 8-digit PIN, it doesn't use the
+    actual WPA key. WPS only includes digits, there aren't too many possibilities
+    for it. If we use a brute-force attack, we are guaranteed to guess the PIN. If
+    we successfully guess the PIN, we can use a tool called `reaver`, which will calculate
+    the WPA key from the PIN. We're going to brute-force the PIN; because it's only
+    9 digits long, we will be successful. Once we do that, we can calculate the WPA
+    key using `reaver`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To look for APs that have WPS enabled, we''re going to use a tool called `wash`.
+    We will use the `wash -i wlan0` command . We have our `Test` AP showing up in
+    the following screenshot—that''s the AP that we''re going to crack, it is actually
+    running on WPA now, not using WEP, like we saw previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f83fd94e-acd9-4ad4-be4a-3606362e5aaf.png)In order to check whether AP
+    is actually using WPA encryption, run `airodump-ng wlan0`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding is the lists of APs that have WPS enabled. We can see `Ch`, `dBm` (which
+    is the distance between us and the AP), `WPS` shown the WPS version, and `Lck` shown
+    whether its locked. Now, some routers, when we try to brute-force the WPS PIN,
+    lock after a few failed attempts. If we try, for example, four wrong PINs, they're
+    going to lock, and will not accept any PINs for a certain amount of time. If `Lck`
+    says `Yes`, we can't actually use the attack anymore; we need to wait for a little
+    bit, and then come back to the AP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will run `reaver` now, it is going to brute-force the WPS PIN, and, once
+    it's able to find the WPS PIN, it's going to work out the WPA key. The `reaver`
+    supports pause and resume, for example, if we reach, through brute-force, 30%
+    of the possibilities, and then cancel the attack, when we come back, we will start
+    again from 30 not from 0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s launch `reaver`; we''re going to put `-b` to choose the BSSID, or the
+    MAC address, of the target AP, and then `-c` to choose the channel, which is `11`,
+    then, we can choose the Wi-Fi card `-i` with monitor mode, and that''s `wlan0`.
+    The command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We hit *Enter*, and `reaver` will be associated with the target AP; it will
+    try to determine the WPS PIN. In the screenshot, we can see that we have an easy
+    PIN, which is `12345670`; from that, `reaver` was able to calculate the WPA key,
+    `UAURWSXR`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/a6358f8a-70d5-46a9-9a7f-95f37a358e31.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, we can just connect to the network; if we put in the key that we just found,
+    we can use the password, `UAURWSXR`, and connect it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, there are a few options for `reaver`. We launch `reaver --help`, and we
+    can see all of the options that we can use with `reaver`. As mentioned earlier,
+    some routers will lock after a few failed attempts; therefore, we can use some
+    of these advanced options to get `reaver` to work against these APs. For example,
+    we can use the `--delay` option to specify the amount of time, in seconds, that
+    `reaver` should wait between each brute-force attempt, or each PIN attempt. We
+    can also use the `--lock-delay` to tell `reaver` to wait, for example, 60 seconds,
+    if the AP gets locked, before continuing the brute-force attempt. We can use `--fail-wait`,
+    as well, to set the time that `reaver` should wait after 10 failed attempts. Also,
+    we can use the `-r` option to tell `reaver` to sleep for a certain amount of seconds
+    after a certain number of tries. We can set up the `--timeout` option, we can
+    play with these options, the `--delay` options, and the `--fail-wait` if the AP
+    was locking or was ignoring some of our brute-force attempts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handshake theory
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we saw how we can use the WPS feature in routers to
+    crack the WPA key. This process is guaranteed to work on every WPS-enabled network;
+    therefore, if your target uses WPA or WPA2 encryption and has WPS enabled, that
+    should be the first method you try to crack the password with. If WPS is not enabled,
+    however, we have to crack the actual WPA key. As we explained in the section on
+    *WPS cracking*, in WPA, each packet is encrypted using a unique, temporary key,
+    it's not like WEP, where IVs are repeated and we collect a large number of data
+    packets with the same IVs. In each WPA packet, there is a temporary unique IV,
+    even if we collect one million packets, these packets will not be useful for us—they
+    do not contain any information that can help us determine the actual WPA key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The only packets that contain information that can help us determine the key
+    are the handshake packets. These are four packets, sent when a new device or a
+    new client connects to the target network. For example, when we are at home and
+    our device connects to the network, we have the password, and a process called
+    a four-way handshake happens between the device and the AP. In this process, four
+    packets, called the handshake packets, get transferred between the two devices,
+    to authenticate the device connection. Using `aircrack-ng`, we can use a wordlist,
+    testing each password in the wordlist by using the handshake. To crack WPA encrypted
+    networks, we need two things: we need to capture the handshake, and we need a
+    wordlist that contains passwords.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Capturing the handshake
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To crack a WPA key, the first thing we''re going to need to do is capture the
+    handshake. We''re going to capture the handshake by using `airodump-ng`, the same
+    way that we used it with WEP-encrypted networks. We will use `airodump-ng --bssid`,
+    the same way we used it to run it against WEP networks; at the end of the day,
+    we''re only capturing packets using `airodump-ng`, it''s doing the same job. We
+    will include the channel, and then we will write to a file, calling the file `test-handshake`;
+    we will also include the wireless card in monitor mode. We use the same command
+    we used when we were capturing packets for WEP networks, `airodump-ng --bssid`.
+    We put the target AP, `--channel`; the target channel, `--write`; the name of
+    the file that we''re going to store stuff in; and `wlan0`, our Wi-Fi card, with
+    monitor mode. The command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once we launch this command, we will have our network, a WPA-encrypted network,
+    we will have a client connected to the network. To capture the handshake, we can
+    just sit down and wait for a device to connect to the network. Once a device connects
+    to the network, we can capture the handshake, or we can use something that we
+    learned in the previous chapter ([Chapter 5](bc4346fc-ed68-40d5-b1c7-7f3dd0f5af76.xhtml), *Pre-Connection
+    Attacks*), which is a deauthentication attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a deauthentication attack, we disassociate, or disconnect, any device from
+    a network that is within our Wi-Fi range. If we do that for a very short period
+    of time, we can disassociate the device from the network for a second; the device
+    will try to connect back to the network automatically, and even the person using
+    the device will not notice that his device is disconnected and reconnected. We
+    will then be able to capture the handshake packets. Again, we said that the handshake
+    gets sent every time a device connects to a target network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we''re just going to run a basic authentication attack, using `aireplay-ng`.
+    We studied it in [Chapter 4](c3f79613-de23-4825-9b88-b2f5dc16479c.xhtml), *Network
+    Penetration Testing*, and, in this section we put a very large number of packets
+    when we were disconnecting our target. Now we are only going to put a small number:
+    four deauthentication packets. Then, we''re going to put `-a`, the MAC address
+    of the target AP, and `-c`, to specify the client MAC address (the MAC address
+    of the client that we want to disconnect). Then we are going to put the Wi-Fi
+    card name, which is `wlan0`. We use `aireplay-ng --deauth`, the name of the attack,
+    and `4` authentication packets to the AP, and disconnect the device from it. The
+    command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see in the following screenshot, we captured the WPA handshake,
+    and our target device didn''t even change, nor was it disconnected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/c067830a-b9fc-4642-b3d0-faacb2a8115c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We didn't get any messages about being disconnected, because we were disconnected
+    for a very short period of time; as a result, even the person using the device
+    didn't notice, and we were able to capture the handshake. Now we can use a wordlist
+    and run it against the handshake to try to determine the main WPA key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a wordlist
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we've captured the handshake, all we need to do is crack the WPA key
+    by creating a wordlist. A wordlist is just a list of words that `aircrack-ng`
+    is going to go through, trying each one against the handshake until it successfully
+    determines the WPA key. The better your wordlist is, the higher your chances of
+    cracking the WPA key will be. If the password isn't in your wordlist file, you
+    will not be able to determine the WPA key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're going to use a tool called `crunch`. It's basically just a script; we
+    specify the characters that we want in the passwords, and it creates all possible
+    combinations of these passwords. The format of the command for using `crunch`
+    is `crunch [min] [max]`. The `[min]` is the minimum number of characters of the
+    password that we want to create, we can say that we want a minimum of four, five,
+    six, and so on. The `[max]` is the maximum number of characters in the password.
+    We can specify the characters that we want to use in the passwords, so that we
+    can specify `abcdefg`, all of the lower letters, and then we can write the capital
+    letters; we can put numbers and symbols.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `-t` option is very useful if we know part of the password; it's a pattern.
+    For example, if we are trying to guess a password and we have seen someone typing
+    the password, we know that it starts with an `a` and ends with a `b`, we can use
+    the pattern option and tell `crunch` to create passwords that always start with
+    `a` and end with `b`, and it will put all possible combinations of the characters
+    that we put in the command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suppose that we're going to create passwords of a minimum of six characters
+    and a maximum of eight characters, and the passwords are going to be combinations
+    of the characters 1, 2, 3, 4, 5, and 6, and symbols. It's going to be stored in
+    a file called `wordlist`, and the pattern is `wordlist` file passwords are always
+    going to start with an `a`, and they're always going to end with a `b`. All of
+    the passwords that we're going to see in the file are going to start with `a`
+    and end with `b`, and they'll have all of the possible combinations of the characters
+    that we specified between the `a` and the `b`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s just run `crunch` and create a sample wordlist. We''re going to use `crunch`,
+    and then we''re going to make a minimum of `4` and a maximum of `6`. We''re just
+    going to put `123ab`, and store it in `sample-wordlist`. The `crunch` is going
+    to create a combination of passwords (a minimum of four characters, a maximum
+    of six characters), and it''s going to create all possible combinations of `123ab`.
+    It''s going to store the combinations in a file called `sample-wordlist`. The
+    command will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Following is the output of the preceding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f1ea8948-d274-48e6-8a70-710791af93f1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can read by running `cat sample-wordlist`, and we can see all of the passwords
+    that are stored in the file as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/53206de1-9e35-422a-8cf3-d651a03130ef.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see all of the passwords that `crunch` created for us. The bigger the
+    password that we put and the more characters that we include, the more passwords
+    we can make, and the more space they're going to take up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the pattern option. We''ll go to `crunch`, using a minimum
+    of `5` and a maximum of `5`, so all passwords will be five characters long, and
+    then we will put the characters, which are `123ab` (like before), and we will
+    add the `-t` option, which is the pattern option. Then, we will say that the password
+    starts with an `a` and ends with a `b`, and we want all possible combinations
+    of the characters between `a` and `b`. Then, we''re going to specify the output
+    file `-o`; let''s call it `pattern-wordlist`. Following is the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/eed03f51-1fd6-4d77-be1d-80ad5dd950d8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It creates `125` passwords; let''s take a look at them. As we can see in the
+    following screenshot, they always start with an `a` and always end with a `b`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/2899b037-5cf6-4482-ac92-c21506642772.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can use `crunch` to create your wordlist, and in the next section, we're
+    going to use the wordlist and the handshake file to determine the actual WPA key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wordlist cracking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we've captured the handshake from our target AP and we have a wordlist
+    ready to use, we can use `aircrack-ng` to crack the key for the target AP. The `aircrack-ng`
+    is going to go through the wordlist file, combine each password with the name
+    of our target AP, and create a **Pairwise Master Key** (**PMK**). The PMK is created
+    by using an algorithm called the PBKDF2, it's not like just combining the password
+    and the BSSID; it's encrypting them in a certain way, and it compares the PMK
+    to the handshake. If the PMK was valid, then the password that was used is the
+    password for the target AP; if it wasn't valid, then `aircrack-ng` tries the next
+    password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We use `aircrack-ng`, the name of the file that contains the handshake, `test-handshake-01.cap`,
+    and `-w` and the name of the wordlist, `wordlist`. The command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we are going to hit *Enter*, and `aircrack-ng` is going to go through the
+    list; it will try all of the passwords, and will combine each password with the
+    name of the target AP to create a PMK, then compare the PMK to the handshake.
+    If the PMK is valid, then the password that was used to create the PMK is the
+    password for the target AP; if the PMK is not valid, then it's just going to try
+    the next password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we can see, in the following screenshot, the key was found:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/e8c27ec0-92d8-4a2a-a56b-53e704e29da8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It is the most basic way of using a wordlist: it took `42 seconds` to crack
+    the password. The speed depends on how quick the processor is, and whether we
+    have any processes running that are making our computer a bit slower.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing network from attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to prevent our network from preceding cracking methods explained throughout
+    the chapter, we''ll need to access the settings page for your router. Each router
+    has a web page where user can modify the settings for the router, and it''s usually
+    at the IP of the router. First we''re going get the IP of my computer or my device,
+    and we are going to run `ifconfig wlan0` command; as seen in the following screenshot,
+    the highlighted part is the IP of the computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/3f40bd1a-882c-4609-8c8e-0608fd1602a1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now open the browser, and navigate to `192.168.0.1`; for this example, the IP
+    of the computer is `25`. Usually, the IP of the router is the first IP of the
+    subnet. At the moment, it's `192.168.0.0`, and we are just going to add the number `1`,
+    because that's the first IP in the subnet, and that will take us to the router
+    settings page. At the settings page, it'll asking to enter a username and a password.
+    Routers come with a pre-specified username and password—we can check what the
+    default username and password are; it's highly recommended to change them afterwards.
+    It's usually written in the manual, so check the manual, see what the default
+    username and password are, and then log in using those credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, in some cases, the attacker might be doing a deauthentication attack against
+    us, so the attacker might be preventing us from connecting to our network wirelessly.
+    What we can do is connect to the router using an Ethernet cable; when we do that,
+    the attacker cannot use a deauthentication attack to deauthenticate or disconnect
+    us, and we will be able to access the router settings using the wire. We can modify
+    our security settings and change the encryption, change the password, and do all
+    of the things that are recommended in order to increase the security, so that
+    the attacker will not be able to attack the network and get the key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, the settings of each router are different; they depend on the manufacturer,
+    and even the model of the router. But usually, the way that we change the settings
+    is the same; in 90% of the cases, the router is always at the first IP of the
+    subnet, all we have to do is get your IP using the `ifconfig` command, like we
+    did at the start of this topic. We got the `192.168.0.25` IP, and then we changed
+    the last `25` to the number `1` to the first IP, and that is the IP of our router.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we are going to navigate to the WIRELESS settings. As we see, there are
+    a lot of settings that we can change for our network, and we''re concerned with
+    the WIRELESS settings at the moment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/3935badb-89af-4efc-b778-adc9dff971d2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As we can see in the preceding screenshot, the wireless setting is Enabled,
+    we can even change the name of the network under SSID; we can change the Channel and
+    the Bandwidth, as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After going to the Security option, we can see in the following screenshot,
+    we are using WPA encryption with WPA/WPA2 authentication, and the encryption uses AES+TKIP:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/d142beba-58bb-4fe5-afb5-f663a237bee6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we go on WPS, we can see that WPS is Disabled; we are not using WEP, so that
+    attackers cannot use any of the attacks to crack WEP encryptions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/132f5003-1b11-49fc-b74b-797ada1c8583.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We are using WPA, which is much more secure, and we have disabled WPS, so that
+    attacks cannot use `reaver` to determine the WPS PIN and then reverse-engineer
+    the password. The only way that the hacker can access or get the password is by
+    obtaining the handshake first, and then using a wordlist to find the password.
+    The password is very random, even though it doesn't actually use numbers or digits,
+    just letters; but it's very random, so there are very small chance of someone
+    being able to guess it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, there is also the Access Control; using this, we can add policies, such
+    as an allow policy or a deny policy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/9391038c-3964-4e61-88c0-a1d7b65fa9b1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can specify MAC addresses that we want to allow to connect to our network;
+    we can also specify MAC addresses that we want to deny from our network. For example,
+    if there are not many people or many visitors coming to your house, or if you
+    are in a company with a specified number of computers and only want to allow a
+    number of computers to connect to the network, you can obtain their MAC addresses
+    (for the people that you want to allow) and add them onto an Allow List. Even
+    if someone has the actual key, and they don''t exist in the whitelist or in the Allow
+    List, they will not be able to access the network. We can also add a Deny List when
+    we want to deny a certain computer or a certain person that we think is suspicious;
+    we can just add their MAC address onto the Deny List, and they will not be able
+    to connect to your network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/60d936bf-6b50-4a9a-ae72-dce01d8578ff.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The router settings page usually looks different for different routers; the
+    names for options might be different, but the main point is that we should be
+    able to access the router settings using the subnet IP and adding the number `1`,
+    which is the first IP, at the end. If you are being attacked and can't connect
+    to your network at all, then just use a cable and modify the settings, like we
+    discussed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter we studied how easy it is to crack WEP-encrypted networks, even
+    if there are no devices connect to the target network, and even if the network
+    is idle. We also saw a number of methods to inject packets into the traffic and
+    cause the amount of data to increase very rapidly, in order to crack the WEP key
+    in a very short period of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then we studied all of the weaknesses that can be used by hackers in order to
+    breach WEP, WPA, and WPA2 encrypted networks. Then we saw how hackers can use
+    weaknesses to crack passwords and get keys for networks. Later we how as attackers
+    are we will be able to deauthenticate, or disconnect, any device from any network,
+    without the need to know the key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Towards the end of the chapter we discussed how we can modify the settings of
+    our own routers, so that we can increase the encryption and the security of the
+    network, preventing hackers from using attacks and getting passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter we will be learning about information gathering and also
+    use various tools that will give us refined information via various scans and
+    reports they generate.
+  prefs: []
+  type: TYPE_NORMAL

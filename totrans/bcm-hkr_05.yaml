@@ -1,0 +1,728 @@
+- en: Chapter 5. File Inclusion Attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we looked at setting up our environment and getting to
+    know our tools. We even discussed attacking applications by looking for low-hanging
+    fruit. In the same spirit, in this chapter, we will be analyzing file inclusion
+    and upload attacks. While these types of attacks are not terribly sophisticated,
+    they are still common. File inclusion vulnerabilities have seemingly been around
+    forever and don't appear to be going away anytime soon. **Local File Inclusion**
+    (**LFI**) and **Remote File Inclusion** (**RFI**) vulnerabilities are not the
+    only ways to take advantage of the application and compromise it. File upload
+    vulnerabilities can be abused, even if the developers have restricted the upload
+    of executable server-side code, as we will see later in the chapter. There is
+    still a surprising amount of applications that are vulnerable to LFI, file upload
+    abuse, and sometimes even RFI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: RFI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: LFI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: File upload abuse
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Chaining vulnerabilities to achieve code execution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you have spent any amount of time working in the enterprise world, you can
+    no doubt attest to how frequent these issues can be. Custom in-house applications
+    are often built with deadlines in mind, not security. Enterprise web applications
+    are not the only problem: the **Internet of things** (**IoT**) nightmare is just
+    starting to take hold. The majority of affordable devices, such as Wi-Fi routers
+    or internet-connected plush toys, are designed poorly and once released, are never
+    updated. Due to many constraints, both financial and in terms of hardware limitations,
+    device security is rudimentary, if at all present. IoT devices are the new PHP
+    applications of the 2000s and vulnerabilities we thought were gone are coming
+    back with a vengeance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate these issues, we will be using the **Damn Vulnerable Web App**
+    (**DVWA**) project. This particular application was built to easily showcase the
+    most popular web vulnerabilities seen in the wild. Everything from command injection
+    to XSS can be tested on three levels of difficulty: low, medium, and hard.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: DVWA can be downloaded in various formats, including an easy to run live CD,
+    from [http://www.dvwa.co.uk/](http://www.dvwa.co.uk/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To keep things simple, our instance of DVWA will be accessible via [http://dvwa.app.internal](http://dvwa.app.internal).
+  prefs: []
+  type: TYPE_NORMAL
+- en: RFI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although not as common in modern applications, RFI vulnerabilities do still
+    pop up from time to time. RFI was popular back in the early days of the web and
+    PHP. PHP was notorious for allowing developers to implement features that were
+    inherently dangerous. The `include()` and `require()` functions essentially allowed
+    code to be included from other files, either on the same disk or over the wire.
+    This makes web applications more powerful and dynamic but comes at a great cost.
+    As you can imagine, allowing user data to pass to `include()` unsanitized can
+    result in application or server compromise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The danger of allowing remote files to be included in server-side code is pretty
+    obvious. PHP will download the remote text and interpret it as code. If the remote
+    URL is controlled by the attacker, they could easily feed the application a shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, the RFI vulnerability can be exploited using a simple
+    `system()` passthrough shell. On the attacker-controlled `c2.spider.ml` server,
+    a plaintext file containing the shellcode is made available:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The DVWA application is vulnerable to an RFI attack in the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Attackers can specify an arbitrary page to be included using the `page` `GET`
+    parameter, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since there is no proper input sanitization on the `page` parameter, attackers
+    can specify whatever file they wish the server to load and display, including
+    a remote file hosted elsewhere. Attackers can then instruct the vulnerable application
+    `dvwa.app.internal` to include the remote file, which will be processed as PHP
+    code, essentially resulting in code execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can specify the full URL to the attacker-controlled URL `http://c2.spider.ml/test.txt`
+    as the page to be included, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![RFI](graphics/B09238_05_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.1: The application includes the remotely hosted PHP code, executes
+    it, and returns the contents of /etc/passwd'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned before, RFI bugs are less frequent in modern applications, but
+    thanks to IoT devices with outdated libraries and packages, they are making a
+    comeback.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are legitimate reasons for allowing `include()` to fetch code over the
+    network. Applications may have been architected around this feature and migrating
+    from it may be too costly. From an enterprise perspective, it may be cheaper to
+    leave the architecture alone and simply patch in controls, and hope to sanitize
+    the input using a whitelist or blacklist approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A whitelist-based control is the ideal choice, but it is also difficult to maintain
+    in a fluid production environment. If domains and IPs are rotated frequently (think
+    CDNs and cloud infrastructure) it may be resource-intensive to update the whitelist
+    to match. Criticality of the application may demand zero downtime; therefore,
+    the solution should be automated. However, this may be difficult to achieve without
+    introducing security flaws.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A blacklist may be chosen instead, although it is impossible to know all current
+    and future attack input. This is generally discouraged because given enough time,
+    attackers can reverse engineer the blacklist and fashion a bypass. However, a blacklist
+    is still sometimes implemented due to a lack of resources or time. If an audit
+    finding requires a security control on a particular application component, but
+    it is not very specific on how to accomplish this, it may be quicker to get that
+    compliance checkmark if a blacklist is implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Controls for limiting RFI can be implemented at the network level. The application
+    egress traffic is scrutinized to only allow connection to known servers, thus
+    preventing the attacker from including code from the C2 server. In theory, this
+    could be a good control. It is a whitelist approach and it does not require redesigning
+    the application workflow. Developers can provide the network security engineers
+    with a list of domains, which should be accessible, and everything else should
+    be dropped.
+  prefs: []
+  type: TYPE_NORMAL
+- en: LFI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: LFI vulnerabilities are still going strong and will likely not disappear anytime
+    soon. It is often useful for the application to be able to pull code from other
+    files on the disk. This makes it more modular and easier to maintain. The problem
+    arises when the string passed to the `include` directive is assembled in many
+    parts of the application and may include data supplied by an untrusted user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A combination of file upload and file inclusion can be devastating. If we upload
+    a PHP shell and it is dumped somewhere on the disk outside of the web directory,
+    an LFI exploit could fetch that code and execute it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The DVWA can be used to showcase this type of attack. The `high` difficulty
+    setting disallows the uploading of anything but JPEG or PNG files, so we can't
+    just access the uploaded shell directly and execute the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get around this issue, we can generate a fake PNG file using ImageMagick''s
+    `convert` command. We will create a small 32×32 pixel image, with a pink background,
+    and save it as `shell.png` using the following switches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The file data structure is relatively simple. The PNG header and a few bytes
+    describing the content are automatically generated by the `convert` command. We can
+    inspect these bytes using the `hexdump` command. The `-C` parameter will make
+    the output a bit more readable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's a lot of strange data but it all contributes to a functional PNG image.
+    It also turns out that we can add arbitrary bytes to the end of the file and most
+    image viewers will not have a problem rendering the file. We can leverage this
+    knowledge to backdoor the file with some PHP code to be later executed by the
+    server using an LFI exploit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need a simple PHP shell, similar to previous chapters. The following
+    shows the PHP code we will append to the PNG file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.2: Web shell source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just as before, the `if` statement will check that the MD5 hash value of the
+    incoming `password` parameter matches `f1aab5cd9690adfa2dde9796b4c5d00d`. If there's
+    a match, the command string in the `cmd` `GET` parameter will be passed to the
+    PHP `system()` function, which will execute it as a system command, giving us
+    shell access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The MD5 value we''re looking for is the hash of `DVWAAppLFI1`, as confirmed
+    by the `md5sum` Linux command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can use the `echo` shell command to append (`>>`) the PHP code to our `shell.png`
+    image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: We've seen this passthrough shell before and it should do the trick for now.
+    We can replace it with a more advanced shell if needed, but for our proof of concept,
+    this should suffice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we inspect the contents of the PNG shell using `hexdump`, we can clearly
+    see the PHP shell was written right after the PNG image file structure ends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For all intents and purposes, this is still a valid PNG image. Most rendering
+    software should have no problem displaying the contents, a small pink box, as
+    shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.3: The backdoored image file displays successfully'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While DVWA will not actually check whether the file has a valid PNG header,
+    some applications might. Even if the web application has smarter checking than
+    just "does the file name end in `.png`?," our shell should go past unnoticed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The backdoored PNG file can now be uploaded through the `http://dvwa.app.internal/vulnerabilities/upload/`
+    component of DVWA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.4: The backdoored PNG file successfully uploaded to the target application'
+  prefs: []
+  type: TYPE_NORMAL
+- en: DVWA is nice enough to tell us where the application stored our file. In real-world
+    scenarios, we may not be so lucky. We'd have to rely on information leaks for
+    the absolute path if the vulnerability required it. If we can use relative paths
+    in the file inclusion attack, we can try and find the file on disk by systematically
+    moving through the filesystem (`../`, `../../`, `../../../` and so on).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make use of our PNG shell, we will use the DVWA file inclusion vulnerability
+    at `http://dvwa.app.internal/vulnerabilities/fi/`. The LFI issue is present in
+    the `page` parameter via a `GET` request. The application allows inclusion of
+    a few files on disk, presumably to be more modular and easier to manage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The file inclusion vulnerability is straightforward and essentially allows the
+    user to specify a file on disk to include. There are some security controls that
+    prevent us from including any file we want. Given that this is the DVWA project,
+    we can inspect the source of the application and look at the conditions under
+    which the control may prevent us from accessing our shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This figure shows the source code of the LFI security control. Before the file
+    is included, this particular check is performed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.5: File inclusion vulnerability source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `if` statement will only allow files to be included if they begin with
+    the word `file`, such as `file01.php`, or `file02.php`. The `include.php` file
+    is also allowed to be included. Anything else, such as `http://c2.spider.ml/test.txt`,
+    for example, will produce an `ERROR: File not found!` message.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At first glance, this is a fairly stringent control, but there are some issues.
+    This particular control implementation illustrates an important issue with application
+    development and security. In an effort to prevent inclusion attacks, the developers
+    went with the whitelist approach, but due to time constraints and high maintenance
+    costs, they decided to use string matching instead of an explicit list of files.
+    Ideally, user input should never be passed to the `include` (or similar) function
+    at all. Hard-coding values is more secure, but the code is harder to manage. There
+    is always a tradeoff between security and usability, and as attackers, we bank
+    on management going with the more cost effective and typically more insecure option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could name our PNG shell `file.png`, but since our uploaded file will reside
+    outside of the vulnerable script's directory, the string we'd have to pass in
+    would need to be an absolute (or relative) path, which would fail to trigger the
+    `if` condition shown in the preceding screenshot and the exploit would fail. Once
+    again, PHP's versatility and developer-friendliness comes to the rescue. PHP allows
+    developers to reference files on disk by relative path (`../../../etc/passwd`),
+    by absolute path (`/etc/passwd`), or using the built-in URL scheme `file://`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To bypass the upload restriction, we can directly reference the `shell.png`
+    file using an absolute path in combination with the `file://` scheme, pointing
+    to the `hackable/uploads` directory, which the file upload page so graciously
+    told us about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On Linux systems, we can make educated guesses as to where on disk the web
+    root folder is. A prime candidate is `/var/www/html/`. We can confirm the shell
+    is accessible via the `file://` scheme by using the following payload for the
+    `page` parameter when calling the vulnerable URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The Burp Repeater module can help us to trigger and inspect the results of
+    exploiting this vulnerability, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.6: Successfully including the backdoored PNG using LFI'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This looks good. In the left column is a raw HTTP `GET` request to the vulnerable
+    page using the `file://` scheme and the absolute path to our `shell.png` for the
+    `page` parameter. In the right column, the server response appears to indicate
+    that the file was included and the PHP source code we appended to it is not displayed,
+    meaning it either executed or it was stripped out by a compression or cropping
+    function. The latter would be unfortunate, but we can quickly see whether code
+    execution is successful by trying to trigger the shell through the URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The uploaded shell will execute command strings passed via the `GET` parameter
+    `cmd` and we can append the `whoami` operating system command to our previous
+    payload, and observe the Burp Repeater module''s output. We must also provide
+    the expected password via the `password` parameter, as show in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.7: The backdoored PNG successfully executes the shell command after
+    LFI'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Success! We now have code execution on the system by taking advantage of two
+    vulnerabilities: poor controls in file upload and LFI. The Repeater **Request**
+    column highlights the command `whoami`, being passed to the vulnerable application
+    and the server response confirms that we have achieved our goal of displaying
+    the user `www-data` as the context of the application.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With LFI vulnerabilities, an accompanying file upload feature is not always
+    a requirement. There are other ways to trick the application into executing code.
+    In a scenario where RFI is not possible, there is no file upload feature, or the
+    uploaded file is not accessible by the `include` function, we have to get a bit
+    more creative to execute code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not unlike the `file://` payload looking for the uploaded shell, we can reference
+    another file on the system whose contents we control to an extent. Apache web
+    servers, by default, generate an `access.log` file somewhere on the disk. This
+    file contains every request sent to the application, including the URL. Experience
+    of some Google-fu tells us that this file is usually in `/var/log/apache2` or
+    `/var/log/httpd`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we can't upload our shell through a file upload function, we can, instead,
+    send our shell source code via the URL. Apache will write the request attempt
+    to the access log file and we can include this file using the LFI vulnerability.
+    There will be tons of garbage printed, but more importantly, when PHP encounters
+    our `<?php` tag it will begin to execute code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can pass in our shell using a simple HTTP `GET` request to the application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.8: Sending our PHP shell code to the application server log through
+    a GET request'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The server response is irrelevant, as the `access.log` has already been poisoned.
+    On the application server, we can confirm that the shell was written to the log
+    file by looking for it using `grep`, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All that''s left to do is use LFI and have PHP execute whatever code is in
+    the log file. As before, we have to provide the correct password via the `GET`
+    request. Our URL payload will contain the `file://` scheme and the absolute path
+    to the Apache `access.log` file, `/var/log/apache2/access.log`, our shell password,
+    and the command to view the contents of the `/etc/passwd` file. Since this command
+    is sent via a `GET` request parameter, we have to convert the space between `cat`
+    and `/etc/passwd` with a plus sign, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LFI](graphics/B09238_05_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.9: Remote code execution via LFI and poisoned Apache log files'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The server response confirms that the shell command `cat` was executed successfully.
+    Somewhere inside all of the response noise, we can find the contents of `/etc/passwd`.
+    There are some obvious stealth issues with this approach. If log files are scrutinized
+    by the defenders, this would stand out like a sore thumb.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method may be crude, but it does showcase the extent of the damage a simple
+    file inclusion vulnerability can cause.
+  prefs: []
+  type: TYPE_NORMAL
+- en: File inclusion to remote code execution
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Similar to the `file://` scheme used in the earlier example, the PHP interpreter
+    also provides access to various input and output streams via the `php://` scheme.
+    This makes sense for when PHP is used in a **command-line interface** (**CLI**)
+    and the developer needs to access these common operating system standard streams:
+    `stdin`, `stderr`, `stdout`, and even the memory. Standard streams are used by
+    applications to communicate with the environment they are executing in. For example,
+    the Linux `passwd` will utilize the `stdout` stream to display informational messages
+    to the terminal ("Enter your existing password"), `stderr` to display error messages
+    ("Invalid password"), and `stdin` to prompt for user input to change the existing
+    password.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The traditional way to parse input coming in from a web client is to read data
+    using the `$_GET` and `$_POST` superglobals. The `$_GET` superglobal provides
+    data that is passed in via the URL, while the `$_POST` superglobal contains the
+    `POST` body data, neatly parsed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A superglobal is a variable that is always set by the PHP interpreter and is
+    accessible throughout the application. `$_GET` and `$_POST` are the most popular,
+    but there are others, including `$_SESSION`, `$_ENV`, and `$_SERVER`. More information
+    can be found in the PHP manual: [http://php.net/manual/en/language.variables.superglobals.php](http://php.net/manual/en/language.variables.superglobals.php).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a file inclusion vulnerability, the `php://` scheme can be leveraged alongside
+    the input (aka `stdin`) stream to attack the application. Instead of accessing
+    a resource over the common `http://` or `https://`, the `php://input` URL can
+    be included in the application to force PHP to read the request body as if it
+    were code and execute it. The input data is retrieved by the interpreter from
+    the body of the request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we pass in the `php://input` value as the included page and in the body
+    of the request we enter arbitrary PHP code, the server-side interpreter will read
+    it and execute it, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![File inclusion to remote code execution](graphics/B09238_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.10: Executing PHP code using LFI'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `GET` request shown in the preceding screenshot, in the left page, uses
+    the `php://input` as the `page` parameter, instructing PHP to include code coming
+    in from user input. In a web application setting, input data comes from the body
+    of the request. In this case, the body contains a simple PHP script that executes
+    the command `cat /etc/passwd` on the system. The response reflects the output
+    of `/etc/passwd`, confirming that remote code execution was successful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: No external connections are made and the network-based egress whitelist control
+    has been bypassed. PHP is a feature-rich programming language and there are many ways
+    to accomplish the same thing. This is usually a good thing for attackers, as it provides
+    more opportunity for control bypass, obfuscation, and data exfiltration. This
+    statement is true not only for PHP but other languages as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More file upload issues
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Earlier in the chapter, we had a look at how file upload can help us to compromise
+    an application and the server it sits on. We were able to upload a valid PNG file
+    containing an embedded PHP shell. The LFI vulnerability allowed us to execute
+    that code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other problems with allowing users to upload arbitrary files to the
+    application. You could very well prevent users from uploading PHP, JSP, or ASP
+    shells by simply blacklisting the extension. PHP only executes code in files with
+    a particular extension (or two) if they are called directly. Barring any LFI vulnerability
+    somewhere else in the application, the file upload feature should be fairly safe
+    from a code execution perspective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If one of the application features is to allow file storage for users, whitelisting
+    may be difficult and cumbersome to implement. In this scenario, blacklisting extensions
+    may be the most cost-effective solution. When we can't upload a shell or execute
+    server-side code, we can still attack the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The SecLists repository, which we've used in the past, contains a neat Flash
+    file called `xssproject.swf` that will allow us to perform XSS attacks on users.
+    Flash code is able to execute JavaScript code just like any other site using Flash
+    plugin `ExternalInterface` API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **ActionScript** (**AS**) code used to generate `xssproject.swf` is fairly
+    straightforward. ActionScript is Adobe Flash''s programming language used to automate
+    Flash applications. It''s very similar to Java in its syntax and just like Java,
+    it is compiled to bytecode and executed by a host application, the Flash plugin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We don't have to be Flash developers to understand what's going on here. This
+    AS code simply wraps the main code in `try`-`catch` blocks for cleaner execution,
+    grabs the `js` parameter from the `GET` request using the `root.loaderInfo.parameters`
+    object, and passes the contents to the Flash plugin (via `ExternalInterface`)
+    for execution within the browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and upload the XSSProject SWF malicious file using the application''s
+    file upload feature. You may need to change the DVWA difficulty to `low`, to allow
+    non-image file upload. The following figure shows that the XSSProject malware
+    was uploaded successfully in the familiar directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![More file upload issues](graphics/B09238_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.11: A successful upload of the XSSProject malware'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get the Flash file to execute JavaScript code in the browser, we can call
+    it directly and pass in arbitrary code via the `js` parameter, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: As a **proof of concept** (**POC**), we can display the PHP session cookie,
+    but in a real-world attack, we'd want to silently exfiltrate this data and display
+    a benign error message or send the victim back to the main page. For the POC,
+    we can call the `alert()` JavaScript function with the value of the cookies set
+    on the particular page. In this case, DVWA's login cookie, `PHPSESSID`, should
+    be displayed in a pop - up window.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To test the POC, we can call the following URL and observe the browser behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use this URL to perform XSS attacks against users of the vulnerable application.
+    Instead of popping up a window to prove the vulnerability exists, we could inject
+    more useful JavaScript code, such as a **Browser Exploitation Framework** (**BeEF**)
+    hook. We will discuss this tool in [Chapter 9](ch09.html "Chapter 9. Practical
+    Client-Side Attacks"), *Practical Client-Side Attacks*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows that the JavaScript code was injected successfully
+    by the malware (`xssproject.swf`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![More file upload issues](graphics/B09238_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.12: XSS attack after abusing file upload functionality'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a more practical application of the exploit, we can try to exfiltrate the
+    cookie data silently and perhaps use the `PHPSESSID` value to impersonate the
+    user in our own browser session. We can grab the cookie data, Base64-encode it
+    with JavaScript's `btoa()` function, and send it all to our C2 server. Once we
+    collect the cookie data, we can force a redirection to the main application page
+    to not raise suspicion. The data exfiltration piece will be transparent to the
+    victim.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This payload will write new HTML code to the **Document Object Model** (**DOM**)
+    using the `document` object. The HTML code is a hidden `iframe` element, which
+    makes an HTTP request to our command and control infrastructure. The HTTP request
+    will contain the victim's cookies, Base64-encoded right in the request URL, allowing
+    us to capture this data remotely. The last function to redirect the client to
+    the main page `'/'` will trigger after 500 milliseconds. This is to ensure the
+    `iframe` has a chance to load and exfiltrate our data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our attack code will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding JavaScript will have to be compressed to one line, separated
+    by a semicolon, and because we have to use the URL to inject this code, we must
+    URL encode the characters as well to ensure there are no issues in transmission.
+    Burp''s Decoder module can be used to encode and obfuscate the payload:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![More file upload issues](graphics/B09238_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.13: URL encoding the JavaScript payload using Burp''s Decoder module'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All characters will be converted to their hex equivalent, prepended with a
+    percent sign (`%`), obfuscating the attack code and making sure it executes successfully
+    on the victim''s side. The URL containing the encoded payload will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once the victim follows the preceding malicious link, we should be able to see
+    the request coming in on `c2.spider.ml` and grab the encoded cookie values from
+    the `GET` request. To accomplish this, we can setup a listener on port `80` using
+    the netcat (`nc`) application. Netcat is a Swiss Army knife for attackers and
+    can do much more than just becoming a simple server, but for our purposes, this
+    should suffice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can call the `nc` binary with the following switches: `-l` to initiate a
+    listener, `-v` to display verbose information, and `-p` to specify port `80` as
+    the listening port:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the server ready for incoming connections from our victim, we can start
+    our attack and wait for the user to click on our malicious URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `GET` URL is a Base64-encoded value containing the exfiltrated cookie data.
+    We can confirm this by decoding the contents using the `base64` Linux command
+    with the `-d` switch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Success! With the session ID in hand, we can impersonate the victim and take
+    over the account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also try to upload HTML or HTM files, which could accomplish the same
+    thing; however, these extensions are more likely to be blacklisted in applications.
+    Developers may forget that Flash provides an API for executing JavaScript and
+    SWF files can sometimes slip by unnoticed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: File upload can also be abused to store malicious payloads during an assessment.
+    Application servers can be turned into simple C2 servers to evade prying blue-team
+    eyes. It is not common for Linux/Unix-based operating systems to have antivirus
+    software installed, and malicious Windows binaries or Meterpreter payloads can
+    be stored on unsuspecting servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at several methods for using an application's underlying
+    filesystem to our advantage. We were able to get code execution using file inclusion
+    and even attack the client using XSS vulnerabilities that we introduced ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Application development frameworks are maturing and, thankfully, some even take security
+    seriously. As previously mentioned, there will always be a trade-off between security
+    and usability. A file sharing site can be completely secure, but if it only allows
+    a small number of extensions, it isn't very usable. This is a weakness that we,
+    as attackers, can exploit for profit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we we will look at out-of-band discovery and exploitation
+    of application vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL

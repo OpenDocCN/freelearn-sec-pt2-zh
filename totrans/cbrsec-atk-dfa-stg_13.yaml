@@ -1,0 +1,598 @@
+- en: Investigating an Incident
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned about the importance of using threat intelligence
+    to help the Blue Team enhance the organization's defense and also to know their
+    adversaries better. In this chapter, you will learn how to put all these tools
+    together to perform an investigation. Beyond the tools, you will also learn how
+    to approach an incident, ask the right questions, and narrow down the scope. To
+    illustrate that, there will be two scenarios, where one is in an on-premises organization
+    and the other one is in a hybrid environment. Each scenario will have its unique
+    characteristics and challenges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going over the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scoping the issue
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: On-premises compromised system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cloud-based compromised system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Conclusion and lessons learned
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scoping the issue
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's face it, not every incident is a security-related incident and, for this
+    reason, it is vital to scope the issue prior to start an investigation. Sometimes,
+    the symptoms may lead you to initially think that you are dealing with a security-related
+    problem, but as you ask more questions and collect more data, you may realize
+    that the problem was not really related to security.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this reason, the initial triage of the case has an important role on how
+    the investigation will succeed. If you have no real evidence that you are dealing
+    with a security issue other than the end user opening an incident saying that
+    his computer is running slow and he *thinks* it is compromised, than you should
+    start with basic performance troubleshooting, rather than dispatching a security
+    responder to initiate an investigation. For this reason, IT, operations, and security
+    must be fully aligned to avoid false positive dispatches, which results in utilizing
+    a security resource to perform a support-based task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During this initial triage, it is also important to determine the frequency
+    of the issue. If the issue is not currently happening, you may need to configure
+    the environment to collect data when the user is able to reproduce the problem.
+    Make sure to document all the steps and provide an accurate action plan for the
+    end user. The success of this investigation will depend on the quality of the
+    data that was collected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Key artifacts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Nowadays, there is so much data available that data collection should focus
+    on obtaining just the vital and relevant artifacts from the target system. More
+    data doesn't necessarily mean better investigation, mainly because you still need
+    to perform data correlation in some cases and too much data can deviate you from
+    the root cause of the problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When dealing with an investigation for a global organization that has devices
+    spread out across different regions of the planet, it is important to make sure
+    you know the time zone of the system that you are investigating. In a Windows
+    system, this information is located in the registry key at `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\TimeZoneInformation`.
+    You could use the PowerShell command `Get-ItemProperty` to retrieve this information
+    from the system, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/b6326cc4-338a-42d1-af3e-c3b1ebf859a8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Notice the value `TimeZoneKeyName`, which is set to `Central Standard Time`.
+    This data will be relevant when you start analyzing the logs and performing data
+    correlation. Another important registry key to obtain network information is `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows
+    NT\CurrentVersion\NetworkList\Signatures\Unmanaged and Managed`. These keys will
+    show the networks that this computer has been connected to. Here is a result of
+    the `unmanaged` key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f77a4a23-29b6-40fb-857a-29183534922e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'These two artifacts are important for determining the location (time zone)
+    of the machine and the networks that this machine visited. This is even more important
+    for devices that are used by employees to work outside the office, such as laptops
+    and tablets. Depending on the issue that you are investigating, it is also important
+    to verify the USB usage on this machine. To do that, export the registry keys
+    `HKLM\SYSTEM\CurrentControlSet\Enum\USBSTOR` and `HKLM\SYSTEM\CurrentControlSet\Enum\USB`.
+    An example of what this key looks like is shown in the following image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/749478c1-0306-42e7-8a07-06f8a5697754.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To determine if there is any malicious software configured to start when Windows
+    starts, review the registry key, `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`.
+    Usually, when the malicious program appears in there, it will also create a service;
+    therefore, it is also important to review the registry key, `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services`.
+    Look for random name services and entries that are not part of the computer''s
+    profile pattern. Another way to obtain these services is to run the `msinfo32`
+    utility:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/a3a4e818-709b-4cb5-bffb-76708c4efebf.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In addition to that, make sure to also capture all security events and, when
+    analyzing them focus on the following ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Event ID** | **Description** | **Security scenario** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1102 | The audit log was cleared | As attackers infiltrate your environment,
+    they might want to clear their evidence and cleaning the event log is an indication
+    of that. Make sure to review who cleaned the log, if this operation was intentional
+    and authorized, or if it was unintentional or unknown (due to a compromised account).
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4624 | An account was successfully logged on | It is very common to log only
+    the failures, but in many cases knowing who successfully logged in is important
+    for understanding who performed which action. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4625 | An account failed to log on | Multiple attempts to access an account
+    can be a sign of a brute force account attack. Reviewing this log can give you
+    some indications of that. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4657 | A registry value was modified | Not everyone should be able to change
+    the registry key and, even when you have high privileges to perform this operation,
+    is still an operation that needs further investigation to understand the veracity
+    of this change. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4663 | An attempt was made to access an object | While this event might generate
+    a lot of false positives, it is still relevant to collect and look at it on demand.
+    In other words, if you have other evidences that point to unauthorized access
+    to the filesystem, you may use this log to drill down who performed this change.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4688 | A new process has been created | When Petya ransomware outbreak happened,
+    one of the indicators of compromise was the `cmd.exe /c schtasks /RU "SYSTEM"
+    /Create /SC once /TN "" /TR "C:Windowssystem32shutdown.exe /r /f" /ST <time>`.
+    When the `cmd.exe` command was executed, a new process was created and an event
+    4688 was also created. Obtaining the details about this event is extremely important
+    when investigating a security-related issue. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4700 | A scheduled task was enabled | The use of scheduled tasks to perform
+    an action has been used over the years by attackers. Using the same example as
+    shown above (Petya), the event 4700 can give you more details about a scheduled
+    task. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4702 | A scheduled task was updated | If you see 4700 from a user who doesn''t
+    usually perform this type of operation and you keep seeing 4702 to update this
+    task, you should investigate further. Keep in mind that it could be a false positive,
+    but it all depends on who made this change and the user''s profile of doing this
+    type of operation. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4719 | System audit policy was changed | Just like the first event of this
+    list, in some scenarios, attackers that already compromised an administrative
+    level account may need to perform changes in the system policy to continue their
+    infiltration and lateral movement. Make sure to review this event and follow up
+    on the veracity of the changes that were done. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4720 | A user account was created | In an organization, only certain users
+    should have the privilege to create an account. If you see an ordinary user creating
+    an account, the chances are that his credential was compromised and the attacker
+    already escalated privilege to perform this operation. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4722 | A user account was enabled | As part of the attack campaign, an attacker
+    may need to enable an account that was previously disabled. Make sure to review
+    the legitimacy of this operation in case you see this event. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4724 | An attempt was made to reset an accounts password | Another common
+    action during the system''s infiltration, and lateral movement. If you find this
+    event, make sure to review the legitimacy of this operation. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4727 | A security-enabled global group was created | Again, only certain
+    users should have the privilege to create a security-enabled group. If you see
+    an ordinary user creating a new group, the chances are that his credential was
+    compromised, and the attacker already escalated privilege to perform this operation.
+    If you find this event, make sure to review the legitimacy of this operation.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4732 | A member was added to a security-enabled local group | There are many
+    ways to escalate privilege and, sometimes, one shortcut is to add itself as member
+    of a higher privileged group. Attackers may use this technique to gain privilege
+    access to resources. If you find this event, make sure to review the legitimacy
+    of this operation. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4739 | Domain policy was changed | In many cases, the main objective of an
+    attacker''s mission is domain dominance and this event could reveal that. If an
+    unauthorized user is making domain policy changes, it means the level of compromise
+    arrived in the domain level hierarchy. If you find this event, make sure to review
+    the legitimacy of this operation. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4740 | A user account was locked out | When multiple attempts to log on are
+    performed, one will hit the account lockout threshold, and the account will be
+    locked out. This could be a legitimate log on attempt or it could be an indication
+    of a brute force attack. Make sure to take these facts into consideration when
+    reviewing this event. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4825 | A user was denied the access to remote desktop. By default, users
+    are allowed to connect only if they are members of the remote desktop users group
+    or administrators group | This is a very important event, mainly if you have computers
+    with RDP port open to the internet, such as VMs located in the cloud. This could
+    be legitimate, but it could also indicate an unauthorized attempt to gain access
+    to a computer via RDP connection. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4946 | A change has been made to Windows Firewall exception list. A rule
+    was added. | When a machine is compromised, and a piece of malware is dropped
+    in the system, it is common that, upon execution, this malware tries to establish
+    access to command and control. Some attackers will try to change the Windows Firewall
+    exception list to allow this communication to take place. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4948 | A change has been made to Windows Firewall exception list. A rule
+    was deleted. | This is a similar scenario to the one described above; the difference
+    is that, in this case, the attacker decided to delete a rule, instead of creating
+    a new one. This also could be an attempt to cover his previous action. For example,
+    he could create the rule to allow external communication and, once this operation
+    was finished,  delete the rule to clear evidence of compromise. |'
+  prefs: []
+  type: TYPE_TB
+- en: 'It is important to mention that some of these events will only appear if the
+    security policy in the local computer is correctly configured. For example, the
+    event 4663 will not appear in the system below because auditing is not enabled
+    for `Object Access`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/5c27faeb-a21e-4d2b-9a64-0fd49c8b7d37.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In addition to that, also make sure to collect network traces using Wireshark
+    when dealing with live investigation and, if necessary, use `procdump` tool from
+    Sysinternals, to create a dump of the compromised process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Investigating a compromised system on-premises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For the first scenario, we will use a machine that got compromised after the
+    end user opened a phishing email that looks like following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/b73b8fbe-c080-4640-a792-d9e54d5f0e43.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This end user was located in the Brazilian branch office, hence the email in
+    Portuguese. The content of this email is a bit concerning, since it talks about
+    an ongoing law process, and the user was curious to see if he really had anything
+    to do with it. After poking around within the email, he noticed that nothing apparently
+    happened. He ignored and continued working. A couple of days later, he receiving
+    an automated report from IT saying that he accessed a suspicious site and he should
+    call support to follow up on this ticket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: He called support and explained that the only suspicious activity that he remembers
+    was to open an odd email, he than presented this email as evidence. When questioned
+    about what he did, he explained that he clicked the image that was apparently
+    attached in the email thinking that he could download it, but nothing came in,
+    only a glimpse of an opening window that quickly disappeared and nothing more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step of the investigation was to validate the URL that was linked
+    to the image in the email. The quickest way to validate is by using VirusTotal,
+    which in this case returned the following value (test performed on November 15, 2017):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/21f57484-8bc8-4dfe-8ce7-09b4823ad98b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This was already a strong indication that this site was malicious, the question
+    at that point was: what did it download onto the user''s system that the antimalware
+    installed in the local box didn''t find? When there is no indication of compromise
+    from the antimalware and there are indications that a malicious file was successfully
+    downloaded in the system, reviewing the event logs is usually the next step.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using Windows Event Viewer, we filtered the security event for event ID 4688
+    and started looking into each single event until the following one was found:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, this is the infamous `mimikatz`. It is widely used for credential
+    theft attack, such as **Pass-the-Hash**. Further analysis shows that this user
+    shouldn''t be able to run this program since he didn''t have administrative privileges
+    in the machine. Following this rationale, we started looking to other tools that
+    were potentially executed prior to this one and we found the following ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`PsExec` tool is commonly used by attackers to launch a command prompt (`cmd.exe`)
+    with elevated (system) privileges; later on, we also found another 4688 event:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`ProcDump` tool is commonly used by attackers to dump the credentials from
+    the `lsass.exe` process. It was still not clear how Jose was able to gain privileged
+    access and one of the reasons is because we found event ID 1102, which shows that,
+    at some point prior to executing these tools, he cleared the log on the local
+    computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Upon further investigation of the local system, it was possible to conclude:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Everything started with a phishing email
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This email had an embedded image that had a hyperlink to a site that was compromised
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A package was downloaded an extracted in the local system, this package contained
+    many tools, such as `*mimikatz*`, `procdump`, and `psexec`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This computer was not part of the domain, so only local credentials were compromised
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Attacks against Brazilian accounts are growing; by the time we were writing
+    this chapter, Talos Threat Intelligence identified a new attack. The blog *Banking
+    Trojan Attempts To Steal Brazillion$* at [http://blog.talosintelligence.com/2017/09/brazilbanking.html](https://aka.ms/MSTI)
+    describes a sophisticated phishing email that used a legitimate VMware digital
+    signature binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Investigating a compromised system in a hybrid cloud
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this hybrid scenario, the compromised system will be located on-premises
+    and the company has a cloud-based monitoring system, which for the purpose of
+    this example will be Azure Security Center. To show how a hybrid cloud scenario
+    can be similar to an on-premises online scenario, we will use the same case that
+    was used before. Again, a user received a phishing email, clicked on the hyperlink,
+    and got compromised. The difference now is that there is an active sensor monitoring
+    the system, which will trigger an alert to SecOps, and the user will be contacted.
+    The users don't need to wait days to realize they were compromised; the response
+    is faster and more accurate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The SecOps engineer has access to the Security Center dashboard and, when an
+    alert is created, it shows the NEW flag besides the alert name. The SecOps engineer
+    also noticed that a new security incident was created, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/66d6740d-1078-4607-872c-b43b85b984aa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As mentioned in Chapter 11, *Active Sensors*, a security incident in Azure
+    Security Center represents two or more alerts that are correlated. In other words,
+    they are part of the same attack campaign against a target system. By clicking
+    on this security incident, the SecOps engineer noticed the following alerts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/0cd06579-4fbc-49c8-a8e8-553d03700a06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'There are four alerts included in this incident and, as you can see, they are
+    organized by time and not by priority. In the bottom part of this pane, there
+    are two notable events included, which are extra information that can be useful
+    during the investigation. The first event only reports that the antimalware installed
+    in the local machine was able to block an attempt to drop a piece of malware in
+    the local system. That''s good, but, unfortunately, the attacker was highly motivated
+    to continue his attack and managed to disable antimalware on the local system.
+    It is important to keep in mind that, in order to do that, the attacker had to
+    escalate privilege, and run a command such as `Taskkill` or `killav` to kill the
+    antimalware process. Moving on, we have a medium priority alert showing that a
+    suspicious process name was detected, as show in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/a09cd79f-cf31-4f68-b7e3-3646239b8b82.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In this case the process is `mimikatz.exe`, which was also used in our previous
+    case. You may ask: why is this medium priority and not high? It is because, at
+    this point, this process was not launched yet. That''s why the alert says: Suspicious
+    process name detected. Another important fact about this event is that type of
+    attacked resource, which is Non-Azure Resource, and this is how you identify that
+    this is on-premises or a VM in another cloud provider (such as Amazon AWS). Moving
+    on to the next alert, we have a Suspicious Process Execution Activity Detected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/e68141b0-862d-4350-9cf8-c40260491aff.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The description of this alert is pretty clear about what is happening at this
+    point and this is one of the biggest advantages of having a monitoring system
+    watching process behavior. It will observe these patterns and correlate this data
+    with its own threat intelligence feed to understand if these activities are suspicious
+    or not. The remediation steps provided can also help to take the next steps. Let''s
+    continue looking to the other alerts. The next one is the high priority alert,
+    which is the execution of a suspicious process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/e89db748-141b-4617-ae7d-4e7a66a91897.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This alert shows that `mimikatz.exe` was executed and that the parent process
+    was `cmd.exe`. Since `mimikatz` requires a privileged account to successfully
+    run, the assumption is that this command prompt is running in the context of a
+    high privilege account, which in this case is EMSAdmin. The notable events that
+    you have in the bottle should also be reviewed. We will skip the first one, since
+    we know is about cleaning the evidence (wipe out the logs), but the next one is
+    not so clear, so let''s review it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/d8165712-4a68-4897-b847-c780ac9d4a9c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This is another indication that the attacker compromised other files, such
+    as the `rundll32.exe`. At this point, you have enough information to continue
+    your investigation process. As described in [Chapter 12](809bdc34-0360-4a24-b60c-d73cf35528f1.xhtml),
+    *Threat Intelligence*, the Azure Security Center has a feature that enables you
+    to go deeply into the details of a security issue, which is the investigation
+    feature. In this case, we will select the second alert of this list and click
+    on the Investigation button. The investigation path for this particular case is
+    shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f0ff5871-6529-4664-b311-942dee296611.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Each entity in this diagram provides details about its own object and, if there
+    are other entities related to the one selected, you can pivot it by clicking on
+    the object itself, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/fdc53c7e-713e-41a5-8cd9-42043d3befd0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The investigation map helps you to visualize the steps that were taken during
+    this attack and better understand the correlation between all entities that were
+    involved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Search and you shall find it
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In a real-world scenario, the amount of data that gets collected by sensors
+    and monitoring systems can be overwhelming. Manual investigation of these logs
+    can take days, and that's why you need a security monitoring system that can aggregate
+    all these logs, digest them, and rationalize the result for you. Having said that,
+    you also need searching capabilities to be able to keep digging up more important
+    information as you continue your investigation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Security Center search capabilities are powered by Azure Log Analytics, which
+    has its own query language. By using Log Analytics, you can search across different
+    workspaces and customize the details about your search. Let''s say that you needed
+    to know if there were other machines in this environment that had the process
+    named `mimikatz` present on it. The search query would be similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/009730cd-9412-4ea6-8275-842db4415cc8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Notice that in this case the operator says `contains` but it could be `equals`.
+    The reason to use `contains` is that it could bring more results and, for the
+    purpose of this investigation, we want to know all processes that contain these
+    strings in the name. The result for this query shows the following entries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/bae76a69-f8bd-4156-83de-e3a3289decdd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The output always comes in this table format and allows you to visualize all
+    the details about the matches for this query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access the following link for another example of using search capabilities to
+    find important information about an attack: [https://blogs.technet.microsoft.com/yuridiogenes/2017/10/20/searching-for-a-malicious-process-in-azure-security-center/](https://blogs.technet.microsoft.com/yuridiogenes/2017/10/20/searching-for-a-malicious-process-in-azure-security-center/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lessons learned
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Every time an incident comes to its closure, you should not only document each
+    step that was done during the investigation but also make sure that you identify
+    key aspects of the investigation that need to be either reviewed to improve or
+    fix since it didn't work so well. The lessons learned are crucial for the continuous
+    improvement of the process and to avoid making the same mistakes again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In both cases, a credential theft tool was used to gain access to a user''s
+    credential and escalate privileges. Attacks against a user''s credential are a
+    growing threat and the solution is not based on a silver bullet product, instead,
+    it is an aggregation of tasks, such as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reducing the number of administrative level accounts and eliminating administrative
+    accounts in local computers. Regular users shouldn't be administrators on their
+    own workstation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using multifactor authentication as much as you can.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adjusting your security policies to restrict login rights.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Having a plan to periodically reset the **Kerberos TGT** (**KRBTGT**) account.
+    This account is used to perform a golden ticket attack.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These are only some basic improvements for this environment; the Blue Team should
+    create an extensive report to document the lessons learned and how this will be
+    used to improve the defense controls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: References
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Banking Trojan Attempts To Steal Brazillion$*: [http://blog.talosintelligence.com/2017/09/brazilbanking.html](http://blog.talosintelligence.com/2017/09/brazilbanking.html)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*Security Playbook in Azure Security Center (Preview)*: [https://docs.microsoft.com/en-us/azure/security-center/security-center-playbooks](https://docs.microsoft.com/en-us/azure/security-center/security-center-playbooks)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*Handling Security Incidents in Azure Security Center*: [https://docs.microsoft.com/en-us/azure/security-center/security-center-incident](https://docs.microsoft.com/en-us/azure/security-center/security-center-incident)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*Threat intelligence in Azure Security Center*: [https://docs.microsoft.com/en-us/azure/security-center/security-center-threat-intel](https://docs.microsoft.com/en-us/azure/security-center/security-center-threat-intel)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how important it is to correctly scope an issue
+    before investigating it from the security perspective. You learned the key artifacts
+    in a Windows system and how to improve your data analysis by reviewing only the
+    relevant logs for the case. Next, you followed an on-premises investigation case,
+    the relevant data that was analyzed, and how to interpret that data. You also
+    follow a hybrid cloud investigation case, but this time using Azure Security Center
+    as the main monitoring tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to perform a recovery process in a system
+    that was previously compromised. You will also learn about backup and disaster
+    recovery plans.
+  prefs: []
+  type: TYPE_NORMAL

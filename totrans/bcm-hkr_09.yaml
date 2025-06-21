@@ -1,0 +1,1749 @@
+- en: Chapter 9. Practical Client-Side Attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we talk about client-side attacks, there is a tendency to discredit their
+    viability in compromising an environment. After all, executing JavaScript in the
+    browser is far less sexy than executing native code and popping a shell on the
+    application server itself. What's the point of being able to execute heavily sandboxed
+    JavaScript in a short-lived browsing session? How much damage can an attacker
+    do with this type of vulnerability? Quite a bit, as it turns out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will explore client-side attacks, with a heavy emphasis
+    on XSS. We will also look at **Cross-Site Request Forgery** (**CSRF**) attacks
+    and discuss the implications of the **same-origin policy** (**SOP**). Next, we
+    will look at ways to weaponize XSS vulnerabilities using BeEF.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of the chapter, you should be comfortable with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stored, reflected, and DOM-based XSS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CSRF and possible attacks and limitations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: BeEF, the de facto tool for client-side exploitation in the browser
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will spend quite a bit of time on BeEF, as it makes XSS attacks viable. It
+    allows us to easily perform social engineering attacks to execute malicious native
+    code, implement a keylogger, persist our access, and even tunnel traffic through
+    the victim's browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SOP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Consider a scenario where a target is logged into their Gmail account ([mail.google.com](http://mail.google.com))
+    in one of the open browser tabs. In another tab, they navigate to a different
+    site, on a different domain, which contains attacker code that wants access to
+    that Gmail data. Maybe they were socially engineered to visit this particular
+    site or maybe they were redirected there through a malicious advertising (malvertising)
+    campaign on a well-known news site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The attacker code may try to open a connection to the [mail.google.com](http://mail.google.com)
+    domain, and because the victim is already authenticated in the other browser tab,
+    the code should be able to read and send emails as well by forging requests to
+    Gmail. JavaScript provides all the tools necessary to accomplish all of this,
+    so why isn't everything on fire?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The answer, as we will see in detail shortly, is because of the SOP. The SOP
+    prevents this exact attack and, unless the attacker can inject their code directly
+    into [mail.google.com](http://mail.google.com), they will not be able to read
+    any of its sensitive information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The SOP was introduced back in the Netscape days because the potential for abuse
+    was very real without it. Simply put, the SOP restricts sites from accessing information
+    from other sites, unless the origin of the request source is the same as the destination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a simple algorithm to determine whether the SOP has been breached.
+    The browser will compare the schema, domain, and port of the source (origin) site
+    to that of the destination (target) site and if any one item doesn't match, read
+    access will be denied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our earlier example, the target site in the attack would be the following
+    URI: [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox),
+    which would translate to the following origin triple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Attacker code running on [https://www.cnn.com/](https://www.cnn.com/) would
+    be denied read access because the domain doesn''t match:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Even malicious code running on [https://www.google.com/](https://www.google.com/)
+    would fail to access Gmail because the domain does not match, even though they
+    are on the same physical server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Origin | Target | Result |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | Allowed, port `443` is implied |'
+  prefs: []
+  type: TYPE_TB
+- en: '| [http://mail.google.com/mail/u/0/#inbox](http://mail.google.com/mail/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | Denied, schema mismatch |'
+  prefs: []
+  type: TYPE_TB
+- en: '| [https://mail.google.com:8443/u/0/#inbox](https://mail.google.com:8443/u/0/#inbox)
+    | [https://mail.google.com/mail/u/0/#inbox](https://mail.google.com/mail/u/0/#inbox)
+    | Denied, port mismatch |'
+  prefs: []
+  type: TYPE_TB
+- en: '| [https://dev.mail.google.com/u/0/#inbox](https://dev.mail.google.com/u/0/#inbox)
+    | [https://mail.google.com/u/0/#inbox](https://mail.google.com/u/0/#inbox) | Denied,
+    domain mismatch |'
+  prefs: []
+  type: TYPE_TB
+- en: This makes sense from a defense perspective. The scenario we outlined earlier
+    would be a nightmare if not for the SOP. However, if we look closely at web apps
+    on the internet, we'll notice that almost all include content such as images,
+    stylesheets, and even JavaScript code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sharing resources cross-origin or cross-site has its benefits for the application.
+    Static content can be offloaded to CDNs, which are typically hosted on other domains
+    (think Facebook's `fbcdn.net`, for example), allowing for greater flexibility,
+    speed, and ultimately, cost savings while serving users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The SOP does allow access to certain types of resources cross-origin to ensure
+    the web functions normally. After all, when the focus is user experience, a security
+    policy that makes the application unusable is not a great security policy, no
+    matter how secure it may actually be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The SOP will permit the following types of cross-origin objects to be embedded
+    into the origin from any other site:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Images
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Stylesheets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scripts (which the browser will gladly execute!)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Inline frames (`iframe`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can include images from our CDN, and the browser will download the image
+    bytes and render them onto the screen. We cannot, however, read the bytes programmatically
+    using JavaScript. The same goes for other static content that is allowed by the
+    SOP. We can, for example, include a stylesheet with JavaScript, but we cannot
+    read the actual contents of the stylesheet if the origin does not match.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is true for `iframe` elements as well. We can create a new `iframe` object
+    and point it to an arbitrary URL, and the browser will gladly load the content.
+    We cannot, however, read the contents if we are in breach of the SOP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we are creating an `iframe` element inside the [https://bittherapy.net](https://bittherapy.net)
+    web application, emulating what an XSS attack or malicious cross-origin script
+    could accomplish if allowed to execute in the context of [bittherapy.net](http://bittherapy.net):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![SOP](graphics/B09238_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.1: Creating an iframe element using the browser console'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we create a new `iframe` element using the `document.createElement()`
+    function and store it in the `frame` variable. Next, we set the `iframe` URL to
+    [https://bittherapy.net](https://bittherapy.net) using the `src` property on `frame`.
+    Lastly, we add the newly created `iframe` object to the document using the `document.body.append()`
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the frame source (`frame.src`) matches the parent origin triple
+    exactly and when we try to read the contents of the `iframe` element's head using `frame.contentDocument`,
+    we succeed. The SOP was not violated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Conversely, creating an `iframe` to [https://bing.com/](https://bing.com/)
+    within the [https://bittherapy.net](https://bittherapy.net) application will work,
+    and the object will be created, but we won''t be able to access its contents,
+    as we can see in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![SOP](graphics/B09238_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.2: Creating a cross-origin frame and attempting to access its contents
+    fails'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Bing search app loaded just fine, as we can see in the rendered site on
+    the right, but programmatically, we cannot read the contents because that violates
+    the SOP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JavaScript is also accessible cross-origin and this is usually a good thing.
+    Offloading your JavaScript libraries to a CDN can reduce load times and bandwidth
+    usage. **CDNJS** is a prime example of how sites can benefit from including JavaScript
+    from a third-party.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: CDNJS is an open-source web CDN providing almost every conceivable JavaScript
+    library. More information on this great service can be found at [https://cdnjs.com/](https://cdnjs.com/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Any other type of data that we may try to load cross-origin using JavaScript
+    would be denied. This includes fonts, JSON, XML, or HTML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cookies deserve a special mention when talking about the SOP. Cookies are typically
+    tied to either the domain or a parent domain, and can be restricted to secure
+    HTTP connections. Browsers can also be instructed to disallow JavaScript access
+    to certain cookies, to prevent attacks such as XSS from extracting session information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cookie policy is fine-tuned by the application server when the cookie is
+    initially set, using the `Set-Cookie` HTTP response header. As I said earlier,
+    unless otherwise specified, cookies are typically bound to the application domain
+    name. Wildcard domains can also be used, which would instruct the browser to pass
+    the cookies for requests to all subdomains as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applications will leverage cookies to manage authentication and user sessions.
+    A unique value will be sent to the client once they've successfully logged in,
+    and the browser will pass this value back to the application for all subsequent
+    requests, provided the domain and path match what was specified when the cookie
+    was initially set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The side effect of this behavior is that a user only has to login to the application
+    once and the browser will maintain the authenticated session by passing cookies
+    in the background with every request. This greatly improves user experience but
+    can also be abused by attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-origin resource sharing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the age of microservices, where web application components are decoupled
+    and run as separate instances on totally different domains, the SOP presents some challenges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attempting to read some API data presented in JSON format would normally be
+    denied by the SOP unless the origin triple matches. This is inconvenient, and
+    applications become hard to develop and scale if we are constrained to the same
+    domain, port, and scheme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To loosen up the SOP, **cross-origin resource sharing** (**CORS**) was introduced,
+    making developers happy again. CORS allows a particular site to specify which
+    origins are allowed access to read content that is normally denied by the SOP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The application server HTTP response can include an `Access-Control-Allow-Origin`
+    header, which the client can use to determine whether it should complete the connection
+    and retrieve the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'CORS is well-documented on the Mozilla Developer Network: [https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see Spotify''s public API CORS policy using `curl`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This particular API is public and, therefore, will inform the client that all
+    origins are allowed to read response contents. This is done with the value for
+    `Access-Control-Allow-Origin` set to a wildcard: `*`. Private APIs will typically
+    use a more specific value, such as an expected URL.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Spotify server responds with other `Access-Control` headers, which specify
+    which methods and headers are accepted, and whether credentials can be passed
+    with each request. The CORS policy can get quite deep, but for the most part,
+    we are concerned with what origin a particular target site allows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XSS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another prevalent type of attack that I still encounter out in the field very
+    frequently is XSS. XSS comes in a few flavors, but they all provide attackers
+    with the same thing: arbitrary JavaScript code execution in the client''s browser.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While this may not sound as great as executing code on the actual application
+    server, XSS attacks can be devastating when used in targeted attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reflected XSS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The more common type of XSS vulnerability is the reflected or non-persistent
+    kind. A **reflected XSS** attack happens when the application accepts input from
+    the user, either via parameters in the URL, body, or HTTP headers, and it returns
+    it back to the user without sanitizing it first. This type of attack is referred
+    to as non-persistent because once the user navigates away from the vulnerable
+    page, or they close the browser, the exploit is over. Reflected XSS attacks typically
+    require some social engineering due to the ephemeral nature of the payload.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To showcase XSS attacks, we will once again use the badguys project from Mike
+    Pirnat. The web application code can be downloaded from [https://github.com/mpirnat/lets-be-bad-guys](https://github.com/mpirnat/lets-be-bad-guys).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To showcase this type of vulnerability, I have loaded the application on `badguys.local`.
+    The `/cross-site-scripting/form-field` URL is vulnerable to an XSS attack in the
+    `qs` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The application will take the user-inputted value and pre-fill a text field
+    somewhere on the page. This is common behavior for login forms, where the user
+    may enter the wrong password and the page will reload to display an error message.
+    In an attempt to improve user experience, the application automatically fills
+    the username field with the previously inputted value. If the username value is
+    not sanitized, bad things can happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To confirm the vulnerability, we can feed it the Elsobky polyglot payload covered
+    in previous chapters and observe the application''s behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once we drop the bomb, while the application''s server is unaffected, the page
+    rendered by the browser is a different story. We can see the fallout from this
+    attack by inspecting the application''s source code around the affected input
+    field:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Reflected XSS](graphics/B09238_09_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.3: The polyglot reveals an XSS vulnerability'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The alert box pops up after the polyglot inserts an `<svg>` tag with the `onload`
+    property set to execute `alert()`. This is possible because the application reflected
+    the payload without removing dangerous characters. The browser interpreted the
+    first double-quote as part of the input field, leading to the vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Persistent XSS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **persistent XSS**, also called **stored XSS**, is similar to a reflected
+    attack in that the input is not sanitized and is eventually reflected back to
+    a visiting user. The difference, however, is that a persistent XSS is typically
+    stored in the application's database and presented to any user visiting the affected
+    page. Stored XSS usually does not require us to trick the user into visiting the
+    vulnerable page using a specially crafted URL, and could speed things up if the
+    target user does not use the application frequently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A simple example of stored XSS is the comments section of a blog post. If the
+    user input (the comment) is not sanitized before being stored, any user who reads the comment
+    will execute whatever payload was stored in the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Perhaps the most famous example of a stored XSS attack is the **Samy worm**
+    (aka **MySpace Worm**, or **JS.Spacehero**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Due to the lack of proper input sanitization, Samy was able to unleash a piece
+    of JavaScript code that would force the victim, who was logged in to their own
+    MySpace account, to perform a couple of actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Update their profile to include the phrase "but most of all, Samy is my hero"
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Send a friend request to Samy Kamkar's profile
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At first glance, this seemed fairly harmless, and the few users who visited
+    Samy's profile would be mildly annoyed and eventually move on. What made Samy
+    Kamkar famous, however, was the fact that the victim's profile was also updated
+    to include the same JavaScript payload that the victim executed while browsing
+    the infected profile. This turned the XSS attack into an XSS worm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a mere 20 hours, Samy's profile received over a million friend requests,
+    indicating the real impact of this particular stored XSS attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A full explanation of how this clever attack was carried out, including the
+    final payload, can be found on Samy Kamkar''s personal site: [https://samy.pl/myspace/tech.html](https://samy.pl/myspace/tech.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While Samy's worm did no real damage to users, similar persistent XSS vulnerabilities
+    can be used to attack users en masse, gather session cookies, and target them
+    for social engineering. Low-privileged users could potentially attack administrative
+    users and escalate privileges by storing XSS code, which is later processed when
+    the administrator views the infected page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering stored XSS vulnerabilities can be a bit more challenging, as we
+    don't always know where and when the payload will be reflected. This is where
+    the OOB vulnerability discovery techniques we covered in previous chapters can
+    help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DOM-based XSS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This particular type of XSS attack happens when the application's client-side
+    code reads data from the DOM and uses it in an unsafe manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The DOM is essentially a data structure in the browser memory that contains
+    all of the objects in the current page. This includes HTML tags and their properties,
+    the document title, the head, the body, and even the URL. JavaScript can interface
+    with the DOM and modify, add, or delete almost any part of it, immediately affecting
+    the page itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best way to illustrate the impact of DOM XSS is with a simple vulnerable
+    application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following screenshot, we have some JavaScript code that will welcome
+    a user to the page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![DOM-based XSS](graphics/B09238_09_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.4: A sample page vulnerable to DOM XSS'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This application will scan the document URL for the position of the `name` parameter
+    using the `document.URL.indexOf()` function. It will then grab the text starting
+    just after `name=` using the `document.URL.substring()` function and store the
+    value in the `name` variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On line 11, the application will walk the DOM for the `span` element `welcome`.
+    Line 12 is where the magic happens, also known as the sink. The application will
+    fill the contents of the `span` element with that of the `name` URL parameter
+    fetched earlier, using the `innerHTML` property of the `welcome` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see the intended functionality of the application in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![DOM-based XSS](graphics/B09238_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.5: The DOM is updated to include the name from the URL'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `span` element in the DOM was updated with the value passed via the URL
+    and everything looks good. The application provides dynamic page content without
+    the need for server-side programming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The XSS vulnerability exists because we are able to pass in arbitrary values
+    via the URL, which will be reflected in the DOM. The application parses the URL
+    and fills in the `welcome` element without sanitizing the input, allowing us to
+    insert something other than a name and to potentially execute more JavaScript
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This attack is similar to your typical reflected XSS, with an important difference:
+    the JavaScript code is not reflected by the server code, instead, it is populated
+    by the client code. The web server will still see the payload in the request and
+    any web application firewalls could still potentially block our attack by dropping
+    the connection, but any application input sanitization will have no effect here.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another issue with this particular piece of code is that the URL `GET` parameters
+    are not safely parsed. It uses string functions to walk the entire URL and fetch
+    arbitrary data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we're constructing a malicious URL, we don't actually need to use the question
+    mark (`?`) to delimit parameters. We can instead use the hash character (`#`).
+    This is referred to as the location hash and yes, it is part of the DOM, accessible
+    via JavaScript. Browsers do not send hash data alongside HTTP requests. This gives
+    us the advantage of not submitting our payload to the server, bypassing the web
+    application firewall or server-side XSS filters altogether, while still being
+    able to execute JavaScript code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our payload URL to exploit this DOM XSS will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The application client-side code works just fine and inserts our XSS payload
+    right into the DOM:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![DOM-based XSS](graphics/B09238_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.6: DOM-based XSS successfully executing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we inspect the application server log, we can see that our payload was never
+    sent over the wire:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: While this attack resulted in the execution of the same JavaScript payload,
+    the fact that network and server-side controls cannot defend against these attacks
+    makes DOM XSS unique. Being able to leverage the location hash to send our payload
+    gives us an advantage over the defenders, as they will not only be powerless to
+    stop the attack with compensating server-side controls, but they will not even
+    be able to see the payload.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CSRF
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Earlier, I briefly mentioned that browsers will pass along all associated cookies
+    to applications automatically. For example, if the user has authenticated to the
+    `http://email.site` application, a session cookie will be created, which can be
+    used to make authenticated requests. A CSRF attack takes advantage of this user
+    experience feature to abuse overly-trusting applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is common for applications to allow users to update their profile with custom
+    values that are passed via `GET` or `POST` requests. The application will, of
+    course, check to see whether the request is authenticated and perhaps even sanitize
+    the input to prevent SQLi or XSS attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider a scenario where we've tricked the victim into visiting a malicious
+    site, or perhaps we've embedded some JavaScript code in a known-good site. This
+    particular piece of code is designed to perform a CSRF attack and target the `http://email.site`
+    application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As attackers, we''ve done some digging and realized that the email application
+    provides a way to update the password recovery email through the profile page:
+    `http://email.site/profile/`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we submit a change on our own test account, we notice the following URL
+    being called:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we're able to modify another user's password recovery email, we can reset
+    their credentials and potentially login as that user. This is where a CSRF attack
+    comes into play. While the application does validate the email address value and
+    the request must be authenticated, there are no other security checks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A CSRF attack embeds an invisible `iframe`, `img`, or similar element in a malicious
+    site, which makes a cross-origin request to the target application using attacker-supplied
+    values. When the victim's browser attempts to load the `iframe` or `img` element,
+    it will also pass the session cookies along with the request. From the application's
+    point of view, this is a valid request and it is allowed to execute. Attackers
+    may not be able to read the response, since it is made cross-origin (remember
+    SOP?) but the damage has already been done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our malicious site, we embed an `img` tag with the source pointing to the
+    profile update URL containing our email address as the new value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A typical CSRF attack flows something like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![CSRF](graphics/B09238_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.7: CSRF attack flow'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the user visits our malicious site, the image will attempt to load by making
+    an authenticated `GET` request to the target application, updating the recovery
+    email for the victim on the email application. We now have the ability to request
+    a password reset for the victim's account and login to the email site directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To prevent CSRF attacks, developers should implement **CSRF tokens**. These
+    are unique, one-time numbers (**nonces**) generated for every request to a protected
+    page. When a request to update any part of the application is made, the client
+    must send this unique value, along with the request, before the data is allowed
+    to change. Theoretically, attackers embedding `img` tags in their own malicious
+    site would have no way of guessing this particular token, therefore CSRF attacks
+    would fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CSRF tokens are a good defense against CSRF, if implemented properly. First
+    of all, the value should be unique, non-deterministic, and hard to guess. A small
+    random integer does not make a good token because it can easily be brute-forced.
+    An MD5 hash of the username or any other static guessable value is not good enough
+    either.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CSRF tokens should be tied to the user session and if that session is destroyed,
+    the tokens should go with it. If tokens are global, attackers can generate them
+    on their own accounts and use them to target others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CSRF tokens should also be time-limited. After a reasonable amount of time,
+    the token should expire and should never come up again. If tokens are passed via
+    `GET` requests, they might be cached by proxies or the browser, and attackers
+    can simply harvest old values and reuse them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we encounter CSRF tokens in a target application, we should check for issues
+    with the implementation. You'd be surprised how many times the CSRF token is issued
+    but ignored when passed back to the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CSRF is an interesting vulnerability that can often be chained together with
+    other issues, such as XSS, to perform an effective attack against a particular
+    target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Say we had discovered a stored XSS vulnerability in the profile page of the
+    email application. We could update our name to reflect some XSS payload. Since
+    we cannot affect other users' profile names, this XSS payload would only really
+    trigger for our account. This is referred to as **self-XSS**. If the same application
+    is also vulnerable to CSRF attacks on both the login and logout pages, we could
+    force a user to logout and also force them to login as somebody else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, we would submit an XSS payload into our own profile name and
+    save it for later. Then, we could build a malicious site that performs the following
+    operations in order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uses CSRF to force the victim to logout of the application
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Uses CSRF to log the victim back in using our credentials
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Uses CSRF to navigate to the application profile page containing the self-XSS payload
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Executes the XSS payload on the victim's browser
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The malicious code would look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![CSRF](graphics/B09238_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.8: Malicious self-XSS and CSRF attack code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `http://email.site/profile/` contains the self-XSS code we stored earlier,
+    which would execute on the unsuspecting target once the `iframe` loads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What can we do with JavaScript code running in the victim's browser, but under
+    our account session? It doesn't make sense to steal session cookies, but we have
+    other options, as we will see next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: BeEF
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An XSS vulnerability is difficult to exploit successfully in most circumstances.
+    When I'm talking about practical client-side attacks, I don't mean taking a screenshot
+    of the `alert(1)` popup window for the report!
+  prefs: []
+  type: TYPE_NORMAL
+- en: During an engagement, the XSS vulnerability may be a viable way to attack users
+    and gain a foothold on the network. Conducting XSS attacks can be difficult, as,
+    in most cases, you only have one shot at it. We need to execute code and do everything
+    we have to do before the user closes the browser session. Extracting the session
+    token or other sensitive data is easy enough, but what if we want to take our
+    attack to the next level? Ideally, we want to take full control of the browser
+    and have it do our bidding, perhaps automating some more advanced attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: BeEF is a great tool that was created by Wade Alcorn to allow for the easy exploitation
+    of XSS vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'BeEF has a server component that provides command and control. Clients, or
+    zombies, are hooked using a JavaScript snippet hosted on the C2 server itself.
+    The zombie will check in periodically with the C2 server and receive commands,
+    which can include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Executing arbitrary JavaScript code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Social engineering to deliver malware
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Persistence
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Metasploit integration
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Information gathering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: …and much more
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To exploit a client with BeEF, we'd have to hook it using an XSS attack or by
+    backdooring an application's client code. The JavaScript payload would execute
+    and load the hook from our BeEF C2, giving us access to execute more code packaged
+    inside BeEF as commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Installing BeEF is straightforward and it is available on GitHub: [https://github.com/beefproject/beef](https://github.com/beefproject/beef).
+    BeEF is also installed on Kali Linux by default. Although, in some cases, it''s
+    better to have it running in your C2 server in the cloud.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can clone the latest version from the GitHub repository using the `git clone`
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The source comes with an `install` script, which will setup the environment
+    for us. Inside the `beef` folder, execute the `install` script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'BeEF can be fine-tuned using the YAML configuration file, `config.yaml`. There
+    are lots of options to tweak but for us, but the most important are the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The root of the configuration file is `beef` with indented lines delimiting
+    subnodes. For example, the path `beef.credentials.user` path would return the
+    `admin` value once the configuration file is parsed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Changing the `beef.credentials.*` options should be a no-brainer. Updating the
+    `beef.restrictions.*` options is also recommended, to ensure we target the appropriate
+    clients and to keep unauthorized users out of the C2 interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `permitted_ui_subnet` option will limit which network ranges BeEF will allow access
+    to `/ui/`, the C2 administrative interface. This should be very restrictive, so
+    you would typically set it to your current external address followed by `/32`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also limit the addresses that are actually allowed to interact with BeEF's
+    hook, preventing any unwanted clients from being exploited. If we are running
+    BeEF internally, we can limit the hooking subnet to, say, marketing only. If analysts
+    from the blue team segment attempt to run the hook payload, they won't get anything
+    useful back.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For production deployments in the cloud, we need to set `beef.http.host` to
+    our target's IP address space and we also want to listen on port `443`. Running
+    BeEF with `beef.https.enable = true` is recommended, as it increases the chances
+    of success when hooking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we attempt to inject our BeEF payload `<script async src=http://c2.spider.ml/hook.js>`
+    into a page loaded over HTTPS, modern browsers will not load the script at all.
+    Loading HTTPS resources in an HTTP site is allowed, so, if possible, C2 should
+    always be running with TLS enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `beef.https.key` and `beef.https.cert` configuration options should point
+    to the appropriate certificate, hopefully, signed by a trusted root certificate
+    authority such as **Let's Encrypt**. We've covered using Let's Encrypt to request
+    free certificates for use in our C2 infrastructure, in [Chapter 6](ch06.html "Chapter 6. Out-of-Band
+    Exploitation"), *Out-of-Band Exploitation*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let's Encrypt provides free domain-validated certificates for hostnames and
+    even wildcards. More information can be found at [https://letsencrypt.org/](https://letsencrypt.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `beef.http.public` value should match the HTTPS certificate domain or you may
+    have client validation errors and the hook will fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once everything is configured, we can launch the server component:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![BeEF](graphics/B09238_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.9: BeEF running in the cloud'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the BeEF C2 server up and running on `c2.spider.ml`, we can start attacking
+    clients. The first step is to get the BeEF hook code to execute in the target
+    browser. There are a few ways to accomplish this, the more common being a persistent,
+    reflected or DOM-based XSS attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we have shell access to the application, there is also value in backdooring
+    application code with a BeEF hook. We can persist our hook code and record user activities,
+    and even use social engineering to execute malware on high-value targets' machines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The BeEF C2 panel is accessible via the URL displayed in the BeEF launcher
+    output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The user experience is a bit unorthodox but quick to get used to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![BeEF](graphics/B09238_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.10: The BeEF C2 server control panel'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left, the UI shows a history of hooked browsers or victims, both online
+    and offline, grouped by the originating domain. An online victim can be exploited
+    immediately, as the hook is actively calling back to the C2\. An offline browser
+    has not recently checked in with the C2 but may still be exploited once the victim
+    comes back online. This is typical with victims hooked via persistent XSS attacks,
+    backdoored web applications, or browser extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the right-hand side of the hooked browsers' history, you'll find the landing
+    page (or **Getting Started**), the C2 server logs (**Logs**), and the selected
+    victim's browser control tab (**Current Browser**). Of interest is the browser
+    control, which includes sub-tabs for details, logs, and the modules, or commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Commands** tab, we can select a module to run, we can input any required
+    parameters in the right-most column before hitting the **Execute** button, and
+    we can observe the module's execution history in the center column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many modules available and some work better than others. The effectiveness
+    of the module (command) you choose really depends on the browser version, the
+    victim, and how technologically savvy they are. In the coming sections, we will
+    look at the more successful attack modules in an attempt to compromise the target
+    or harvest credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hooking
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'With the BeEF C2 server running in the cloud, we have exposed two important
+    URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The administrative interface – `https://c2.spider.ml/ui/panel`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The hooking script – `https://c2.spider.ml/hook.js`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Both of the URLs are locked down by the `beef.restrictions.*` options in the
+    configuration file. Take care to use the appropriate network ranges for hooking
+    and admin UI restrictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `hook.js` file is essentially the malware we will drop in a victim's browser
+    in order to take full control of their session. It is a fairly large piece of
+    code and it is best delivered as an external script (such as the one hosted on
+    our C2), but this is not a requirement. We can copy and paste the whole hook code
+    in the browser console window if we want to. It is large but portable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are trying to hide from the blue team, it may be best to move this file
+    to something less conspicuous than `c2.spider.ml/hook.js`, but for the sake of
+    this chapter, we will hook victims using this URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As I alluded to earlier, once we have an XSS vulnerability, we can construct
+    a payload to drop a new `script` tag, which will hook the client using the BeEF
+    payload. In some situations, a bit more creativity may be required to get JavaScript
+    to execute our code, but the end goal is to insert a payload similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the common situation where the reflection point (also known as the **sink**)
+    is located inside an HTML tag, we have a couple of options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Close out the affected HTML tag and open a new `script` tag containing our hook
+    code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Set up an event handler that will download and execute our hook code when an
+    event happens, such as when the page loads or the user clicks an element
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first option is simple; we can close the `value` property with a double-quote
+    and the `input` element with an angled bracket, followed by our malicious `script`
+    tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting HTML code, once the XSS payload is reflected back, will silently
+    download and execute our hook code, giving us access to the browsing session.
+    The `async` keyword will ensure that the hook is downloaded asynchronously and
+    does not slow down the page load, which could tip off the victim that something
+    is amiss.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The trailing unfinished `<span>` will ensure that the remainder of the original
+    HTML code does not show up on the page, giving it a bit more of a clean look.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we have to use an event to execute our code, we can configure a handler
+    by creating an appropriate `on[event]` property within the affected HTML tag.
+    For example, if we wish to execute our hook when the user clicks the affected
+    element, we can leverage the `<input>` tag''s `onclick` property, which allows
+    us to execute arbitrary code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding example will pop up an alert box containing the current cookies,
+    which, as I've said before, is great for a proof of concept but not very useful
+    in an attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use the DOM and JavaScript to construct a net-new `script` element, point it to
+    our hook code, and append it to the `head` of the page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thanks to JavaScript''s flexibility, there are a million and one ways to accomplish
+    this, but our code is fairly simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first line will create a blank object representing a `script` tag. Just
+    as we did with the `src=` HTML tag property, in JavaScript, we can point the source
+    of the script to our hook code. At this point, no actual code is downloaded or
+    executed. We have created a benign DOM object. To weaponize, we can use the `append`
+    function to add it to the `document.head`, which is to say we create a `<script>`
+    tag in the `<head>` tag of the page. The last line does just this, and the browser
+    immediately and silently downloads the hook code and executes it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our payload would look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, the trailing `x="` property is to make sure there are no HTML parsing
+    oddities and the code can execute cleanly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another common sink for XSS vulnerabilities is directly inside JavaScript code,
+    somewhere on the page itself:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding example, the server would reflect some user-controlled text
+    inside the `confirm()` string parameter. To take advantage of this, we can reuse
+    the DOM manipulation code we wrote earlier and just adapt it to work inside a
+    string passed to another function. This is by no means the only way to achieve
+    code execution, but it's a start.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With JavaScript, we can concatenate strings and other objects using the plus
+    operator, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `prompt()` function will return whatever string value we give it, and `alert()`
+    will concatenate the strings before returning to the user. We can do all kinds
+    of strange things like that with JavaScript, but what's important to note is that
+    a `prompt()` function was executed. If we have control of what is concatenated
+    in a string, we can execute arbitrary JavaScript code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the preceding code example, instead of returning our username, we will force
+    the application to return a string concatenation, which will execute our dropper
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're not really concerned with the end result of the concatenation, in fact,
+    `eval` does not return anything meaningful for display. What we care about is the execution
+    of `eval()`, which will in turn execute our hook dropper.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A keen eye will notice that there's a minor issue with this particular injection.
+    If the user clicks OK in the confirm dialog box, the `sure` variable will be set
+    to `true` and the page will navigate away, taking down our BeEF hook with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get around this particular problem, we have to "complete" the script and
+    control the script execution flow to make sure the page stays long enough for
+    us to conduct our second stage of the attack. A sensible approach would be to
+    close-out the `confirm` function, `eval` our code, and set the value of `sure`
+    to `false` immediately after. This will ensure that the page does not navigate
+    away if the user clicks OK, as the next `if` condition will always evaluate to
+    `false`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have to modify our dropper payload slightly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is valid code that will prevent the `if` statement from evaluating
+    to `true` and changing the document location. We use the double slash (`//`) to
+    comment out the rest of the `confirm()` function, preventing JavaScript parse
+    errors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Injecting JavaScript code in the middle of a function can present some problems
+    if it is not carefully crafted. HTML is fairly forgiving if we miss a closing
+    tag or break the rest of the page. Some JavaScript engines, however, will fail
+    to parse the code and our payload will never execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the following BeEF scenarios, we will hook the badguys site, available
+    at `http://badguys.local`, using the following XSS attack. This is a much simpler
+    reflected XSS attack, but it should do the trick to showcase BeEF capabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `qs` parameter is vulnerable to reflected XSS attacks and we will target
+    victims with our BeEF hook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If successful, the BeEF C2 server log will show the new hooked browser, the
+    IP address, the browser, the OS, and the domain on which the XSS payload executed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can now begin executing various commands (or modules) on the victim's browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Social engineering attacks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By far the easiest way to capture credentials or to execute malicious code is,
+    and always will be, social engineering. XSS attacks, in particular, give us the
+    advantage of executing code on a user-trusted website, dramatically increasing
+    the chance of success, since even the most vigilant user will trust a web address
+    they recognize.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'BeEF provides us with several social engineering modules, including but not
+    limited to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Fake Notification Bar**: Delivers malware by imitating browser notification
+    bars'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fake Flash Update**: Delivers malware disguised as a Flash update popup'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Pretty Theft**: Captures credentials using fake popups for familiar sites'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fake LastPass**: Captures LastPass credentials using a fake popup'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To showcase a common social engineering attack with BeEF, we will leverage the Fake
+    Flash Update module, located under **Commands** in the **Social Engineering**
+    category. This technique is still surprisingly effective in the wild, and BeEF
+    simplifies the delivery of an executable payload to the victim.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The configuration is simple; we just need to point the module to our very own
+    custom payload, which will be presented to the victim as a fake Flash update file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Social engineering attacks](graphics/B09238_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.11: Configuring the Fake Flash Update BeEF command'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also specify a custom image if we wish to change the default one hosted
+    on the BeEF server. Our "Fake Flash" payload (`FlashUpdate.bat`) is a simple batch
+    script, which will execute a PowerShell **Empire** agent malware. We have a separate
+    Empire C2 server running in the cloud as well, waiting for the agent to check-in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Empire is an awesome C2 open-source software that allows full control of Windows
+    and Linux machines. The Windows agent is written entirely in PowerShell and can
+    be used to control every aspect of the target. It is a very effective **remote
+    access trojan** (**RAT**). Linux is also supported via a Python agent. There are
+    a ton of post-exploitation modules and Empire is easily deployed in the cloud.
+    More information can be found at [https://www.powershellempire.com/](https://www.powershellempire.com/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have hosted the Empire agent downloader (`FlashUpdate.bat`) on our C2 server
+    to make things simpler. The BeEF Fake Flash Update command will present the user
+    with an image that looks like a prompt to update Flash. Clicking anywhere on the
+    image will begin the download of the malware. The user will still have to execute
+    it, but as I've mentioned before, this is still a very effective method for exploitation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking **Execute** in the Fake Flash Update command will popup the fake message
+    in the victim''s browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Social engineering attacks](graphics/B09238_09_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.12: The Fake Flash Update command in action'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Hovering over the image will show the `http://c2.spider.ml/FlashUpdate.bat`
+    link that we configured earlier in the Fake Flash Update command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Empire C2 server receives the agent connection, giving us full control
+    over the victim''s machine, not just the browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can interact with the agent and execute arbitrary commands (among many,
+    many other things):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: With a little help from the XSS attack, we were able to trick our victim into
+    executing our malware and letting us escalate privileges from in-browser to having
+    full control over the victim's machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other social engineering modules available and the majority have a
+    fairly high rate of success.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The keylogger
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A common use for XSS attacks is the old-fashioned keylogger. JavaScript allows
+    us to capture keystrokes very easily, and since we have access to execute arbitrary
+    JavaScript code in the browser, we can set up a keystroke logger as well. You
+    can imagine that XSS in a login page could be very valuable to attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is no module or command within BeEF to enable a keylogger because it is
+    enabled by default in the core! We can see the keystrokes entered by each hooked
+    browser by inspecting either the **Logs** tab next to the **Current Browser**
+    tab in the web user interface, or by looking at the C2 console output directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see the BeEF keylogger in action, we have to start the server using the
+    `-v` (verbose) switch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The keylogger](graphics/B09238_09_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.13: BeEF running in the cloud in verbose mode'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is a ton of output relating to the initialization of BeEF, which can
+    be safely ignored. After the victim''s browser is hooked, however, user events
+    will be sent to the BeEF C2, including keystrokes and mouse clicks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see what looks like credentials typed into the hooked application. The
+    words will be split up because of the frequency with which the BeEF hook calls
+    home and submits the captured key buffer. In most cases, it is fairly obvious
+    what the user is typing in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The built-in keylogger is fairly good and most attacks will benefit from it.
+    However, in certain situations, a more custom keylogger may be required. Perhaps
+    we want to send the keys to some other location, or just want to record more keystrokes,
+    such as *Backspace*, *Enter*, and *Tab*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using BeEF as an attack tool is possible because XSS allows us to execute JavaScript
+    code in the browser. All the commands we send are just snippets of code executing
+    as if they were part of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As expected, there is a BeEF command that we can use to execute any JavaScript
+    we want in the hooked browser. Our custom keylogger is not very advanced but allows
+    us to customize it to fit our needs in the future.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we will do is define a `push_url` variable, which is the C2
+    server URL to which we will submit captured keystrokes. This server component
+    will decode the keylogger information and store it in a text file for review:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will use the `document.addEventListener()` method to fire a handler
+    function whenever a `keydown` event occurs somewhere on the page. This event indicates
+    that the user has pressed down on a key and gives us an opportunity to programmatically
+    inspect and record it. Keys will be appended to a buffer variable, which will
+    be later sent to the `push_url`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When this event does fire, we store the pressed key inside a buffer to be later
+    submitted to the keylogging server. The `if` statement within this `keydown` handler
+    function will wrap special keys with brackets to make it easier for us to read.
+    For example: the keystrokes *Enter*, *Space*, and *Tab* would be recorded as `[Enter]`,
+    `[Space]`, `[Tab]`, respectively.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last bit of code will execute a function every couple of seconds (every
+    2,000 milliseconds) and is responsible for submitting the current buffer to the
+    defined `push_url`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `window.setInterval()` function allows us to specify another function that
+    will be executed periodically, in parallel to the `keydown` handler. As the `keydown`
+    handler fills the buffer, the `setInterval()` function sends it up to the C2 server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The keylogger submission process is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convert the buffer from an array to a string using `.join()`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Encode the result to Base64 using `btoa()`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: URI encode the Base64 value with `encodeURIComponent` and store the result in
+    the data
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a new `Image()` object and set its source to the `push_url` with the
+    encoded data appended to the end
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The neat side effect of creating a new `Image()` object is that no actual image
+    is created on the page, but once a source (`.src`) is defined, the browser will
+    attempt to fetch it over the wire, sending out the encoded buffer via the URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The full keylogger client-side code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: To complete this keylogger, we need the server component to intercept the submission,
+    and decode and store the logged keystrokes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can write a little bit of PHP to do just that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first line is an `if` statement, which checks to see whether any data came
+    in via the session `GET` parameter. If there is data available, the script will
+    decode it and store it in the `$keys` variable to be written to disk in the `keys.log`
+    file using the `fwrite()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can start the built-in PHP server on port `80` to serve the `log.php` file
+    for our JavaScript keylogger to communicate with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All that''s left is to push the JavaScript payload through BeEF to our hooked
+    target using the Raw JavaScript command under the **Misc** node:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The keylogger](graphics/B09238_09_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.14: Executing the custom keylogger on the hooked victim'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the user starts typing, we can see the requests coming into our server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we view the contents of `keys.log`, we will see the captured keystrokes
+    in cleartext using the `tail -f` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our keylogger is effective and should work fairly well on modern browsers. BeEF's
+    built-in event logger has a few other nice features, such as capturing mouse clicks,
+    and copy-and-paste events, as well as traditional keystrokes. Using both in an
+    attack may improve our chances of capturing useful data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Persistence
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: BeEF has very powerful capabilities, but it is only effective as long as the
+    browser is hooked. In an earlier example, we mentioned how the victim navigating
+    away from the page can interrupt our control over their browser. This is the unfortunate
+    reality of XSS attacks. Persistent XSS is more resilient, provided the user visits
+    the infected page often enough, but this is not ideal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'BeEF comes with a few modules to attempt to persist the hook, keeping the victim
+    online longer. An effective option is the Man-In-The-Browser command, available
+    under the **Persistence** node:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Persistence](graphics/B09238_09_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.15: The Man-In-The-Browser command'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are no options to set for this one; we just have to execute and everything
+    is taken care of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **man-in-the-browser** (**MITB**) attack is similar to the more popular
+    **man-in-the-middle** (**MITM**) network layer attack. In an MITM scenario, the
+    victim's machine is tricked into routing packets to a malicious machine, giving
+    the attacker full control of the victim's network traffic. This can result in
+    attacks such as TLS downgrade or stripping, integrity violation, malware injection,
+    and much more. An MITB attack is similar in that web requests are intercepted
+    and proxied by attacker code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'BeEF''s Man-In-The-Browser module, for example, will intercept link clicks
+    that would normally navigate the user away from the hooked page. Instead of allowing
+    the click to complete normally, the module will perform the following steps in
+    the background:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Execute an asynchronous JavaScript request (XHR) to the intended destination
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Replace the existing page's contents with the destination page's contents
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Update the address bar to reflect the clicked link
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Add the "old" page to the browsing history
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can see the MITB attack in action by looking at the command execution history:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Persistence](graphics/B09238_09_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.16: Man-In-The-Browser command results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To the victim, this process is transparent, as the page they have requested
+    was loaded successfully and everything looks normal. The difference is that BeEF
+    never lost control of the hook, since the tab session was not discarded by navigating
+    away. The BeEF hook is still running, giving us persistent control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automatic exploitation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: All these modules are great, but XSS attacks are typically time-sensitive. If
+    we successfully trick the user into executing our BeEF hook, we may not have enough
+    time to click through the user interface and run any modules before they close
+    the page or browse to some other part of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thankfully, BeEF implements an **Autorun Rule Engine** (**ARE**) that does
+    what you might expect: automatically runs modules using a set of rules defined
+    by the operator. Depending on what rules have been enabled, whenever a new browser
+    is infected with the hook payload, the selected modules are automatically executed.
+    The obvious candidates for ARE are the ones that provide persistence and exfiltrate
+    sensitive data, such as cookies or even our custom keylogger.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: More information on ARE can be found at [https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine](https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine).
+  prefs: []
+  type: TYPE_NORMAL
+- en: An ARE rule is a simple JSON file with metadata describing the module that is
+    to be executed, stored in BeEF's `arerules` subdirectory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: BeEF comes with a few sample rules that allow you to execute modules such as
+    Get Cookie or Ping Sweep, but they are not turned on by default. If we wish to
+    execute them as soon as the victim is hooked, we have to place the respective
+    JSON files inside the `arerules/enabled` subdirectory and restart BeEF.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Get Cookie ARE rule looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's some metadata, such as `name` and `author`. The ARE rule can also specify
+    any associated options it may need to execute successfully. We can define an execution
+    order and also add a delay. The rule chaining modes refers to the method used
+    to run the module, but the default sequence should work just fine in most deployments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: More information on chaining modes and writing ARE can be found at [https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine](https://github.com/beefproject/beef/wiki/Autorun-Rule-Engine).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our scenario, we are executing our hook using a reflected XSS attack, which
+    means that as soon as the user clicks away from the page, we may lose them forever.
+    This is where ARE comes in handy. We can automatically execute the Man-In-The-Browser
+    and Get Cookie modules as soon as the victim comes online and hope that we can
+    persist, or at least get the session cookie, before they leave.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Man-In-The-Browser and Get Cookie both have rules already available in BeEF;
+    we just have to enable them by placing a copy of the proper JSON files in the
+    `arerules/enabled` subdirectory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the ARE to load the newly enabled rules, we''d have to restart BeEF if
+    it is already running:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: BeEF will perform an MITB attack and extract the application cookies as soon
+    as the victim visits the infected page. The Man-In-The-Browser module will keep
+    the hook alive if the victim decides to click around the application. The Get
+    Cookie module will hopefully exfiltrate session cookies in case they decide to
+    close the browser altogether.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you may have guessed, we can also automatically run the Raw Javascript module,
+    which will allow us to execute arbitrary JavaScript as soon as a hooked browser
+    comes online. A good candidate for this is our custom keylogger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we have to create a rule that will instruct BeEF to execute the `raw_javascript`
+    module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: We don't want to impose any conditions on running this rule, but we do have
+    to specify a payload for execution. The `raw_javascript` module takes one option,
+    `cmd`, which is the raw JavaScript code to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, because the rule is in JSON format, we will Base64-encode our keylogger
+    code, and pass it to a Base64 decoder, which in turn will be executed by an `eval()`
+    function. We don't have to do this particular step, but to store the keylogger
+    code in the JSON file, we'd have to compress it using a JavaScript minifier and
+    escape any double quotes within the code. This is a bit messy, so we'll take the
+    simpler route.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can quickly encode the keylogger using something like CyberChef (or JavaScript''s
+    `btoa()` function):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Automatic exploitation](graphics/B09238_09_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.17: CyberChef Base64-encoding the custom keylogger code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To run the Base64-encoded keylogger code, we have to pass it to `atob()`, JavaScript's
+    Base64 decoder, before using `eval()` to actually execute the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Raw JavaScript command input will look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, we can add this value to our Raw JavaScript ARE rule JSON file. This
+    particular module expects a `cmd` option to be set, and this is where we put our
+    one-liner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final rule will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Each module will require its own specific options to run properly. BeEF is
+    an open-source software, so we can inspect the code to figure out what these options
+    are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Automatic exploitation](graphics/B09238_09_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.18: BeEF GitHub source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Restarting BeEF will load our new ARE rule alongside the other two canned rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: All new hooked victims will have their cookies exfiltrated, a custom keylogger
+    executed, and persistence enabled via the MITB attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tunneling traffic
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Perhaps the coolest feature in BeEF is the ability to tunnel your traffic through
+    the hooked victim's browser. BeEF will set up a local proxy that will forward
+    web requests through the C2 and back out to the victim.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the client-side, traffic forwarding is done using XHR, and therefore, requests
+    are subject to SOP. This essentially limits us to the hooked domain. While this
+    is not ideal, there are still some practical applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider a scenario where an internal admin interface is vulnerable to an XSS
+    attack. We can't access it directly because it lives in a separate network segment,
+    but we did successfully trick the administrator into executing our hook payload
+    and now we have control over their session in BeEF. We wouldn't be able to read
+    the contents of the administrator's Gmail account, but thanks to JavaScript, we
+    could browse the admin interface just fine. What's more, we'd be authenticated
+    as the victim automatically, thanks to the browser passing along cookies with
+    every request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tunneling traffic is easy; we just right-click on a hooked client and select
+    **Use as Proxy**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Tunneling traffic](graphics/B09238_09_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.19: Using a victim as a proxy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When BeEF starts, it also runs a proxy service on the localhost, which will
+    route traffic through the hooked victim''s browsers if enabled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can see this traffic proxy in action by using `curl` and specifying the
+    default BeEF proxy service (`127.0.0.1:6789`) using the `-x` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Not only were we able to browse the `badguys.local` domain, but we also did
+    it from our C2 server in the cloud. Name resolution and packet routing is not
+    a problem for the attacker, thanks to our malicious code running inside the victim's
+    browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Remember that SOP applies when tunneling traffic as well. We can send requests
+    to arbitrary domains and ports, but we cannot read the contents of the response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we covered lots of information relating to client-side attacks.
+    We looked at the three more common types of XSS: reflected, stored, and DOM, as
+    well as CSRF, and chaining these attacks together. We also covered the SOP and
+    how it affects loading third-party content or attack code onto the page.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chapter showcased the built-in BeEF keylogger and even showed how to create
+    your own. Using social engineering, we were able to trick the user into executing
+    malicious code, giving us reverse shell access to the client's machine. Persistence
+    is a real problem with XSS in particular, but using MITB attacks, we managed to
+    extend our foothold on the client. Finally, we explored automating exploitation
+    with BeEF's ARE and we even tunneled HTTP traffic through a victim's browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The purpose of this chapter was to show that client-side attacks can be practical
+    in a real-world attack. Even though we are not executing native code, XSS and
+    CSRF attacks can be combined to do some real damage to targets. In the next chapter,
+    we will switch gears from attacking users to attacking the server itself, by way
+    of XML.
+  prefs: []
+  type: TYPE_NORMAL

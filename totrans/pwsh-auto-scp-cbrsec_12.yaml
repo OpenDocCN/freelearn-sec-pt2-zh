@@ -1,0 +1,963 @@
+- en: '12'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Exploring the Antimalware Scan Interface (AMSI)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the past, attackers often used scripts or executables to have their malware
+    run on client systems. But antivirus products got better and better over the years,
+    which meant that file-based malware could be more easily identified and removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For malware authors, this was a serious problem that they tried to circumvent,
+    and so they came up with the solution to run their malicious code directly in
+    memory, without touching the hard disk. So, specifically, built-in programs such
+    as PowerShell, VBScript, JavaScript, and other tools are being used to run their
+    malware attacks. Attackers became creative and obfuscated their code so that it’s
+    not obviously identified as malware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft came up with a solution to inspect the code before running it, called
+    the **Antimalware Scan Interface** (**AMSI**). AMSI has developed accordingly
+    and can even protect against the most obfuscated attacks. However, it’s a constant
+    cat-and-mouse game between attackers and defenders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will learn how AMSI works, and how attackers are trying
+    to bypass it. We will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is AMSI and how does it work?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Why AMSI? A practical example
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Bypassing AMSI: PowerShell downgrade attacks, configuration tampering, memory
+    patching, hooking, and Dynamic Link Library hijacking'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Obfuscation and Base64 encoding
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To make the most of this chapter, ensure that you have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell 7.3 and above
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visual Studio Code installed
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Ghidra installed
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Some basic knowledge of assembly code and debuggers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Access to the GitHub repository for this chapter:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is AMSI and how does it work?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: AMSI is an interface that was designed to help with malware defense. Not only
+    PowerShell but also other languages such as JavaScript and VBScript can profit
+    from it. It also gives third-party and self-written applications the option to
+    protect their users from dynamic malware. It was introduced with Windows 10/Windows
+    Server 2016.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Currently, AMSI is supported for the following products:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Office Visual Basic for Applications macros
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: VBScript
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Excel 4.0 (XLM) macros
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows Management Instrumentation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dynamically loaded .NET assemblies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: JScript
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MSHTA/JScript9
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: User Account Control
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows Script Host (**wscript.exe** and **cscript.exe**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Third-party products that support AMSI
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Like other APIs, AMSI provides an interface to the Win32 API and the COM API.
+    AMSI is an open standard so it is not limited to PowerShell only; any developer
+    can develop their application accordingly to support AMSI, and any registered
+    antimalware engine can process the contents provided through AMSI, as depicted
+    in the following figure of the AMSI architecture:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.1 – AMSI architecture](image/B16679_12_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.1 – AMSI architecture
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, I will only write about what happens when AMSI is initiated
+    through PowerShell, but be aware that it works similarly for all other products
+    listed before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When a PowerShell process is created, **amsi.dll** is loaded into its process
+    memory space. Now, whenever the execution of a script is attempted or a command
+    is about to be run, it is first sent through **amsi.dll**. Within **amsi.dll**,
+    the **AmsiScanBuffer()** and **AmsiScanString()** functions are responsible for
+    ensuring that all commands or scripts that are about to be run will be first scanned
+    for malicious content by the locally installed antivirus solution before anything
+    is executed at all:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.2 – AMSI functionality](image/B16679_12_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.2 – AMSI functionality
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amsi.dll** then logs the behavior for the code and checks with the current
+    antivirus whether any signature was created that matches this behavior. By default,
+    Windows Defender is configured, but AMSI also provides an interface for other
+    third-party antimalware programs to interact with.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If a signature matches, the code is blocked from execution. If everything seems
+    to be fine, the code is executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why AMSI? A practical example
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we dive deeper into what exactly AMSI is, let’s first look at the *why*.
+    As I mentioned in the introduction of this chapter, it’s an ongoing battle between
+    attackers and defenders. Attackers try to launch successful attacks, while defenders
+    try to prevent them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the early days, it was quite easy for attackers. Often, they just had to
+    write a script to perform their malicious actions, but soon, defenders reacted
+    to that so that their malicious intentions were detected and blocked. Attackers
+    had to obfuscate their actions to launch successful attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to analyze the content, antimalware vendors can create their own in-process
+    COM server (DLL) that serves as an AMSI provider and register it under the following
+    registry paths:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**HKLM\SOFTWARE\Microsoft\AMSI\Providers**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**HKLM\SOFTWARE\Classes\CLSID**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A vendor can register one or more AMSI provider DLLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When an application (such as PowerShell) submits content to AMSI for scanning,
+    the vendor’s AMSI provider DLL receives and analyzes the content. The provider
+    DLL analyzes the content and returns a decision to the original application with
+    an **AMSI_RESULT** enum value, which indicates whether the code is considered
+    malicious or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the result is **AMSI_RESULT_DETECTED** and no preventative action has been
+    taken, it is up to the submitting application to decide how to handle the identified
+    malicious content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To detect malicious scripts and activities, antimalware solutions usually utilize
+    signatures, which need to be updated frequently to stay ahead of new threats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell scripts are essentially text files, which means that they must be
+    string parsed to identify malicious behavior. When scripts are obfuscated, it
+    becomes even more difficult to detect malicious code. Obfuscation techniques can
+    vary widely and often require an unpacker to examine the inner workings of software
+    to identify any malicious behavior or code to run for each type of obfuscation
+    that could occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While hash smashing, changing variables or parameters, and adding layers of
+    obfuscation are trivial for adversaries, for defenders, it is hard to detect malicious
+    activities by using signatures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other forms of code (such as byte code or intermediate languages), the instructions
+    compile down to a limited set of instructions, making it easier to emulate APIs.
+    With scripts, however, the situation is different, and this makes signature writing
+    even more difficult.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following section, we will look at six examples that will help you understand
+    why and how a solution such as AMSI can help extend the functionality of a regular
+    antimalware engine, and what the challenges in script writing are for defenders
+    that try to stay ahead of malware authors. Don’t take every example as a single
+    standalone example, but rather, read it as a story. I have numbered the examples
+    to make them easier to follow. You can also find the code (as well as the code
+    for the encoding) in this chapter’s GitHub repository: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 1
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s look at a script that should represent malicious code. In this case,
+    it’s harmless, as it only writes **Y0u g0t h4ck3d!** to the command line, as shown
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: A defender could now write a very simple detection signature, looking for the
+    **Write-Host "Y0u g0t h4ck3d!"** string to stop the execution of this script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 2
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Suppose attackers need to come up with a new way to execute their scripts successfully.
+    So, they may start breaking the string into pieces and work with variables, as
+    well as with concatenation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The old signature just searching for the string would not match anymore. In
+    response, defenders would start building a simple language emulation. For example,
+    if it is spotted that a string is concatenated out of multiple substrings, the
+    new algorithm would emulate the concatenation and check it against any malicious
+    patterns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 3
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'At this point, attackers would try to move to something more complicated –
+    for example, by encoding their payload using Base64 and decoding it when running
+    the script, as in the following example. The **"WQAwAHUAIABnADAAdAAgAGgANABjAGsAMwBkACEA"**
+    string represents the Base64 encoded version of our former string, **"Y0u** **g0t
+    h4ck3d!"**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: But most antimalware programs thankfully already have some kind of Base64 decoding
+    emulation implemented, so this example would still be caught by most **antivirus**
+    (**AV**) engines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a result, attackers would try to think of a more difficult way to make detection
+    even harder – for example, using algorithmic obfuscation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 4
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For the following example, I have encoded our **"Y0u g0t h4ck3d!"** attack
+    string with a simple XOR algorithm, resulting in the **"SyJnMnUiZjJ6JnF5IXYz"**
+    encoded string. Using the following function, we convert the string back into
+    the original pattern, using the **XOR** key, **0x12**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, this example is way more advanced than anything that a normal antimalware
+    engine could emulate. So, without any further mechanism (such as AMSI), we won’t
+    be able to detect what this script is doing. Of course, defenders could write
+    signatures to detect obfuscated scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 5
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: But what if the script just looks like a normal and well-behaved script but,
+    in the end, it downloads the malicious content from the web and executes it locally,
+    as in the following example? How would you write a signature for it if you were
+    responsible for writing detections for the following example?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If this code is run, you still get the output **"Y0u g0t h4ck3d!"**, which
+    we initiated through the script that is uploaded on GitHub: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we are at a point where it is almost impossible to write a signature to
+    detect this malicious behavior without generating too many false positives. False
+    positives just cause too much work for analysts, and if too many false positives
+    occur, real threats might be missed. So, this is a problem. But this is exactly
+    where AMSI comes in to help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 6
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now, with AMSI enabled, let’s look at the behavior when we repeat the last
+    example, but this time, with a file that would trigger AMSI: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt).
+    Don’t worry, for this example, we are also not using real malicious code – we
+    are using an example that generates the AMSI test sample string, **''AMSI Test**
+    **Sample: 7e72c3ce-861b-4339-8740-0ac1484c1386''**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.3 – The file that generates an AMSI test sample string](image/B16679_12_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.3 – The file that generates an AMSI test sample string
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we now run a malicious command from the command line or from a script, you
+    see that AMSI interferes and blocks the command before it gets executed: **Invoke-Expression
+    (****Invoke-WebRequest** https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt**)**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.4 – AMSI in action](image/B16679_12_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.4 – AMSI in action
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'AMSI blocks the execution and, depending on which antimalware engine you are
+    using, you can see that an event was generated. If you are using the default Defender
+    engine, you can find all AMSI-related event logs in the **Defender/Operational**
+    log under the event ID **1116**, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.5 – AMSI-related events show up in the Defender/Operational event
+    log if the default Defender engine is used](image/B16679_12_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.5 – AMSI-related events show up in the Defender/Operational event
+    log if the default Defender engine is used
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have understood how AMSI works, why it is needed, and how it can
+    help, let’s look deeper into how adversaries are trying to bypass AMSI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bypassing AMSI
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: AMSI is really helpful for defenders when it comes to preventing malicious code
+    from getting executed. But attackers would not be attackers if they did not try
+    to find a way to bypass AMSI. In this section, we will look at some common techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most bypasses I have come across are somehow trying to tamper with **amsi.dll**.
+    Most of the time, the goal is to either manipulate the result so that malicious
+    code appears clean by replacing **amsi.dll** with a custom one or by avoiding
+    **amsi.dll** completely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Often, when there’s a new bypass found that people blog about, it gets immediately
+    fixed and detected shortly after it is released.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Joseph Bialek originally wrote the **Invoke-Mimikatz.ps1** script to make all
+    Mimikatz functions available via PowerShell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Invoke-Mimikatz** is a part of the **nishang** module and can be downloaded
+    from GitHub: [https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1](https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To demonstrate the examples here, I have created a little module that loads
+    the **Invoke-Mimikatz.ps1** script. Just copy and paste the raw code if you want
+    to reproduce it in your demo environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also find the little code snippet in this chapter’s GitHub repository:
+    [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Disclaimer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please make sure that this code is only run in your demo environment and not
+    on your production machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’m using Windows PowerShell for these examples instead of PowerShell Core as
+    this would usually be the attacker’s choice. Running Mimikatz from PowerShell
+    Core would also cause errors while using the current **Invoke-Mimikatz.ps1** version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the following demos, **Windows Defender real-time protection** was temporarily
+    disabled to run the code and load Mimikatz into memory. If everything worked,
+    you will now see the typical Mimikatz output while running **Invoke-Mimikatz**,
+    as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.6 – Running Mimikatz from memory](image/B16679_12_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.6 – Running Mimikatz from memory
+  prefs: []
+  type: TYPE_NORMAL
+- en: After Mimikatz was loaded, Windows Defender real-time protection was enabled
+    again. This way, it is easier to demonstrate the impact of AMSI in the following
+    examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, if real-time protection was enabled successfully, you will see the following
+    output while running Mimikatz:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.7 – Mimikatz is blocked by AMSI](image/B16679_12_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.7 – Mimikatz is blocked by AMSI
+  prefs: []
+  type: TYPE_NORMAL
+- en: This output simply means that AMSI is in place to protect this machine and has
+    blocked the **Invoke-Mimikatz** command from being executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Okay, now we are ready to start with our demo examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preventing files from being detected or disabling AMSI temporarily
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Most attack attempts try to prevent the malware from being scanned by tampering
+    with the AMSI library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell downgrade attack
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One of the easiest ways to avoid AMSI is to downgrade the PowerShell version
+    to a former version that did not support AMSI. You can find a detailed explanation
+    of a downgrading attack in [*Chapter 4*](B16679_04_Final_PD.xhtml#_idTextAnchor090),
+    *Detection – Auditing and Monitoring*, so it won’t be described here further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When trying to run **Invoke-Mimikatz** from a normal PowerShell console, AMSI
+    kicks in and blocks the execution of the command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But if PowerShell version 2 is available on a machine, an attacker would be
+    able to run the following commands to avoid AMSI via a downgrade attack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.8 – Invoke-Mimikatz can be executed without AMSI interfering](image/B16679_12_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.8 – Invoke-Mimikatz can be executed without AMSI interfering
+  prefs: []
+  type: TYPE_NORMAL
+- en: But if the system is hardened appropriately, downgrade attacks should not be
+    possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuration tampering
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'One very popular example of changing the AMSI configuration is the bypass from
+    Matt Graeber, which he tweeted about in 2016:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.9 – Matt Graeber’s AMSI bypass in 2016](image/B16679_12_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.9 – Matt Graeber’s AMSI bypass in 2016
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Matt managed to disable AMSI by just using a one-liner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This bypass would just set the **amsiInitFailed** Boolean to **$true**. This
+    simulated the AMSI initialization failing, so that no scans could be performed
+    and so that future AMSI scans would be disabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the meantime, the industry was able to write detections to block this particular
+    bypass, but it is still a great example to show one method of disabling and circumventing
+    AMSI. Remember, if those detections were not in place, the bypass itself would
+    still pass through AMSI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output shows the one-liner code blocked by AMSI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.10 – AMSI blocks the one-liner](image/B16679_12_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.10 – AMSI blocks the one-liner
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, this method can still work if the command is only obfuscated enough.
+    A lot of substrings used here are also considered malicious and therefore detected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A lot of signatures were added for certain trigger words, such as **amsiInitFailed**.
+    Other researchers have also attempted to find a bypass, inspired by Matt Graeber’s
+    one-liner. One of those bypasses was discovered by Adam Chester in 2018:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: As the former bypass to set **amsiInitFailed** to **$true** is already very
+    well known by attackers and defenders, most attempts to interact with this flag
+    are highly suspicious and, therefore, will be detected. But if we can enforce
+    an error without querying suspicious flags, it would basically have the same effect.
+    And this is exactly what Adam’s bypass is doing here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: He forces an error by tampering with **amsiContext** and **amsiSession**. AMSI
+    initialization will fail and future scans within this session won’t happen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can read how Adam discovered this bypass and other interesting approaches
+    in this blog article: [https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/](https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, in the meantime, there were new signatures added for this particular
+    bypass, so it does not work any longer without obfuscation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DLL hijacking
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another method to avoid code being scanned by AMSI is **DLL hijacking**. Within
+    this attack, **amsi.dll**is basically replaced with another modified version that
+    does not interfere with the (malicious) code that is attempted to be executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s worth noting that if attackers are able to remove or replace DLLs on a
+    system and execute arbitrary code, running PowerShell is probably one of your
+    least concerns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In 2016, Cornelis de Plaa discovered an AMSI bypass using DLL hijacking. He
+    created an empty **amsi.dll** file in a folder and copied **powershell.exe** in
+    the same directory. Once the copied PowerShell was started, the original **amsi.dll**
+    file was not loaded, but the **amsi.dll** fake file was loaded into memory, which
+    did not, of course, check the executed code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this bug was reported to Microsoft MSRC on March 28, 2016, they implemented
+    a fix, which caused PowerShell not to work properly anymore once executed with
+    an empty **amsi.dll** file loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.11 – Broken PowerShell pipeline after loading powershell.exe with
+    an empty amsi.dll](image/B16679_12_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.11 – Broken PowerShell pipeline after loading powershell.exe with
+    an empty amsi.dll
+  prefs: []
+  type: TYPE_NORMAL
+- en: In June 2020, Philippe Vogler found a way to revive this old AMSI bypass. He
+    created an **amsi.dll** file that could at least call all functions a normal **amsi.dll**
+    file would contain, but those functions were just plain dummy functions, so no
+    check would be performed. With this file, he managed to bypass AMSI using DLL
+    hijacking once more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can find more information on his blog: [https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/](https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also make sure to check out Cornelis de Plaa’s blog to find out how he discovered
+    the original AMSI DLL hijacking bypass: [http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html](http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Memory patching
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Memory patching is a technique used by red teamers to modify a program in memory
+    without changing its executables or file stamps. When it comes to memory patching
+    to avoid AMSI, usually, attackers try to modify memory calls, so that **amsi.dll**
+    is not executed correctly and that the check routine would be skipped.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s have a look first at what it looks like from a memory perspective. To
+    do so, let’s open **amsi.dll** in the debug tool of your choice. In this example,
+    I will use the open source tool, Ghidra.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a first step, import **amsi.dll** into Ghidra, then open it within a project.
+    Usually, **amsi.dll** is located under **C:\Windows\System32\amsi.dll**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see all functions that are available within **amsi.dll** – for our experiment.
+    The **AmsiScanBuffer** and **AmsiScanString** functions are of special interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.12 – Functions within amsi.dll](image/B16679_12_012.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.12 – Functions within amsi.dll
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ghidra offers an amazing function to decompile code. So, if we first look at
+    the **AmsiScanString** function, we can quickly spot that this function also calls
+    the **AmsiScanBuffer** function. So, **AmsiScanBuffer** might be the most attractive
+    target as it seems as if changing the memory for this function covers both use
+    cases: **AmsiScanBuffer** and **AmsiScanString**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.13 – Decompiled AmsiScanString function](image/B16679_12_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.13 – Decompiled AmsiScanString function
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what we basically need to do is first find out the start address of the
+    **AmsiScanBuffer** function within the currently loaded **amsi.dll** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we know this address, we can try to manipulate the memory, so that it does
+    not jump into the actual **AmsiScanBuffer** function but skips it. When we operate
+    on the memory/assembly level, there is one thing that we can use to achieve this.
+    The **RET** instruction indicates the end of a subroutine and returns to the code
+    that called it initially. So, if we overwrite the first bytes of the **AmsiScanBuffer**
+    subroutine with the **RET** instruction, the function will be terminated without
+    scanning anything.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have achieved this, we can execute all PowerShell code that we like
+    in the current session without having it checked. But, similarly, if an attacker
+    is able to edit arbitrary memory in processes in your system, you likely have
+    bigger problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s see how we can achieve this with PowerShell. The **kernel32.dll** file
+    provides functions to access the memory using PowerShell – especially the **GetModuleHandle**,
+    **GetProcAddress**, and **VirtualProtect** functions. So, let’s import those functions
+    into our current PowerShell session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the **GetModuleHandle** function from **Kernel32**, we’ll retrieve the
+    handle of the **amsi.dll** file that was loaded into the current process. A handle
+    is the base address of a module, so with this step, we’ll find out where the module
+    starts in the memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Many AV products will detect scripts that attempt to manipulate the **AmsiScanBuffer**
+    function. Therefore, to avoid detection, we will need to split the function name
+    into two commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once this is done, we can retrieve the process address of **AmsiScanBuffer**
+    so that we can attempt to overwrite it later:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a next step, we need to unprotect the memory region that we want to overwrite:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we overwrite the first byte of the **AmsiScanBuffer** function with
+    **RET**, which indicates the end of a subroutine. In assembly, **0xC3** equals
+    **RET**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now it should be possible to run any command you like without having it checked
+    by AMSI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **''AMSI Test Sample: 7e72c3ce-861b-4339-8740-0ac1484c1386''** string can
+    also be used for AMSI testing. It is like the **EICAR** file, which you can use
+    to test the functionality of your AV, but for AMSI instead. If AMSI is enabled,
+    the AMSI test sample will trigger an error.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows how an error is first triggered when using the
+    AMSI test sample, but after the AMSI bypass is executed, the AMSI test sample
+    runs without an error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.14 – Bypassing AMSI using memory patching](image/B16679_12_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.14 – Bypassing AMSI using memory patching
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since this bypass was only developed for this book to demonstrate how adversaries
+    can come up with new bypass ideas, this bypass was reported to Microsoft prior
+    to releasing this book. By the time this book is released, this bypass should
+    not work any longer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is, of course, not the only way that memory patching can be done. There
+    are various other examples out there in the field. But this is one example that
+    should help you to understand better how this bypass works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There’s a really great overview of AMSI bypasses that were spotted in the wild,
+    created by **S3cur3Th1sSh1t**: [https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell](https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most of them try to tamper with AMSI to temporarily disable or break the functionality.
+    But all of them are already broadly known and will be detected if not further
+    obfuscated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obfuscation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Obfuscation is another way to bypass AV detections. There are many automatic
+    obfuscation tools in the wild – for example, **Invoke-Obfuscation**, which was
+    written by Daniel Bohannon: [https://github.com/danielbohannon/Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But automatic tools like this are very well known and scripts obfuscated with
+    it are very likely to be detected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are also tools such as **AMSI fail**, which generates obfuscated PowerShell
+    snippets to temporarily disable AMSI in the current session: [https://amsi.fail/](https://amsi.fail/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The snippets generated by **AMSI fail** are randomly selected from a pool of
+    methods and are obfuscated at runtime. That means that generated output should
+    not yet be known by antimalware products, but in reality, many of those generated
+    bypasses were detected by AMSI, as antimalware vendors are constantly improving
+    their algorithms and signatures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, as soon as a certain payload is used within a campaign, it does not usually
+    take long until its signatures are detected. But it could be one approach for
+    your next red team engagement to avoid AMSI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the end, depending on your maturity level, it might make sense to understand
+    how signatures can be bypassed and write manual obfuscation methods. Explaining
+    how to do that in a proper way would exceed the content of this book. But there
+    is a great blog post by **s3cur3th1ssh1t** that gives you an introduction to how
+    to bypass AMSI manually: [https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Base64 encoding
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Base64 is a method to encode binary data into ASCII strings. So, if you remember
+    the bypass from Matt Graeber that we discussed earlier in the configuration, the
+    actual bypass is blocked by AMSI nowadays. But if the strings (**AmsiUtils** and
+    **amsiInitFailed**) used in this bypass are encoded with Base64 and decoded while
+    running the command, the bypass still works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s encode the two strings with Base64:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](image/B16679_12_015.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, we replace the strings with the commands to decode them and run the commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](image/B16679_12_016.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Often, encoding and decoding strings can work to avoid bypassing AMSI and other
+    detections. But chances are that AV programs can detect it nevertheless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: AMSI is a great tool that helps you to secure your environment. It already protects
+    you against most malicious code and since malware vendors constantly improve their
+    solutions, it will help you against most known (and probably even some unknown)
+    threats as long as you keep your antimalware software up to date.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But similar to other solutions, it’s of course not the solution to everything
+    and there are ways to bypass it. However, since antimalware vendors are always
+    looking out for new discoveries to improve their products, there will be a detection
+    shortly after a bypass is discovered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AMSI is one part of the solution but not the entire picture, and to keep your
+    environment as secure as possible, there are many other ways that you need to
+    keep in mind. In [*Chapter 13*](B16679_13_Final_PD.xhtml#_idTextAnchor341), *What
+    Else? – Further Mitigations and Resources*, we will look at what else you can
+    do to secure your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you want to explore some of the topics that were mentioned in this chapter,
+    check out these resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'IAntimalwareProvider interface (**amsi.h**): [https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider](https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'AMSI for the developer audience, and sample code: [https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience](https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Better know a data source: Antimalware Scan Interface: [https://redcanary.com/blog/amsi/](https://redcanary.com/blog/amsi/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Fileless threats: [https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats](https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bypass AMSI by manual modification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Part 1: [https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Part 2: [https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/](https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Revoke-Obfuscation: PowerShell Obfuscation Detection Using Science: [https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf](https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Tampering with Windows Event Tracing: Background, Offense, and Defense (also
+    with an AMSI event tracing context): [https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63](https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Antimalware Scan Interface (AMSI) – Microsoft documentation: [https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal](https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Hunting for AMSI bypasses: [https://blog.f-secure.com/hunting-for-amsi-bypasses/](https://blog.f-secure.com/hunting-for-amsi-bypasses/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Antimalware Scan Interface Detection Optics Analysis Methodology: Identification
+    and Analysis of AMSI for WMI: [https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383](https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Tools for bypassing AMSI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Seatbelt: [https://github.com/GhostPack/Seatbelt](https://github.com/GhostPack/Seatbelt)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'AMSI fail: [https://amsi.fail/](https://amsi.fail/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'AMSITrigger: [https://github.com/RythmStick/AMSITrigger](https://github.com/RythmStick/AMSITrigger)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Memory patching AMSI bypass:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/rasta-mouse/AmsiScanBufferBypass](https://github.com/rasta-mouse/AmsiScanBufferBypass)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://rastamouse.me/memory-patching-amsi-bypass/](https://rastamouse.me/memory-patching-amsi-bypass/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also find all links mentioned in this chapter in the GitHub repository
+    for [*Chapter 12*](B16679_12_Final_PD.xhtml#_idTextAnchor324) – no need to manually
+    type in every link: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md)'
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,948 @@
+- en: Chapter 13. Breaking Containers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will look at attacking application containers. Docker is
+    by far the most popular container management system and is more likely to be deployed
+    by enterprises than other such systems. We will examine how misconfigurations,
+    assumptions, and insecure deployments can lead to full compromise of not only
+    the target, but adjacent applications as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"A Docker container image is a lightweight, standalone, executable package
+    of software that includes everything needed to run an application: code, runtime,
+    system tools, system libraries and settings. [...] Available for both Linux and
+    Windows-based applications, containerized software will always run the same, regardless
+    of the infrastructure. Containers isolate software from its environment and ensure
+    that it works uniformly despite differences for instance between development and
+    staging."'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '- Docker'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Without context, the preceding quote could be describing **virtual machines**
+    (**VMs**). After all, we can package applications inside a VM and deploy them
+    on any host without fear of conflict. There are, however, some fundamental differences
+    between VMs and containers. What is of interest to the attacker is the isolation
+    or lack thereof.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Describe Docker and Linux containers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Show how Docker applications differ from traditional applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Abuse Docker to compromise the target application and eventually the host
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The following figure illustrates how containers can run full application stacks
+    adjacent to each other without conflict. A notable difference between this and
+    the traditional VM is the kernel component. Containers are possible because of
+    the ability to isolate processes using **control groups** (**cgroups**) and **namespaces**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Containers have been described as **chroot** on steroids. Chroot is the Unix
+    application that allows administrators to effectively change what a running application
+    "thinks" the root of the filesystem is. The chroot directory is made to resemble
+    the actual root of the filesystem, providing the application with any file paths
+    that it may need to operate properly. The application is confined (chrooted) to
+    this arbitrary subdirectory, which it perceives as the root filesystem. In the
+    event the application breaks, it cannot corrupt shared system files or libraries,
+    since it only has access to copies of the original.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Breaking Containers](graphics/B09238_13_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.1: Containers running full application stacks (source: Docker)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When an application is isolated using a container, it should not be able to
+    see or interact with other processes running on the same host. It does, however,
+    share kernel resources with other containers on the same machine. This is important
+    to remember, as exploiting a kernel vulnerability in the container affects the
+    host and adjacent applications as well. Exploiting the kernel inside a VM generally
+    does not compromise other VMs running on the same hardware. To attack other VMs,
+    you would need very expensive and very rare virtual environment host (hypervisor)
+    escape exploits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, you can see the difference between Docker containers
+    and traditional hypervisors (VM software), such as VMware, Hyper-V, or VirtualBox:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Breaking Containers](graphics/B09238_13_02.03_merged.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.2: The difference between Docker containers and traditional hypervisors
+    (source: Docker)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Docker daemon runs on the host operating system and abstracts the application layer,
+    while hypervisors abstract the hardware layer. So, why deploy containers when
+    they don't completely isolate applications? The simple answer is cost. Containers
+    are lightweight, easy to build and deploy, and provide enough isolation that they
+    remove application layer conflicts. This solves the problem of "it works in my
+    environment," which so many developers struggle with today.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An application runs exactly the same on the developer's machine as it does in
+    production or on a completely different Linux distribution. You can even run containers
+    packaged on Linux on the latest versions of Windows. The portability and the agility
+    that containers and Docker provide is hard to argue against. While VMs can accomplish
+    the same thing, in order for an application to run successfully on the VM, it
+    needs a full operating system. The disk space and CPU requirements, and overall
+    performance costs, can add up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned, Docker is not the only container technology, but it is by far
+    the most popular. Docker is essentially an easy way to manage cgroups and namespaces.
+    Cgroups are a Linux kernel feature and provide isolation for computer resources,
+    such as CPU, network, and disk input/output operations. Docker also provides the
+    centralized Docker Hub, which the community can use to upload their own container
+    images and share them with the world.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Docker model implements a client server architecture, which essentially
+    translates into the Docker daemon orchestrating containers on the host, and the client controlling
+    the daemon through an API that the daemon exposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vulnerable Docker scenario
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As powerful as Docker and container technology is, it can sometimes introduce
+    complexity into the application lifecycle and that does not typically bode well
+    for security. The ability to quickly deploy, test, and develop applications at
+    scale certainly has its benefits but can easily let security vulnerabilities slip
+    through the cracks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Software is only as secure as its configuration. If an application is unpatched
+    or not properly locked down, it increases the attack surface and the likelihood
+    of compromise significantly. Docker is no different and the default configuration
+    is usually not enough. We're here to exploit these configuration issues and deployment
+    mistakes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compromising an application running in a container is one thing, but escalating
+    privilege to the host can be the icing on the cake. To illustrate the impact of
+    poorly configured and insecurely deployed Docker containers, we will use NotSoSecure's
+    **Vulnerable Docker VM**. This is a well-put-together VM, which showcases some
+    critical, yet common, issues with Docker deployment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The VM package is available for download on NotSoSecure''s site: [https://www.notsosecure.com/vulnerable-docker-vm/](https://www.notsosecure.com/vulnerable-docker-vm/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the VM is up and running, the console screen will display its DHCP-issued
+    IP address. For the sake of clarity, we will use `vulndocker.internal` as the
+    domain pointing to the Docker instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Vulnerable Docker scenario](graphics/B09238_13_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.3: Vulnerable Docker VM login prompt'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The application is running inside a container provided by the Docker host `vulndocker.internal`
+    on port `8000`. In a real-world scenario, we'd see the application exposed on
+    common ports, such as `80` or `443`. Typically, an NGINX (or similar) will proxy
+    HTTP traffic between the contained application and the attacker, hiding some of
+    the other ports that the Docker host would normally have open. An attacker would
+    have to focus on application vulnerabilities in order to gain access to the Docker
+    host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Foothold
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Interacting with the web application provided by the Docker VM, we notice it
+    is running a WordPress instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Foothold](graphics/B09238_13_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.4: WordPress application served by the VM'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next step in our attack will be running the `wpscan` tool and looking for
+    any low-hanging fruit, and gathering as much information about the instance as
+    possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `wpscan` tool is available on Kali and almost any other penetration-testing-focused
+    distribution. The latest version can be pulled from [https://github.com/wpscanteam/wpscan](https://github.com/wpscanteam/wpscan).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can start our attack by issuing a `wpscan` command in the attack machine
+    terminal. By default, passive detection will be enabled to look for available
+    plugins, as well as various other rudimentary checks. We can point the scanner
+    to our application using the `--url` switch, passing the full URL, including the
+    port `8000`, as the value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The scan results for this instance are pretty dry. The **Full Path Disclosure**
+    (**FPD**) vulnerability may come in handy if we have to blindly drop a shell on
+    disk through a MySQL instance (as we've done in previous chapters), or if we find
+    a local file inclusion vulnerability. The **XML-RPC** interface appears to be
+    available, which may come in handy a little later. For now, we will make a note
+    of these findings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are seemingly endless plugins for WordPress and most of the WordPress-related
+    breaches come from outdated and vulnerable plugins. In our case, however, this
+    simple blog does not use any visible plugins. The default `wpscan` plugin enumeration
+    is passive; if a plugin is installed but not in use, it may not be detected. There
+    is an option to actively test for the existence of plugins using a predefined
+    database of known plugins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin an active scan of all known WordPress plugins, we can use the `--enumerate`
+    switch, specifying the `p` value when running `wpscan`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This scan will run for a few minutes but in this scenario, it does not return
+    anything interesting. `wpscan` can also use some effective information disclosure
+    techniques in WordPress, which can reveal some of the post authors and their respective
+    login usernames. Enumerating users will be the next activity and hopefully we
+    can attack the admin account, and move up to shell access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin a username enumeration, we can use the `--enumerate` switch, this
+    time with the `u` value specified:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The user enumeration returned one value: `bob`. With the ID of `1`, we can
+    safely assume this is the administrative account. Bob will be the focus of our
+    brute-force attack and since we''ve had success with the `10-million-password-list-`
+    wordlists before, we will try them here as well.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `wpscan` tool provides a login brute-forcing option through the `--passwords`
+    and `--usernames` parameters. Not to be outdone by other tools, Metasploit also
+    provides a brute-forcer for WordPress logins via the XML-RPC interface. For bigger
+    engagements, it may be worthwhile to use this module instead, as the Metasploits
+    database could come in handy for organizing findings and launching subsequent
+    attacks quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For our purposes, the brute-forcer of `wpscan` is sufficient and we can let
+    it fly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the same parameters for the Metasploit `auxiliary/scanner/http/wordpress_xmlrpc_login`
+    module, we produce the same results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can start the Metasploit console using the `msfconsole` command in the Linux terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we''ve done in previous chapters, we can load the `wordpress_xmlrpc_login`
+    module with the `use` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similar to the MySQL login scanning module from earlier chapters, this particular
+    module can be configured by specifying the following options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Foothold](graphics/B09238_13_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.5: Metasploit module options'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this particular brute-force attack, we will target the discovered user
+    `bob` with our selected dictionary. We will also increase the `THREADS` to `10`
+    and make sure the `RHOSTS` and `RPORT` reflect the target application. To set
+    each option, we will use the (you guessed it) `set` command as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the module configured, we can launch the brute-force attack using the
+    Metasploit `run` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: While it is more steps to execute the Metasploit module, as opposed to just
+    running `wpscan`, the value comes, once again, from Metasploit's ability to organize
+    the data gathered during an attack. If this application is part of a larger engagement
+    and the discovered credentials can be used in subsequent attacks, the Metasploit
+    database is invaluable. With these credentials in hand, we have full access to
+    the WordPress application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Metasploit also provides the `exploit/unix/webapp/wp_admin_shell_upload` module,
+    which will create a WordPress plugin that will connect back to the attacker using
+    the `php/meterpreter/reverse_tcp` payload on port 4444 by default. There are other
+    payload options, but the end result is essentially the same. There is one issue
+    with the Metasploit module, however: noise. A failed or interrupted exploit attempt
+    will leave behind incriminating artifacts. A wandering administrator would quickly
+    notice these and raise the alarm. Can you spot the malicious plugin? Of course,
+    you can.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the installed WordPress plugins, including the leftover
+    MSF payload:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Foothold](graphics/B09238_13_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.6: WordPress plugins'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are trying to stay under the radar and avoid detection, we can opt for
+    a more manual approach. Since we have full control over the CMS, we can create
+    a custom plugin and upload it, just as Metasploit has done, or better yet, we
+    can backdoor existing ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To keep things interesting, we will go the backdoor route and leverage Weevely
+    again, since it provides a safe and hard-to-detect shell. We will execute the
+    `weevely generate` command and inspect the contents of the newly created `shell.php`
+    file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: For this scenario, we won't be uploading the PHP shell to disk and accessing
+    it directly. Instead, we will modify an existing file and inject the contents
+    somewhere inside. There are several options available to us, but we will go with
+    the Hello Dolly plugin, which ships with WordPress. The WordPress admin panel
+    provides a **Plugins** > **Editor** function, which allows the modification of
+    plugin PHP code. Attackers love applications that have this feature, as it makes
+    everyone's life much easier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our target is the `hello.php` file from the Hello Dolly plugin. The majority
+    of its contents will be replaced by the generated `weevely shell.php` file, as
+    shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Foothold](graphics/B09238_13_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.7: Replacing the contents of the hello.php file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Remember our ROE. If you are modifying application files, take extra care not
+    to cause extended outages in production environments. Always make backups and
+    revert changes as soon as the engagement ends, or there is a noticeable impact
+    to legitimate users of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's probably a good idea to leave the header intact, in case any passing administrators
+    glance at the plugin. We can also leave most of the file intact, as long as it
+    doesn't produce any unwanted error messages. PHP warnings and parse errors will
+    interfere with Weevely and the backdoor will not work. We've seen that the `wpscan`
+    results suggest that this application does not suppress error messages. For the
+    sake of stealth, we have to remember this going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the preceding code block, we have closed the `<?php` tag with `?>` before
+    pasting in the Weevely shell contents. Once the file is updated successfully,
+    the Weevely shell can be accessed via the URL, `http://vulndocker.internal:8000/wp-content/plugins/hello.php`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have shell access to the application server, we can check to see
+    if this is indeed a container by inspecting the `/proc/1/cgroup` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As another way to confirm that the application is running inside a container,
+    we can look at the process list. In typical Linux environments, **process ID**
+    (**PID**) `1` belongs to the `init`, `systemd`, or a similar daemon. Since containers
+    are minimal environments, the first process listed is the daemon responsible for
+    providing access to the application. In the case of web applications, `apache2`,
+    `httpd`, `nginx`, or `nodejs` binaries are commonly assigned PID `1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Situational awareness
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have access to the shell of the Docker container, we should look
+    around and see what else we can find. As we've mentioned before, Docker containers
+    are not VMs. They contain just enough binaries for the application to function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we have shell access on the container, we are constrained to the environment
+    it provides. If the application doesn't rely on `ifconfig`, for example, it will
+    likely not be packaged with the container and therefore would be unavailable to
+    us now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can confirm that our environment is somewhat limited by calling:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We do, however, have access to `curl`, which we can use in place of `wget`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the worst-case scenario, we could also upload the binaries through Weevely's
+    `:file_upload` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To move around the container and its network, we do need access to binaries,
+    such as `nmap` and `ncat`, and thankfully, these are available in a neatly organized
+    GitHub repository. User andrew-d maintains the **static-binaries** repository
+    over on [https://github.com/andrew-d/static-binaries/](https://github.com/andrew-d/static-binaries/):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Situational awareness](graphics/B09238_13_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.8: We''re interested in the binaries/linux/x86_64 folder specifically'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the container does not have the `nmap` binary available, we can download
+    it with `curl` and make it executable with `chmod`. We''ll use `/tmp/sess_[random]`
+    as the filename template, to try and blend in as dummy session files, in case
+    any administrator is glancing through the system temp folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also upload `ifconfig` from the attacker machine using Weevely''s `:file_upload`
+    command, since the container does not have this binary either. We have a local
+    copy of `ifconfig` that will work just fine, which we will upload to the target
+    system''s `/tmp` folder under a dummy name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Just as with the `nmap`, we have to make the file an executable using `chmod`
+    and the `+x` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have some tools, we can get our bearings by running the recently
+    uploaded `ifconfig` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Recall that a Docker container employs its own internal network, separate from
+    the host's network. Unless otherwise specified, by default, neighboring applications
+    housed in other containers will join the same network. In this case, the `172.18.0.0/16`
+    network is reachable through the `eth0` interface. This could provide a path to
+    other applications that may be in scope for our engagement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have an idea of what to look at, we can call up the `nmap` binary
+    (`/tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu`) to do a quick service scan on the container
+    network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `172.18.0.1` IP appears to be the Docker host and the SSH service is protected.
+    The MySQL service on `172.18.0.3` also looks interesting, but it may not be easily
+    exploitable. This is likely the database used by the WordPress application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could go back and grab the credentials from `wp-config.php` and attempt to
+    dump the data, but we may be limited in what we can do on the system with SQL
+    access alone. If our goal is to break out of the container and gain access to
+    the host, we may have to try a different attack path. It doesn't hurt to save
+    those credentials until the end of the test. We may need to brute-force another
+    set of credentials and password reuse is common.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `content_ssh_1` container also stands out, but before we do anything else,
+    let's upgrade our Weevely shell to a more robust Meterpreter session. Meterpreter
+    also mimics the functionality of many Linux binaries that may not be available,
+    making our job a little easier. Meterpreter is more a piece of malware that will
+    allow us to easily pivot around the Docker host and its containers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pivoting is the technique used to tunnel traffic through an already compromised
+    host to reach an otherwise unreachable target. Since we've compromised the container
+    hosting the blog platform, we can use it as a pivot point to attack other adjacent
+    containers or even the host itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the attacker machine in the Linux terminal, we can use **MSFvenom** to generate
+    a simple reverse payload, which will connect back to our attack machine `192.168.1.193`
+    on port `443`. MSFvenom is an application provided by MSF to generate portable
+    malware using any of the available payloads. Traditionally, after successfully
+    exploiting a system using one of the Metasploit modules, the first stage is executed
+    on the target system. Since we did not use Metasploit for initial shell access,
+    and we wish to spawn a Meterpreter session, we can generate a standalone Meterpreter
+    reverse TCP payload for manual execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `msfvenom` command allows us to specify the desired payload (`-p`), in
+    this case `linux/x64/meterpreter/reverse_tcp`; the IP address of our attacker
+    machine, `192.168.1.193`; the port on which the malware will connect back to us,
+    `443`; and the format in which to save the resulting executable (`-f`). In this
+    case, we will use the ELF binary format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This malware will be a 64-bit Linux Meterpreter `reverse_tcp` payload, which
+    connects back to our external IP. Port `443` will increase the likelihood of success
+    if the Docker host is sitting behind an aggressive firewall.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we execute the standalone freshly generated `malware /root/tools/nix64_rev443`,
+    we have to setup a handler in Metasploit that will handle the incoming connection
+    from the compromised host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back in the Metasploit console, we have to load the `exploit/multi/handler`
+    module and configure it with the same values we gave `msfvenom`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will have to set the `PAYLOAD` variable to a value that matches our malware''s:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `LHOST` and `LPORT` should also reflect what the malware was configured
+    with, to ensure it is listening on the appropriate IP address and port:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we can `run` the handler module to spawn a listener and wait for incoming
+    Meterpreter sessions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once that''s done, we can upload and execute the reverse shell `nix64_rev443`
+    onto the container. We can use Weevely to help us with this as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Weevely console, we can use the `:file_upload` command once again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the malware safely in the target''s temp folder, we have to make it an
+    executable using `chmod`, and finally, just call it directly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The Metasploit handler module should have spawned a new Meterpreter session.
+    We can confirm the reverse Meterpreter shell is functional by issuing a `sysinfo`
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: As mentioned previously, pivoting is a technique that allows us to proxy traffic
+    through a compromised host, and attack the internal network and beyond. Metasploit
+    provides routing functionality, which we can use to tunnel TCP traffic from our
+    attacker machine through the Meterpreter session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To accomplish this, we will have to send the Meterpreter session to the background.
+    This won''t kill the connection and we will be able to configure Metasploit itself
+    to properly route traffic through the compromised system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the Meterpreter session patiently waiting in the background, we can add
+    a new Metasploit route using a familiar `route add` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: While the command looks similar to something we'd enter into a Linux prompt,
+    this is not a typical network route. It exists only within Metasploit itself.
+    If we were to launch an exploit from within `msfconsole` and aim it at say `172.18.0.1`,
+    the traffic would be routed through the Meterpreter session and the exploit would
+    succeed. Outside of Metasploit, however, a tool such as `wpscan` would fail to
+    find the target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get around this limitation, we can set up a SOCKS4 proxy server using the
+    `auxiliary/server/socks4a` module. **SOCKS** is a protocol that defines a standard
+    way to route network traffic through a proxy server. Metasploit supports running
+    SOCKS (version 4) server and will handle incoming traffic just as any proxy server
+    would, with a very important distinction. The Metasploit proxy, since it resides
+    inside the MSF environment, will adhere to the MSF routing table, which we've
+    recently modified. Any traffic we send to it will be handled according to the
+    routes defined within. This means that we can request that the proxy forward our
+    traffic to `172.168.0.0/16` and Metasploit will be smart enough to send that traffic
+    through the Meterpreter session in the background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s first load the `auxiliary/server/socks4a` module with the familiar `use`
+    command inside the Metasploit console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The module creates a SOCKS4 server listening on port `1080` by default. We
+    really only need to listen on the local host IP address, `127.0.0.1`, since we''re
+    the only ones leveraging this proxy server. Running the auxiliary module sends
+    the proxy server into the background, ready to accept incoming commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Kali Linux comes bundled with a tool called **ProxyChains**, which we can use
+    to force any application to push its traffic through a particular proxy. In our
+    case, this is the proxy we've just created with Metasploit. This means that TCP
+    network traffic, generated by applications running on our attacker machine, will
+    effectively be forwarded to the Docker network, allowing us to run local attack
+    tools and pivot right into the compromised network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'ProxyChains is available on all penetration testing distros: [http://proxychains.sourceforge.net/](http://proxychains.sourceforge.net/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ProxyChains default proxy list can be adjusted to match the Metasploit `socks4a`
+    module configuration using the `/etc/proxychains.conf` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the Metasploit route added and the `socks4a` server running, we can pivot
+    any connections through the Meterpreter session and into the container network
+    from our Kali machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Container breakout
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have access to the container's shell through the Meterpreter session and
+    through that session, we can talk to other application containers hosted on the
+    same machine. In the earlier Nmap scan of the Docker network, the `8022` service
+    also stood out from the rest. As attackers, services with ports in the `8000`
+    range are always interesting because underprotected development web servers can
+    be found there. This particular port could be an exploitable web application and
+    may give us more access than we currently have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Nmap scan report for the `content_ssh_1` container also had the SSH port
+    open, but this service is typically harder to exploit, short of brute-forcing
+    for weak credentials:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we go back and drop into a shell on the compromised container, we can execute
+    a quick `curl` command to view the contents of this web application. In the Metasploit
+    console, we can interact with the Meterpreter session using the `sessions` command
+    and passing the number `1` to the `-i` (interact) switch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once back inside the Meterpreter session, we can drop further into the target
+    container''s terminal using the `shell` Meterpreter command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We may not see the typical Linux prompt, but we can execute simple Linux terminal
+    commands, such as `curl`, to inspect the `8022` service on the `172.18.0.2` container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Fascinating! It appears that this particular container is a Docker-SSH application,
+    which, as the name implies, provides SSH access to containers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Docker-SSH is available on Docker Hub and on [https://github.com/jeroenpeeters/docker-ssh](https://github.com/jeroenpeeters/docker-ssh).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We did go through a couple of steps to be able to execute the `curl` command
+    on the target container, but we could also use ProxyChains to do the same thing,
+    but from our attacker machine instead. The `curl` request will be proxied through
+    the Metasploit SOCKS4 server we setup earlier and traffic will flow through the
+    Meterpreter session, giving us access to the target one hop away:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On our attack machine, we can proxy an SSH connection straight to this container
+    and see what we''re dealing with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It looks like we were connected automatically without being prompted for a
+    password. It also appears that we are running as `root` in this particular container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Neat. Docker-SSH has a few authentication configuration options and this instance
+    of Docker-SSH appears to have been configured with the `noAuth` parameter, which
+    allows anonymous connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may be thinking that it is highly unlikely that any organization would deploy
+    this type of container in their production environment. In reality, it is quite
+    common for developers to spawn insecurely configured containers, such as Docker-SSH,
+    in order to troubleshoot issues. Depending on the impact, incident responders'
+    top priority is to restore services. Normal change management processes are bypassed
+    and Docker-SSH deployment is greenlit. The issue is fixed and the chaos subsides,
+    but after the engineer has put in 40 odd hours straight, mistakes happen. Insecure
+    containers, tools, and backups are left online, ready to be misused by attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we browse the filesystem of the Docker-SSH container, we notice an interesting
+    file in `/var/run`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: The exposed `docker.sock` file provides a way for containers to issue commands
+    to the Docker daemon running on the host. With root access to the container, we
+    can do all sorts of interesting things. Notably, we can communicate with the host
+    and ask it politely to give us access to the root filesystem. This feature actually
+    does have use in the real world. There are application containers that manage
+    other containers on the same box. In these types of deployments, the Docker daemon
+    running on the host must expose `docker.sock` in order for that particular container
+    to be able to do its job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember that containers are generally minimalistic and common Unix tools may
+    not be available. We need the Docker client installed inside this container in
+    order to easily issue commands to the Docker host. To quickly install the Docker
+    client, we can use the bash script provided by [get.docker.com](http://get.docker.com).
+    This is the official shell script from Docker that sets up the environment, resolves
+    dependencies, and makes sure the Docker client installs successfully.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can easily upload the Docker install bash script from [get.docker.com](http://get.docker.com)
+    using `proxychains` and `scp`. In a separate terminal on the attacker machine,
+    we use `wget` to download the script and save it locally. We then wrap a `scp`
+    (Secure Copy) command with `proxychains` and upload the script to the target container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Back in the Docker-SSH container terminal, we can execute the Docker install
+    script using `bash`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once we have the Docker client binary, we can talk to our gracious host and
+    ask it to create another container with the host filesystem mounted inside, with
+    the following `docker run` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: What we've done here is created a new Ubuntu container instance from within
+    the Docker-SSH container. The `-v` option will mount the host root filesystem
+    to the new container's `/host` folder with read-write privileges. The Docker client
+    will also spawn a `/bin/bash` shell when this new container is up and running,
+    and the `-i` switch makes sure that Docker does not drop the container into the
+    background (daemonize), and we have an interactive session. In other words, we
+    have a root shell on a new Ubuntu container.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is all made possible by the exposed Docker socket found in the `/var/run/docker.sock`.
+    The Docker client used this special file to communicate with the Docker host API
+    and issue arbitrary commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Inside this newly spawned Ubuntu container, we can observe the mounted host
+    filesystem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With read-write privileges to this directory, we can quickly compromise the
+    host itself with the help of `chroot`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you recall, the `chroot` functionality resets the effective filesystem root
+    to an arbitrary directory. In this case, the arbitrary directory happens to be
+    the host''s root file system. If we issue another `ps` command within the `chroot
+    /host` directory, the output is slightly different from before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: It appears that we're not in Kansas anymore! You'll notice the process listing
+    shows `dockerd` running, as well as `init` with `PID 1`. This is a process listing
+    of the Docker host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll need to persist our access in case we lose connectivity to the Docker
+    containers. The easiest way is to generate a new SSH authentication key pair and
+    add the public key to the `authorized_keys` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The attacker machine `ssh-keygen` can be used to generate a new RSA keypair:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Remember the ROE and remove any artifacts, such as authorized SSH keys, once
+    the engagement has completed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back inside the container, we can append our key to the Docker host''s `authorized_keys`
+    file, granting us root access through SSH public key authentication:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From our attack box, we can pivot through our Meterpreter session, get inside
+    the container network, and authenticate to the SSH service of `172.18.0.1`, which we''ve previously
+    suspected, based on `nmap` results, belongs to the host:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Container technology has many benefits, which makes it an important topic. Docker
+    is revolutionary in the way it handles container images and deployment. As attackers,
+    we have to look at all new technology with the hacker mindset. How can we break
+    it and how can we use it to gain access that we didn't have before?
+  prefs: []
+  type: TYPE_NORMAL
+- en: If a business switches from VMs to containers in the hope of reducing costs,
+    while assuming they provide the same protection, the company is exposing itself to cross-application
+    attacks that were difficult, if not impossible, before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we saw how compromising a simple containerized CMS led to access to
+    another container, which eventually resulted in full compromise of the host. This
+    is not to say that Docker and container technology should be avoided, but just
+    like any other software, Docker must be configured securely before deployment.
+    A vulnerable or improperly configured container could allow attackers to pivot
+    to other more sensitive applications, or worse, the host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also looked at the perils of deploying applications using insecure container
+    networks. We were able to compromise an application and once inside, we successfully
+    pivoted around the Docker network, gaining access to other containers, and ultimately
+    compromising the host itself.
+  prefs: []
+  type: TYPE_NORMAL

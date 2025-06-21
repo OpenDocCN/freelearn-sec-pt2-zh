@@ -1,0 +1,1642 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Advanced Identity and Directory Management
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Having established a foundation in **IAM Identity Center** (formerly **AWS SSO**
+    ), IAM users, IAM groups, IAM roles, and IAM policies for identity and access
+    management in previous chapters, we are now set to explore the more advanced aspects
+    of user identity and directory management.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will first delve into serverless identity-as-a-service user management strategies
+    within AWS using **Amazon Cognito** . We will explore the two key functionalities
+    of Cognito within this chapter: **user pools** and **identity pools** . User pools
+    act as robust, scalable directories that handle user registration, authentication,
+    and integration with our applications, along with features such as **multi-factor
+    authentication** ( **MFA** ) and **federated identity** logins. Conversely, identity
+    pools allocate temporary AWS credentials to authenticated users, allowing them
+    to use AWS services such as Amazon S3, Amazon DynamoDB, and AWS Lambda.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will delve into the **directory service** solutions available within
+    AWS, including AWS Simple AD, AWS Active Directory, and AD Connect. We will also
+    examine the integration of **Microsoft Entra ID** (previously known as **Azure
+    Active Directory** ) with IAM Identity Center, which allows Entra ID users to
+    access AWS resources effortlessly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter’s recipes might require supplementary knowledge, including familiarity
+    with Microsoft products such as Active Directory and Microsoft Entra ID, as well
+    as AWS services and features that have not yet been covered in this book. The
+    recipes within this chapter are not mandatory for understanding and practicing
+    subsequent recipes within the book. Therefore, if you are progressing through
+    the chapters in this book and lack knowledge of the required products or services,
+    and if you currently have no need for these solutions, feel free to read the steps
+    within the recipes for understanding and skip practicing them until they are needed,
+    and you have the required prerequisite knowledge. You may also learn enough about
+    the required products and services from the links provided within the respective
+    recipes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter contains the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with Amazon Cognito user pools
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using identity pools to access AWS resources
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using AWS Simple AD for creating a lightweight directory solution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Microsoft Entra ID as the identity provider within AWS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following requirements and knowledge in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete the recipes within this chapter. If
+    we are using AWS Organizations, we can use the management account of the Organization,
+    as we will be configuring many things at the AWS Organization level in this chapter.
+    I will be using the **aws-sec-cookbook-1** account that we created in the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we are working with.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter09](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter09)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with Amazon Cognito user pools
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Amazon Cognito is used primarily for two use cases: secure user identity management
+    for our applications using its user pools feature and secure access to AWS resources
+    by making use of temporary credentials using its identity pools feature. In this
+    recipe, we will explore the user pools feature of Amazon Cognito by creating a
+    user pool from the AWS Management Console and then creating a user within it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To complete this recipe, we need Amazon **Simple Notification Service** ( **SNS**
+    ) for sending SMS if we plan to use SMS verification within this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we start using Amazon SNS for SMS messaging, our AWS account operates in
+    an SMS sandbox. This sandbox serves as a secure space to test Amazon SNS functionalities
+    without compromising our sender reputation. While in the sandbox, we are limited
+    to sending SMS messages to verified destination phone numbers only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If our AWS account is within the SMS sandbox, and we want to use SMS verification
+    within this recipe, we can add a phone number to **Sandbox destination phone numbers**
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console and navigate to the Amazon SNS service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Text messaging (SMS)** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Verify under **Account information** that this account is in the SMS sandbox.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Sandbox destination phone numbers** section, click on **Add** **phone
+    number** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Add a phone number** page, enter the phone number, selecting the correct
+    country code. Also, choose the verification message language, which is the language
+    the verification message will be sent in.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add phone number** . This will take us to the **Verify phone** **number**
+    page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Verify phone number** page, enter the verification code received on
+    the provided phone number and click **Verify** **phone number** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If it is successfully verified, the phone number should now appear with the
+    **Verification status** as **Verified** in the **Sandbox destination phone numbers**
+    section on the **Text messaging (** **SMS)** page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can explore more about Amazon SNS using the link provided in the *See also*
+    section of this recipe. Assuming that we have set the environment up for this
+    recipe as discussed within this section, we can get started with creating a Cognito
+    user pool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a Cognito user pool from the AWS Management Console as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Account Management Console and navigate to the Cognito service.
+    We should see the option to get started based on the business case. The default
+    is **Add user directories to your app** , which is done using user pools.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – Creating a user pool business case](image/B21384_09_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – Creating a user pool business case
+  prefs: []
+  type: TYPE_NORMAL
+- en: The drop-down menu also includes the **Grant access to AWS services** option
+    for business cases using identity pools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the business case for **Add user directories to your app** , as shown
+    in *Figure 9* *.1* , and click on **Create user pool** . We can also create user
+    pools by going to the **User pools** page by clicking on the **User pools** menu
+    option from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Provider types** , select only **Cognito user pool** (which is the default).
+    Under **Cognito user pool sign-in options** , select **User name** , **Email**
+    , and **Phone number** . Leave the other options as-is and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – Configuring authentication providers](image/B21384_09_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.2 – Configuring authentication providers
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Configure security requirements** page, set **Password policy mode**
+    to **Cognito defaults** (which is the default).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Multi-factor authentication** , select **Require MFA - Recommended** select
+    **Authenticator apps** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.3 – Configuring the MFA settings during user pool creation](image/B21384_09_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.3 – Configuring the MFA settings during user pool creation
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **User account recovery** section, select **Enable self-service account
+    recovery – Recommended** . Under **Delivery method for user account recovery messages**
+    , select **Email only** . Then click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.4 – Configuring the user account recovery settings during user pool
+    creation](image/B21384_09_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.4 – Configuring the user account recovery settings during user pool
+    creation
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Configure sign-up experience** page, select **Enable self-registration**
+    , **Allow Cognito to automatically send messages to verify and confirm - Recommended**
+    , and **Send email message, verify email address** . Leave the other values as-is
+    and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling user sign-up in our user pool allows individuals from anywhere on the
+    internet to register for an account and log in to our applications. We need to
+    avoid turning it on unless we are ready to allow public sign-up access to our
+    app. We can also personalize the sign-up experience by incorporating up to 50
+    custom attributes from the sign-up experience page. However, it’s important to
+    note that once a user pool is established, the names of these custom attributes
+    cannot be modified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Configure message delivery** page, select **Send email** **with Cognito**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can initially utilize Cognito’s default email address for development purposes,
+    which supports up to 50 emails daily. If we have established a verified sender
+    through Amazon SES and wish to utilize its features, we should choose the **Send
+    email with Amazon SES - Recommended** option and input the necessary SES details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provide the **SecCbCognitoUserPoolRole** value for **IAM role name** within
+    **SMS settings** . Leave everything else as-is and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.5 – The SMS settings during user pool creation](image/B21384_09_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.5 – The SMS settings during user pool creation
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If our AWS account is currently in the SMS sandbox, we must add and verify any
+    phone numbers we intend to use for SMS verification to the sandbox’s list of verified
+    destination phone numbers, as outlined in the *Getting ready* section of this
+    recipe. If our account is not in the sandbox, we need to configure SMS messaging
+    by following the instructions provided by Amazon on the screen, as shown in *Figure
+    9* *.5* . Please note that a detailed walkthrough of setting up SMS messaging
+    is beyond the scope of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Integrate your app** page, select **User pool name** under **SecCbUserPool**
+    , and select **Use the Cognito Hosted UI** . In the **Domain** section, select
+    **Use a Cognito domain** and enter a unique domain prefix.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also input a custom domain that we own to be used for Cognito-hosted
+    registration and login pages. To utilize a custom domain, providing a DNS record
+    and a certificate from **AWS Certificate Manager** ( **ACM** ) is a prerequisite.
+    For production workloads, AWS recommends the use of a custom domain to enhance
+    professionalism and branding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Initial app client** section, provide **Sec Cb App** under **App client
+    name** . Under **Client secret** , select **Generate a client secret** , and for
+    **Allowed callback URLs** , give a URL to redirect after authentication, say [https://www.cloudericks.com](https://www.cloudericks.com)
+    . Click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Client secrets serve as a means for the server-side part of an app to authenticate
+    API requests, offering a layer of security that helps prevent third parties from
+    impersonating your client. It is essential to note that once Amazon Cognito generates
+    a client secret for your app client, it cannot be modified or deleted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Review all details and click **Create user pools** . We should now be able to
+    see our new user pool on the **User** **pools** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'From the **User pools** page, click on the hyperlinked name of the user pool
+    we created to access its settings page. The settings page should have a **User
+    pool overview** section and the **Delete user pool** button, as shown in the following
+    figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – The User pool overview page](image/B21384_09_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.6 – The User pool overview page
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and navigate to the **Users** tab, which is the first tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – The Users tab for the user pool](image/B21384_09_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.7 – The Users tab for the user pool
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create user** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Create user** page, select **Email** and **Phone** under **Alias attributes
+    used to** **sign in** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.8 – Configuring the alias attributes used to sign in](image/B21384_09_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.8 – Configuring the alias attributes used to sign in
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **Don’t send an invitation** for the **Invitation** **message** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.9 – Configuring the invitation message](image/B21384_09_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.9 – Configuring the invitation message
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provide **User name** , **Email address** , **Phone number** , and **Temporary
+    password** for the user, and click on **Create user** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – New user configuration](image/B21384_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.10 – New user configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The new user should now appear in the **Users** tab similar to the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.11 – The Users tab with the new user](image/B21384_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.11 – The Users tab with the new user
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the user pool’s settings page, navigate to the **App integration** tab
+    and click on the hyperlinked **App client name** of the initial app client that
+    was created as part of this recipe. We should now see our app’s settings page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the **Hosted UI** section within the app’s settings page, click on **View
+    Hosted UI** . We should now see the default Hosted UI sign-in page, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.12 – The hosted UI sign-in page](image/B21384_09_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.12 – The hosted UI sign-in page
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enter the username and password for the user we created in this recipe and click
+    on **Sign in** . We will be taken to the **Change** **Password** screen.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Within the **Change Password** screen, enter a new password under the checkboxes
+    with the **New Password** and **Enter New Password Again text** labels, and click
+    on **Send** . This will send a **One Time Password** ( **OTP** ) to the phone
+    number provided while creating the user and ask us to enter it for verification,
+    as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.13 – SMS verification](image/B21384_09_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.13 – SMS verification
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once verified, we will be redirected to the configured URL. If you were following
+    the recipe and provided the [https://www.cloudericks.com](https://www.cloudericks.com)
+    URL, you should see a screen similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.14 – The post-sign in page](image/B21384_09_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.14 – The post-sign in page
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we created a user pool and then created a user from the AWS
+    Management Console. Alternatively, users can sign up on their own through the
+    hosted UI’s sign-up option. Customizations for the sign-in and sign-up experiences,
+    and configuring the **Groups** , **Messaging** , **App integration** , and **User
+    pool** properties, can be made from the user pool’s settings page by navigating
+    to their respective tabs, as shown in *Figure 9* *.7* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Amazon Cognito provides two primary features: user pools and identity pools.
+    User pools serve as secure directories that handle sign-up and sign-in operations
+    for app users, while identity pools are mechanisms for issuing AWS credentials
+    to authenticated users, enabling access to the AWS services. In this recipe, we
+    created a user pool.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the user pool sign-in options, we selected **Username** , **Email** , and
+    **Phone number** . We can have one or both email or phone number as the username
+    and then use these to sign in instead of username. For enhanced security, we also
+    selected MFA and specified the account recovery mechanisms. For a better sign-up
+    experience, we enabled self-registration and configured automatic message verification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used the **Cognito domain** option for Cognito-hosted registration and login
+    pages to keep the recipe simple. We can also use a custom domain that we own instead.
+    To utilize a custom domain, providing a DNS record and a certificate from ACM
+    is a prerequisite. For production workloads, AWS recommends the use of a custom
+    domain to enhance professionalism and branding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: No custom attributes were set up during our process. However, the sign-up experience
+    can be tailored by introducing up to 50 custom attributes. Once a user pool is
+    established, it’s important to remember that the names of these custom attributes
+    become fixed and cannot be altered. We can, however, add new ones later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An initial app client was also created during the process with default settings.
+    Amazon Cognito client apps work by authenticating users and then exchanging tokens
+    with Amazon Cognito for temporary AWS credentials. These temporary AWS credentials
+    can then be used to access AWS resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Client apps within Cognito can be classified into three categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Public client** : This is typically a client-side application such as a native
+    app on a mobile device or a browser-based app. In this scenario, the app makes
+    API requests from devices that cannot be entrusted with a client secret due to
+    the potential for exposure.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Confidential client** : This is often a server-side application that has
+    the capability to securely store a client secret. API requests to Cognito are
+    routed through a central server, which is considered secure and capable of protecting
+    this sensitive information.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Custom app** : This option allows for a more tailored setup. You have the
+    autonomy to define the specific grant types, authentication flows, and whether
+    a client secret is required based on your unique requirements and security considerations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will look into some more details including alternative business cases in
+    the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we created an Amazon Cognito user pool by selecting the **Add
+    user directories to your app** business case, as shown in *Figure 9* *.1* . We
+    can instead select the **Grant access to AWS services** business case from the
+    dropdown to create an identity pool, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.15 – Creating an identity pool business case](image/B21384_09_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.15 – Creating an identity pool business case
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the recipe, under **Provider types** , we only selected the Cognito user
+    pool (which is the default), as shown in *Figure 9* *.2* . As shown in that figure,
+    the **Cognito user pool** option is selected by default and cannot be unchecked,
+    and we also have an option called **Federated identity providers** . If we select
+    the **Federated identity providers** option, we will get additional sign-in options
+    enabling us to use credentials from popular social IdPs such as Facebook, Google,
+    Amazon, and Apple, or from external directories via SAML or **Open ID Connect**
+    ( **OIDC** ) protocols, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.16 – Federated sign-in options for user pools](image/B21384_09_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.16 – Federated sign-in options for user pools
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting the **Cognito user pool** option is mandatory since it maintains profiles
+    for both direct and federated users within our user pool. However, if our goal
+    is to exclusively offer federated sign-in options, we can turn off the self-registration
+    feature in our user pool, thus mandating that only administrators have the authority
+    to create user profiles. Additionally, should we wish to restrict sign-ins through
+    the user pool, it is possible to deselect our user pool as an IdP within our app
+    clients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We may also integrate Amazon Cognito with **Amazon Verified Permissions** ,
+    a refined authorization service designed for enforcing role and attribute-based
+    access control in applications that utilize Amazon Cognito for authentication.
+    Verified Permissions evaluates a user’s attributes against the established access
+    rules for a given resource based on their identity or access token. It then issues
+    an authorization decision – either granting or denying access. This service allows
+    for the centralization of authorization across all your applications and resources
+    into one **policy store** . Policies are formulated in **Cedar** , an open source
+    language specifically designed for crafting access control protocols.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We created a user pool from the console in this recipe. We can also create a
+    user pool with the **aws cognito-idp create-user-pool** CLI command, passing **pool-name**
+    and **region** . Even though we can directly specify all user pool settings from
+    the command line by referring to the documentation, it is an easier and safer
+    approach to use an input JSON file with all the configurations specified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about Amazon Cognito at [https://www.cloudericks.com/blog/getting-started-with-amazon-cognito](https://www.cloudericks.com/blog/getting-started-with-amazon-cognito)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can read more about Amazon SNS service at [https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can read more about Amazon Verified Permissions at [https://www.cloudericks.com/blog/getting-started-with-amazon-verified-permissions](https://www.cloudericks.com/blog/getting-started-with-amazon-verified-permissions)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can learn about integrating Amazon Cognito with Amazon Verified permissions
+    at [https://www.cloudericks.com/blog/integrating-amazon-cognito-with-amazon-verified-permissions](https://www.cloudericks.com/blog/integrating-amazon-cognito-with-amazon-verified-permissions)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using identity pools to access AWS resources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As discussed earlier in this chapter, Amazon Cognito serves two primary use
+    cases. While user pools help us in handling identity and access management for
+    our applications, identity pools extend this functionality to provide temporary
+    AWS credentials, enabling secure access to various AWS services without the need
+    for long-term keys. In this recipe, we will delve into the use of identity pools
+    for effective access to AWS resources. Let’s embark on a deep dive into the realm
+    of identity pools and leverage their capability to weave identity pools into our
+    applications, ensuring a secure and scalable method to access the AWS resources,
+    making use of temporary AWS credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete this recipe, we need to ensure that the following additional requirements
+    are in place in addition to those mentioned in the *Technical* *requirements*
+    section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**An Amazon Cognito user pool** : An Amazon Cognito user pool serves as the
+    identity backbone for our identity pool. We created one in the *Working with Amazon
+    Cognito user pools* recipe earlier in this chapter.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**App Client with ALLOW_USER_PASSWORD_AUTH** : We need to set up an app client
+    configured with the **ALLOW_USER_PASSWORD_AUTH** flow. This can be accomplished
+    by navigating to the user pool settings in the AWS Management Console, selecting
+    the **App integration** tab, and creating an app client. Alternatively, we can
+    include the authentication flow during the initial App Client setup as outlined
+    in the *Working with Amazon Cognito user* *pools* recipe.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**An Amazon S3 Bucket** : We need an S3 bucket with default options as discussed
+    in the *Technical requirements* section of [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043)
+    to demonstrate user pools. I will be using a bucket name of **myawsbucket** in
+    the **us-east-1** region. S3 bucket names must be globally unique; choose an available
+    name and replace my bucket name with your chosen bucket name.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, we will see how we can implement Cognito identity pools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can use identity pools for effective access to AWS resources as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to the **Amazon Cognito** service in the AWS Console and search for
+    the Cognito user pool that we created. Navigate to the **Users** tab and click
+    on the **Create** **user** button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.17 – The Create user option](image/B21384_09_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.17 – The Create user option
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Provide the user profile details: set **User name** to **testuser** and **Email
+    address** to testuser@cloudericks.com. For **Temporary password** , select the
+    **Set a password** option, enter a secure password, and finally, click on **Create
+    user** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.18 – The details for creating a user](image/B21384_09_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.18 – The details for creating a user
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To prevent encountering MFA challenges when authenticating this user via the
+    AWS CLI for an app client, we should choose the **No MFA** option in the **Configure
+    security requirements** settings while creating the Cognito user pool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the AWS Management Console, go to the **Amazon** **Cognito** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Identity pools** and then **Create** **identity pool** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure the identity pool by selecting **Authenticated access** and **Amazon
+    Cognito user pool** under **Authenticated identity sources** . Click on **Next**
+    to reach the **Configure** **permissions** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.19 – Configuring the authentication providers](image/B21384_09_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.19 – Configuring the authentication providers
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Configure permissions** page, select **Create a new IAM role** and
+    specify IAM roles for authenticated users by giving a role name. We can use **MY_IDP_AUTHROLE**
+    as the **IAM role name** . Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.20 – Selecting an authenticated role](image/B21384_09_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.20 – Selecting an authenticated role
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enter the values for **User pool ID** and **App** **client ID** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.21 – The user pool details](image/B21384_09_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.21 – The user pool details
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leave the other values as default and click on **Next** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.22 – The attributes for access control](image/B21384_09_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.22 – The attributes for access control
+  prefs: []
+  type: TYPE_NORMAL
+- en: Give a name for the identity pool and click on **Next** to finish the configuration.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.23 – The final configuration page](image/B21384_09_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.23 – The final configuration page
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, review everything and click on **Create**
+    **identity pool** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should see a prompt stating that the role has been created successfully;
+    click on **View role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.24 – The prompt after successful role creation for the identity
+    pool](image/B21384_09_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.24 – The prompt after successful role creation for the identity pool
+  prefs: []
+  type: TYPE_NORMAL
+- en: The role for authenticated users should have permission to access S3 buckets.
+    Make sure to grant access rights for the **AmazonS3ReadonlyAccess** action. Click
+    on the **Add permissions** dropdown and select **Add policy** . Search for the
+    **AmazonS3ReadonlyAccess** policy, select it, and click on **Add permissions**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.25 – The permission policies](image/B21384_09_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.25 – The permission policies
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To authenticate a user in the user pool, we can use the **Amazon Cognito Identity
+    SDK** or directly use AWS CLI’s **cognito-idp** commands. For this, go to AWS
+    CloudShell and run the following command by providing the **<username>** , **<password>**
+    , **<client-id>** , and **<region>** of the user we want to authenticate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We should get a challenge response asking us to give a new password.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.26 – The challenge response asking us to give a new password](image/B21384_09_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.26 – The challenge response asking us to give a new password
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to respond to the challenge to give the user a new password using the
+    following command by giving the **user-pool-id** , **client-id** , **NEW_PASSWORD**
+    , **USERNAME** , **session** , and **region** . The session should be the one
+    we received in response to the previous command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We should get a screen showing the **RefreshToken** and **IdToken** . We should
+    get the screen as follows; take note of the **IdToken** value.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.27 – The response after the password change](image/B21384_09_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.27 – The response after the password change
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get **IdentityId** , run the following command by providing the **<identity-pool-id>**
+    , **<region>** , and **<user-pool-id>** of the identity pool that we created previously,
+    as well as the **<id-token>** we received from the previous step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We should get a screen like the following showing us the **IdentityId** .
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.28 – The response to the get-id command](image/B21384_09_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.28 – The response to the get-id command
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the **IdentityId** obtained from the previous step to get temporary AWS
+    credentials:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This command will return temporary AWS access and secret keys, as well as a
+    session token.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.29 – The response to the get-credentials-for-identity command](image/B21384_09_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.29 – The response to the get-credentials-for-identity command
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configure the AWS CLI with the temporary credentials obtained in the previous
+    step.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'These commands do not return any response as shown below:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.30 – Configuring the AWS CLI](image/B21384_09_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.30 – Configuring the AWS CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now use the AWS CLI to list our S3 buckets using the **aws s3** **ls**
+    command.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.31 – The response to the s3 ls command](image/B21384_09_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.31 – The response to the s3 ls command
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate back to our identity pool and click on **User statistics** . We should
+    see that we have been authenticated successfully via the identity pool.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.32 – The user statistics](image/B21384_09_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.32 – The user statistics
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we made use of an identity pool to access AWS resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To access Amazon S3 using an identity pool with Amazon Cognito user pool as
+    the IdP and list S3 buckets via the AWS CLI, we first created a user pool and
+    a user within it. Then, we set up an identity pool, defined IAM roles, and configured
+    permissions for authenticated users, including listing S3 buckets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we obtained an ID token through the AWS CLI’s **cognito-idp** commands,
+    initiated authentication, and got an ID from the identity pool. With the obtained
+    ID, we retrieved temporary AWS credentials. After configuring the AWS CLI with
+    these credentials, we used it to list our S3 buckets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This process allows secure and controlled access to S3 resources via identity-based
+    authentication, ensuring that users are authorized to perform specific actions
+    on the S3 service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us see some more concepts related to Amazon Cognito that will help us further
+    understand the service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Social IdPs** : Both Cognito user pools and identity pools can be configured
+    to allow users to sign in using social IdPs such as Facebook, Google, or Amazon.
+    This extends the authentication options for our application and provides a seamless
+    sign-in experience for users who may prefer to use their existing social media
+    accounts.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**MFA** : We can enable MFA in both Cognito user pools and identity pools to
+    enhance security. With MFA, users are required to provide an additional authentication
+    factor, such as a one-time code from a mobile app or SMS, in addition to their
+    password. This significantly strengthens the security of user authentication.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Custom authentication challenges** : Cognito user pools allow us to set up
+    custom authentication challenges. This can be useful for scenarios where we need
+    users to complete specific tasks or provide additional information during the
+    authentication process. We can customize the challenge flow to match our application’s
+    requirements.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring every feature of Amazon Cognito in depth would need a book of its
+    own. Therefore, additional links are provided in the *See also* sections of both
+    this recipe and the previous one to allow you to explore further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can learn about using Federated IdPs with Amazon Cognito at [https://www.cloudericks.com/blog/using-federated-identity-providers-with-amazon-cognito](https://www.cloudericks.com/blog/using-federated-identity-providers-with-amazon-cognito)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about troubleshooting security incidents using AWS Cognito logs at
+    [https://www.cloudericks.com/blog/troubleshooting-security-incidents-using-aws-cognito-logs](https://www.cloudericks.com/blog/troubleshooting-security-incidents-using-aws-cognito-logs)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using AWS Simple AD for creating a lightweight directory solution
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: AWS Simple AD, powered by a Samba 4 Active Directory Compatible Server, is a
+    lightweight standalone managed directory service provided by AWS, catering especially
+    to small and medium-sized businesses seeking the functionality of directory services
+    without the complexity of managing on-premise infrastructure. Available in two
+    sizes, the **Small** option is intended for environments with up to 500 users
+    (or approximately 2,000 objects, including users, groups, and computers), while
+    the **Large** option accommodates environments with up to 5,000 users (or roughly
+    20,000 objects).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simple AD provides essential services such as user account management, group
+    membership organization, group policy application, secure Amazon EC2 instance
+    connections, and Kerberos-based **Single Sign-On** ( **SSO** ) functionality.
+    It is compatible with various applications and tools dependent on Microsoft Active
+    Directory, facilitating access to AWS applications such as WorkSpaces, Amazon
+    WorkDocs, and Amazon WorkMail for users. However, Simple AD does not support certain
+    services, including Amazon AppStream 2.0, Amazon Chime, or Amazon RDS for SQL
+    Server and Oracle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user, as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A VPC configured with at least two subnets across different availability zones
+    following the *Setting up VPC plus VPC resources with minimal effort* recipe from
+    [*Chapter 5*](B21384_05.xhtml#_idTextAnchor169) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will use the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS management console and go to the **Directory Service** . We
+    should see a screen like the following.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.33 – The Set up directory screen](image/B21384_09_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.33 – The Set up directory screen
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **Simple AD** from the drop-down menu, as shown in *Figure 9* *.34* ,
+    and then click on the **Set up directory** button shown in *Figure 9* *.33* .
+    Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.34 – The Set up directory drop-down menu](image/B21384_09_34.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.34 – The Set up directory drop-down menu
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Select directory type** page, make sure that **Simple AD** is selected
+    and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Enter directory information** page, under **Directory size** , choose
+    **Small** . For **Directory DNS name** , enter **corp.cloudericks.com** , and
+    for **Directory NetBIOS name - optional** , enter **CORP** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.35 – Configuring Simple AD](image/B21384_09_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.35 – Configuring Simple AD
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and provide a value for **Administrator password** and confirm the
+    password in the **Confirm password** field. For **Directory description - optional**
+    , provide the **Cloudericks corporate directory** description for the directory,
+    and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **VPC** , select a VPC with at least two subnets, as discussed in the *Getting
+    ready* section. Select two of its public subnets under **Subnets** and click **Next**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Subnets** , choose the subnets for the domain controllers. Ensure that
+    they are in different Availability Zones and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review & create** page, review all details and click on **Create directory**
+    . The status of our directory will be **Creating** and once creation is complete,
+    it will change to **Active** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: AWS Simple AD provides a managed Active Directory-compatible directory service,
+    offering users a straightforward solution for user authentication, group management,
+    and domain join operations in the AWS cloud. Users can easily create a Simple
+    AD directory through the AWS Management Console or CLI, specifying domain details
+    and size requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once created, Simple AD supports standard directory features such as LDAP authentication
+    and Kerberos-based SSO, allowing organizations to manage user accounts and access
+    controls efficiently. This service is particularly beneficial for small and mid-sized
+    businesses seeking a cost-effective and hassle-free Active Directory solution
+    without the complexity of self-managed infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS Simple AD allows efficient user and group management, supports Kerberos-based
+    SSO for seamless access to multiple applications, and integrates with various
+    AWS services such as Amazon EC2, RDS, and WorkSpaces. Simple AD also supports
+    LDAP, making it suitable for applications requiring directory services for authentication
+    and information retrieval.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here are the different ways we can use AWS Simple AD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**User and group management** : Simple AD allows you to manage users and groups
+    efficiently. You can create, modify, and delete user accounts, as well as organize
+    them into groups for easier access control and permissions management.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**SSO** : Simple AD supports Kerberos-based SSO, enabling users to log in once
+    and gain access to multiple applications and services without re-entering their
+    credentials.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Lightweight Directory Access Protocol** ( **LDAP** ): Simple AD supports
+    LDAP, allowing applications that require directory services to authenticate and
+    retrieve information from the directory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Integration with AWS services** : Simple AD integrates seamlessly with various
+    AWS services, enabling you to manage access and permissions for resources within
+    your AWS environment.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Amazon EC2** : Manage access to EC2 instances using domain credentials.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Amazon RDS** : Integrate with RDS instances for database authentication.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Amazon WorkSpaces** : Use Simple AD to manage user access to virtual desktops.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cost-effective directory services** : Simple AD provides a cost-effective
+    solution for small to medium-sized businesses that need basic directory services
+    without the need for a full Active Directory setup.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this recipe, we explored Simple AD, a cost-effective and straightforward
+    directory service within AWS ideal for small to medium-sized businesses. AWS also
+    supports other directory solutions, including **AWS Managed Microsoft AD** , which
+    offers fully managed Active Directory services; **AD Connector** , a gateway to
+    redirect directory requests to on-premises AD; **Amazon Cognito User Pools** ,
+    providing user sign-up and sign-in for web and mobile apps; and **Amazon Cloud
+    Directory** , a scalable directory for managing hierarchical data relationships.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about Simple AD at [https://www.cloudericks.com/blog/getting-started-with-aws-simple-ad](https://www.cloudericks.com/blog/getting-started-with-aws-simple-ad)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read about different directory solutions in AWS such as AWS Managed Microsoft
+    AD, Simple AD, AD Connector, Amazon Cognito User Pools, and Amazon Cloud Directory
+    at [https://www.cloudericks.com/blog/exploring-aws-directory-solutions](https://www.cloudericks.com/blog/exploring-aws-directory-solutions)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Microsoft Entra ID as the identity provider within AWS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In today’s tech landscape, numerous organizations are adopting a multi-cloud
+    strategy, utilizing different public clouds such as AWS and Azure for deploying
+    applications. A common practice among these organizations is managing user identities
+    with Microsoft Entra ID. The AWS IAM Identity Center offers a straightforward
+    way to link our AWS accounts with Microsoft Entra ID. This integration yields
+    two significant benefits: centralized management of identities and enhanced user
+    experience.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Centralizing identity management in one location simplifies the responsibilities
+    of IT teams and strengthens security protocols. Additionally, it relieves users
+    of the hassle of handling multiple login credentials, streamlining the sign-in
+    process and reducing the demand for IT support. In this recipe, we will delve
+    into integrating Microsoft Entra ID with AWS IAM Identity Center, using Microsoft
+    Entra ID as the IdP. We will conclude by demonstrating this setup using an Entra
+    ID user to manage an S3 bucket, as an AWS resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete this recipe, we need to ensure that the following additional requirements
+    are in place in addition to those mentioned in the *Technical* *requirements*
+    section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s essential to have an AWS account with AWS IAM Identity Center set up. For
+    guidance on setting up IAM Identity Center, refer to the [*Chapter* *1*](B21384_01.xhtml#_idTextAnchor020)
+    recipes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An active Microsoft Entra ID tenant is also a must-have.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An administrator user in the Microsoft Entra ID tenant is essential for performing
+    the configuration steps within this recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A demo user with data for the attributes first name, last name, display name,
+    and user principal name is also needed to test the configuration. Let us call
+    the demo user **demouser1** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To successfully integrate users into the AWS IAM Identity Center through the
+    AWS SSO Enterprise application in Azure, the users need values for the following
+    attributes: first name, last name, display name, and user principal name. Without
+    these attributes, the provisioning process may encounter errors, hindering the
+    smooth and secure transition of users into the AWS environment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will see how to use Microsoft Entra ID as the IdP within AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first download the metadata file from AWS, configure Microsoft Azure
+    for IAM Identity Center integration with that metadata file, and continue with
+    AWS IAM Identity Center set up in AWS. After that, we will go back to Azure to
+    complete the configuration and finally will verify users within AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the metadata file from AWS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Log in to the Management Console of an AWS account with permission to manage
+    IAM Identity Center and go to the IAM Identity Center service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Settings** in the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Settings** page, locate the **Identity source** section, click on the
+    **Actions** pull-down menu, and select **Change** **identity source** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Change identity source** page, choose **External identity provider**
+    and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the **Change identity source** page, there are currently three options:
+    **Identity Center directory** , **Active Directory** , and **External identity
+    provider** . If we select the **Identity Center directory** option, it will allow
+    for the management of users and groups within IAM Identity Center, with users
+    logging in through the AWS access portal. The **Active Directory** option is used
+    for managing users and groups within AWS Managed Microsoft AD. We also have the
+    flexibility to connect IAM Identity Center to an existing Active Directory using
+    either AWS Managed Microsoft AD or AD Connector. In this scenario, users also
+    sign in through the AWS access portal. The third option, **External identity provider**
+    , is tailored for managing users and groups through an external IdP such as Microsoft
+    Entra ID. Here, users first sign in to the IdP’s sign-in page, as we will see
+    in this recipe, and are then redirected to the AWS access portal, where they can
+    access their AWS accounts and cloud applications.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we click **Next** , we should see the **Configure external identity provider**
+    page, which looks similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.36 – The Configure external identity provider page](image/B21384_09_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.36 – The Configure external identity provider page
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Configure external identity provider** page, within the **Service provider
+    metadata** section, click on **Download metadata file** and save it on the computer.
+    This file will be used when configuring the external IdP (e.g., Microsoft Entra
+    ID).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The metadata file we downloaded from IAM Identity Center includes the IAM Identity
+    Center certificate and metadata details necessary for our IdP, which in this recipe
+    is Microsoft Entra ID, to establish trust with IAM Identity Center as a service
+    provider. Alternatively, instead of downloading, we can simply copy this information
+    directly from the webpage and manually enter it into the service provider configuration
+    section of our IdP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring Microsoft Azure for IAM Identity Center integration
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can configure Microsoft Azure for IAM Identity Center integration as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sign in to the Microsoft Azure portal as a user with the **Application Administrator**
+    role or a superset role.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate to **Microsoft Entra ID** and click on **Enterprise applications**
+    from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **New application** , and on the **Browse Microsoft Entra Gallery** page,
+    search for **AWS IAM** **Identity Center** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter an application name and click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Open the application after it has been successfully created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Single sign-on** from the left sidebar and select **SAML** as the
+    SSO method.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Upload metadata file** , and in the **Upload metadata file** pane,
+    click on the folder icon to select the metadata file that we downloaded in *Step
+    5* of the previous section. Then click on **Add** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Save** on the **Basic SAML** **Configuration** pane.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to the **SAML Certificates** section of the page and download the
+    **Federation Metadata** **XML** file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can now go back to the AWS Management Console on the **Configure external
+    identity provider** page and continue with the steps required. References to detailed
+    steps, with screenshots for the steps to be done on the Azure side, are given
+    within the *See also* section of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Continuing with the AWS IAM Identity Center setup
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can continue the steps required on AWS IAM Identity Center from the AWS
+    Management Console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate back to the **Configure external identity provider** page as we did
+    in the *Downloading the metadata file from* *AWS* section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Identity provider metadata** section, click on **Choose file** under
+    **IdP SAML metadata** and upload the file we downloaded in the *Configuring Microsoft
+    Azure for IAM Identity Center* *integration* section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.37 – Uploading the identity provider metadata](image/B21384_09_37.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.37 – Uploading the identity provider metadata
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down, and within the **Review and confirm** section, type **ACCEPT**
+    , as shown in the following figure, and click **Change** **identity source** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.38 – Reviewing and confirming the identity source change](image/B21384_09_38.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.38 – Reviewing and confirming the identity source change
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within the settings page, we should now see a message for enabling **Automatic
+    provisioning** with an **Enable** button. Click on **Enable** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the provisioning is enabled, we should see the **SCIM endpoint** and **Access
+    token** values for our identity source, as shown in the following figure. Save
+    this information.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.39 – The access token](image/B21384_09_39.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.39 – The access token
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let us now go back to the Azure portal and continue the configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Continuing with the configuration in Microsoft Azure
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let us now go to the AWS IAM Identity Enterprise application we created in
+    the *Configuring Microsoft Azure for IAM Identity Center integration* section
+    and continue setting up:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Manage** section on the left sidebar, click on **Provisioning**
+    , and set **Provisioning Mode** to **Automatic** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under the **Admin Credentials** section, enter the AWS Identity Center SCIM
+    endpoint that we saved in *Step 6* from the previous section under **Tenant URL**
+    and **Access token** under **Secret Token** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Test Connection** , and if this is successful, click **Save** under
+    **Provisioning** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Provisioning** tab, click on **Start provisioning** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under the **Manage** section on the left sidebar, click on **Users and groups**
+    , and then on the panel on the right side, click on **Add user/group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the **demouser1** user that we created for the demo and click on **Assign**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the provisioning is successful, we can head back to AWS IAM Identity Center
+    to verify the user provisioning. It could take some time, usually up to around
+    30 minutes, for the users to appear in AWS. References to detailed steps with
+    screenshots for the steps to be done on the Azure side are given within the *See
+    also* section of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Verifying Users on AWS IAM Identity Center
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can verify the automatic user provisioning in AWS IAM Identity Center as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate back to the IAM Identity Center dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Users** from the left sidebar. We should be able to see the **demouser1**
+    user in our AWS Identity Center. We can now log in to the AWS Identity Center
+    using these user’s Microsoft Entra ID credentials.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.40 – Azure user in AWS](image/B21384_09_40.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.40 – Azure user in AWS
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Settings** and copy the AWS access portal URL.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Paste this URL in another browser. We should be given a prompt to log in with
+    our Microsoft Entra ID credentials. Enter the user’s principal name and password.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.41 – Signing in as a Microsoft user](image/B21384_09_41.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.41 – Signing in as a Microsoft user
+  prefs: []
+  type: TYPE_NORMAL
+- en: After entering the user’s principal name and password, we should be redirected
+    to the AWS account as a logged-in user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.42 – The credentials of an Azure user in AWS account](image/B21384_09_42.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.42 – The credentials of an Azure user in AWS account
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have used Microsoft Entra ID as our IdP in this recipe and logged in to an
+    AWS account using the Microsoft Entra ID credentials. We will now need to provide
+    the necessary permissions and access to this user using **permission sets** .
+    We can also follow a similar approach that we did in this recipe to use other
+    supported IdPs instead of Microsoft Entra ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SSO between AWS Identity Center and Azure Entra ID allows users to log in to
+    AWS Identity Center using their Azure AD credentials. This provides a number of
+    benefits, including improved security and convenience for users, reduced administrative
+    overhead, and improved compliance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSO between AWS Identity Center and Azure Entra ID works by generating a SAML
+    assertion from Azure AD and sending it to AWS Identity Center. AWS Identity Center
+    then validates the SAML assertion and creates a session for the user, allowing
+    them to access the AWS Identity Center application without having to enter their
+    credentials again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When provisioning users from Azure into the AWS IAM Identity Center, it’s essential
+    to seamlessly integrate them into AWS as if they were native AWS users. This involves
+    assigning them to specific AWS accounts and granting permission sets that align
+    with their respective roles within the organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us explore some more important concepts related to integrating IAM Identity
+    Center with Microsoft Entra ID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**User provisioning** : This is the process of automatically creating and managing
+    user accounts in an application or system. In the context of SSO between AWS IAM
+    Identity Center and Microsoft Entra ID, user provisioning allows us to automatically
+    create AWS Identity Center user accounts for users who are already in Microsoft
+    Entra ID. This can improve security by reducing the risk of unauthorized access
+    to our applications and resources and also reduce administrative overhead by freeing
+    up our IT staff to focus on other tasks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Group synchronization** : This is the process of keeping user groups in sync
+    between two systems. In the context of SSO between IAM Identity Center and Microsoft
+    Entra ID, group synchronization allows us to keep user groups in sync between
+    Microsoft Entra ID and IAM Identity Center. This ensures that users are always
+    assigned to the correct groups in both systems, which can improve the user experience
+    by ensuring that they always have access to the applications and resources they
+    need.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Attribute mapping** : This is the process of mapping user attributes between
+    two systems. In the context of SSO between AWS Identity Center and Microsoft Entra
+    ID, attribute mapping allows us to map user attributes between Microsoft Entra
+    ID and IAM Identity Center. This is important because IAM Identity Center uses
+    user attributes to make authorization decisions, so by mapping the correct attributes,
+    we can ensure that users are always granted the correct access permissions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let us now see some additional references to help us further explore integrating
+    IAM Identity Center with Microsoft Entra ID, especially with respect to the changes
+    on the Azure side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can explore more about automatic provisioning within AWS IAM Identity Center
+    at [https://www.cloudericks.com/blog/understanding-automatic-provisioning-with-aws-iam-identity-center](https://www.cloudericks.com/blog/understanding-automatic-provisioning-with-aws-iam-identity-center)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Including detailed steps and explanations for the configurations needed to be
+    done on the Azure side would have been outside the scope of this book. We can
+    learn more about Microsoft Entra SSO integration with AWS IAM Identity Center
+    at [https://www.cloudericks.com/blog/understanding-microsoft-entra-sso-integration-with-iam-identity-center](https://www.cloudericks.com/blog/understanding-microsoft-entra-sso-integration-with-iam-identity-center)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

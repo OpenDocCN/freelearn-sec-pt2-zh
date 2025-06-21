@@ -1,0 +1,1579 @@
+- en: Detecting Advanced Malware Using Memory Forensics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at different Volatility plugins, which help
+    in extracting valuable information from the memory image. In this chapter, we
+    will continue our journey of memory forensics and we will look at a few more plugins
+    that will help you extract forensic artifacts from the memory image infected with
+    advanced malware, which uses stealth and concealment techniques. In the next section,
+    we will focus on detecting code injection techniques using memory forensics. The
+    next section discusses some of the concepts already covered in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485),* Code
+    Injection and Hooking,* so it is highly recommended to read that chapter before
+    reading the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. Detecting Code Injection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you recall from Chapter 8, *Code Injection and Hooking*, code injection
+    is a technique used for injecting malicious code (such as EXE, DLL, or shellcode)
+    into legitimate process memory and executing the malicious code within the context
+    of a legitimate process. To inject code into the remote process, a malware program
+    normally allocates a memory with a protection of `Read`, `Write`, and `Execute`
+    permission `(PAGE_EXECUTE_READWRITE)`, and then injects the code into the allocated
+    memory of the remote process. To detect the code that is injected into the remote
+    process, you can look for the suspicious memory ranges based on the memory protection
+    and content of the memory. The compelling question is, what is the suspicious
+    memory range and how do you get information about the process memory range? If
+    you recall from the previous chapter (in the* Detecting Hidden DLL using ldrmodules*
+    section), Windows maintains a binary tree structure named *Virtual Address Descriptors
+    (VADs)* in the kernel space, and each VAD node describes a virtually contiguous
+    memory region in the process memory. If the process memory region contains a memory-mapped
+    file (such as an executable, DLL, and so on), then one of VAD nodes stores information
+    about its base address, file path, and the memory protection. The following depiction
+    is not an exact representation of VAD, but it should help you understand the concept.
+    In the following screenshot, one of the VAD nodes in the kernel space is describing
+    the information about where the process executable (`explorer.exe`) is loaded,
+    its full path, and the memory protection. Similarly, other VAD nodes will describe
+    process memory ranges, including the ones that contain mapped executable images
+    such as DLL. What this means is that VAD can be used to determine the memory protections
+    of each contiguous process memory range, and it can also give information about
+    a memory region containing a memory-mapped image file (such as an executable or
+    DLL):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00345.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.1 Getting VAD Information
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To get VAD information from the memory image, you can use the `vadinfo` Volatility
+    plugin. In the following example, `vadinfo` is used to display the memory regions
+    of an `explorer.exe` process using its process ID `(pid 2180)`. In the following
+    output, the first VAD node at address `0x8724d718` in the kernel memory describes
+    the memory range `0x00db0000-0x0102ffff` in the process memory and its memory
+    protection `PAGE_EXECUTE_WRITECOPY.` Since the first node is describing a memory
+    range containing a memory-mapped executable image (`explorer.exe`), it also gives
+    its full path on the disk. The second node, `0x8723fb50`, describes a memory range
+    of `0x004b0000-0x004effff`, which does not contain any memory mapped file. Similarly,
+    the third node at address `0x8723fb78` displays the information about the process
+    memory range of `0x77690000-0x777cbfff`, which contains `ntdll.dll` and its memory
+    protection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: To get the VAD information of a process using the Windbg kernel debugger, first,
+    you need to switch the context to the desired process using the `.process` command
+    followed by the address of the `_EPROCESS` structure. After switching the context,
+    use the `!vad` extension command to display the process memory regions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2 Detecting Injected Code Using VAD
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'An important point to note is that when an executable image (such as EXE or
+    DLL) is normally loaded into the memory, that memory region is given a memory
+    protection of `PAGE_EXECUTE_WRITECOPY(WCX)` by the operating system. An application
+    is generally not allowed to allocate a memory with `PAGE_EXECUTE_WRITECOPY` protection
+    using an API call such as `VirtualAllocEx.` In other words, if an attacker wants
+    to inject a PE file (such as EXE or DLL) or shellcode, then a memory with a `PAGE_EXECUTE_READWRITE(RWX)` protection
+    needs be allocated. Normally, you will see that very few memory ranges have a
+    memory protection of `PAGE_EXECUTE_READWRITE.` A memory range having a protection
+    of `PAGE_EXECUTE_READWRITE` is not always malicious, because a program may allocate
+    memory with that protection for a legitimate purpose. To detect code injection,
+    we can look for memory ranges containing a memory protection of `PAGE_EXECUTE_READWRITE`
+    and examine and verify its contents to confirm the maliciousness. To help you
+    understand this, let''s take an example of a memory image infected with *SpyEye.* This
+    malware injects code into a legitimate `explorer.exe` process (`pid 1608`)`.`
+    The `vadinfo` plugin shows two memory ranges in the `explorer.exe` process having
+    a suspicious memory protection of `PAGE_EXECUTE_READWRITE`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Just from the memory protection, it is hard to conclude if the preceding memory
+    regions contain any malicious code. To determine if there is any malicious code,
+    we can dump the contents of these memory regions. To display the contents of a
+    memory region, you can use the `volshell` plugin. The following command invokes
+    `volshell` (an interactive Python shell) in the context of the `explorer.exe`
+    process (`pid 1608`). The `db` command dumps the content of the given memory address.
+    To get help information and display the supported `volshell` commands, just type
+    `hh()` in the `volshell.` Dumping the contents of the memory address `0x03120000`
+    (the first entry from the preceding `vadinfo` output) using the `db` command shows
+    the presence of the `PE` file. The memory protection of `PAGE_EXECUTE_READWRITE`
+    and the presence of the PE file is a clear indication that the executable was
+    not normally loaded but was injected into the address space of the `explorer.exe`
+    process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Sometimes, displaying the contents of a memory region may not be enough to
+    identify malicious code. This is especially true when the shellcode is injected,
+    and in that case, you need to disassemble the content. For instance, if you dump
+    the contents of the address `0x03110000` (the second entry from the preceding
+    `vadinfo` output) using the `db` command, you will see the following hex dump.
+    From the output, it is not easy to say if this is a malicious code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you suspect that the memory region contains a shellcode, you can use the  `dis`
+    command in `volshell` to disassemble the code at a given address. From the disassembly
+    output that''s shown in the following code, you can probably tell that a shellcode
+    has been injected into this memory region, because it contains valid CPU instructions.
+    To verify if the memory region contains any malicious code, you need to analyze
+    it further in order to determine the context. This is because injected code can
+    also look similar to the legitimate code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.3 Dumping The Process Memory Region
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After you have identified the injected code (PE file or shellcode) in the process
+    memory, you may want to dump it to disk for further analysis (for extracting strings,
+    to perform YARA scans, or for disassembly). To dump a region of memory described
+    by the VAD node, you can use the `vaddump` plugin. For example, if you want to
+    dump the memory region containing the shellcode at address `0x03110000,` you can
+    supply the `-b (--base)` option followed by the base address, as follows. If you
+    don’t specify the `-b (--base)` option, the plugin dumps all memory regions into
+    separate files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Some malware programs use stealth techniques to bypass detection. For example,
+    a malware program may inject a PE file and wipe out the PE header after it is
+    loaded into the memory. In that case, if you are looking at the hex dump, it will
+    not give you any indication of the presence of PE file; some level of manual analysis
+    may be required to verify the code. An example of such a malware sample is mentioned
+    in a blog post titled *"Recovering CoreFlood Binaries with Volatility"* ([http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html](http://mnin.blogspot.in/2008/11/recovering-coreflood-binaries-with.html)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.4 Detecting Injected Code Using malfind
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, we have looked at identifying suspicious memory regions manually using
+    `vadinfo`. You have also understood how to dump a region of memory using `vaddump`.
+    There is another Volatility plugin named `malfind`, which automates the process
+    of identifying suspicious memory regions based on the memory content and the VAD
+    characteristics covered previously. In the following example, when `malfind` was
+    run against the memory image infected with *SpyEye,* it automatically identified
+    the suspicious memory regions (containing a PE file and shellcode). In addition
+    to that, it also displayed the hex dump and the disassembly starting at the base
+    address. If you do not specify the `-p (--pid)` option, `malfind` will identify
+    suspicious memory ranges of all the processes running on the system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 2\. Investigating Hollow Process Injection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the case of code injection techniques covered in the previous sections, the
+    malicious code is injected into the process address space of a legitimate process.
+    *Hollow Process Injection* (or *Process Hollowing*) is also a code injection technique,
+    but the difference is that in this technique, the process executable of a legitimate
+    process in the memory is replaced with a malicious executable. Before getting
+    into the detection of hollow process injection, let's understand how it works
+    in the next section. The detailed information on hollow process injection was
+    covered in *[Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485),
+    Code Injection and Hooking (section)*. You can also look at the author's presentation
+    and video demos on hollow process injection ([https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/](https://cysinfo.com/7th-meetup-reversing-and-investigating-malware-evasive-tactics-hollow-process-injection/))
+    for a better understanding of the subject.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1 Hollow Process Injection Steps
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following steps describe how malware normally performs process hollowing.
+    Let’s assume that there are two processes, A and B. In this case, process A is
+    the malicious process and process B is the legitimate process (also known as a
+    remote process) such as `explorer.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Process A starts a legitimate process, B, in the suspended mode. As a result
+    of that, the executable section of process B is loaded in the memory, and the
+    `PEB` (Process Environment Block) identifies the full path to the legitimate process.
+    The PEB structure's `ImageBaseAddress` field points to the base address where
+    the legitimate process executable is loaded.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A gets the malicious executable that will be injected into the remote
+    process. This executable can come from the resource section of the malware process
+    or from the file on the disk.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A determines the base address of the legitimate process B so that it
+    can unmap the executable section of the legitimate process. Malware can determine
+    the base address by reading the `PEB` (in our case, `PEB.ImageBaseAddress`).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A then deallocates the executable section of the legitimate process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A then allocates the memory in the legitimate process B with `read`,
+    `write`, and `execute` permission. This memory allocation is normally done at
+    the same address where the executable was previously loaded.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A then writes the PE header and PE sections of the malicious executable
+    to be injected into the allocated memory.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Process A then changes the start address of the suspended thread to the address
+    of the entry point of the injected executable and resumes the suspended thread
+    of the legitimate process. As a result of that, the legitimate process now starts
+    executing malicious code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Stuxnet* is one such malware that performs hollow process injection using
+    the preceding steps. To be specific, Stuxnet creates the legitimate `lsass.exe`
+    process in the suspended mode. As a result, `lsass.exe` is loaded into memory
+    with `PAGE_EXECUTE_WRITECOPY(WCX)` protection. At this point (before hollowing),
+    both `PEB` and `VAD` contain the same metadata information about lsass.exe''s
+    memory protection, base address, and the full path. Stuxnet then hollows out the
+    legitimate process executable (`lsass.exe`) and allocates a new memory with `PAGE_EXECUTE_READWRITE
+    (RWX)` protection in the same region where the `lsass.exe` was previously loaded,
+    before injecting the malicious executable in the allocated memory and resuming
+    the suspended thread. As a result of hollowing out the process executable, it
+    creates a discrepancy in the process path information between the `VAD` and `PEB`,
+    that is, the process path in `PEB` still contains the full path to `lsass.exe`,
+    whereas `VAD` doesn''t show the full path. Also, there is memory protection discrepancy
+    before hollowing `(WCX)` and after hollowing `(RWX).` The following diagram should
+    help you visualize what happens before hollowing, and the discrepancy it creates
+    in `PEB` and `VAD` after hollowing the process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00346.jpeg)The complete analysis of Stuxnet, using memory forensics,
+    was covered by Michael Hale Ligh in the following blog post: [http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html](http://mnin.blogspot.in/2011/06/examining-stuxnets-footprint-in-memory.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Detecting Hollow Process Injection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To detect hollow process injection, you can look for the discrepancies created
+    between `PEB` and `VAD`, as well as the memory protection discrepancy. You can
+    also look for the discrepancy in the parent-child process relationship. In the
+    following *Stuxnet* example, you can see that there are two `lsass.exe` processes
+    running on the system. The first `lsass.exe` process (`pid 708`) has a parent
+    process of `winlogon.exe` (`pid 652`), whereas the second `lsass.exe` process
+    (`pid 1732`) has a parent process (`pid 1736`) which is terminated. Based on the
+    process information, you can tell that `lsass.exe` with a pid of `1732` is the
+    suspicious process because, on a clean system, `winlogon.exe` will be the parent
+    process of `lsass.exe` on pre-Vista machines and `wininit.exe` will be the parent
+    process of `lsass.exe` on Vista and later systems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As mentioned earlier, you can detect hollow process injection by comparing
+    the `PEB` and `VAD` structure. The `dlllist` plugin, which gets module information
+    from the `PEB`, shows the full path to `lsass.exe` (`pid 1732`) and the base address
+    `(0x01000000)` where it is loaded:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `ldrmodules` plugin, which relies on VAD in the kernel, does not show the
+    full path name to the `lsass.exe.` As a result of malware unmapping the `lsass.exe`
+    process executable section, the full path name is no longer associated with the
+    address `0x01000000`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the malware normally allocates memory with `PAGE_EXECUTE_READWRITE` permission
+    after hollowing and before injecting the executable, you can look for that memory
+    protection. The `malfind` plugin identified the suspicious memory protection at
+    the same address `(0x01000000)` where the executable `lsass.exe` was loaded:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you wish to dump the suspicious memory regions detected by `malfind` to disk,
+    you can specify `-D`  followed by the directory name where all the suspicious
+    memory regions will be dumped.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Hollow Process Injection Variations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the following example, we will look at a malware named *Skeeyah*, which
+    performs hollow process injection in a slightly different way. This is the same
+    sample which was covered in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485),* Code
+    Injection and Hooking (section 3.6 Hollow Process Injection)*. The following are
+    the steps performed by *Skeeyah*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It starts the `svchost.exe` process in the suspended mode. As a result, `svchost.exe`
+    is loaded into the memory (in this case, at address `0x1000000`).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It determines the base address of `svchost.exe` by reading `PEB.ImageBaseAddress`
+    and then deallocates the executable section of `svchost.exe`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Instead of allocating memory in the same region where the `svchost.exe` was
+    previously loaded (`0x1000000`), it allocates memory in a different address, `0x00400000`,
+    with `read`, `write`, and `execute` permission.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It then overwrites the `PEB.ImageBaseAdress` of the `svchost.exe` process with
+    the newly allocated address, `0x00400000.` This changes the base address of `svchost.exe`
+    in the `PEB` from `0x1000000` to `0x00400000` (which contains injected executables).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It then changes the start address of the suspended thread to the address of
+    the entry point of the injected executable and resumes the thread.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows the discrepancy before and after hollowing.
+    To be specific, the PEB after hollowing thinks that `svchost.exe` is loaded at
+    `0x00400000`.  The `VAD` node that previously represented `svchost.exe` (loaded
+    at `0x1000000`) is no longer present, because when the malware hollowed out the
+    `svchost.exe` process executable, the entry for that was removed from the `VAD`
+    tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00347.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To detect this variation of hollow process injection, you can follow the same
+    methodology. Depending on how the hollow process injection is performed, the results
+    will vary. The process listing shows multiple instances of the `svchost.exe` process,
+    which is normal. All the `svchost.exe` processes except the last `svchost.exe
+    (pid 1824)` have a parent process of `services.exe` `(pid 696)`. On a clean system,
+    all the `svchost.exe` process are started by `services.exe`. When you look at
+    the parent process of `svchost.exe` `(pid 1824)` you can see that its parent process
+    is terminated. Based on the process information, you can tell that the last `svchost.exe
+    (pid 1824)` is suspicious:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `dlllist` plugin (which relies on `PEB`) shows the full path to `svchost.exe`
+    (`pid 1824`) and reports the base address as `0x00400000`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the other hand, the `ldrmodules` plugin (which relies on VAD in the kernel)
+    does not show any entry for `svchost.exe`, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00348.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '`malfind` shows the presence of a PE file at address `0x00400000` with a suspicious
+    memory protection of `PAGE_EXECUTE_READWRITE`, indicating that this executable
+    was injected and not normally loaded:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Attackers use different variations of hollow process injection to bypass, deflect,
+    and divert forensic analysis. For detailed information on how these evasive techniques
+    work and how to detect them using a custom Volatility plugin, watch the author''s
+    Black Hat presentation titled: *"What Malware Authors Don''t Want You to Know
+    - Evasive Hollow Process Injection"* ([https://youtu.be/9L9I1T5QDg4](https://youtu.be/9L9I1T5QDg4)).
+    Alternatively, you can read the author''s blog post at the following link: [https://cysinfo.com/detecting-deceptive-hollowing-techniques/](https://cysinfo.com/detecting-deceptive-hollowing-techniques/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3\. Detecting API Hooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After injecting the malicious code into the target process, malware can hook
+    API calls made by the target process to control its execution path and reroute
+    it to the malicious code. The details of hooking techniques were covered in [Chapter
+    8,](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485)* Code Injection and
+    Hooking (*in the *Hooking Techniques* section). In this section, we will mainly
+    focus on detecting such hooking techniques using memory forensics. To identify
+    API hooks in both processes and kernel memory, you can use the `apihooks` Volatility
+    plugin. In the following example of *Zeus bot*, an executable is injected into
+    the `explorer.exe` process''s memory at address `0x2c70000`, as detected by the
+    `malfind` plugin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following output, the `apihooks` plugin detects the hook in the user-mode
+    API `HttpSendRequestA` (in `wininet.dll`). The hooked API is then redirected to
+    address `0x2c7ec48` (hook address). The hook address falls within the address
+    range of the injected executable (hooking module). The name of the hooking module
+    is unknown, because it is not normally loaded from the disk (but injected). To
+    be specific, at the start address (`0x753600fc`) of the API function `HttpSendRequestA`,
+    there is a jump instruction which redirects the execution flow of `HttpSendRequestA`
+    to address `0x2c7ec48` within the injected executable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 4\. Kernel Mode Rootkits
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A malicious program such as rootkit can load a kernel driver to run the code
+    in kernel mode. Once it's running in the kernel space, it has access to the internal
+    operating system code and it can monitor system events, evade detection by modifying
+    the internal data structures, hook functions, and modify the call tables. A kernel
+    mode driver typically has an extension of `.sys` and it resides in `%windir%\system32\drivers`.
+    A kernel driver is normally loaded by creating a service of type *Kernel Driver
+    Service* (as described in [Chapter 7](part0219.html#6GRB60-ac10ba3f98854c44bac1c2c5641ca485)*,
+    Malware Functionalities and Persistence, *in the *Service* section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows has implemented various security mechanisms that are designed to prevent
+    the execution of unauthorized code in the kernel space. This makes it difficult
+    for a rootkit to install the kernel drivers. On 64-bit Windows, Microsoft implemented
+    *Kernel-Mode Code Signing (KMCS)*, which requires the kernel mode drivers to be
+    digitally signed in order to be loaded into memory. Another security mechanism
+    is *Kernel Patch Protection (KPP)*, also known as *PatchGuard*, which prevents
+    modifications to core system components, data structures, and call tables (such
+    as SSDT, IDT, and so on). These security mechanisms are effective against most
+    rootkits, but at the same time, this has forced the attackers to come up with
+    advanced techniques that allow them to install unsigned drivers and to bypass
+    these security mechanisms. One method is to install a *Bootkit*. A Bootkit infects
+    the early stages of the system startup process, even before the operating system
+    is fully loaded. Another method is to exploit vulnerabilities in the kernel or
+    third-party driver to install an unsigned driver. For the rest of this chapter,
+    we will assume that an attacker has managed to install the kernel mode driver
+    (using *Bootkit* or by exploiting a kernel-level vulnerability), and we will focus
+    on kernel memory forensics, which involves identifying the malicious driver.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On a clean windows system, you will find hundreds of kernel modules, so finding
+    the malicious kernel module requires some work. In the following sections, we
+    will look at some of the common techniques to locate and extract malicious kernel
+    modules. We will start by listing the kernel modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5\. Listing Kernel Modules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To list the kernel modules, you can use the `modules` plugin. This plugin relies
+    on walking the doubly linked list of metadata structures (`KLDR_DATA_TABLE_ENTRY`)
+    pointed to by `PsLoadedModuleList` (this technique is similar to walking the doubly
+    linked list of `_EPROCESS` structures, as described in [Chapter 10](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)*,
+    Hunting Malware Using Memory Forensics,* in the* Understanding ActiveProcessLinks*
+    section*)*. Listing kernel modules may not always help you identify the malicious
+    kernel driver out of the hundreds of loaded kernel modules, but it can be useful
+    for spotting a suspicious indicator such as a kernel driver having a weird name,
+    or kernel modules loading from non-standard paths or the temporary paths. The
+    `modules` plugin lists the kernel modules in the order in which they were loaded,
+    which means that if a rootkit driver was recently installed, you are very likely
+    to find that module at the end of the list, provided the module is not hidden
+    and the system was not rebooted before the memory image was acquired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example of a memory image infected with the *Laqma* rootkit,
+    the module listing shows the malicious driver of *Laqma,* `lanmandrv.sys`, at
+    the end of the list running from the `C:\Windows\System32` directory, whereas
+    most of the other kernel drivers are loaded from `*S*ystemRoot\System32\DRIVERS\`*.*
+    From the listing, you can also see that the core operating system components such
+    as the NT kernel module (`ntkrnlpa.exe` or `ntoskrnl.exe`) and the hardware abstraction
+    layer `(hal.dll)` are loaded first, followed by the boot drivers (such as `kdcom.dll`)
+    which start automatically at the boot time and then followed by other drivers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since walking the doubly linked list is susceptible to DKOM attacks (described
+    in [Chapter 10](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485)*, Hunting
+    Malware Using Memory Forensics, section 4.2.1 Direct Kernel Object Manipulation
+    (DKOM)*), it is possible to hide a kernel driver from the listing by unlinking
+    it. To overcome this problem, you can use another plugin named `modscan.` The
+    `modscan` plugin relies on the pool tag scanning approach (covered in [Chapter
+    10](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=1250&action=edit#post_1143)*, Hunting
+    Malware Using Memory Forensics**, section 4.2.2 Understanding Pool Tag Scanning*).
+    In other words, it scans the physical address space looking for the pool tag (`MmLd`)
+    associated with the kernel module. As a result of pool tag scanning, it can detect
+    unlinked modules and the previously loaded modules. The `modscan` plugin displays
+    the kernel modules in the order in which they were found in the physical address
+    space, and not based on the order in which they were loaded. In the following
+    example of the *Necurs* rootkit, the `modscan` plugin displays the malicious kernel
+    driver (`2683608180e436a1.sys`) whose name is composed entirely of hex characters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When you run the `modules` plugin against the memory image infected with the *Necurs*
+    rootkit, it does not display that malicious driver (`2683608180e436a1.sys`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since `modscan` uses the pool tag scanning approach, which can detect unloaded
+    modules (provided that the memory has not been overwritten), it is possible that
+    the malicious driver, `2683608180e436a1.sys` was quickly loaded and unloaded,
+    or that it is hidden. To confirm whether the driver was unloaded or hidden, you
+    can use the `unloadedmodules` plugin, which will display the list of unloaded
+    modules and the time when each one was unloaded. In the following output, absence
+    of the malicious driver, `2683608180e436a1.sys`, tells you that this driver was
+    not unloaded and it is hidden. From the following output, you can see another
+    malicious driver called `2b9fb.sys` which was previously loaded and unloaded quickly
+    (not present in the `modules` and `modscan` listing which is shown in the following
+    code). The `unloadedmodules` plugin can prove to be useful during the investigation
+    to detect the rootkit''s attempt to quickly load and unload the driver so that
+    it does not show up in the module listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 5.1 Listing Kernel Modules Using driverscan
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another method for listing the kernel modules is to use the `driverscan` plugin,
+    as shown in the following code. The `driverscan` plugin gets the information related
+    to kernel modules from a structure named `DRIVER_OBJECT.` To be specific, the `driverscan`
+    plugin uses pool tag scanning to find the driver objects in the physical address
+    space. The first column, `Offset(P)`, specifies the physical address where the
+    `DRIVER_OBJECT` structure was found, the second column, `Start`, contains the
+    base address of the module, and the `Driver Name` column displays the name of
+    the Driver. For example, the driver name `\Driver\Beep` is the same as `Beep.sys`,
+    and the last entry shows the malicious driver, `\Driver\2683608180e436a1`, associated
+    with the *Necurs* rootkit. The `driverscan` plugin is another way of listing the
+    kernel modules and can be useful when the rootkit tries to hide from the `modules`
+    and the `modscan` plugin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To list the kernel modules with the kernel debugger (Windbg), use the `lm k`
+    command as follows. For verbose output, you can use the `lm kv` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After you identify the malicious kernel module, you can dump it from memory
+    to disk using the `moddump` plugin. To dump the module to disk, you need to specify
+    the base address of the module, which you can get from the `modules`, `modscan`,
+    or `driverscan` plugins. In the following example, the malicious driver of the *Necurs
+    rootkit* is dumped to disk using its base address, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 6\. I/O Processing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While discussing the `driverscan` plugin, I had mentioned that `driverscan`
+    gets module information from the `DRIVER_OBJECT` structure. Are you wondering
+    what the `DRIVER_OBJECT` structure is? This will become clear soon. In this section,
+    you will understand the interaction between the user-mode and kernel-mode components,
+    the role of the device driver, and its interaction with the I/O manager. Typically,
+    a rootkit consists of a user-mode component (EXE or DLL) and a kernel mode component
+    (device driver). The user-mode component of the rootkit communicates with the
+    kernel-mode components, using a specific mechanism. From a forensics standpoint,
+    it is essential to understand how these communications work and the components
+    involved. This section will help you understand the communication mechanism and
+    lays the foundation for the upcoming topics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try to understand what happens when a user-mode application performs
+    input/output (I/O) operations, and how it is processed at a high level. While
+    discussing the API call flow in [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485), *Code
+    Injection and Hooking* (in the *Windows API call flow* section), I used the example
+    of a user-mode application performing a write operation using the `WriteFile()`
+    API, which ends up calling the `NtWriteFile()` system service routine in the kernel
+    executive `(ntoskrnl.exe)`, which then directs the request to the I/O manager,
+    whereupon the I/O manager requests the device driver to perform the I/O operation.
+    Here, I will revisit that topic again with a little more detail and with an emphasis
+    on the kernel-space components (mainly the device driver and the I/O manager).
+    The following diagram illustrates the flow of the write request (other types of
+    I/O requests, such as read, are similar; they just use different APIs):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00349.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following points discuss the role of the device driver and the I/O manager
+    at a high level:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The device driver typically creates a device or multiple devices and specifies
+    what type of operations (open, read, and write) it can handle for the device.
+    It also specifies the address of routines that handle these operations. These
+    routines are called dispatch routines or IRP handlers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After creating the device, the driver advertises that device so that it is accessible
+    to user-mode applications.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The user mode application can use API calls, such as `CreateFile`, to open handle
+    the advertised device and perform I/O operations such as read, and write on the
+    device using the `ReadFile` and `WriteFile` APIs. APIs, such as `CreateFile`,
+    `ReadWrite`, and `WriteFile`, that are used to perform I/O operations on the file
+    also work on a device. This is because the device is treated as a virtual file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When the I/O operation is performed on the advertised device by the user mode
+    application, the request is routed to the I/O manager. The I/O manager determines
+    the driver that handles the device and requests the driver to complete the operation
+    by passing an IRP (I/O request packet). An IRP is a data structure that contains
+    information on what operation to perform and the buffer required for the I/O operation.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The driver reads the IRP, verifies it, and completes the requested operation
+    before notifying the I/O manager about the status of the operation. The I/O manager
+    then returns the status and the data back to the user application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At this stage, the preceding points might seem foreign to you, but don''t let
+    it discourage you: it will be clear by the time you complete this section. Next,
+    we will look at the role of the device driver, followed by the role of the I/O
+    manager.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.1 The Role Of The Device Driver
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When the driver is loaded into the system, the I/O manager creates a driver
+    object (`DRIVER_OBJECT` structure). The I/O manager then calls the driver''s initialization
+    routine, `DriverEntry` (which is analogous to the `main()` or `WinMain()` functions),
+    by passing a pointer to the `DRIVER_OBJECT` structure as an argument. A driver
+    object (`DRIVER_OBJECT` structure) represents an individual driver on the system.
+    The `DriverEntry` routine will use the `DRIVER_OBJECT` to populate it with various
+    entry points of the driver for handling specific I/O requests. Typically, in the
+    `DriverEntry` routine, the driver creates a device object (`DEVICE_OBJECT` structure)
+    that represent logical or physical devices. The device is created using an API
+    called `IoCreateDevice` or `IoCreateDevice-Secure.` When the driver creates a
+    device object, it can optionally assign the name to the device and it can also
+    create multiple devices. After the device is created, the pointer to the first
+    created device is updated in the driver object. To help you understand this better,
+    let''s list the loaded kernel modules and look at a driver object of a simple
+    kernel module. For this example, we will examine the `null.sys` kernel driver.
+    As per Microsoft documentation, the Null device driver provides the functional
+    equivalent of `\dev\null` in the Unix environment. When the system starts during
+    the kernel initialization phase, `null.sys` gets loaded into the system. In the
+    kernel module listing, you can see that `null.sys` is loaded at base address `8bcde000`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since `null.sys` is already loaded, its driver object (`DRIVER_OBJECT` structure)
+    will be populated with metadata information during the driver initialization.
+    Let''s look at its driver object to understand what kind of information it contains.
+    You can display the driver object information using the `!drvobj` extension command.
+    From the following output, the driver object representing `null.sys` is at address
+    `86a33180.` The value `86aa2750` below `Device Object list` is the pointer to
+    the device object created by `null.sys`. If the driver creates multiple devices,
+    you will see multiple entries under the `Device Object list`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can use the driver object address `86a33180` to examine the `_DRIVER_OBJECT`
+    structure of `null.sys` using the `dt (display type)` command. From the following
+    output, you can see that the `DriverStart` field holds the base address (`0x8bcde000`)
+    of the driver, the `DriverSize` field contains the size of the `driver(0x7000)`,
+    and the `Drivername` is the name of the driver object (`\Driver\Null`)`.` The
+    `DriverInit` field holds the pointer to the *Driver initialization routine* (`DriverEntry`).
+    The `DriverUnload` field contains the pointer to the driver''s unload routine,
+    which normally frees up resources created by the driver during unload process.
+    The `MajorFunction` field is one of the most important fields, that points to
+    a table of 28 major function pointers. This table will be populated with the addresses
+    of the dispatch routines, and we will look at the `MajorFunction` table later
+    in this section. The `driverscan` plugin covered earlier performs pool tag scanning
+    for the driver objects and gets the information related to the kernel module such
+    as base address, size, and the driver name by reading some of these fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `DeviceObject` field in the `DRIVER_OBJECT` structure contains the pointer
+    to the device object created by the driver (`null.sys`). You can use the device
+    object address `0x86aa2750` to determine the name of the device created by the
+    driver. In this case, `Null` is the name of the device created by the driver `null.sys`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also look at the actual `DEVICE_OBJECT` structure by specifying the
+    device object address next to the `display type (dt)` command, as shown in the
+    following code. If the driver creates more than one device, then the `NextDevice`
+    field in the `DEVICE_OBJECT` structure will point to the next device object. Since
+    the `null.sys` driver creates only one device, the `NextDevice` field is set to
+    `null`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the preceding output, you can see that the `DEVICE_OBJECT` contains a `DriverObject` field
+    that points back to the driver object. In other words, the associated driver can
+    be determined from the device object. This is how the I/O manager can determine
+    the associated driver when it receives the I/O request for a specific device.
+    This concept can be visualized using the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00350.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can use a GUI tool such as *DeviceTree* ([http://www.osronline.com/article.cfm?article=97](http://www.osronline.com/article.cfm?article=97))
+    to look at the devices created by the driver. The following is a screenshot of
+    the tool showing the `Null` device created by the `null.sys` driver:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00351.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When a driver creates a device, the device objects are placed in the `\Device`
+    directory in the Windows object manager''s namespace. To view the object manager''s
+    namespace information, you can use the  *WinObj* tool ([https://docs.microsoft.com/en-us/sysinternals/downloads/winobj](https://docs.microsoft.com/en-us/sysinternals/downloads/winobj)).
+    The following screenshot shows the device (`Null`) created by `null.sys` in the
+    `\Device` directory. You can also see the devices that have been created by other
+    drivers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00352.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The device created under the `\Device` directory is not accessible to the applications
+    running in the user mode. In other words, if a user mode application wants to
+    perform I/O operations on the device, it cannot directly open a handle to the
+    device by passing the name of the device (such as `\Device\Null`) as the argument
+    to the `CreateFile` function. The `CreateFile` function is not just used for creating
+    or opening a file, it can also be used to open a handle to the device. If a user
+    mode application cannot access the device, then how can it perform I/O operations?
+    To make the device accessible to the user mode applications, the driver needs
+    to advertise the device. This is done by creating a symbolic link to the device.
+    A driver can create a symbolic link using the kernel API `IoCreateSymbolicLink.`
+    When a symbolic link is created for a device (such as `\Device\Null`), you can
+    find it in the `\GLOBAL??` directory in the object manager namespace, which can
+    also be viewed using the *WinObj* tool. In the following screenshot, you can see
+    that `NUL` is the name of the symbolic link created for the `\Device\Null` device
+    by the `null.sys` driver:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00353.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The symbolic link is also referred to as an MS-DOS device name. A user mode
+    application can simply use the name of the symbolic link (MS-DOS device name)
+    to open the handle to the device using the convention `\\.\<symboliclink name>`.
+    For example, to open a handle to `\Device\Null`, a user mode application has to
+    just pass `\\.\NUL` as the first argument (`lpFilename`) to the `CreateFile` function,
+    which returns the file handle to the device. To be specific, anything that is
+    a symbolic link within the object manager''s directory `GLOBAL??` can be opened
+    using the `CreateFile` function. As shown in the following screenshot, the `C:` volume
+    is just a symbolic link to `\Device\HarddiskVolume1`*.* In Windows, I/O operations
+    are performed on virtual files. In other words, devices, directories, pipes, and
+    files are all treated as virtual files (that can be opened using the `CreateFile`
+    function):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00354.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, you know that the driver, during its initialization, creates
+    the device and advertises it to be used by the user application using symbolic
+    links. Now, the question is, how does the driver tell the I/O manager what type
+    of operation (open, read, write, and so on) it supports for the device? During
+    initialization, another thing the driver normally does is update the `Major function
+    table (dispatch routine array)` with the addresses of the dispatch routines in
+    the `DRIVER_OBJECT` structure. Examining the major function table will give you
+    an idea of the type of operations (open, read, write, and so on) supported by
+    the driver, and the addresses of dispatch routines associated with the specific
+    operation. The major function table is an array of `28` function pointers; the
+    index values `0` to `27` represents a particular operation. For example, the index
+    value `0` corresponds to the major function code `IRP_MJ_CREATE`, the index value
+    `3` corresponds to the major function code `IRP_MJ_READ`, and so on. In other
+    words, if an application wants to open a handle to a file or device object, the
+    request will be sent to the I/O manager, which will then use the `IRP_MJ_CREATE`
+    major function code as the index into the major function table to find the address
+    of the dispatch routine that will handle this request. In the same manner for
+    the read operation, `IRP_MJ_READ` is used as the index to determine the address
+    of the dispatch routine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following `!drvobj` commands displays the dispatch routine array populated
+    by the `null.sys` driver. The operations that are not supported by the driver
+    point to `IopInvalidDeviceRequest` in the `ntoskrnl.exe` (`nt`). Based on this
+    information, you can tell that `null.sys` only supports `IRP_MJ_CREATE` (open),
+    `IRP_MJ_CLOSE` (close), `IRP_MJ_READ` (read), `IRP_MJ_WRITE` (write), `IRP_MJ_QUERY_INFORMATION`
+    (query information), and `IRP_MJ_LOCK_CONTROL` (lock control) operations. Any
+    request to perform any of the supported operations will be dispatched to the appropriate
+    dispatch routine. For example, when the user application performs a `write` operation,
+    the `write` request to the device will be dispatched to the `MajorFunction[IRP_MJ_WRITE]` function,
+    which happens to be at address `8bce107c` within the `null.sys` driver''s unload
+    routine. In the case of `null.sys`, all the supported operations are dispatched
+    to the same address, `8bce107c`. Normally, that is not the case; you will see
+    different routine addresses for handling different operations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also look at the supported operations in the *DeviceTree* tool, as
+    shown the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00355.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, you know that the driver creates the device, advertises it to
+    be used by the user applications, and it also updates the dispatch routine array
+    (major function table) to tell the I/O manager what operation it supports. Now,
+    let's look at what the role of the I/O manager is and understand how the I/O request
+    received from the user application is dispatched to the driver.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.2 The Role Of The I/O Manager
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When the I/O request reaches the I/O manager, the I/O manager locates the driver
+    and creates an `IRP (I/O request packet)`, that is a data structure which contains
+    information describing an I/O request. For an operation such as read, write, and
+    so on, the IRP created by the I/O manager also contains a buffer in the kernel
+    memory to be used by the driver to store the data read from the device or the
+    data to be written to the device. The IRP created by the I/O manager is then passed
+    to the correct driver's dispatch routine. The driver receives the IRP, and the
+    IRP contains the major function code (`IRP_MJ_XXX`) that describes the operation
+    (open, read, or write) to be performed. Before initiating an I/O operation, the
+    driver performs a check to make sure everything is OK (for example, the buffer
+    provided for read or write operations is large enough) after which it initiates
+    the I/O operation. The driver normally goes through the HAL routines if it is
+    required to perform I/O operations on the hardware device. Upon completion of
+    its work, the driver then returns the IRP to the I/O manager, either to let it
+    know that the requested I/O operation has been completed or because it must be
+    passed to another driver for further processing in the driver stack. The I/O manager
+    frees the IRP if the job is complete or passes the IRP to the next driver in the
+    device stack to complete the IRP. Upon completion of the job, the I/O manager
+    returns the status and the data to the user mode application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At this point, you should have an understanding of the role of the I/O manager.
+    For detailed information on the I/O system and device drivers, refer to the book
+    *"Windows Internals, Part 1: 7th Edition"* by Pavel Yosifovich, Alex Ionescu,
+    Mark E. Russinovich, and David A. Solomon.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.3 Communicating With The Device Driver
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, let''s revisit the interaction between the user-mode component and the
+    kernel-mode component. We will get back to our example of the `null.sys` driver
+    and trigger a write operation to it''s device (`\Device\Null`) from the user-mode
+    and monitor the IRP sent to the `null.sys` driver. To monitor the IRP packets
+    sent to the driver, we can use the `IrpTracker` tool ([https://www.osronline.com/article.cfm?article=199](https://www.osronline.com/article.cfm?article=199)).
+    To monitor launch the `IrpTracker` as an Administrator, click on File | Select
+    Driver and enter the name of the driver (in this case, `null`), as shown in the
+    following screenshot, and select the OK button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00356.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, to trigger the I/O operation, you can open the Command Prompt and type
+    the following command. This will write the string `"hello"` to the null device.
+    As mentioned earlier, the symbolic link name is what a user-mode application (such
+    as `cmd.exe`) can use; that is the reason I''m specifying the symbolic link name
+    of the device (NUL) to write the content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A device is treated as a virtual file and before writing to the device, handles
+    to the device will be opened using `CreateFile()` (an API that''s used to create/open
+    a file or device). The `CreateFile()` API will eventually call `NtCreateFile()`
+    in `ntoskrnl.exe`, which sends the request to the I/O manager. The I/O manager
+    finds the driver associated with the device based on the symbolic link name, and
+    calls its dispatch routine corresponding to the `IRP_MJ_CREATE` major function
+    code. After the handle is opened to the device, the write operation is performed
+    using `WriteFile()`, which will call `NtWriteFile`. This request will be dispatched
+    by the I/O manager to the driver''s routine that''s corresponding to the `IRP_MJ_WRITE`
+    major function code. The following screenshot shows calls to the driver''s dispatch
+    routines that are corresponding to `IRP_MJ_CREATE` and `IRP_MJ_WRITE` and their
+    completion status:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00357.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'At this point, you should have an understanding of how the user-mode code that
+    performs I/O operations communicates with the kernel mode driver. Windows supports
+    another mechanism, which allows the user-mode code to communicate directly with
+    the kernel-mode device driver. This is done using the generic API called `DeviceIoControl`
+    (exported by `kernel32.dll`). This API accepts the handle to the device as one
+    of the parameters. Another parameter it accepts is the control code, known as
+    the `IOCTL` (I/O control) code, which is a 32-bit integer value. Each control
+    code identifies a specific operation to be performed and the type of device on
+    which to perform the operation. A user-mode application can open the handle to
+    the device (using `CreateFile`), call `DeviceIoControl`, and pass the standard
+    control codes provided by the Windows operating system to perform direct input
+    and output operations on the device, such as hard disk drive, tape drive, or CD-ROM
+    drive. In addition, a device driver (a rootkit driver) can define its own device-specific
+    control codes, which can be used by the user-mode component of the rootkit to
+    communicate with the driver via the `DeviceIoControl` API. When a user-mode component
+    calls `DeviceIoControl` by passing `IOCTL` code, it calls `NtDeviceIoControlFile`
+    in `ntdll.dll`, which transitions the thread to the kernel-mode and calls the
+    system service routine `NtDeviceIoControlFile` in the Windows executive `ntoskrnl.exe.`
+    The Windows executive invokes the I/O manager, the I/O manager builds an IRP packet
+    containing the IOCTL code, and then it routes it to the kernel dispatch routine
+    identified by `IRP_MJ_DEVICE_CONTROL.` The following diagram illustrates this
+    concept of communication between user-mode code and the kernel-mode driver:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00358.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 6.4 I/O Requests To Layered Drivers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, you have understood how an I/O request is handled by a simple device
+    controlled by a single driver. The I/O request can go through multiple layers
+    of drivers; I/O processing for the layered drivers happens in much the same way.
+    The following screenshot illustrates an example of how an I/O request might travel
+    through layered drivers before reaching the hardware-based devices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00359.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This concept is better understood with an example, so let''s trigger a write
+    operation to `c:\abc.txt` using the following command. When this command is executed,
+    `netstat` will open the handle to `abc.txt` and write to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A point to note here is that the filename *(*`C:\abc.txt`*)* also includes
+    the name of the device where the file resides, that is, volume `C:` is the symbolic
+    link name for the device, `\Device\HarddiskVolume1` (you can verify it using the `WinObj`
+    tool, as mentioned earlier). This means the write operation will be routed to
+    the driver associated with the device `\Device\HarddiskVolume1`*.* When `netstat.exe`
+    opens `abc.txt`, the I/O manager creates a file object (`FILE_OBJECT` structure)
+    and stores the pointer to the device object inside the file object before returning
+    the handle to `netstat.exe.` The following screenshot from the `ProcessHacker`
+    tool displays the handle to `C:\abc.txt` that has been opened by `netstat.exe.`
+    The object address `0x85f78ce8` represents the file object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00360.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can examine the file object (`FILE_OBJECT`) using the object address as
+    follows. From the output, you can see that the `FileName` field contains the name
+    of the file, and the `DeviceObject` field contains the pointer to the device object
+    `(DEVICE_OBJECT)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As mentioned earlier, from the device object, one can determine the name of
+    the device and the associated driver. This is how the I/O manager determines which
+    driver to pass the I/O request to. The following output displays the name of the
+    device, `HarddiskVolume1`, and its associated driver, `volmgr.sys.` The `AttachedDevice`
+    field tells you that there is an unnamed device object (`868e7b28`) associated
+    with the `fvevol.sys` driver sitting on top of the device object `HarddiskVolume1`
+    in the device stack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To determine the layers of drivers through which the I/O request goes through,
+    you can use the `!devstack` kernel debugger command and pass the device object
+    address to display the device stack (of layered device objects) associated with
+    a particular device object. The following output shows the device stack associated
+    with `\Device\HarddiskVolume1`, which is owned by `volmgr.sys.` The `>` character
+    in the fourth column tells you that the entry is associated with the device `HarddiskVolume1`
+    and the entries above that line are the list of drivers layered above `volmgr.sys.`
+    What this means is that the I/O request will be first passed to `volsnap.sys`
+    by the I/O manager. Depending on the type of request, `volsnap.sys` can handle
+    the IRP request and send the request down to other drivers in the stack, which
+    finally reaches `volmgr.sys`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To view the device tree, you can use the GUI tool *DeviceTree* (which we mentioned
+    earlier). The tool displays the driver on the outer edge of the tree, and their
+    devices are indented one level. The attached devices are further intended, as
+    shown in the following screenshot. You can compare the following screenshot with
+    the preceding `!devstack` output to get an idea of how to interpret the information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00361.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: It is important to understand this layered approach, because sometimes, a rookit
+    driver can insert or attach below or above the target device's stack to receive
+    `IRP`. Using this technique, a rootkit driver can log or modify the `IRP` before
+    passing it on to the legitimate driver. For example, a keylogger can log strokes
+    by inserting a malicious driver that sits above the keyboard function driver.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7\. Displaying Device Trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You can use the `devicetree` plugin in Volatility to display the device tree
+    in the same format as the *DeviceTree* tool. The following highlighted entries
+    show the device stack of `HarddiskVolume1` that is associated with `volmgr.sys`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To help you understand the use of the `devicetree` plugin in forensic investigation,
+    let''s take a look at a malware which creates its own device to store its malicious
+    binary. In the following example of the Z*eroAccess* *rootkit*, I have used the
+    `cmdline` plugin, which displays process command-line arguments. This can be useful
+    in determining the full path of a process (you can also use the `dlllist` plugin).
+    From the output, you can see that the last `svchost.exe` process is running from
+    a suspicious namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the earlier discussion, if you remember, `\\.\<symbolic link name>` is
+    the convention used to access a device from the user-mode using the name of the
+    symbolic link. When a driver creates a symbolic link for the device, it is added
+    to the `\GLOBAL??` directory in the object manager namespace (which can be viewed
+    using the *WinObj* tool, as we discussed earlier). In this case, `globalroot`
+    is the name of the symbolic link. Then, the question is, what is `\\.\globalroot`?
+    It turns out that `\\.\globalroot` refers to the `\GLOBAL??` namespace. In other
+    words, the `\\.\globalroot\Device\svchost.exe\svchost.exe` path is the same as
+    `\Device\svchost.exe\svchost.exe`*.* At this stage, you know that the Z*eroAccess*
+    rootkit creates its own device (`svchost.exe`) to hide its malicious binary, `svchost.exe.`
+    To identify the driver which created this device, you can use the `devicetree`
+    plugin. From the following output, you can tell that the `svchost.exe` device
+    was created by the `00015300.sys` driver:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example of *BlackEnergy* malware, it replaces the legitimate
+    `aliide.sys` driver on the disk with the malicious driver to hijack the existing
+    service (as covered in [Chapter 10](part0300.html#8U38O0-ac10ba3f98854c44bac1c2c5641ca485),* Hunting
+    Malware Using Memory Forensics,* in the* Investigating Service* section). When
+    the service starts, the malicious driver creates a device to communicate with
+    the malicious user-mode component (DLL injected into the legitimate `svchost.exe`)
+    process. The following `devicetree` output shows the device created by the malicious
+    driver:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get an idea of the type of operations supported by the malicious driver.
+    You can use Volatility''s `driverirp` plugin, since it displays the major IRP
+    functions associated with a particular driver or all the drivers. From the following
+    output, you can tell that the malicious `aliide` driver supports `IRP_MJ_CREATE
+    (open)`, `IRP_MJ_CLOSE (close)`, and the `IRP_MJ_DEVICE_CONTROL (DeviceIoControl)`
+    operations. The operations that are not supported by the driver typically point
+    to `IopInvalidDeviceRequest` in the `ntoskrnl.exe`, which is the reason you are
+    seeing all other non-supported operations pointing to `0xfffff80002a5865c` in
+    `ntoskrnl.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 8\. Detecting Kernel Space Hooking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When discussing hooking techniques (In case [Chapter 8](part0248.html#7CGBG0-ac10ba3f98854c44bac1c2c5641ca485), *Code
+    Injection and Hooking,* in the* Hooking Techniques* section), we saw how some
+    malware programs modify the call table (*IAT Hooking*) and some modify the API
+    function (*inline hooking*) to control the execution path of the program and re-route
+    it to the malicious code. The objective is to block calls to the API, monitor
+    input parameters passed to the API, or to filter the output parameters returned
+    from the API. The techniques covered in [Chapter 8](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=1250&action=edit#post_985), *Code
+    Injection and Hooking, *mainly focused on hooking techniques in the user space.
+    Similar capabilities are possible in the kernel space if an attacker manages to
+    install a kernel driver. Hooking in a kernel space is more powerful approach an
+    than hooking in a user space, because kernel components play a very important
+    role in the operation of the system as a whole. It allows an attacker to execute
+    code with high privileges, giving them the capability to conceal the presence
+    of the malicious component, bypass security software, or  intercept the execution
+    path. In this section, we will understand different hooking techniques in the
+    kernel space and how to detect such techniques using memory forensics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.1 Detecting SSDT Hooking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The **System Service Descriptor Table** (**SSDT**) in kernel space contains
+    the pointers to the system service routines (kernel functions) exported by the
+    kernel executive (`ntoskrnl.exe, ntkrnlpa.exe` and so on). When an application
+    calls an API such as `WriteFile()`, `ReadFile()`, or `CreateProcess()`, it calls
+    the stub in the `ntdll.dll` which switches the thread to the kernel mode. The
+    thread running in the kernel mode consults the *SSDT* to determine the address
+    of the kernel function to invoke. The following screenshot illustrates this concept
+    with an example of `WriteFile()` (the concept is similar for other APIs):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00362.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In general, `ntoskrnl.exe` exports core kernel API functions such as `NtReadFile()`, `NtWrite()File`,
+    and so on. In the x86 platform, the pointers to these kernel functions are stored
+    directly in the SSDT, whereas on the x64 platforms,  SSDT does not contain the
+    pointers. Instead, it stores an encoded integer that is decoded to determine the
+    address of the kernel function. Irrespective of the implementation, the concept
+    remains the same and the SSDT is consulted to determine the address of a specific
+    kernel function. The following *WinDbg* command on the `Windows7 x86` platform
+    displays the contents of the SSDT. The entries in the table contain the pointers
+    to the functions implemented by `ntoskrnl.exe` (`nt`). The order and the number
+    of entries vary across operating system versions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is a second table, similar to the SSDT, known as *SSDT shadow*. This
+    table stores the pointers to the GUI-related functions exported by `win32k.sys.`
+    To display the entries of both the tables, you can use the `ssdt` volatility plugin,
+    as shown here. `SSDT[0]` refers to the native *SSDT table* and `SSDT[1]` refers
+    to *SSDT shadow*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the case of SSDT hooking, an attacker replaces the pointer of a specific
+    function with the address of the malicious function. For instance, if an attacker
+    wishes to intercept the data that is written to a file, the pointer to `NtWriteFile()`
+    can be changed to point to the address of the malicious function of an attacker''s
+    choice. This is illustrated in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00363.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To detect SSDT hooking, you can look for the entries in the SSDT table that
+    do not point to addresses in `ntoskrnl.exe` or `win32k.sys.` The following code
+    is an example of the *Mader* rootkit, which hooks various-registry related functions
+    and points them to the malicious driver `core.sys.` At this stage, you can determine
+    the base address of `core.sys` using `modules`, `modscan`, or `driverscan` and
+    then dump it to disk for further analysis using the `moddump` plugin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The disadvantage of using SSDT hooking for an attacker is that it is easy to
+    detect, and the 64-bit release of Windows prevents SSDT hooking due to the **Kernel
+    Patch Protection** (**KPP**) mechanism, also known as *PatchGuard* ([https://en.wikipedia.org/wiki/Kernel_Patch_Protection](https://en.wikipedia.org/wiki/Kernel_Patch_Protection)).
+    Since the entries in the SSDT vary across different versions of Windows and are
+    subject to change in newer versions, it becomes difficult for a malware author
+    to write a rootkit that is reliable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.2 Detecting IDT Hooking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The **Interrupt Descriptor Table** (**IDT**) stores the addresses of functions
+    known as *ISR (Interrupt Service Routines or Interrupt handlers).* These functions
+    handle interrupts and processor exceptions. Like hooking an SSDT, an attacker
+    may hook the entries in the IDT to redirect control to the malicious code. To
+    display the IDT entries, you can use the `idt` Volatility plugin. An example of
+    a malware which hooked an IDT is the *Uroburos (Turla) rootkit.* This rootkit
+    hooked the interrupt handler located at the `0xc3 (INT C3)` index. On a clean
+    system, the interrupt handler at `0xC3` points to an address that resides in the
+    memory of `ntoskrnl.exe`. The following output shows the entry from the clean
+    system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following output displays the hooked entry. You can see that the `0xC3`
+    entry in the IDT is pointing to an address in the `UNKNOWN` module. In other words,
+    the hooked entry resides outside the range of the `ntoskrnl.exe` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: For detailed analysis of Uroburos rootkit and to understand the technique used
+    by the rootkit to trigger the hooked interrupt handler, refer to the following
+    blog post: [https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg](https://www.gdatasoftware.com/blog/2014/06/23953-analysis-of-uroburos-using-windbg).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3 Identifying Inline Kernel Hooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Instead of replacing the pointers in the SSDT, which makes it easy to recognize,
+    an attacker can modify the kernel function or function in an existing kernel driver
+    with a `jmp` instruction to reroute the execution flow to the malicious code.
+    As mentioned earlier in this chapter, you can use the `apihooks` plugin to detect
+    inline hooking in the kernel space. By specifying the `-P` argument, you can tell
+    the `apihooks` plugin to only scan for the hooks in the kernel space. In the following
+    example of a *TDL3 rootkit*, the `apihooks` detect the hooks in the kernel functions
+    `IofCallDriver` and `IofCompleteRequest.` The hooked API functions are redirected
+    to the `0xb878dfb2` and `0xb878e6bb` addresses within a malicious module whose
+    name is unknown (possibly because it is hiding by unlinking the `KLDR_DATA_TABLE_ENTRY`
+    structure):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Even though the name of the hooking module is unknown, it is still possible
+    to detect the malicious kernel module. In this case, we know the API functions
+    are redirected to addresses starting with `0xb87` within the malicious module,
+    which means the malicious module must be residing at some address starting with
+    `0xb87`.  Running the `modules` plugin does not detect any module at that address
+    range (because it is hidden), whereas the modscan plugin detected a kernel module
+    called `TDSSserv.sys` loaded at base address `0xb878c000` with a size of `0x11000.`
+    In other words, the start address of the kernel module `TDSSserv.sys` is `0xb878c000`
+    and the end address is `0xb879d000 (0xb878c000+0x11000)`. You can clearly see
+    that the hook addresses `0xb878dfb2` and `0xb878e6bb` fall within the address
+    range of `TDSSserv.sys`. At this point, we have successfully identified the malicious
+    driver. You can now dump the driver to disk for further analysis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 8.4 Detecting IRP Function Hooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Instead of hooking the kernel API functions, a rootkit can modify the entries
+    in the major function table (dispatch routine array) to point to a routine in
+    the malicious module. For example, a rookit can inspect the data buffer that is
+    written to a disk or network by overwriting the address corresponding to `IRP_MJ_WRITE`
+    in a driver''s major function table. The following diagram illustrates this concept:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00364.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Normally, the IRP handler functions of a driver point within their own module.
+    For instance, the routine associated with `IRP_MJ_WRITE` of `null.sys` points
+    to an address in `null.sys`, however, sometimes a driver will forward the handler
+    function to another driver. The following is an example of the disk driver forwarding
+    handler functions to `CLASSPNP.SYS` (the storage class device driver):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To detect IRP hooks, you can focus on IRP handler functions that point to another
+    driver, and since the driver can forward an IRP handler to another driver, you
+    need to further investigate it to confirm the hook. If you are analyzing the rootkit
+    in a lab setup, then you can list the IRP functions of all the drivers from a
+    clean memory image and compare them with the IRP functions from the infected memory
+    image for any modifications. In the following example, the *ZeroAccess rootkit*
+    hooks the IRP functions of the disk driver and redirects them to the functions
+    within a malicious module whose address is unknown (because the module is hidden):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following output from the `modscan` displays the malicious driver (with
+    a suspicious name) associated with *ZeroAccess* and the base address where it
+    is loaded in the memory (which can be used to dump the driver to disk):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Some rootkits use indirect IRP hooking to avoid suspicion. In the following
+    example, the *Gapz* Bootkit hooks the `IRP_MJ_DEVICE_CONTROL` of `null.sys`. At
+    first glance, it may look like everything is normal because the IRP handler address
+    corresponding to `IRP_MJ_DEVICE_CONTROL` points to within `null.sys.` Upon close
+    inspection, you will notice the discrepancy; on a clean system, `IRP_MJ_DEVICE_CONTROL`
+    points to the address in `ntoskrnl.exe` (`nt!IopInvalidDeviceRequest`). In this
+    case, it is pointing to `0x880ee040` in `null.sys`. After disassembling the address `0x880ee040`
+    (using the `volshell` plugin), you can see the jump to an address of `0x8518cad9`,
+    which is outside the range of `null.sys`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For detailed information on the stealth techniques used by the Gapz Bootkit,
+    read the whitepaper ([https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf](https://www.welivesecurity.com/wp-content/uploads/2013/04/gapz-bootkit-whitepaper.pdf))
+    titled "*Mind the Gapz: The Most Complex Bootkit Ever Analyzed"* by Eugene Rodionov
+    and Aleksandr Matrosov.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As discussed so far, detecting standard hooking techniques is fairly straightforward.
+    For instance, you can look for signs such as SSDT entries not pointing to `ntoskrnl.exe`/`win32k.sys`
+    or IRP functions pointing to somewhere else, or jump instructions at the start
+    of the function. To avoid such detections, an attacker can implement hooks while
+    keeping call table entries within the range, or place the jump instructions deep
+    inside the code. To do this, they need to rely on patching the system modules
+    or third-party drivers. The problem with patching system modules is that *Windows
+    Kernel Patch Protection (PatchGuard)* prevents patching call tables (such as SSDT
+    or IDT) and the core system modules on 64-bit systems. For these reasons, attackers
+    either use techniques that rely on bypassing these protection mechanisms (such
+    as installing a *Bootkit/*exploiting kernel-mode vulnerabilities) or they use
+    supported ways (which also work on 64-bit systems) to execute their malicious
+    code to blend in with other legitimate drivers and reduce the risk of detection.
+    In the next section, we will look at some of the supported techniques used by
+    the rootkits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9\. Kernel Callbacks And Timers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Windows operating system allows a driver to register a callback routine,
+    which will be called when a particular event occurs. For instance, if a rootkit
+    driver wants to monitor the execution and termination of all processes running
+    on the system, it can register a callback routine for the process event by calling
+    the kernel function `PsSetCreateProcessNotifyRoutine`, `PsSetCreateProcessNotifyRoutineEx`,
+    or `PsSetCreateProcessNotifyRoutineEx2`. When the process event occurs (starts
+    or exits) the rootkit's callback routine will be invoked, which can then take
+    necessary action such as preventing a process from launching. In the same manner,
+    a rootkit driver can register a callback routine to receive notifications when
+    an image (EXE or DLL) gets loaded into memory, when file and registry operations
+    are performed, or when the system is about to be shut down. In other words, the
+    callback functionality gives the rootkit driver the ability to monitor system
+    activities and take necessary action depending on the activity. You can get a
+    list of some of the documented and undocumented kernel functions that the rootkit
+    may use to register callback routines at the following link: [https://www.codemachine.com/article_kernel_callback_functions.html](https://www.codemachine.com/article_kernel_callback_functions.html).
+    The kernel functions are defined in different header files (`ntddk.h`, `Wdm.h`,
+    and so on) in the *Windows Driver Kit (WDK)*. The quickest method to get details
+    on the documented kernel functions is to do a quick Google search, which should
+    take you to the appropriate link in the WDK online documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The way callbacks work is that a particular driver creates a callback object,
+    which is a structure that contains the list of function pointers. The created
+    callback object is advertised so that it can be used by other drivers. The other
+    drivers can then register their callback routines with the driver that created
+    the callback object ([https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/callback-objects](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/callback-objects)).
+    The driver that created the callback can be the same as or different from the
+    kernel driver that is registering for the callback. To look at the system-wide
+    callback routines, you can use `callbacks` Volatility plugin. On a clean Windows
+    system, you will typically see many callbacks installed by various drivers, which
+    means not all entries in the `callbacks` output are malicious; further analysis
+    is required to identify the malicious driver from a suspect memory image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, the *Mader rootkit* as which performed *SSDT hooking*
+    (discussed in the* Detecting SSDT Hooking* section of this chapter), also installed
+    a process creation callback routine to monitor the execution or termination of
+    all the processes running on the system. In particular, when a process event occurs,
+    the callback routine at address `0xf66eb050` within the malicious module `core.sys`
+    is invoked. The `Module` column specifies the name of the kernel module within
+    which the callback function is implemented. The `Details` column gives the name
+    or description of the kernel object that installed the callback. After you have
+    identified the malicious driver, you can further investigate it or you can dump
+    it to disk for further analysis (disassembly, AV scanning, string extraction,
+    and so on), as shown in the `moddump` command here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, the *TDL3 rootkit* installs process callback and
+    image load callback notifications. This allows the rootkit to monitor process
+    events and to get notifications when an executable image (EXE, DLL, or kernel
+    module) is mapped into memory. The module names in the entries are set to `UNKNOWN`;
+    this tells you that callback routine exists in an unknown module, which happens
+    if the rootkit driver tries to hide by unlinking the `KLDR_DATA_TABLE_ENTRY` structure
+    or if a rootkit is running an orphan thread (a thread that is hidden or detached
+    from the kernel module). In such cases, the `UNKNOWN` entry makes it easy for
+    you to spot the suspicious entry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Even though the module name is `UNKNOWN`, based on the callback routine address,
+    we can deduce that the malicious module should be residing somewhere in the memory
+    region starting with address `0xb878`. From the output of the `modules` plugin,
+    you can see that the module has unlinked itself, but the `modscan` plugin was
+    able to detect the kernel module which is loaded at `0xb878c000` and with a size
+    of `0x11000`. Clearly, all the callback routine addresses fall within the range
+    of this module. Now that the base address of the kernel module is known, you can
+    dump it using the `moddump` plugin for further analysis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Like callbacks, a rootkit driver may create a timer and get notified when the
+    specified time elapses. A rootkit driver may use this functionality to schedule
+    operations to be performed periodically. The way it works is that the rootkit
+    creates a timer and provides a callback routine known as *DPC (Deferred Procedure
+    Call),* which will be called when the timer expires. When the callback routine
+    is invoked, the rootkit can perform malicious actions. In other words, the timer
+    is another way by which a rootkit can get to execute its malicious code. For detailed
+    information on how the kernel timer works, refer to the following Microsoft documentation: [https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/timer-objects-and-dpcs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To list the kernel timers, you can use the `timers` Volatility plugin. A point
+    to note out is that timers are not malicious, as such; it is a Windows functionality,
+    so on a clean system you will see some of the legitimate drivers installing timers.
+    Like callbacks, further analysis may be required to identify the malicious module.
+    Since most rootkits try to hide their driver, as a result, obvious artifacts are
+    created that can help you quickly identify the malicious module. In the following
+    example, the *ZeroAccess rootkit* installs a timer for `6000` milliseconds. When
+    this time elapses, the routine at address `0x814f9db0` in an `UNKNOWN` module
+    is invoked. The `UNKNOWN` in the `Module` column tells us that the module is probably
+    hidden, but the routine address points you to the memory range where the malicious
+    code is present:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition to timers, *ZeroAccess* also installs callbacks to monitor registry
+    operations. Again, the callback routine address points to the same memory range
+    (starting with `0x814f`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Trying to find the `UNKNOWN` module using the `modules`, `modscan`, and `driverscan`
+    plugins does not return any results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Inspecting the driverscan listing revealed suspicious entries where the base
+    address and the size are zeroed out (which is not normal and could be a bypass
+    trick). Zeroing out the base address explains why `modules`, `modscan`, and `driverscan`
+    did not return any results. The output also reveals that the name of the malicious
+    driver is composed only of numbers, which adds to the suspicion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By zeroing out the base address, the rootkit is making it hard for the forensic
+    analyst to determine the start address of the kernel module, which also prevents
+    us from dumping the malicious module. We still know where the malicious code is
+    residing (the address starting with `0x814f`). The compelling question is, how
+    do we determine the base address using that information? One method is to take
+    one of the addresses and subtract a certain number of bytes (such as by going
+    backwards) till you find the `MZ` signature, but the problem with that approach
+    is that it''s not easy to determine how many bytes to subtract. The fastest method
+    is to use the `yarascan` plugin, since this plugin allows you to scan for a pattern
+    (string, hex bytes, or regex) in the memory. Since we are trying to find the module
+    that resides in the kernel memory starting with address `0x814f`, we can use `yarascan`
+    with `-K` ( which only scans kernel memory) to look for the `MZ` signature. From
+    the output, you can see the presence of an executable at address `0x814f1b80`.
+    You can specify this as the base address to dump the malicious module to disk
+    using the `moddump` plugin. The dumped module is around 53.2 KB in size, which
+    turns out to be `0xd000` bytes in hex. In other words, the module starts at address
+    `0x814f1b80` and ends at `0x814feb80`. All the callback addresses fall within
+    the address range of this module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To confirm that the dumped module is malicious, it was submitted to *VirusTotal*.
+    The results from AV vendors confirm it to be the *ZeroAccess Rootkit* (also known
+    as *Sirefef*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00365.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Malware authors use various advanced techniques to install their kernel driver
+    and to bypass Windows security mechanisms. Once the kernel driver is installed,
+    it can modify the system components or third-party drivers to bypass, deflect,
+    and divert your forensic analysis. In this chapter, you looked at some of the
+    most common rootkit techniques and we saw how to detect such techniques using
+    memory forensics. Memory forensics is a powerful technique, and using it as part
+    of your malware analysis efforts will greatly help you understand adversary tactics.
+    Malware authors frequently come up with new ways to hide their malicious component,
+    so it is not enough just to know how to use the tools; it becomes important to
+    understand the underlying concepts to recognize the efforts by the attackers to
+    bypass the forensic tools.
+  prefs: []
+  type: TYPE_NORMAL

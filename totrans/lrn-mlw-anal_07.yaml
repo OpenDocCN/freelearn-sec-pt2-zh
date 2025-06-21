@@ -1,0 +1,1638 @@
+- en: Malware Functionalities and Persistence
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Malware can carry out various operations, and it can include various functionalities.
+    Understanding what a malware does and the behavior it exhibits is essential to
+    understanding the nature and purpose of the malicious binary. In the last few
+    chapters, you learned the skills and tools necessary to perform malware analysis.
+    In this chapter and the next few chapters, we will mainly focus on understanding
+    different malware behaviors, their characteristics, and their capabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. Malware Functionalities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By now, you should have an understanding of how malware utilizes API functions
+    to interact with the system. In this section, you will understand how malware
+    makes use of various API functions to implement certain functionality. For information
+    regarding where to find help about a particular API and how to read the API documentation,
+    refer to section 3, *Disassembling the Windows API, *in [Chapter 5](part0146.html#4B7I40-ac10ba3f98854c44bac1c2c5641ca485), *Disassembly
+    Using IDA.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.1 Downloader
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The simplest type of malware that you will encounter during malware analysis
+    is a *Downloader*. A downloader is a program that downloads another malware component
+    from the internet and executes it on the system. It does that by calling the `UrlDownloadToFile()`
+    API, which downloads the file onto the disk. Once downloaded, it then uses either
+    `ShellExecute()`, `WinExec()`, or `CreateProcess()` API calls to execute the downloaded
+    component. Normally, you will find that downloaders are used as part of the exploit
+    shellcode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows a 32-bit malware downloader using `UrlDownloadToFileA()`
+    and `ShellExecuteA()` to download and execute a malware binary. To determine the
+    URL from where the malware binary is being downloaded, a breakpoint was set at
+    the call to `UrlDownloadToFileA()`. After running the code, the breakpoint was
+    triggered, as shown in the following screenshot. The second argument to `UrlDownloadToFileA()`
+    shows the URL from where the malware executable (*wowreg32.exe*) will be downloaded,
+    and the third argument specifies the location on the disk where the downloaded
+    executable will be saved. In this case, the downloader saves the downloaded executable
+    in the `%TEMP%` directory as `temp.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00172.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After downloading the malware executable into the `%TEMP%` directory, the downloader
+    executes it by calling the `ShellExecuteA()` API, as shown in the following screenshot.
+    Alternatively, malware may also use the `WinExec()` or `CreateProcess()` API to
+    execute the downloaded file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00173.jpeg)While debugging the malicious binary, it is better
+    to run monitoring tools (such as *Wireshark*) and simulation tools (such as *InetSim*),
+    so that you can observe a malware''s actions and capture the traffic it generates.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2 Dropper
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A *Dropper* is a program that embeds the additional malware component within
+    itself. When executed, the dropper extracts the malware component and drops it
+    to disk. A dropper normally embeds the additional binary in the resource section.
+    To extract the embedded executable, a dropper uses the `FindResource()`, `LoadResource()`,
+    `LockResource()` and `SizeOfResource()` API calls. In the following screenshot,
+    the R*esource Hacker tool (covered in* [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485), *Static
+    Analysis)* shows the presence of a PE file in the resource section of a malware
+    sample. In this case, the resource type is a DLL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00174.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Loading the malicious binary in the x64dbg and looking at the references to
+    the API calls (*covered in the previous chapter*) displays references to the resource-related
+    API calls. This is an indication of malware extracting the content from the resource
+    section. At this point, you can set a breakpoint on the address where the `FindResourceA()`
+    API is called, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00175.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the following screenshot, after running the program, the execution is paused
+    at the `FindResourceA()` API, due to the breakpoint set in the previous step.
+    The second and third parameters passed to the `FindResourceA()` API tell you that
+    the malware is trying to find the `DLL/101` resource, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00176.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After executing `FindResourceA(),` its return value (stored in `EAX`), which
+    is the handle to the specified resource''s information block, is passed as the
+    second argument to the `LoadResource()` API. The `LoadResource()` retrieves the
+    handle to the data associated with the resource. The return value of `LoadResource()`,
+    which contains the retrieved handle, is then passed as the argument to the `LockResource()`
+    API, which obtains the pointer to the actual resource. In the following screenshot,
+    the execution is paused immediately after the call to `LockResource()`. Examining
+    the return value (stored in `EAX`) in the dump window shows the PE executable
+    content that was retrieved from the resource section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00177.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once it retrieves the resource, the malware determines the size of the resource
+    (PE file) using the `SizofResource()` API. Next, the malware drops a DLL on the
+    disk using `CreateFileA`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00178.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The extracted PE content is then written to the DLL using the `WriteFile()`
+    API. In the following screenshot, the first argument `0x5c` is the handle to the
+    DLL, the second argument `0x00404060` is the address of the retrieved resource
+    (PE File), and the third argument `0x1c00` is the size of the resource, which
+    was determined using the call to `SizeOfResource()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00179.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.2.1 Reversing a 64-bit Dropper
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following is an example of a 64-bit malware dropper (called *Hacker’s Door*).
+    If you are not yet familiar with debugging 64-bit samples, refer to section *2.7,
+    Debugging 64-bit Malware, *in the previous chapter. The malware uses the same
+    set of API functions to find and extract the resource; the difference is that
+    the first few parameters are placed in the registers and not pushed onto the stack
+    (because it is a 64-bit binary). The malware first finds the `BIN/100` resource
+    using the `FindResourceW()` API, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00180.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, the malware uses `LoadResource()` to retrieve the handle to the data
+    associated with the resource, and it then uses `LockResource()` to obtain the
+    pointer to the actual resource. In the following screenshot, examining the return
+    value `(RAX)` of the `LockResource()` API shows the extracted resource. In this
+    case, the 64-bit malware dropper extracts the DLL from its resource section, and
+    later it drops the DLL onto the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00181.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.3 Keylogger
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A *Keylogger* is a program that is designed to intercept and log keystrokes.
+    Attackers use keylogging functionality in their malicious programs to steal confidential
+    information (such as usernames, passwords, credit card information, and so on)
+    entered via the keyboard. In this section, we will mainly focus on the user-mode
+    software keyloggers. An attacker can log keystrokes using various techniques.
+    The most common methods of logging keystrokes are using the documented Windows
+    API functions: *(a) Checking the key state* (using the `GetAsyncKeyState()` API)
+    and *(b) Installing Hooks* (using the `SetWindowHookEX()` API).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.3.1 Keylogger Using GetAsyncKeyState()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This technique involves querying the state of each key on the keyboard. To
+    do that, keyloggers make use of the `GetAsyncKeyState()` API function to determine
+    whether the key is *pressed* or *not*. From the return value of `GetAsyncKeyState()`,
+    it can be determined whether the key is up or down at the time the function is
+    called and whether the key was pressed after a previous call to `GetAsyncKeyState()`.
+    The following is the function prototype of the `GetAsyncKeyState()` API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`GetAsynKeyState()` accepts a single integer argument `vKey` which specifies
+    one of `256` possible *virtual-key codes*. To determine the state of a single
+    key on the keyboard, the `GetAsyncKeyState()` API can be called by passing the
+    virtual-key code associated with the desired key as the argument. To determine
+    the state of all the keys on the keyboard, a keylogger constantly polls the `GetAsyncKeyState()`
+    API (by passing each virtual-key code as an argument) in a loop to determine which
+    key is pressed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find the symbolic constant names associated with the virtual-key codes
+    on the MSDN website ([https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows a code snippet from a keylogger. The keylogger
+    determines the status of the *Shift *key (if it is up or down) by calling the `GetKeyState()`
+    API at address `0x401441`. At address `0x401459`, the keylogger calls `GetAsyncKeyState()`,
+    which is part of a loop, and in each iteration of the loop, the virtual-key code
+    (which is read from the array of key codes) is passed as the argument to determine
+    the status of each key. At address `0x401463`, a `test` operation (the same as
+    the `AND` operation) is performed on the return value of `GetAsyncKeyState()`
+    to determine if the *most significant bit* is set. If the most significant bit
+    is set, it is an indication of the key being pressed. If a particular key is pressed,
+    then the keylogger calls `GetKeyState()` at address `0x40146c` to check the status
+    of the *Caps Lock* key (to check if it is turned on). Using this technique, malware
+    can determine whether the upper case letter, lower case letter, number, or a special
+    character was typed on the keyboard:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00182.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the end of the loop. From the code, you can
+    tell that the malware iterates through the `0x5c (92)` key codes. In other words,
+    it monitors `92` keys. `var_4`, in this case, acts as an *index* into an array
+    of key codes to check, and it is incremented at the end of the loop, and as long
+    as the value of `var_4` is less than `0x5c(92)`, the loop is continued:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00183.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.3.2 Keylogger Using SetWindowsHookEx()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another common keylogger technique is where it installs a function (called
+    *hook procedure*) to monitor keyboard events (such as *key press*). In this method,
+    the malicious program registers a function (*hook procedure*) that will be notified
+    when a keyboard event is triggered, and that function can log the keystrokes to
+    a file or send them over the network. The malicious program uses the `SetWindowsHookEx()`
+    API to specify what type of event to monitor (such as the keyboard, mouse, and
+    so on) and the hook procedure that should be notified when a specific type of
+    event occurs. The *hook procedure* can be contained within a DLL or the current
+    module. In the following screenshot, the malware sample registers a hook procedure
+    for the low-level keyboard event by calling `SetWindowsHookEx()` with the `WH_KEYBOARD_LL`
+    parameter (malware may also use `WH_KEYBOARD`). The second parameter, `offset
+    hook_proc`, is the *address of the hook procedure.* When the keyboard event occurs,
+    this function will be notified. Examining this function will give an idea of how
+    and where the keylogger logs keystrokes. The third parameter is the *handle* to
+    the module (such as DLL or the current module) that contains the hook procedure.
+    The fourth parameter, `0`, specifies that the hook procedure is to be associated
+    with all existing threads in the same desktop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00184.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.4 Malware Replication Via Removable Media
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Attackers can spread their malicious program by infecting the removable media
+    (such as a USB drive). An attacker can take advantage of *Autorun* features (or
+    exploit the vulnerability in *Autorun*) to automatically infect other systems,
+    when the infected media is plugged in to it. This technique typically involves
+    copying files or modifying the existing files stored on the removable media. Once
+    malware copies the malicious file to removable media, it can use various tricks
+    to make that file look like a legitimate file to trick the user into executing
+    it when the USB is plugged in to a different system. The technique of infecting
+    removable media allows an attacker to spread their malware on disconnected or
+    air-gapped networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, malware calls `GetLogicalDriveStringsA()` to obtain
+    the details of the valid drives on the computer. After the call to `GetLogicDriveStringsA()`,
+    the list of available drives is stored in the output buffer `RootPathName`, which
+    is passed as the second argument to `GetLogicalDriveStringsA()`. The following
+    screenshot shows three drives, `C:\`, `D:\`, and `E:\`, after the call to `GetLogicDriveStringsA()`,
+    where `E:\` is the USB drive. Once it determines the list of drives, it iterates
+    through each drive to determine if it is a removable drive. It does that by comparing
+    the return value of `GetDriveTypeA()` with `DRIVE_REMOVABLE` (constant value `2`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00185.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If a removable media is detected, the malware copies itself (executable) into
+    the removable media (USB drive) using the `CopyFileA()` API. To hide the file
+    on removable media, it calls the `SetFileAttributesA()` API and passes it a constant
+    value `FILE_ATTRIBUTE_HIDDEN`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00186.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: After copying the malicious file to removable media, the attacker can wait for
+    the user to double-click on the copied file or can take advantage of *Autorun*
+    features. Before Windows Vista, malware, apart from copying the executable file,
+    also copied the `autorun.inf` file containing Autorun commands into the removable
+    media. These Autorun commands allowed the attacker to start programs automatically
+    (without user intervention) when the media was inserted into the system. Starting
+    with Windows Vista, executing malicious binaries via Autorun is not possible by
+    default, so an attacker has to use a different technique (such as modifying the
+    registry entries) or exploit a vulnerability which could allow the malicious binary
+    to execute automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some malware programs rely on tricking the user to execute the malicious binary
+    instead of taking advantage of Autorun features. *Andromeda* is an example of
+    one such malware. To demonstrate the tricks used by Andromeda, consider the following
+    screenshot, which shows the content of the 2 GB clean USB drive before plugging
+    it into the system infected with Andromeda. The root directory of the USB consists
+    of a file called `test.txt` and a folder named `testdir`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00187.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once the clean USB drive is inserted into the *Andromeda-*infected computer,
+    it performs the following steps to infect the USB drive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It determines the list of all the drives on the system by calling `GetLogicalDriveStrings()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The malware iterates through each drive and determines whether any drive is
+    a removable media, using the `GetDriveType()` API.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once it finds the removable media, it calls the `CreateDirectoryW()` API to
+    create a folder (directory) and passes an extended ASCII code `xA0 (á)` as the
+    first parameter (directory name). This creates a folder called `E:\á` in the removable
+    media, and due to the use of extended ASCII code, the folder is displayed with
+    no name. The following screenshot shows the creation of the `E:\á` directory. 
+    From now on, I will refer to this directory created by the malware as the *unnamed
+    directory (folder)*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00188.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the unnamed folder. This is the folder with
+    the extended ascii code of xA0 that was created in the previous step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00189.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It then sets the attributes of the *unnamed folder* to hidden and makes it
+    a protected operating system folder by calling the `SetFileAttributesW()` API.
+    This hides the folder on the removable media:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00190.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Malware decrypts the executable content from the registry. It then creates
+    a file in the unnamed folder. The created file name has the convention `<randomfilename>.1`
+    and it writes the PE executable content (malicious DLL) to this file (using the `CreateFile()`
+    and `WriteFile()` APIs). As a result, a DLL is created with the name `<randomfilename>.1`
+    inside the unnamed folder, as shown here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00191.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then creates a `desktop.ini` file inside the *unnamed folder* and
+    writes icon information to assign a *custom icon* to the unnamed folder. The content
+    of `desktop.ini` is shown here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00192.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot displays the icon of the unnamed folder which has
+    been changed to the drive icon. Also, note that the *unnamed folder* is now hidden.
+    In other words, this folder will only be visible when the *folder options* are
+    configured to show *hidden* and *protected* operating system files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00193.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then calls the `MoveFile()` API to move all the files and folders
+    (in this case, `test.txt` and `testdir`) from the root directory to the *unnamed
+    hidden folder*. After copying the user''s files and folders, the root directory
+    of the USB drive looks like the one shown here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00194.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then creates a shortcut link that points to `rundll32.exe`, and
+    the parameter to `rundll32.exe` is the `<randomfile>.1` file (which was the DLL
+    dropped in the *unnamed folder* earlier). The following screenshot displays the
+    appearance of the shortcut file, and the properties showing the way a malicious
+    DLL is loaded via rundll32.exe. In other words, when the shortcut file is double-clicked,
+    the malicious DLL gets loaded via rundll32.exe, thereby executing the malicious
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00195.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Using the aforementioned operations, *Andromeda* plays a psychological trick.
+    Now, let's understand what happens when the user plugs in the infected USB drive
+    on a clean system. The following screenshot shows the contents of the infected
+    USB drive, which is displayed to the normal user (with default folder options).
+    Notice that the *unnamed folder* is not visible to the user, and the user's files/folders (in
+    our case, `test.txt` and `testdir`) are missing from the root drive. The malware
+    is tricking the user into believing that the shortcut file is a *drive:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00196.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: When the user finds all the important files and folders missing from the USB
+    root drive, the user is very likely to double-click on the shortcut file (thinking
+    that it is a drive) to look for the missing files. As a result of double clicking
+    the shortcut, `rundll32.exe` will load the malicious DLL from the *unnamed hidden
+    folder* (not visible to the user) and infect the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.5 Malware Command and Control (C2)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The malware command and control (also called *C&C* or *C2*) refers to how attackers
+    communicate and exhibit control of the infected system. Upon infecting the system,
+    most malware communicates with the attacker-controlled server (C2 server) either
+    to take commands, download additional components, or to exfiltrate information.
+    Adversaries use different techniques and protocols for command and control. Traditionally,
+    *Internet Relay Chat (IRC)* used to be the most common C2 channel for many years,
+    but because IRC is not commonly used in organizations, it was possible to detect
+    such traffic easily. Today, the most common protocol used by the malware for the
+    C2 communication is *HTTP/HTTPS*. Using HTTP/HTTPS allows the adversary to bypass
+    firewalls/network-based detection systems and to blend in with the legitimate
+    web traffic. Malware may sometimes use a protocol such as P2P for C2 communication.
+    Some malware have also used DNS tunneling ([https://securelist.com/use-of-dns-tunneling-for-cc-communications/78203/](https://securelist.com/use-of-dns-tunneling-for-cc-communications/78203/))
+    for C2 communications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.5.1 HTTP Command and Control
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, you will understand how adversaries use HTTP to communicate
+    with the malicious program. The following is an example of a malware sample (*WEBC2-DIV*
+    backdoor) used by the APT1 group ([https://www.fireeye.com/content/dam/fireeye-www/services/pdfs/mandiant-apt1-report.pdf](https://www.fireeye.com/content/dam/fireeye-www/services/pdfs/mandiant-apt1-report.pdf)).
+    The malicious binary makes use of the `InternetOpen()`, `InternetOpenUrl()`, and
+    `InternetReadFile()` API functions to retrieve a web page from an attacker-controlled
+    C2 server. It expects the web page to contain special HTML tags; the backdoor
+    then decrypts the data within the tags and interprets it as a command. The following
+    steps describe the manner in which the *WEB2-DIV* backdoor communicates with the
+    C2 to receive commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, the malware calls the `InternetOpenA()` API to initialize the connection
+    to the internet. The first argument specifies the *User-Agent* the malware will
+    use for the HTTP communication. This backdoor generates the User-Agent by concatenating
+    the host-name of the infected systems (which it gets by calling the `GetComputerName()`
+    API) with a hardcoded string. Whenever you come across a hardcoded *User-Agent*
+    string used in the binary, it can make an excellent network indicator:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00197.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It then calls `InternetOpenUrlA()` to connect to a URL. You can determine the
+    name of URL it connects to by examining the second argument as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00198.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the network traffic generated after calling `InternetOpenUrlA()`.
+    At this stage, the malware communicates with the C2 server to read the HTML content:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00199.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It then retrieves the content of the web page using the `InternetReadFile()`
+    API call. The second argument to this function specifies the pointer to the buffer
+    that receives the data. The following screenshot shows the HTML content retrieved
+    after calling `InternetReadFile()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00200.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From the retrieved HTML content, the backdoor looks for specific content within
+    the *<div>* HTML tag . The code performing the check for the content within a
+    div tag is shown in the following screenshot. If the required content is not present,
+    the malware does nothing and keeps periodically checking for the content:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00201.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To be specific, the malware expects the content to be enclosed within the `div`
+    tag in a specific format such as the one shown in the following code. If the following
+    format is found in the retrieved HTML content, its extracts the encrypted string
+    `(KxAikuzeG:F6PXR3vFqffP:H)`, which is enclosed between `<div safe: and balance></div>`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The extracted encrypted string is then passed as the argument to a *decryption
+    function*, which decrypts the string using a custom encryption algorithm. You
+    will learn more about malware encryption techniques in [Chapter 9](part0271.html#82E8E0-ac10ba3f98854c44bac1c2c5641ca485),
+    *Malware Obfuscation Techniques*. The following screenshot shows the decrypted
+    string after calling `decryption function`. After decrypting the string, the backdoor
+    checks if the first character of the decrypted string is `J`.  If this condition
+    is satisfied, then the malware calls the `sleep()` API to sleep for a specific
+    period. In short, the first character of the decrypted string acts as a command
+    code, which tells the backdoor to perform the sleep operation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00202.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If the first character of the decrypted string is `D`, then it checks if the
+    second character is `o`, as shown here. If this condition is satisfied, then it
+    extracts the URL starting from the third character and downloads an executable
+    from that URL using `UrlDownloadToFile()`. It then executes the downloaded file
+    using the `CreateProcess()` API. In this case, the first two characters, `Do`,
+    act as the command code that tells the backdoor to download and execute the file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00203.jpeg)For a full analysis of the *APT1 WEBC2-DIV* backdoor,
+    check the author''s Cysinfo meet presentation and video demo ([https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/](https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/)).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Malware may also use APIs such as `InternetOpen()`, `InternetConnect()`, `HttpOpenRequest()`, `HttpSendRequest()`,
+    and `InternetReadFile()` to communicate over HTTP. You can find analysis and reverse
+    engineering of one such malware here: [https://cysinfo.com/sx-2nd-meetup-reversing-and-decrypting-the-communications-of-apt-malware/](https://cysinfo.com/sx-2nd-meetup-reversing-and-decrypting-the-communications-of-apt-malware/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to using HTTP/HTTPS, adversaries may abuse *social networks* ([https://threatpost.com/attackers-moving-social-networks-command-and-control-071910/74225/](https://threatpost.com/attackers-moving-social-networks-command-and-control-071910/74225/)),
+    *legitimate sites* such as *Pastebin* ([https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/](https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/)),
+    and *cloud storage services* such as *Dropbox* ([https://www.fireeye.com/blog/threat-research/2015/11/china-based-threat.html](https://www.fireeye.com/blog/threat-research/2015/11/china-based-threat.html))
+    for their malware command and control. These techniques make it difficult to monitor
+    and detect malicious communications, and they allow an attacker to bypass network-based
+    security controls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.5.2 Custom Command and Control
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Adversaries may use a custom protocol or communicate over the non-standard
+    port to hide their command and control traffic. The following is an example of
+    such a malware sample (*HEARTBEAT RAT*) whose details are documented in the whitepaper
+    ([http://www.trendmicro.it/media/wp/the-heartbeat-apt-campaign-whitepaper-en.pdf](http://www.trendmicro.it/media/wp/the-heartbeat-apt-campaign-whitepaper-en.pdf)).
+    This malware makes an encrypted communication on port `80` using a custom protocol
+    (not HTTP) and retrieves the command from the C2 server. It makes use of the `Socket()`, `Connect()`, `Send()`,
+    and `Recv()` API calls to communicate and receive commands from the C2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, the malware calls the `WSAStartup()` API to initialize the Windows socket
+    system. It then calls the `Socket()` API to create a socket, which is shown in
+    the following screenshot. The socket API accepts three arguments. The first argument, `AF_INET`,
+    specifies the address family, which is `IPV4`. The second argument is the socket
+    type, `(SOCK_STREAM)`, and the third argument, `IPPROTO_TCP`, specifies the protocol
+    being used (TCP, in this case):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00204.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Before establishing the connection to the socket, the malware resolves the
+    address of the C2 domain name using the `GetHostByName()` API. This makes sense,
+    because the *remote address* and *port* need to be supplied to the `Connect()`
+    API to establish the connection. The return value (`EAX`) of `GetHostByName()` is
+    a pointer to a structure named `hostent`, which contains the resolved IP addresses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00205.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It reads the resolved IP address from the `hostent` structure and passes it
+    to the `inet_ntoa()` API, which converts the IP address into an ASCII string such
+    as `192.168.1.100`. It then calls `inet_addr()`, which converts an IP address
+    string such as `192.168.1.100` so that it can be used by the `Connect()` API.
+    The `Connect()` API is then called to establish the connection with the socket:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00206.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then collects the *system information*, encrypts it using the `XOR`
+    encryption algorithm (encryption techniques will be covered in *Chapter 9*), and
+    sends it to C2 using the `Send()` API call. The second argument to the `Send()`
+    API shows the encrypted content that will be sent to the C2 server:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00207.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the encrypted network traffic captured after
+    calling the `Send()` API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00208.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then calls `CreateThread()` to start a new thread. The third parameter
+    to `CreateThread` specifies the start address (start function) of the thread,
+    so after the call to `CreateThread()`, the execution begins at the start address.
+    In this case, the start address of the thread is a function that is responsible
+    for reading the content from the C2:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00209.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The content from the C2 is retrieved using the `Recv()` API function. The second argument
+    to `Recv()` is a buffer where the retrieved content is stored. The retrieved content
+    is then decrypted, and, depending on the command received from the C2, appropriate
+    actions are performed by the malware. To understand all the functionalities of
+    this malware and how it processes the received data, refer to the author''s presentation
+    and the video demo ([https://cysinfo.com/session-11-part-2-dissecting-the-heartbeat-apt-rat-features/](https://cysinfo.com/session-11-part-2-dissecting-the-heartbeat-apt-rat-features/)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00210.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.6 PowerShell-Based Execution
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To evade detection, malware authors often leverage tools that already exist
+    on the system (such as *PowerShell*) which allow them to hide their malicious
+    activities. PowerShell is a management engine based on the .NET framework. This
+    engine exposes a series of commands called *cmdlets*. The engine is hosted in
+    an application and Windows operating system, which by default ships a *command-line
+    interface (interactive console)* and a *GUI PowerShell ISE (Integrated Scripted
+    Environment).*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PowerShell is not a programming language, but it allows you to create useful
+    scripts containing multiple commands. You can also open *PowerShell prompt* and
+    execute individual commands. PowerShell is typically used by the System Administrators
+    for a legitimate purpose. However, there is an increase in the use of PowerShell
+    by the attackers to execute their malicious code. The major reason why attackers
+    use PowerShell is that it provides access to all major operating system functions
+    and it leaves very few traces, thereby making detection more difficult. The following
+    outlines how attackers leverage PowerShell in malware attacks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In most cases, Powershell is used post-exploitation to download additional components.
+    It is mostly delivered via email attachments containing files (such as `.lnk`,
+    `.wsf`, JavaScript, VBScript, or office documents containing malicious macros)
+    which are capable of executing PowerShell scripts directly or indirectly. Once
+    the attacker tricks the user into opening the malicious attachment, then the malicious
+    code invokes PowerShell directly or indirectly to download additional components.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is used in the lateral movement, where the attacker executes code on a remote
+    computer to spread inside the network.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Attackers use PowerShell to dynamically load and execute code directly from
+    memory without accessing the file system. This allows the attacker to be stealthy
+    and makes forensic analysis much harder.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Attackers use PowerShell to execute their obfuscated code; this makes it hard
+    to detect it with traditional security tools.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you are new to PowerShell, you can find many tutorials to get started with
+    PowerShell at the following link: [https://social.technet.microsoft.com/wiki/contents/articles/4307.powershell-for-beginners.aspx](https://social.technet.microsoft.com/wiki/contents/articles/4307.powershell-for-beginners.aspx)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.6.1 PowerShell Command Basics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before delving into the details of how malware uses PowerShell, let''s understand
+    how to execute PowerShell commands. You can execute a PowerShell command using
+    the interactive PowerShell console; you can bring it up using the Windows program
+    search feature or by typing `powershell.exe` in the command prompt. Once in the
+    interactive PowerShell, you can type the command to execute it. In the following
+    example, the `Write-Host` cmdlet writes the message to the console. A *cmdlet*
+    (such as `Write-Host`) is a compiled command written in a .NET Framework language
+    which is meant to be small and serves a single purpose. The *cmdlet* follows a
+    standard *Verb-Noun* naming convention:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A cmdlet can accept parameters. The parameter starts with a dash immediately
+    followed by a parameter name and a space followed by the parameter value. In the
+    following example, the `Get-Process` cmdlet is used to display the information
+    about the explorer process. The `Get-Process` cmdlet accepts a parameter whose
+    name is `Name`, and the value is `explorer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Alternatively, you can also use parameter shortcuts to reduce some typing;
+    the above command can also be written as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get more information about cmdlet (such as details about the syntax and
+    the parameters), you can use the `Get-Help` cmdlet or the `help` command. If you
+    wish to get the most up-to-date information, you can get help online, using the
+    second command shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In PowerShell, variables can be used to store values. In the following example, `hello`
+    is a variable that is prefixed with a `$` symbol:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Variables can also hold the result of PowerShell commands, and the variable
+    can then be used in the place of a command, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.6.2 PowerShell Scripts And Execution Policy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'PowerShell''s capabilities allow you to create scripts by combining multiple
+    commands. The PowerShell script has an extension of `.ps1`*.* By default, you
+    will not be allowed to execute a PowerShell script. This is due to the default
+    *execution policy* setting in PowerShell that prevents the execution of PowerShell
+    scripts. The execution policy determines the conditions under which PowerShell
+    scripts are executed. By default, the execution policy is set to *"Restricted",*
+    which means that a PowerShell script (.ps1) cannot be executed, but you can still
+    execute individual commands. For example, when the `Write-Host` `"Hello World"`
+    command is saved as a PowerShell script *(hello.ps1)* and executed, you get the
+    following message stating that running scripts is disabled. This is due to the
+    execution policy setting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The execution policy is not a security feature; it''s just a control to prevent
+    users from accidentally executing scripts. To display the current execution policy
+    setting, you can use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can change the execution policy setting using the `Set-ExecutionPolicy`
+    command (provided you are executing the command as Administrator). In the following
+    example, the execution policy is set to `Bypass`, which allows the script to run
+    without any restriction. This setting can be useful for your analysis if you come
+    across a malicious PowerShell script and if you would like to execute it to determine
+    its behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.6.2 Analyzing PowerShell Commands/Scripts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Powershell commands are easy to understand compared to assembly code, but in
+    some situations (such as when a PowerShell command is obfuscated), you may want
+    to run the PowerShell commands to understand how it works. The easiest method
+    to test a single command is to execute it in the interactive PowerShell. If you
+    wish to execute a PowerShell script (`.ps1`) containing multiple commands, first
+    change the execution policy setting to either *Bypass* or *Unrestricted* (as mentioned
+    previously) and then execute the script using the PowerShell console. Remember
+    to execute malicious script in an isolated environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the script (`.ps1`) in the PowerShell prompt will run all the commands
+    at once. If you wish to have control over the execution, then you can debug the
+    PowerShell script using *PowerShell ISE (Integrated Scripting Environment)*. You
+    can bring up PowerShell ISE by using the program search feature and then load
+    the PowerShell script into PowerShell ISE or copy-paste a command and use its
+    debugging features (such as *Step Into*, *Step Over*, *Step Out,* and B*reakpoints*)
+    which can be accessed via the Debug menu. Before debugging, make sure to set the
+    execution policy to *Bypass*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00211.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.6.3 How Attackers Use PowerShell
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With an understanding of basic PowerShell and what tools to use for analysis,
+    let''s now look at how attackers use PowerShell. Due to the restriction in executing
+    the PowerShell scripts (`.ps1`) via the PowerShell console or by double-clicking
+    (which will open it in notepad rather than executing the script), it is unlikely
+    to see adversaries sending PowerShell scripts to their victims directly. The attacker
+    must first trick the user into executing the malicious code; this is mostly done
+    by sending email attachments containing files such as `.lnk`*,* `.wsf`*, javascript,*
+    or *malicious macro documents*. Once the user is tricked into opening the attached
+    files, the malicious code can then invoke PowerShell directly (`powershell.exe`),
+    or indirectly via `cmd.exe`, `Wscript`, `Cscript`, and so on. After the PowerShell
+    is invoked, various methods can be used to bypass the execution policy. For example,
+    to bypass an execution restriction policy, an attacker can use the malicious code
+    to invoke `powershell.exe` and pass the `Bypass` execution policy flag, as shown
+    in the following screenshot. This technique will work even if the user is not
+    an Administrator, and it overrides the default execution restriction policy and
+    executes the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00212.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the same manner, attackers use various PowerShell command-line arguments
+    to bypass the execution policy. The following table outlines the most common PowerShell
+    arguments used to evade detection and bypass local restrictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Command-Line Argument** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ExecutionPolicy Bypass (`-Exec bypass`) | Ignores the execution policy restriction
+    and runs script without warning |'
+  prefs: []
+  type: TYPE_TB
+- en: '| WindowStyle Hidden (`-W Hidden`) | Hides the PowerShell window |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NoProfile (`-NoP`) | Ignores the commands in the profile file |'
+  prefs: []
+  type: TYPE_TB
+- en: '| EncodedCommand (`-Enc`) | Executes command encoded in Base64 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NonInteractive (`-NonI`) | Does not present an interactive prompt to the
+    user |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Command (`-C`) | Executes a single command |'
+  prefs: []
+  type: TYPE_TB
+- en: '| File (`-F`) | Executes commands from a given file |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Apart from using PowerShell command-line arguments, attackers also make use
+    of cmdlets or .NET APIs in the PowerShell scripts. The following are the most
+    frequently used commands and functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Invoke-Expression (IEX)`: This cmdlet evaluates or executes a specified string
+    as a command'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Invoke-Command`: This cmdlet can execute a PowerShell command on either a
+    local or a remote computer'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Start-Process`: This cmdlet starts a process from a given file path'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`DownloadString`: This method from `System.Net.WebClient` (WebClient Class)
+    downloads the resource from an URL as a string'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`DownloadFile()`: This method from `System.Net.WebClient` (WebClient Class)
+    downloads the resource from an URL to a local file'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The following is an example of a PowerShell downloader used in an attack mentioned
+    in the author's blog post ([https://cysinfo.com/cyber-attack-targeting-indian-navys-submarine-warship-manufacturer/](https://cysinfo.com/cyber-attack-targeting-indian-navys-submarine-warship-manufacturer/)).
+    In this case, the PowerShell command was invoked via `cmd.exe` by the malicious
+    macro contained within the Microsoft Excel sheet, which was sent in an email attachment
+    to the victims.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The PowerShell drops the downloaded executable in the `%TEMP%` directory as
+    `doc6.exe`. It then adds a registry entry for the dropped executable and invokes
+    `eventvwr.exe`, which is an interesting registry hijack technique which allows `doc6.exe`
+    to be executed by `eventvwr.exe` with high integrity level. This technique also
+    silently bypasses the *UAC (user account control)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00213.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following is a PowerShell command from a targeted attack ([https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/](https://cysinfo.com/uri-terror-attack-spear-phishing-emails-targeting-indian-embassies-and-indian-mea/)).
+    In this case, the PowerShell is invoked by the malicious macro and instead of
+    downloading an executable directly, the base64 content from a Pastebin link was
+    downloaded using the `DownloadString` method. After downloading the encoded content,
+    it is decoded and dropped onto the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, before invoking PowerShell, a malware dropper first
+    writes a DLL with a *.bmp* extension (`heiqh.bmp`) in the `%Temp%` directory and
+    then launches `rundll32.exe` via PowerShell to load the DLL and executes the DLL''s
+    export function `dlgProc`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For more information on different PowerShell techniques used in malware attacks,
+    refer to the Whitepaper: *The Increased use of PowerShell in attacks:* [https://www.symantec.com/content/dam/symantec/docs/security-center/white-papers/increased-use-of-powershell-in-attacks-16-en.pdf](https://www.symantec.com/content/dam/symantec/docs/security-center/white-papers/increased-use-of-powershell-in-attacks-16-en.pdf). Adversaries
+    make use of various obfuscation techniques to make analysis harder. To get an
+    idea of how attackers use PowerShell obfuscation, watch this Derbycon presentation
+    by Daniel Bohannon: [https://www.youtube.com/watch?v=P1lkflnWb0I](https://www.youtube.com/watch?v=P1lkflnWb0I).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2\. Malware Persistence Methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Often, adversaries want their malicious program to stay on the compromised computers,
+    even when the Windows restarts. This is achieved using various persistence methods;
+    this persistence allows an attacker to remain on the compromised system without
+    having to re-infect it. There are many ways to run the malicious code each time
+    Windows starts. In this section, you will understand some of the persistence methods
+    used by the adversaries. Some of these persistence techniques covered in this
+    section allow the attackers to execute malicious code with elevated privileges
+    (privilege escalation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1 Running the Registry Key
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'One of the most common persistence mechanisms used by adversaries to survive
+    the reboot is achieved by adding an entry to the *run registry keys*. The program
+    that is added to the run registry key gets executed at system startup. The following
+    is a list of the most commonly run registry keys. Malware can add itself to various
+    auto-start locations in addition to the ones were are about to mention. The best
+    way to get an idea of various auto-start locations is to use the *AutoRuns utility *by
+    Sysinternals ([https://docs.microsoft.com/en-us/sysinternals/downloads/autoruns](https://docs.microsoft.com/en-us/sysinternals/downloads/autoruns)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, upon execution, the malware (`bas.exe`)  first drops
+    an executable in the Windows directory *(*`LSPRN.EXE`*)* and then adds the following
+    entry in the run registry key so that the malicious program can start every time
+    the system starts. From the registry entries, it can be seen that malware is trying
+    to make its binary look like a printer-related application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: To detect the malware using this persistence method, you can monitor for the
+    changes to the Run registry keys that are not associated with the known program.
+    You can also use Sysinternal's *AutoRuns utility* to inspect the Auto-start locations
+    for suspicious entries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Scheduled Tasks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another persistence method adversaries use is to schedule a task that allows
+    them to execute their malicious program at a specified time or during system startup.
+    Windows utilities such as `schtasks` and `at` are normally used by the adversaries
+    to schedule a program or script to execute at a desired date and time. By making
+    use of these utilities, an attacker can create tasks on a local computer or remote
+    computer, provided the account used to create the task is part of an Administrator
+    group. In the following example, the malware (`ssub.exe`) first creates a file
+    called `service.exe` in the `%AllUsersProfile%\WindowsTask\` directory and then
+    invokes `cmd.exe`,  which in turn uses the `schtasks` Windows utility to create
+    a scheduled task for persistence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: To detect this type of persistence, one can use the Sysinternals *Autoruns or*
+    the *task scheduler* utility to list currently scheduled tasks. You should consider
+    monitoring the changes to the tasks that are not related to the legitimate programs.
+    You can also monitor the command-line arguments passed to the system utilities
+    such as `cmd.exe`, which may be used to create tasks. Tasks may also be created
+    using management tools such as *PowerShell* and *Windows Management Instrumentation
+    (WMI)*, so appropriate logging and monitoring should help in detecting this technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Startup Folder
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Adversaries can achieve persistence by adding their malicious binary in the
+    *startup folders*. When the operating system starts, the startup folder is looked
+    up and files residing in this folder are executed. The Windows operating system
+    maintains two types of startup folders: *(a) user wide* and *(b) system-wide*,
+    as shown in the following code. A program residing in the user''s startup folder
+    is executed only for a specific user and the program residing in the system folder
+    is executed when any user logs on to the system. Administrator privilege is required
+    to achieve persistence using a system-wide startup folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, the malware *(Backdoor.Nitol)* first drops a file
+    in the `%AppData%` directory. It then creates a shortcut *(*`.lnk`*)* that points
+    to the dropped file and then adds that shortcut to the `Startup` folder. This
+    way, when the system starts, the dropped file gets executed via the shortcut *(*`.lnk`*)*
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: To detect this type of attack, you can monitor the entries added and changes
+    made to the startup folders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.4 Winlogon Registry Entries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An attacker can achieve persistence by modifying the registry entries used by
+    the *Winlogon* process. The Winlogon process is responsible for handling interactive
+    *user logons* and *logoffs*. Once the user is authenticated, the `winlogon.exe`
+    process launches `userinit.exe`, which runs logon scripts and re-establishes network
+    connections. `userinit.exe` then starts `explorer.exe`, which is the default User's
+    shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `winlogon.exe` process launches `userinit.exe` due to the following registry
+    value. This entry specifies which programs need to be executed by Winlogon when
+    a user logs on. By default, this value is set to the path of `userinit.exe` (`C:\Windows\system32\userinit.exe`).
+    An attacker can change or add another value containing the path to the malicious
+    executable, which will then be launched by the `winlogon.exe` process (when the
+    user logs on):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the same manner, `userinit.exe` consults the following registry value to
+    start the default User''s shell. By default, this value is set to `explorer.exe`.
+    An attacker can change or add another entry containing the name of the malicious
+    executable, which will then be started by `userinit.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, the *Brontok* worm achieves persistence by modifying
+    the following Winlogon registry values with its malicious executables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00214.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To detect this type of persistence mechanism, the Sysinternals *Autoruns utility*
+    may be used. You can monitor for suspicious entries (not related to legitimate
+    programs) in the registry, as mentioned earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.5 Image File Execution Options
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Image File Execution Options (IFEO)* allows one to launch an executable directly
+    under the debugger. It gives the developer the option to debug their software
+    to investigate issues in the executable''s startup code. A developer can create
+    a subkey with the name of his/her executable under the following registry key
+    and set the debugger value to the path of the debugger:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Adversaries take advantage of this registry key to launch their malicious program.
+    To demonstrate this technique, the debugger for `notepad.exe` is set to a calculator
+    (`calc.exe`) process by adding the following registry entry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00215.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, when you start notepad, it will be launched by a calculator program (even
+    though it is not a debugger). This behavior can be seen in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00216.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following is an example of a malware sample *(TrojanSpy:Win32/Small.M)*
+    that configures its malicious program, `iexplor.exe`, as a debugger for internet
+    explorer, (`iexplore.exe`). This is achieved by adding the following registry
+    value. In this case, the attackers chose a filename that looks similar to the
+    legitimate internet explorer executable name. Due to the following registry entry,
+    whenever the legitimate internet explorer (`iexplore.exe`) is executed, it will
+    be launched by the malicious program `iexplor.exe`, thereby executing the malicious
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: To detect this type of persistence technique, you can inspect the I*mage File
+    Execution Options* registry entry for any modifications not related to the legitimate
+    programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6 Accessibility Programs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Windows operating system provides various accessibility features such as
+    the *On-screen keyboard*, *Narrator*, *Magnifier*, *Speech recognition*, and so
+    on. These features are mainly designed for people with special needs. These accessibility
+    programs can be launched without even logging into the system. For example, many
+    of these accessibility programs can be accessed by pressing the *Windows + U*
+    key combination, which launches `C:\Windows\System32\utilman.exe`, or you can
+    enable sticky keys by pressing the *shift key* five times, which will launch the
+    program `C:\Windows\System32\sethc.exe`*.* An attacker can change the way these
+    accessibility programs (such as `sethc.exe` and `utilman.exe`) are launched to
+    execute a program of their choice, or they can use `cmd.exe` with elevated privileges
+    (privilege escalation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Adversaries use the sticky keys (`sethc.exe`) feature to gain unauthenticated
+    access via Remote Desktop (RDP). In the case of the *Hikit* Rootkit, ([https://www.fireeye.com/blog/threat-research/2012/08/hikit-rootkit-advanced-persistent-attack-techniques-part-1.html](https://www.fireeye.com/blog/threat-research/2012/08/hikit-rootkit-advanced-persistent-attack-techniques-part-1.html))
+    the legitimate `sethc.exe` program was replaced with `cmd.exe`. This allowed the
+    adversaries to access the command prompt with *SYSTEM* privileges over RDP just
+    by pressing the *shift key* five times. While in the older versions of Windows
+    it was possible to replace the accessibility program with another program, the
+    newer versions of Windows enforces various restrictions such as the replaced binary
+    must reside in `%systemdir%`**,** it needs to be digitally signed for x64 systems,
+    and it must be protected by *Windows File or Resource Protection (WFP/WRP)*. These
+    restrictions make it hard for the adversaries to replace the legitimate programs
+    (such as `sethc.exe`). To avoid replacing the files, adversaries make use of the
+    *Image File Execution Options* (covered in the previous section), as shown in
+    the following code. The following registry entry sets `cmd.exe` as the debugger
+    for `sethc.exe`; now, an adversary can use RDP login and press the *Shift* key
+    five times to get access to the System-level command shell. Using this shell,
+    an adversary can execute any arbitrary commands even before authentication. In
+    the same manner, a malicious backdoor program can be executed by setting it as
+    a debugger for `sethc.exe` or `utilman.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following example, when a malware sample (`mets.exe`) is executed, it
+    runs the following command, which modifies the firewall rules/registry to allow
+    RDP connection and then adds a registry value to set the task manager (`taskmgr.exe`)
+    as the debugger for `sethc.exe`. This allows an adversary to access `taskmgr.exe`
+    over RDP (with SYSTEM privileges). Using this technique, an adversary can *kill
+    a process* or s*tart/stop a service* over RDP without even logging in to the system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This type of attack is slightly difficult to detect, because an attacker either
+    replaces the accessibility programs with legitimate programs or makes use of legitimate
+    programs. However, if you suspect that the accessibility program (`sethc.exe`)
+    has been replaced with legitimate files, such as `cmd.exe` or `taskmgr.exe`, then
+    you can compare the hash values of the replaced accessibility program with the
+    hash values of the legitimate files (`cmd.exe` or `taskmgr.exe`) to look for a
+    match. A hash value match is an indication that the original `sethc.exe` file
+    was replaced. You can also inspect the *Image File Execution Options* registry
+    entry for any suspicious modifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.7 AppInit_DLLs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `AppInit_DLLs` feature in Windows provides a way to load custom DLLs into
+    the address space of every interactive application. Once a DLL is loaded into
+    the address space of any process, it can run within the context of that process
+    and can hook well-known APIs to implement an alternate functionality. An attacker
+    can achieve persistence for their malicious DLL by setting the `AppInit_DLLs`
+    value in the following registry key. This value typically contains space or comma-delimited
+    list of DLLs. All the DLLs specified here are loaded into every process that loads
+    `User32.dll`. Since `User32.dll` is loaded by almost all of the processes, this
+    technique enables the attacker to load their malicious DLL into most of the processes
+    and executes the malicious code within the context of the loaded process. In addition
+    to setting the `AppInit_DLLs` value, an attacker may also enable the `AppInit_DLLs`
+    functionality by setting the `LoadAppInit_DLLs` registry value to `1`. The `AppInit_DLLs`
+    functionality is disabled on Windows 8 and later versions, where the secure boot
+    is enabled:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows the AppInit DLL entries added by the *T9000
+    backdoor* ([https://researchcenter.paloaltonetworks.com/2016/02/t9000-advanced-modular-backdoor-uses-complex-anti-analysis-techniques/](https://researchcenter.paloaltonetworks.com/2016/02/t9000-advanced-modular-backdoor-uses-complex-anti-analysis-techniques/)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00217.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As a result of adding the preceding registry entries, when any new process
+    (that loads `User32.dll`) is started, it loads the malicious DLL (`ResN32.dll`)
+    into its address space. The following screenshot displays the operating system''s
+    processes that loaded the malicious DLL (`ResN32.dll`) after rebooting the system.
+    Since most of these processes run with high integrity levels, it allows an adversary
+    to execute malicious code with elevated privileges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00218.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To detect this technique, you can look for the suspicious entries in the `AppInit_DLLs` registry
+    value, that do not relate to the legitimate programs in your environment. You
+    can also look for any process exhibiting abnormal behavior due to the loading
+    of the malicious DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8 DLL Search Order Hijacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When a process is executed, its associated DLLs are loaded into the process
+    memory (either via an *import table* or as a result of the process calling the `LoadLibrary()`
+    API). The Windows operating system searches for the DLL to be loaded in a specific
+    order in the predefined locations. The search order sequence is documented in
+    the MSDN here: [http://msdn.microsoft.com/en-us/library/ms682586(VS.85).aspx](http://msdn.microsoft.com/en-us/library/ms682586(VS.85).aspx).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In short, if any DLL has to be loaded, the operating system first checks if
+    the DLL is already loaded in the memory. If yes, it uses the loaded DLL. If not,
+    it checks if the DLL is defined in the `KnownDLLs` registry key (`HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session
+    Manager\KnownDLLs`). The DLLs listed here are system DLLs (located in the `system32`
+    directory), and they are protected using *Windows file protection* to ensure that
+    these DLLs are not deleted or updated except by the operating system updates.
+    If the DLL to be loaded in is in the list of `KnownDLLs`, then the DLL is always
+    loaded from the `System32` directory. If these conditions are not met, then the
+    operating system looks for the DLL in the following locations in sequential order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The directory from where the application was launched.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The system directory (`C:\Windows\System32`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The 16-bit system directory (`C:\Windows\System`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The Windows directory (`C:\Windows`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The current directory.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Directories defined in the `PATH` variables.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Adversaries can take advantage of how the operating system searches for the
+    DLL to escalate privilege and to achieve persistence. Consider the malware (*Prikormka
+    dropper*) used in Operation Groundbait ([http://www.welivesecurity.com/wp-content/uploads/2016/05/Operation-Groundbait.pdf](http://www.welivesecurity.com/wp-content/uploads/2016/05/Operation-Groundbait.pdf)).
+    This malware, upon execution, drops a malicious DLL called `samlib.dll` in the
+    Windows directory (`C:\Windows`), as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On a clean operating system, a DLL with the same name (`samlib.dll`) resides
+    in the `C:\Windows\System32` directory and this clean DLL is loaded by `explorer.exe`,
+    which resides in the `C:\Windows` dir*ectory.* The clean DLL is also loaded by
+    few other processes which reside in the `system32` directory, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00219.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Since the malicious DLL is dropped in the same directory as `explorer.exe`
+    (which is `C:\Windows`), as a result, when the system reboots, the malicious `samlib.dll`
+    is loaded by `explorer.exe` from the `C:\Windows` directory instead of the legitimate
+    DLL from the `system32` directory. The following screenshot, taken after rebooting
+    the infected system, displays the malicious DLL loaded by `explorer.exe` as a
+    result of DLL search order hijacking:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00220.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The *DLL search order hijack* technique makes forensic analysis much harder
+    and evades traditional defenses. To detect such attacks, you should consider monitoring
+    the creation, renaming, replacing, or deletion of DLLs and look for any modules
+    (DLLs) loaded by the processes from abnormal paths.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.9 COM hijacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Component Object Model (COM)* is a system that allows the software components
+    to interact and communicate with each other, even if they have no knowledge of
+    each other''s code ([https://msdn.microsoft.com/en-us/library/ms694363(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/ms694363(v=vs.85).aspx)).
+    The software components interact with each other through the use of COM objects,
+    and these objects can be within a single process, other processes, or on remote
+    computers. COM is implemented as a client/server framework. A COM client is a
+    program that uses the service from the COM server (COM object), and a COM server
+    is an object which provides service to the COM clients. The COM server implements
+    an interface consisting of various methods (functions), either in a DLL (called
+    *in-process server*) or in an EXE (called *out-of-process server*). A COM client
+    can utilize the service provided by COM server by creating an instance of the
+    COM object, acquiring the pointer to the interface, and calling the method implemented
+    in its interface.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Windows operating system provides various COM objects that can be used
+    by the programs (COM client). The COM objects are identified by a unique number
+    called *class identifiers* (*CLSIDs*), and they are typically found in the registry
+    key `HKEY_CLASSES_ROOT\CLSID\< unique clsid>`. For example, the COM object for
+    *My Computer* is `{20d04fe0-3aea-1069-a2d8-08002b30309d}`, which can be seen in
+    the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00221.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For each CLSID key, you also have a subkey called `InProcServer32` that specifies
+    the filename of the DLL that implements the COM server functionality. The following
+    screenshot tells you that `shell32.dll` (COM server) is associated with *My computer*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00222.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Similar to the *My Computer* COM object, Microsoft provides various other COM
+    objects (implemented in DLLs) that are used by the legitimate programs. When the
+    legitimate program (COM client) uses the service from a specific COM object (using
+    its CLSID), its associated DLL gets loaded into the process address space of the
+    client program. In the case of *COM Hijacking*, an attacker modifies the registry
+    entry of a legitimate COM object and associates it with the attacker's malicious
+    DLL. The idea is that when legitimate programs use the hijacked objects, the malicious
+    DLL gets loaded into the address space of the legitimate program. This allows
+    an adversary to persist on the system and execute malicious code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, upon executing the malware (*Trojan.Compfun*), it
+    drops a `dll` with a `._dl` extension, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The malware then sets the following registry value in `HKCU\Software\Classes\CLSID`.
+    This entry associates the COM object `{BCDE0395-E52F-467C-8E3D-C4579291692E}`
+    of the `MMDeviceEnumerator` class with the malicious DLL `C:\Windows\system\api-ms-win-downlevel-qgwo-l1-1-0._dl`
+    for the current user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On a clean system, the COM object `{BCDE0395-E52F-467C-8E3D-C4579291692E}`
+    of the `MMDeviceEnumerator` Class is associated with the DLL `MMDevApi.dll`, and
+    its registry entry  is typically found in `HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\`,
+    and no corresponding entry is found in `HKCU\Software\Classes\CLSID\`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00223.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As a result of the malware adding an entry in `HKCU\Software\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}`,
+    the infected system now contains two registry entries for the same CLSID. Since
+    the user objects from `HKCU\Software\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}`
+    get loaded before the machine objects located in `HKLM\SOFTWARE\Classes\CLSID\{BCDE0395-E52F-467C-8E3D-C4579291692E}`,
+    the malicious DLL gets loaded, thereby hijacking the COM object of `MMDeviceEnumerator`.
+    Now, any process that uses the `MMDeviceEnumerator` object loads the malicious
+    DLL. The following screenshot was taken after restarting the infected system.
+    After the restart, the malicious DLL was loaded by `explorer.exe`, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00224.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The *COM hijacking* technique evades detection from most of the traditional
+    tools. To detect this kind of attack, you can look for the presence of objects
+    in `HKCU\Software\Classes\CLSID\`. Instead of adding an entry in `HKCU\Software\Classes\CLSID\`,
+    malware may modify the existing entry in `HKLM\Software\Classes\CLSID\` to point
+    to a malicious binary, so you should also consider checking for any value pointing
+    to an unknown binary in this registry key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.10 Service
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A service is a program that runs in the background without any user interface,
+    and it provides core operating system features such as event logging, printing,
+    error reporting, and so on. An adversary with Administrator privilege can persist
+    on the system by installing the malicious program as a service or by modifying
+    an existing service. For an adversary, the advantage of using the service is that
+    it can be set to start automatically when the operating system starts, and it
+    mostly runs with a privileged account such as SYSTEM; this allows an attacker
+    to elevate privileges. An attacker may implement the malicious program as an *EXE*,
+    *DLL,* or *kernel driver* and run it as a service. Windows supports various service
+    types, and the following outlines some of the common service types used by the
+    malicious programs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Win32OwnProcess*: The code for the service is implemented as an executable,
+    and it runs as an individual process'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Win32ShareProcess:* The code for the service is implemented as a DLL, and
+    it runs from a shared host process (`svchost.exe`)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Kernel Driver Service:* This type of service is implemented in a driver (`.sys`),
+    and it is used to execute the code in kernel space'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Windows stores the list of installed services and their configuration in the
+    registry under the `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services` key.
+    Each service has its own subkey consisting of values that specify how, when, and
+    whether the service is implemented in an *EXE*, *DLL,* or *kernel driver*. For
+    example, the service name for the *Windows installer service* is `msiserver`,
+    and in the following screenshot, a subkey is present with the same name as the
+    service name under `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services`. The
+    `ImagePath` value specifies that the code for this service is implemented in `msiexec.exe`,
+    the `Type` value of `0x10(16)` tells us that it is `Win32OwnProces*s*`, and the
+    `Start` value `0x3` represents `SERVICE_DEMAND_START`, which means that this service
+    needs to be started manually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00225.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To determine the symbolic name associated with the constant values, you can
+    refer to the MSDN documentation for the `CreateService()` API ([https://msdn.microsoft.com/en-us/library/windows/desktop/ms682450(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms682450(v=vs.85).aspx)),
+    or you can query the service configuration using the `sc` utility by providing
+    the service name, as shown here. This will display similar information that is
+    found in the registry subkey:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now look at an example of the *Win32ShareProcess* service. The *Dnsclient*
+    service has a service name of `Dnscache`, and code for the service is implemented
+    in the DLL. When a service is implemented as a DLL (service DLL), the `ImagePath`
+    registry value will typically contain the path to the `svchost.exe` (because that
+    is the process that loads the Service DLL). To determine the DLL that is associated
+    with the service, you will have to look at the `ServiceDLL` value, which is present
+    under the `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\<service name>\Parameters`
+    subkey. The following screenshot shows the DLL (`dnsrslvr.dll`) associated with
+    the Dnsclient service; this DLL gets loaded by the generic host process `svchost.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00226.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'An attacker can create services in many ways. The following outlines some of
+    the common methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**sc utility:** A malware can invoke `cmd.exe` and run an `sc` command such
+    as `sc create` and `sc start` (or `net start`) to create and start the service,
+    respectively. In the following example, malware executes the `sc` command (via
+    `cmd.exe`) to create and start a service named `update`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Batch script**: A malware can drop a batch script and execute the previously
+    mentioned commands to create and start the service. In the following example,
+    the malware (*Trojan:Win32/Skeeyah)* drops a batch script (`SACI_W732.bat`) and
+    executes the batch script (via `cmd.exe`), which in turn creates and starts a
+    service named `Saci`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Windows API**: The malware can use Windows API, such as `CreateService()`
+    and `StartService()` to *create* and *start* the service. When you run `sc utility` in
+    the background, it uses these API calls to create and start the service. Consider
+    the following example of the *NetTraveler* malware. Upon execution, it first drops
+    a dll:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It then opens a handle to the service control manager using the `OpenScManager()`
+    API and creates a service of type `Win32ShareProcess` by calling the `CreateService()`
+    API. The second argument specifies the name of the service, which in this case
+    is `FastUserSwitchingCompatiblity`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00227.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After the call to `CreateService()`, the service gets created, and the following
+    registry key is added with service configuration information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00228.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It then creates a `Parameters` subkey under the registry key created in the
+    previous step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00229.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After that, it drops and executes a batch script, which sets the registry value
+    (`ServiceDll`) to associate the DLL with the created service. The content of the
+    batch script is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: As a result of creating a `Win32ShareProcess` service, when the system boots,
+    the service control manager (`services.exe`) starts the `svchost.exe` process,
+    which in turn loads the malicious ServiceDLL `FastUserSwitchingCompatibilityex.dll`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '** PowerShell and WMI**: A service can also be created using management tools
+    such as *PowerShell* ([https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-service?view=powershell-5.1](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-service?view=powershell-5.1))
+    and *Window Management Instrumentation (WMI)* high-level interfaces ([https://msdn.microsoft.com/en-us/library/aa394418(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/aa394418(v=vs.85).aspx)).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Instead of creating a new service, an adversary can modify (hijack) the existing
+    service. Normally, an attacker hijacks a service that is unused or disabled. This
+    makes detection slightly harder because, if you are trying to find the nonstandard
+    or unrecognized service, you will miss this type of attack. Consider the example
+    of the *BlackEnergy* malware dropper, which *Hijacks* the existing service to
+    persist on the system. Upon execution, *BlackEnergy* replaces a legitimate driver
+    called `aliide.sys` (associated with the service named `aliide`) residing in the `system32\drivers`
+    directory with the malicious `aliide.sys` driver. After replacing the driver,
+    it modifies the registry entry associated with the `aliide` service and sets it
+    to autostart (the service starts automatically when the system starts), as shown
+    in the following events:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows the service configuration of the `aliide` service
+    before and after modification. For a detailed analysis of the *BlackEnergy3* big
+    dropper, read the author''s blog post here at: [https://cysinfo.com/blackout-memory-analysis-of-blackenergy-big-dropper/](https://cysinfo.com/blackout-memory-analysis-of-blackenergy-big-dropper/):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00230.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To detect such attacks, monitor the changes to service registry entries that
+    are not associated with the legitimate program. Look for the modification to the
+    binary path associated with the service, and changes to the service startup type
+    (from manual to automatic). You should also consider monitoring and logging the
+    usage of tools such as *sc*, *PowerShell*, and *WMI,* which can be used to interact
+    with the service. The Sysinternals *AutoRuns utility* can also be used to inspect
+    the use of service for persistence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An adversary can persist and execute the malicious code within the DLL whenever
+    the Microsoft Office application starts. For more details, see [http://www.hexacorn.com/blog/2014/04/16/beyond-good-ol-run-key-part-10/](http://www.hexacorn.com/blog/2014/04/16/beyond-good-ol-run-key-part-10/)
+    and [https://researchcenter.paloaltonetworks.com/2016/07/unit42-technical-walkthrough-office-test-persistence-method-used-in-recent-sofacy-attacks/](https://researchcenter.paloaltonetworks.com/2016/07/unit42-technical-walkthrough-office-test-persistence-method-used-in-recent-sofacy-attacks/).For
+    further details on various persistence methods and to understand the adversary
+    tactics and techniques, refer to MITRE’s ATT&CK wiki: [https://attack.mitre.org/wiki/Persistence](https://attack.mitre.org/wiki/Persistence).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Malware uses various API calls to interact with the system, and in this chapter,
+    you learned how API calls are used by the malicious binary to implement various
+    functionalities. This chapter also covered different persistent techniques used
+    by the adversaries, which allow them to reside on the victim's system even after
+    a system reboot (some of these techniques allow a malicious binary to execute
+    code with high privileges).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn about different code injection techniques
+    used by the adversaries to execute their malicious code within the context of
+    a legitimate process.
+  prefs: []
+  type: TYPE_NORMAL

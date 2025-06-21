@@ -1,0 +1,840 @@
+- en: Chapter 8. Bad Serialization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Object serialization** is an interesting programming concept that aims to
+    take structured live data from memory and make it transmittable over the wire
+    or easily stored somewhere for later use. An object, such as a memory structure
+    of an application''s database connection details, for example, can be serialized,
+    or converted into an easy-to-transport stream of bytes, such as a human-readable
+    string. A string representation of this memory structure can now be easily written
+    to a text file or sent to another web application over HTTP. The serialized data
+    string can then be used to instantiate the database object in memory, with the
+    properties, such as database name or credentials, pre-populated. The receiving
+    web application can recreate the memory structure by deserializing the string
+    of bytes. Serialization is also referred to as marshalling, pickling, or flattening,
+    and it is provided by many languages, including Java, PHP, Python, and Ruby.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on the language, the serialized data may be represented as human-readable
+    text, binary stream, or a combination of both. There are many uses for object serialization,
+    such as inter-process communication, inter-system communication, data caching,
+    or persistence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be looking at the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the deserialization process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing vulnerable application code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploiting deserialization to achieve code execution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Abusing deserialization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Exploiting deserialization relies on built-in methods, which execute automatically
+    when an object is instantiated or destroyed. PHP, for example, provides several
+    of these methods for every object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`__construct()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`__destruct()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`__toString()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`__wakeup()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: …and more!
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When a new object is instantiated, `__construct()` is called; whereas when a
+    new object is destroyed or during garbage collection, `__destruct()` is automatically
+    executed. The `__toString()` method provides a way to represent the object in
+    string format. This is different to serialization, as there is no `__fromString()`
+    equivalent to read the data back. The `__wakeup()` method is executed when an object is
+    deserialized and instantiated in memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PHP provides serialization capabilities via the `serialize()` and `unserialize()`
+    functions. The output is a human-readable string that can be easily transferred
+    over HTTP or other protocols. The string output describes the object, its properties,
+    and the values. PHP can serialize boolean, array, integer, double, and string
+    variables, and even instantiated classes (objects).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we attempt to serialize a simple array object containing
+    two key-value pairs: `database` with the value `users`, and `host` with the value
+    `127.0.0.1`. The PHP source code to create this array structure in memory looks
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: When the source code is compiled and executed by the PHP engine, the `array`
+    object is stored in a memory structure somewhere in RAM that only the processor
+    knows how to access. If we wish to transfer `array` to another machine through
+    a medium such as HTTP, we have to find all the bytes in memory that represent
+    it, package them, and send them using a `GET` request or similar. This is where
+    serialization comes into play.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `serialize()` function in PHP will do just that for us: find the array
+    structure in memory and return a string representation of it. We can test this
+    by using the `php` binary on our Linux machine, and with the `-r` switch we can
+    ask it to serialize our array, and return a representative string. The PHP code
+    will echo the results to the screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The colon-separated output reads like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The serialized data that follows is an array (`a`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are `2` elements in the array
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The elements are wrapped in curly brackets (`{}`) and separated by semicolons
+    (`;`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first element key is a string (`s`) of length `8` called `database`. Its
+    value is a string (`s`) of length `5`: `users`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The second key is a string (`s`) of length `4` called `host`. Its value is
+    a string (`s`) of length `9`: `127.0.0.1`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This serialized data can be shared across systems or over the network, or stored
+    in a database. When it is retrieved, the array structure can be rebuilt (unserialized)
+    with the values already populated. Serialized objects instantiated from classes
+    are no different to array objects; they simply contain a few more fields in the
+    serialized result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Take the sample class `WriteLock`, whose purpose it is to create a lock file
+    in the `/tmp` directory when it is deserialized. This application will be stored
+    in the `/var/www/html/lockapp` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following shows the `WriteLock` class PHP code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.1: The WriteLock class definition source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code can be a bit daunting to non-developers, but it''s not very complicated
+    at all. The `WriteLock` class has two public functions (or methods) available:
+    `write()` and `__wakeup()`. The `write()` function will write the string `app_in_use`
+    to the `/tmp/lockfile` file on the disk using PHP''s built-in `file_put_contents`
+    function. The `__wakeup()` method will simply sanity-check the properties and
+    execute the `write()` function in the current object (`$this`). The idea here
+    is that the lock file, `/tmp/lockfile`, will automatically be created when the
+    `WriteLock` object is recreated in memory by deserialization.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we can see how the `WriteLock` object looks when it is serialized and
+    ready for transmission. Remember that `__wakeup()` will only execute on deserialization,
+    not when the object is instantiated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following code will include the `WriteLock` definition so that we can instantiate
+    a `$lock` object from the `WriteLock` class using the `new` PHP keyword. The last
+    line of the code will echo or return the serialized `$lock` object to the screen
+    for inspection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is the contents of the `serialize.php` file used for testing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.2: Source code to serialize a WriteLock object'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The output of the serialized `$lock` object looks similar to the preceding array
+    example. For clarity's sake, the following has been cleaned up and indented, but
+    a typical serialized object will not contain formatting, such as indents and newlines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s execute the `serialize.php` file using the `php` interpreter and observe
+    the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first few bytes denote an object (`o`) instantiated from the `WriteLock`
+    class, which contains two properties, along with their respective values and lengths.
+    There is one thing to note: for private class members, the names are prepended
+    with the class name wrapped in null bytes. If the `WriteLock` properties `$file`
+    and `$contents` were private, the serialized object would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Null bytes are not normally visible in standard output. In the preceding example,
+    the bytes were replaced by their hex equivalent `\x00` for clarity. If our payload
+    includes private members, we may need to account for these bytes when transmitting
+    payloads over mediums that interpret null bytes as string terminators. Typically,
+    with HTTP we can escape null bytes using the percent sign preceding the hex representation
+    of null, `00`. Instead of `\x00`, for HTTP, we'd simply use `%00`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following is a sample vulnerable implementation of the `WriteLock` class.
+    The code receives a `WriteLock` serialized object via the `$_GET` PHP superglobal.
+    The URL `GET` parameter containing the serialized object is `lock`, which is stored
+    in a variable called `$data`. This serialized object is then deserialized using
+    PHP's `unserialize()` in an attempt to restore the `WriteLock` object state in
+    memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code will be stored in `index.php` and it illustrates a vulnerable
+    implementation of object deserialization, which we will try to exploit. Data in
+    the `$_GET` variable comes directly from user input and is passed as is to the
+    `unserialize()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.3: The object deserialization source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We cannot actually call the `write()` method provided by the `WriteLock` class
+    when exploiting deserialization. We only really have control over the new object''s
+    properties. Thanks to PHP''s **magic methods**, however, we don''t need to call
+    `write()` directly, since, you''ll recall, `__wakeup()` does it for us. Magic
+    methods are called automatically at different stages in the object life cycle:
+    on creation, on destruction, on restoration from a flat state (aka wakeup), or
+    the serialization of live data (aka sleep).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In **property-oriented programming** (**POP**), a **gadget chain** is the sequence
+    of methods from existing code required to successfully hijack the application
+    execution flow and do bad things. In our very simple example, the gadget chain
+    we are triggering is just a quick hop from the `__wakeup()` magic method to `write()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following shows the execution flow once the object is deserialized by `unserialize()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.4: POP gadget in the WriteLock class'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's not very dramatic, but technically, it is a gadget chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we only control the object properties, `$file` and `$contents`, how could
+    we exploit this vulnerability? What if we try to write the `$contents` into another
+    directory and file other than `/tmp`? Since we control both of these values, we
+    can craft our serialized object to point to a file in the application web root,
+    for example, `/var/www/html/lockapp/shell.php`, instead of the temporary folder,
+    and set its contents to a simple web shell. When our malicious object is deserialized,
+    the `__wakeup()` method will force a `write()` of our PHP shell to `/var/www/html/lockapp/shell.php`,
+    instead of `/tmp/lockfile`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's run a simple web server and bring the `WriteLock` application to life.
+    The `php` interpreter can function as a standalone development server with the
+    `-S` parameter, similar to Python's `SimpleHTTPServer`, with the added benefit
+    of processing `.php` files before serving them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the `php` command to listen on the local system on port `8181`,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use the serialized object from our previous `serialize.php` test and
+    just modify it slightly to weaponize it. We will change the `file` property value
+    to `/var/www/html/lockapp/shell.php` and the `contents` property value to PHP
+    shell code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As before, we will use the following code with a simple password protection
+    mechanism:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.5: Web shell source code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The MD5 value we''re looking for is the hash of `WriteLockTest1`, as confirmed
+    by the `md5sum` Linux command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The serialized payload will look like this, again indented to make it more
+    readable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We've updated the value for `file` and `contents`, along with the appropriate
+    string length, `31` and `100` respectively, as shown in the preceding code block.
+    If the length specified does not match the actual length of the property value,
+    the attack will fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To exploit the deserialization vulnerability and hopefully write a PHP shell
+    to the web root, we can use `curl` to pass our payload through a `GET` request.
+    This will force the application to deserialize untrusted data and to create an
+    object with dangerous property values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can call `curl` with the `-G` parameter, which instructs it to make a `GET`
+    request, specify the URL of the vulnerable application, and also pass the URL
+    encoded value for `lock` using the `--data-urlencode` switch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our serialized data contains single quotes, which can interfere with the execution
+    of `curl` through the bash prompt. We should take care to escape them using a backslash
+    (`\''`) as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The application responds with a `Lock initiated` message as expected. If the
+    exploit was successful, we should be able to access the shell through a web browser,
+    since the `shell.php` would have been written by the `__wakeup() -> write()` POP
+    gadget in the `/var/www/html/lockapp` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Abusing deserialization](graphics/B09238_08_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.6: The shell successfully executing the id program and displaying
+    its result'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploiting deserialization vulnerabilities in black-box PHP applications is
+    difficult because it requires some knowledge of the source code. We need to have
+    a proper gadget chain to execute our code. For this reason, attacks against applications
+    usually involve gadgets from third-party libraries that have been used by application
+    developers, which have their source code more readily available. This allows us
+    to trace the code and build a gadget chain that will help us to take advantage
+    of the vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Packagist** is a repository for PHP libraries and frameworks commonly used
+    by application developers: [https://packagist.org/](https://packagist.org/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make development easier, the **Composer** PHP framework provides a way for applications
+    to automatically load libraries with a simple one-liner. This means that applications
+    may have library code available, and therefore POP gadgets, when a vulnerable
+    `unserialize()` method executes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Composer can be found at [https://getcomposer.org/](https://getcomposer.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attacking custom protocols
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Not unlike PHP, Java also provides the ability to flatten objects for easy transmission
+    or storage. Where PHP-serialized data is simple strings, Java uses a slightly
+    different approach. A serialized Java object is a stream of bytes with a header
+    and the content split into blocks. It may not be easy to read, but it does stand
+    out in packet captures or proxy logs as Base64-encoded values. Since this is a
+    structured header, the first few bytes of the Base64 equivalent will be the same
+    for every stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A Java-serialized object stream always starts with the magic bytes: `0xAC 0xED`,
+    followed by a two byte version number: `0x00 0x05`. The rest of the bytes in the
+    stream will describe the object and its contents. All we really need to spot this
+    in the wild is the first two hex bytes, `ac ed`, and we''d know the rest of the
+    stream is likely to be a Java-serialized object.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Researcher Nick Bloor has developed a wonderfully vulnerable application called
+    **DeserLab**, which showcases deserialization issues in applications that implement
+    custom TCP protocols. DeserLab is not a typical application in that it may not
+    be exposed to the web directly, but it may be used by web applications. DeserLab
+    helps to showcase how Java-deserialization bugs can be exploited to wreak havoc.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: DeserLab and Nick Bloor's research can be found on [https://github.com/NickstaDB/](https://github.com/NickstaDB/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The attack technique we will go over translates very easily to HTTP-based attacks.
+    It's not unusual for applications to read serialized Java objects from cookies
+    or URL parameters. After all, facilitating inter-process or inter-server communication
+    is one of the main benefits of serialization. For web applications, this data
+    is usually Base64-encoded before transmission, making it easy to spot in proxy
+    logs. Base64-encoded Java-serialized objects usually begin with the string `rO0ABX`,
+    which decodes to `0xACED0005`, or the magic bytes and version number mentioned
+    earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To start a new instance of DeserLab, we can call the JAR file with the `-server`
+    parameter, and specify the IP and port to listen on. For simplicity, we will be
+    using `deserlab.app.internal` to connect to the vulnerable application once it
+    is up and running. We will use the `java` binary to launch the DeserLab server
+    component on the DeserLab target machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Protocol analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'DeserLab is a straightforward application that provides string hashing services
+    and is accessible by a custom client, built-in to the `DeserLab.jar` application
+    file. With the DeserLab server component running on the target machine, we can launch the
+    client component on our attacker machine, `kali`, with the `-client` switch, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once connected and the client-server `hello` handshake has completed, the client
+    will prompt us for data to send to the server for processing. We can enter some
+    test data and observe the response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The application server component terminal log echoes the other side of the interaction.
+    Notice the client-server hello and name message exchange; this will be important
+    when we craft our exploit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since this is a custom TCP protocol, we have to intercept the traffic using
+    **Wireshark** or **tcpdump**, as opposed to Burp or ZAP. With Wireshark running,
+    we can capture and inspect the TCP stream of data of our interaction with the
+    DeserLab server, as the following figure shows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Protocol analysis](graphics/B09238_08_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.7: TCP stream of data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see the entire conversation in a hex dump format by analyzing the **packet
+    capture** (**pcap**) generated by our packet sniffer. In the preceding figure,
+    the data sent is the stream printed in light gray, while the darker parts represents
+    the server response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While the data may be a bit hard to read, each byte has a purpose. We can see
+    the familiar `ac ed` header and the various inputs the client has sent, such as
+    `name` and `string`. You''ll also notice that the string value is a serialized
+    `HashRequest` object. This is a Java class implemented by both the server and
+    the client. Serialization is used to instantiate an object that will calculate
+    the hash of a given input and store it in one of its properties. The packets we''ve
+    just captured are the serialized representation of this object being transmitted
+    from the client to the server and vice versa. The server-serialized object also
+    contains an extra property: the generated hash.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the server receives the client-generated serialized object, containing
+    the inputted string to be hashed, it will deserialize the bytes coming in over
+    the wire and attempt to cast them to the `HashRequest` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since DeserLab is open-source, we can inspect the deserialization process on the server
+    component by looking at its source code hosted on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that the data is read in from the client using the `ObjectInputStream`
+    (`ois`) object. This is just a fancy term for the data coming in from the client,
+    which we've observed in the Wireshark packet capture to be the serialized `HashRequest`
+    object. The next step is to attempt to cast the data read from `ois` to a `HashRequest`
+    data structure. The reference to this new `HashRequest` object is then stored
+    in the `request` variable, which can then be used as a normal object in memory.
+    The server will get the input value of the string to be deserialized by calling
+    request's `getData()` method, computing the hash, and storing it back into the
+    object using `setHash()`. The `setHash` method is made available by the `HashRequest`
+    class and all it does is populate a hash property within the object. The data
+    is then serialized and written back to the network stream using `writeObject()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This works fine, but the code makes dangerous assumptions. It assumes that the
+    data coming in from an untrusted source (the attacker) is actually a `HashRequest`
+    object. If the data is anything other than something that can be safely cast to
+    `HashRequest`, Java will throw an exception and as we will find out, by then it'll
+    be too late.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deserialization exploit
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Java deserialization attacks are possible because Java will execute a variety
+    of methods in its quest to deserialize an object. If we control what properties
+    these methods reference, we can control the execution flow of the application.
+    This is POP and it is a code reuse attack similar to **return-oriented programming**
+    (**ROP**). ROP is used in exploit development to execute code by referencing existing
+    bytes in memory and taking advantage of the side effect of the x86 `return` instruction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we pass in a serialized object with the right properties, we can create
+    an execution chain that eventually leads to code execution on the application
+    server. This sounds like a tall order for the non-Java developer. After all, you
+    have to be familiar with the inner workings of various libraries provided by Java
+    or third-parties. Thankfully, a great tool exists to do the heavy lifting: **ysoserial**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ysoserial tool was created by researcher Chris Frohoff to facilitate building
+    serialized objects and weaponizing them to attack applications. It can build code
+    execution payloads (POP chains) for many third-party libraries frequently used
+    by Java applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Spring`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Groovy`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Commons Collections`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Jython`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '...and many more!'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: ysoserial's source code and JAR files can be downloaded from [https://github.com/frohoff/ysoserial](https://github.com/frohoff/ysoserial).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We know that the target application uses the `Groovy` library because we have
+    access to the JAR file and its source. This isn't always true with enterprise
+    applications, however, and we may not always have access to the source code during
+    an assessment. If the vulnerable application is running server-side and our only
+    interaction with it is via an HTTP `GET` request, we'd have to rely on a separate
+    information leak vulnerability to know what library to target for the POP gadget
+    chain generation. Of course, the alternative is to simply try each known POP gadget chain
+    until one succeeds. This is not as elegant and it is very noisy, but it may do
+    the trick.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this particular application, ysoserial can quickly generate a serialized
+    object with the proper POP gadgets to execute code on applications implementing
+    the `Groovy` library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In our case, the payload will be `Groovy1` and the command to execute is a
+    netcat reverse shell back to our C2 server, `c2.spider.ml`, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The bytes are printed to the console by default, so we have to pipe them to
+    a file, `deserlab_payload.bin`, for use in our exploit. A hex dump of the generated
+    payload shows the four familiar Java serialization magic bytes and version sequence,
+    followed by the `0x73 0x72` flags, which further describe what data was serialized.
+    We can observe the hex dump of the payload file using `xxd`, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Deserialization exploit](graphics/B09238_08_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The preceding output was truncated because in order to generate a POP gadget
+    that results in code execution, ysoserial creates a fairly large serialized object.
+    By itself, this payload is not enough to attack DeserLab. We can't just connect
+    to the server, send the payload bytes, and spawn a shell. The custom protocol
+    implemented by DeserLab expects a few extra bytes to be sent before it attempts
+    to cast the payload. You'll recall from our test packet capture that there's a
+    client-server handshake preceding the hashing functionality. If we inspect that
+    packet capture, we can find at what point in the communication stream we can inject
+    our payload. We know that the server expects a serialized `HashRequest` object
+    after the `name` string has been sent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The indented lines are the packets received from the server and everything
+    else is what we''ve sent with our client:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Deserialization exploit](graphics/B09238_08_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once again, we can see the `ac ed` magic bytes starting the stream, followed
+    by the protocol hello packets: `0xF0 0x00 0xBA 0xAA`, and finally the protocol
+    version `0x01 0x01`. Each packet sent by either the server or the client will
+    be preceded by `0x77`, indicating a block of data is coming in and the length
+    of that block (`0x02` in the case of the protocol version).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s not terribly important that we understand what each byte means because
+    we can clearly see where the serialized payload begins. The `0x73` and `0x72`
+    bytes (which are the equivalent of the lowercase letters `s` and `r` respectively)
+    represent the start of the serialized object, as shown in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Deserialization exploit](graphics/B09238_08_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To feed a custom payload and exploit the application, we will write a Python
+    script that will connect to the DeserLab application and:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Send the hello packets
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Send the version number
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Send a name for the client: `test`'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Send the exploit code generated with ysoserial
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To build our exploit code, we will use Python, as it makes sending data over
+    the network simple. The beginning of the script will setup the environment and
+    create a socket to the target host and port.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we will import the Python `socket` library and set a couple of variables
+    that describe our target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will reference these variables shortly. Next, we will read the `deserlab_payload.bin`
+    file into a variable called `payload` using `open()`, `read()`, and finally `close()`,
+    as shown in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `payload` variable now contains the raw bytes generated by ysoserial, which
+    we will use to exploit the target host. The next step is to create a socket to
+    the DeserLab server application and store the reference object in a variable called
+    `target`. We will use this reference variable to send and receive data from the
+    connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this point, our script will emulate the DeserLab client, and in order to
+    successfully connect and be able to send our exploit code, we have to perform
+    a few steps first. Recall that the client sends a few required bytes, including
+    the hello packet and client version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will use the `send()` and `recv()` methods to send and read the responses,
+    so that the communication can move along. Since some bytes can be outside of the
+    ASCII readable range, we should escape them using their hex equivalent. Python
+    allows us to do this using a backslash (`\`) and `x` prefix to the hex bytes.
+    For example, the character `A` can be represented in Python (and other languages)
+    using `\x41`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After we perform a send, we should also receive any data sent from the server.
+    We don't need to store the server response, but we do have to receive it to clear
+    the buffer and allow the socket communication to continue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we will send the `0xAC 0xED` magic bytes, followed by the hello packet,
+    and finally the expected client version. We have to prefix the hello and version
+    packets with the `0x77` byte, followed immediately by the data length. For example,
+    the client version being `0x01 0x01` would need to be prefixed by `0x77` (indicating
+    a data packet), and by `0x02` (the data packet length).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code will send the magic bytes, hello packet, and client version:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We also have to send the client name, which can be arbitrary, but it is required.
+    We just have to make sure the `0x77` prefix and the data length are accurate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we have to strip the magic bytes from the payload itself, as we''ve
+    already sent these. The server expects the object without this data. Python allows
+    us to remove the first four bytes using the `[4:]` array notation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final step is to send the ysoserial payload which, when deserialized, will hopefully
+    execute our reverse shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final exploit script, `exploit_deserlab.py`, should look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before launching the exploit, we have to make sure a netcat listener is running
+    on our C2 server `c2.spider.ml` on port `443`. If the exploit is successful, we
+    should get shell access to the DeserLab server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can start a netcat server on port `443` using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All that''s left to do is to run the Python script on our attacker machine
+    and hope for the best:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we inspect the generated traffic, we can see the protocol initiation and
+    the test string packets, followed immediately by the serialized object generated
+    with ysoserial, indicated by the `0x73 0x72` or `sr` bytes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Deserialization exploit](graphics/B09238_08_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Further down into the packet capture, we notice something interesting in the
+    server response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Deserialization exploit](graphics/B09238_08_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The server responds with a `java.lang.ClassCastException`, meaning that it
+    attempted to cast our payload to `HashRequest` but failed. This is a good thing
+    because by the time the exception is trapped, the POP gadget chain succeeded and
+    we have a shell waiting on our C2 server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we've looked at another way that user input can be abused to
+    execute arbitrary code on vulnerable applications. Serialization is very useful
+    in modern applications, especially as they become more complex and more distributed.
+    Data exchange is made easy, but sometimes at the expense of security.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding examples, applications were compromised because assumptions
+    were made about the process of deserializing data. There is no executable code
+    in the object stream, not in the traditional sense, because serialized data is
+    just a state snapshot of the object. It should be safe, as long as the language
+    interpreter reads the input safely. That is to say, if there is no buffer overflow
+    or similar vulnerability. As we've seen, however, we don't need to exploit the
+    Java virtual machine or PHP's interpreter to compromise the system. We were able
+    to abuse deserialization features to take control of the application execution
+    flow with the help of POP gadgets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will focus practical attacks specifically directed at
+    the user, leveraging application vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL

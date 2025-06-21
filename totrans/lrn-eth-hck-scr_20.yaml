@@ -1,0 +1,1089 @@
+- en: SQL Injection Vulnerabilities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to study **SQL Injection** (**SQLi**) vulnerabilities.
+    To gain insight into these vulnerabilities, we will first learn about SQL, look
+    at the reasons why we are studying SQL, and how
+  prefs: []
+  type: TYPE_NORMAL
+- en: dangerous SQLi is exactly. Moving ahead, we will learn some techniques to discover
+    SQL injections. Then, we will learn how we can bypass SQLi authorization and how
+    to discover SQLi using the `GET` method. We will also see how we can work around
+    SQL commands and discover tables using commands. In the `loadfile` section, we
+    will see how we can implement SQLi on server files. Then, we are going to learn
+    how we can use a tool called `sqlmap`. Finally, will look at techniques we can
+    use to prevent dangerous SQL injections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is SQL?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The dangers of SQLi
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Discovering SQLi
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SQLi authorization bypass
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Discovering SQL using the `GET` method
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Basic `SELECT` statements
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Discovering tables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading columns and their data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading and writing files on the server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `sqlmap` tool
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Preventing SQLi
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What is SQL?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We are going to be learning about a popular type of vulnerability called SQLi.
+    Before we discuss how it occurs and how to exploit it, let's first learn what
+    SQL is. For example, if we are performing a pen test on a certain website, the
+    chances are the website is a little bit bigger than other websites and so probably
+    uses a database. Most websites, other than very simple ones use databases to store
+    data, such as usernames, passwords, news articles, blog posts, pictures, and anything
+    that happens on the website. The web application reads the database and then displays
+    the data to us or to the users. When the user performs an action on the website,
+    the application will either update, delete, or modify the data that exists in
+    the database. This interaction between the web application and the database happens
+    using a language called SQL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see what we mean by a database. This is just an example of a database;
+    we are just going to log in to the database that is installed on our Metasploitable
+    machine to see what''s being stored on it. We will not perform any hacking or
+    anything fancy; we will just log in to MySQL and then we will input the username
+    as `root`—Metasploitable doesn''t use a password for `root`, which is really bad,
+    but obviously it''s a vulnerable system. We are just going to log in; we are not
+    hacking anything or doing any SQL injections, we are just working on the Terminal
+    for MySQL, which the web application would use to interact with the database.
+    The following is the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output of the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f095273e-4288-4d1e-8b2c-0e0bef3a8de1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In this example, we are just trying to see what we mean by databases and what''s
+    saved in them. Now, type in `show databases` and that will show us the databases
+    that exist on our target server. In the following screenshot, we can see that
+    we have the `information_schema` database, which is a default database that holds
+    default information about all the other databases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/89a694ed-d3c1-4137-af3e-f25685013a8f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: It gets installed by default when we install MySQL, and the rest have been installed
+    for each web application. We can see we have one for `tikiwiki` and one for `owasp10`. We
+    also have one called `mysql`, another called `metasploit`, and one for `dvwa`,
+    which is the one that we've been using for the web application. We can see that,
+    for each web application, we have a database, which holds the information that
+    is used by that web application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see what''s inside the database. We are going to use the `owasp10` database.
+    We will type the `Use owasp10` command in the Terminal to read the information
+    from this table. Each database has a table, which contains information, so we
+    launch the `show tables` command to see the tables that we have:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/f04e0253-515b-4ea6-842f-b3cd9f82d87a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have a table for `accounts`, so we can assume that this table has information
+    about the usernames, passwords, and users. We have a table called `blogs_table`,
+    so it probably has the blog input, such as the posts and comments in there. We
+    can see `captured_data` and `credit_cards`, so there's a table that contains credit
+    card details. This is huge for shopping websites, they actually would have a `credit_cards`
+    table and the information for the credit cards would be stored there. Basically,
+    a database will store everything, all the data that is used on the website, because
+    they doesn't get stored on files; it's not efficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at the `accounts` table; if we just type `select`, that
+    is exactly how the web application will retrieve information from the database.
+    The application can either select, update, or delete;  we are doing a `select`
+    statement for our example. Again, this is not hacking—we are just going to `select` everything
+    from the `accounts` table, with the command `select * from accounts`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/e3c052db-a887-423d-bcd9-a89e0077a99b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have columns for the account ID, the username, the password, the signature
+    for the user, and whether that user is an administrator. Now, the columns depend
+    on the table, so the person who designs the database designs the table and the
+    columns, and then the data gets inserted by the web application. We can see in
+    the preceding screenshot that we have a user called `admin` and their password
+    is `adminpass`. We can also see that we have a user called `adrian` and their
+    password is `somepassword`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This example is just to understand what databases look like and to get a feel
+    for them; in later sections, we're going to try to exploit these databases and
+    get access similar to this. So, here, we just logged in with a username and a
+    password. Now, usually we wouldn't have access, and only the web admin would.
+    In the upcoming sections, we're going to try to run some attacks in order to gain
+    access, so that we'll have full control over the database in order to read and
+    write (or modify) data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dangers of SQLi
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section of the chapter, we will focus on why SQL injections are so important
+    and so dangerous. The reason is because they are found everywhere; a lot of big
+    websites have these kind of exploits, such as Yahoo and Google. They're very hard
+    to protect against and it's very easy to make a mistake and make these exploits
+    available for misuse. The other reason that they're very dangerous is because
+    they give the hacker access to the database. In many scenarios, if we find an
+    SQLi, we don't need to upload a `PHP` shell or get a reverse connection. There
+    is really no need to upload anything and increase the danger of being caught because,
+    if we have access to the database, we pretty much have everything we need. We
+    have usernames and passwords, and we can log in with a normal username and password
+    as a normal user; if we are looking for sensitive data, we have access to credit
+    cards. We can do pretty much anything we want, so there's really no point in trying
+    to further exploit the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we find an SQLi, that's great! That's all we need. In many scenarios, we
+    use a PHP shell to gain access to the database and see whether we can read it.
+    Say we managed to upload a PHP shell on the Metasploitable server, but then we
+    couldn't access the database; there isn't much we can see. We can't see credit
+    cards, usernames, and passwords; we do have control over the server, but we can't
+    read information, so sometimes when we upload a PHP shell, the next step is to
+    gain access to the database. SQL injections can be used to do many things, so
+    if we manage to find one in a website that is not our target but is in the same
+    server, then we can use it to read files outside the `/www/root` directory. Similar
+    to file-inclusion vulnerabilities, we can use the admin account, and its username
+    and password, to see whether we can upload some information. Usually the admin
+    can upload a lot of things, so we can upload a PHP shell or a backdoor from there,
+    and navigate to the target website or, in some cases, we can use an SQLi to upload
+    a PHP shell. So, SQL injections can be used as file-inclusion vulnerabilities
+    and file-upload vulnerabilities and they can also give us access to the whole
+    database. That's why they are very dangerous and useful if we manage to find one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering SQLi
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, let''s try to discover some SQL injections. We need to browse through
+    our target and try to break each page. Whenever we see a textbox or a parameter
+    on the form, such as `page.php`, then something is equal to something; try to
+    inject stuff there, try to use a single quote, try to use an and, or the `orderby`
+    statement to break the page and make it look different. For example, we will be
+    using the Mutillidae vulnerable website from Metasploit. We are going to go into
+    the Login/Register page first, as we can see in the following screenshot, and
+    it will ask us to log in. Now, the site is registered with your name so you can
+    just click on Please register here and register:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/131e5aaf-bc9b-4f2f-819e-192815857c5c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After registering, go to the login page. At the moment, we are using the example
+    of injecting into textboxes, so we can try to inject into the Name and into the
+    Password textboxes. For example, suppose we put the Name as `zaid` and then a
+    single quote mark (`''`) into Password, and click Login. As you can see in the
+    following screenshot, there is an error being displayed to us and it doesn''t
+    look like a normal error. It looks like it''s a database error, and usually you''d
+    be very lucky to you get an error such as this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/fb21599c-3a8a-45c0-90c2-8f47ff3ef008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Usually the error won't be as informative as this; sometimes we will just see
+    that the page is not acting as expected or sometimes it'll just be a page that
+    does not look as it should. For example, if it's a news page, maybe the article
+    will be missing or, if it's a blog, one of the posts will be missing, or different
+    kinds of posts, so we need to keep an eye on what's changing. In this example,
+    we are actually getting a really nice error; it's telling us which file it has,
+    that there's an error in the statement—the error is near the quote mark that we
+    added—and the statement that's been executed. This is really good for learning
+    because now we can see the statement that the system is trying to run, and the
+    system is trying to do `SELECT *`, so it's trying to select everything: `FROM
+    accounts WHERE username='zaid' AND the password='''`. Note that the system, the
+    web application, is already adding quote marks around the name. When we said `zaid`,
+    it added `zaid` between two quotes and it added the single quote (`'`) that we
+    added between another two quotes, so that's why we have three quotes. From this
+    error, we can assume that 70% of the target website has an SQL injection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are still not sure whether it can execute what we want, so can we actually
+    inject code and get it executed? Let''s see if this can be done; `username` is
+    going to be `zaid` again, and we are going to put `password` as `123456`. Once
+    this is done, just close down the site. We closed down the site because the current
+    statement in the system is `Select * from accounts where username = ''zaid'' and
+    password =''$PASSWORD''`, and it''s going to open a single quote by itself, followed
+    by the `$PASSWORD`, which we will provide. So, we''re treating `password` as a
+    variable; it takes in whatever we put in the Password textbox, and it replaces `$PASSWORD`,
+    which is a variable. It takes whatever we put in the Password textbox and puts
+    it between two single quotes, and that will be executed on the system. So, we
+    will put `123456''`. We are going to add a quote ourselves, and the code is as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The application is going to `select` from `accounts`, `password` is equal to
+    `123456`, and we have two quotes at the end. Then, we are going to put `and 1=1`.
+    We are just trying to see whether it''s going to execute what we want it to. Our
+    statement is going to be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are going to insert `123456'' and 1=1` ourselves. The system is going to
+    complain that we have an extra quote because we have inserted the password into
+    the textbox our self; it''s going to say that there is an open quote and it never
+    got closed. Now, we are going to add a comment and after we do so, everything
+    that comes in after the comment will not be executed. We are going to use the
+    hash (`#`) as the comment, so the system will ignore anything that comes in after
+    the hash; it''s going to ignore the last quote that will be inserted by the command.
+    So, our code is going to look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to paste the `123456 and 1=1#` password in the Password textbox and
+    we should be able to log in as `zaid`, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/d2dc1d2e-d6a1-4c9c-b5f6-2be8a8508b6d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s try something different: let''s try to add a false statement. We did
+    `1=1` and that was correct and it executed what we wanted. Let''s try `1=2`, which
+    is incorrect, so we have the right password and we have the right username, and
+    we will add `1=2#` – this should be problematic because it''s `false`, `1` is
+    not equal to `2`, and we are using `and`, so everything has to be true. It should
+    give us an error even though we are going to put in the right username and the
+    right password. So, we enter the Password as `123456 and 1=2#`, and it should
+    give us an error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/4c920ef6-68b5-4686-afa9-d819c35748fa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The site has given us an Authentication Error: Bad user name or password error,
+    even though we are using the right password and username. This confirms that the
+    website is actually injecting anything we want in the password, so we can use
+    the `password` field to inject SQL code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SQLi authorization bypass
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now we know that we can put in any code we want and it''s going to be executed
+    on the system. So, let''s have another look at the statement, which says `select
+    * from accounts where username = username`, and `password = password`, which we
+    put in the Password textbox. We will now see whether we can use that to log in
+    without using a password, and we are going to be doing that with the admin. So, `username`
+    is going to be `admin`, and we don''t know what `password` is for `admin`, so
+    we are going to enter any random password, for example, `aaa`. In the code that
+    we were previously running, we put `and 1=1`, now instead of `and`, we are going
+    to say `or 1=1`. So, once we inject the command, it is going to let us log in
+    without even knowing the password of `admin`. Our code is going to look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we log in using the `admin` Username and paste `aaa'' or 1=1` in the Password
+    textbox, we can see that we logged in successfully and the signature for admin
+    is Monkey!:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/aa0b430f-aff2-435b-b7a4-20226ce78d6b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, any time we have an `or` condition, if the `or` condition is true, everything
+    is true—that's the way the `or` statement works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bypassing logins can be done in many ways, depending on the code that's written
+    on the page and how we are imagining the code. In a lot of cases, when we put
+    in the single quote, we won't see the error message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, we are going to show another example of bypassing. Instead of injecting
+    the code, the `admin` parameter is injectable as well, as we saw when we put in
+    the single quote, in exactly the same way as the `password` parameter, so we can
+    inject code in `username` as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Try to inject something in `username`; we are going to say `username` is equal
+    to `admin`, then we are going to close the quote and add a comment. So, when we
+    run the `select * from accounts where username = 'admin'#' and password='aaa'` statement,
+    it's going to inject that in `username`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s going to let me log in without even entering anything in the password
+    field. So, we are going to put Username as `admin''#`, and then we can put in
+    any Password we want to use. We are just going to put `1` and then log in; we
+    can see we managed to log in as `admin`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/32e06529-9c0e-4ec0-a5c0-a96844b077fb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Again, this is black-box testing, so we don't really see the code. In many cases,
+    we want to play around with it and see how it works, but the main thing we want
+    to test is whether the SQLi exists and we do that using the method from the previous
+    section. So, try single quotes, try the `and` statement, try a true `and` statement,
+    such as `1=1`, and then a false `and` statement, such as `1=0` or `2=0`, and,
+    if they work as expected, your target has an SQLi and you can start playing around
+    with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering an SQLi using the GET method
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now we will study an SQLi in a different file, on a different page, and see
+    a few different things that we can do to exploit that vulnerability. So, first,
+    go to the login page, which is in OWASP Top 10 | A1-Injection | SQL-Extract Data
+    | User Info:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/411b57be-1245-4cff-bcdf-e8bc36c80c04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the previous section, we went to the login page by clicking on the Login/Register
+    option on the page; this time we''re going to go through the User Info page, so
+    the page will show us information about the user, provided we give the Name and
+    Password. Enter all the credentials, such as `username` and `password`, and the
+    page will show us all the `username` and `password` details and our signature,
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/41a31b53-f88f-41a0-bb08-308a57e7a349.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The statement that''s been executed here is similar to what was executed when
+    we logged in. As we can see in the following code, `select * from accounts where
+    $USERNAME` is what we put in the `username` field, and `$PASSWORD` is what we
+    put in the `password` field:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we''re going to see a different way of exploiting this kind of vulnerability.
+    In the previous section, we were doing it using a `POST` textbox, so whatever
+    you put in the textbox was being posted to the web application using a `POST`
+    method. Now, these vulnerabilities can exist in the `GET` method too, and what
+    we mean by `GET` is that, when something is sent using `GET`, we will see it in
+    the URL. So, if we look at the following URL, we see it''s being sent as `username=zaid&password=
+    123456`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/8fa6e038-3415-43d3-9019-84b560ee0957.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Copy the URL and we will start playing with it from the URL instead of on the
+    web page. We just want to show a different example, because in many places there
+    might not even be textboxes. It could be something such as `news.php`. In our
+    example, it's `index.php`, and in our pen testing, you might see something such
+    as `news.php` and `id=2`, and then we can try to inject it in there. So, we're
+    going to be injecting things into the `username` field, and we will enter information
+    in the URL. When we are doing our pen test, any time we see parameters such as `username`
+    and `password`, we should try to inject them; any time we see `something.php`
+    and then we have a parameter that equals something, always try to inject it in
+    there and see if it works for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ve also seen a way of discovering the injection using a quotation mark
+    and an `and` statement. So we do a false `and`, and a true `and`, `and 1=1`, and
+    then `and 1=2`, and if the server executes what we want, we''re going to know
+    there''s an SQLi. We are going to see another way of discovering these exploits,
+    by using the `order by` statement. The `order by` statement is used to limit the
+    amount or the number of records that are going to be displayed onscreen. Our injection
+    is going to do `order by 1`. If the injection exists, this should work because
+    `order by 1`. There should be at least one record being selected in the page because
+    we know this page is communicating with the database. So, `order by 1` should
+    always work and return true or something we expect. We also need to add the comment
+    and execute a code, so it''s exactly as before. Basically what''s going to happen
+    on the database is that the code that will be executed on it will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command for the URL will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For this example, it''s going to be `select * from accounts where username
+    = ''zaid''`, and note how a single quote (`''`) ends the statement; we''re going
+    to do `order by 1`. The comment will tell the SQL interpreter to ignore anything
+    that comes in after it, which is all of commands after hashtag (`#`). Copy the
+    preceding code and paste it in the Name textbox of the login page. This will work,
+    but we are just looking at a different way of doing it by injecting it through
+    the browser. Another thing to note is that, when we are injecting stuff into the
+    browser, the code should be encoded so, for example, the hashtag (`#`) sign should
+    be written as `%23`. Spaces, for example, get converted to `%20`, and `%23` is
+    the comment that we''re using, so we are going to copy that and replace our comment
+    sign with it in the URL space. So, the URL changes to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Paste the URL in the address bar and hit *Enter*, and we will something that''s
+    acceptable. Then it will show us the information about zaid, 123456, and and also
+    the Signature, so it is ignoring the password, so the injection worked—it''s ordering
+    by `1`, so it''s not showing any error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/ade40e2a-d3ad-4177-afef-f4e23772fe6c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s try to make `1` a very large number, for example, we can put `10000`
+    or `100000` in the URL section. It will show us `1000000` records on the login
+    page. The chances are the page will not display `1000000` records and there aren''t `1000000`
+    records in the database, so when we execute it, we will see that there is an error.
+    The error is in the order clause and there is an `Unknown` column for `1000000`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/2d32d79d-f13c-4596-8b8a-96e5b848dd1a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, there aren't `1000000` columns in the database, and this is great because
+    now we know that the database is executing what we want. So, when we told it to
+    show `1` record, it show us one record, and when we told it to showed us a very
+    large number of records, it complained about that, so it's obviously vulnerable
+    to SQL injections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic SELECT statements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's try to determine how many columns are being selected into page in the
+    preceding screenshot. How much information is being selected and displayed on
+    the login page that we got when we fired the query in the previous section? To
+    do that, we're going to use the `order by` statement. We used `order by 1` in
+    the preceding section and that returned something acceptable, and `order by 1000000`
+    gave us an error, so let's try `order by 10`; we will see that we still get an
+    error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Try an `order by 5` and we will see whether that it works. By performing this,
+    we know that there are five columns being selected from a certain table, and it''s
+    the `accounts` table, which is then displayed on the login page. Let''s build
+    our own `select` statement and get it executed on the target computer. At the
+    moment, the statement is `Select * from accounts where username = ''zaid''` and
+    we''re doing `order by 1`. Let''s see whether we can fix that and get it to `select`
+    something that we like. As we are trying to do multiple `select` statements and
+    we''re trying to do it from the URL, we''re going to have to use a union and then
+    we''re going to say `select`. In this web application, we know that there are
+    five records being selected, so there are five columns that are being selected,
+    so we''re doing `1,2,3,4,5`; let''s run the command in the URL and see what happens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can see that the selection was right and we got the first selection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/10d9c4a1-20d6-4719-a09d-0c7266989cea.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This line has done the first selection and then it did `union`, so it combined
+    that selection with another selection and it showed us something else. As we can
+    see in the preceding screenshot, we're only seeing 2, 3, and 4, which means that
+    whatever value we enter instead of `2`, `3`, or `4`, or whatever we want to `select`.
+    Is going to be displayed in the page if we put it in the URL, and we can see that
+    we have results for `2`, so whatever you put in `2` will also be shown in the
+    page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s try to see our database. Instead of `2` we''re going to say `database`,
+    instead of `3` we''re going to say `username` or `user`, and instead of `4` we''re
+    going to do `version`; this will `select` the current database, the current user
+    privileges that we have, and the version of the database. So, let''s execute the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The URL command changes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the command is in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/104437f6-dc76-4701-b224-6276d8ea3a65.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The Username is showing up as owasp10 and `2`, so `owasp` is the database that
+    we're looking for. The current user that we're logged in as is root@localhost,
+    so we're the `root` user. We injected the version and we can see this is the version
+    of MySQL, so it's 5.0.51. We know that the database we're connected to is `owasp``10`.
+    In most real-world scenarios, each database is assigned to a certain user, so
+    you're usually only able to `select` details, tables, columns, and data located
+    in this current database. However, we are logged in as `root` and the web application
+    has been connected to the database as `root`, so we can access other databases,
+    but this doesn't happen in real-world scenarios. Usually each user has their own
+    database, so when they connect a web application to a database, they connect it
+    to one database and therefore you won't to be able to access other databases.
+    So, we're going to imagine that we only have access to `owasp10`, which is our
+    current database for this current website, and that the password is `root@localhost`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll see how we can further exploit SQL injections and
+    perform more powerful `select` statements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering tables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we know our target database is called `owasp10`, let''s try to discover
+    the tables that exist in that database. So, our `select` statement is `union select
+    1, database(),user(),version(),5`. Delete `user()` and `version()`, or change
+    it to `null` because we only want to `select` one thing now, and in `2`, we''re
+    going to `select table_name` from the `information_schema` database. We know that
+    `information_schema` is a default database created by MySQL and it contains information
+    about all the other databases. We select `table_name` from `information_schema.` and
+    after the dot, we put `tables`. Basically, we''re selecting a table called `tables`
+    from a database called `information_schema`, and the column that we''re selecting
+    is called `table_name`, so we are selecting `table_name` from the `information_schema` database
+    from the `tables` table. The command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The URL command changes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Execute the command to see whether we can get all the tables that exist in
+    the `owasp10` database. We can see that we got 237 records; following are all
+    the tables that we have access to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/c8960776-f376-4ae1-9d76-7ba8ec3b9ff1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We are logged in as `root`, therefore, we can see tables from other web applications,
+    such as tikiwiki, but in real-world scenarios, we'll only see tables related to
+    the current database, which is Mutillidae.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we are going to use a `where` clause and say `where table_schema = ''owasp10''`.
+    We got the `owasp10` databases when we executed the command, so we got `owasp10`,
+    which is the current database that Mutillidae is working on. We''re using the
+    same statement: we''re selecting `table_name` from the `information_schema` table
+    where `table_schema` is `owasp10`. The command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The URL command changes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Execute it and, as we can see in the following screenshot, we only have the
+    tables that we''re interested in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/7cd4232a-8e83-4099-af76-cda858ed94fb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have the `accounts`, `blogs_table`, `captured_data`, `credit_cards`, `hitlog`,
+    and `pen_test_tools` tables. Now, in the *What is SQL?* section, we saw the content
+    of the `owasp10` table and the preceding screenshot also shows the same tables
+    of the `owasp` database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading columns and their data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, lets see whether we can `select` and have a look at all the
+    details that exist within the `accounts` table. Let's see whether we can query
+    the database and read the information stored in the `accounts` table. To do that,
+    we need to know the names of the columns that exist within the `accounts` table
+    because, if we look at the way we're using our statement, we're performing `union
+    select table_name from information_schema.tables`, so we still don't know what
+    columns exist in the `accounts` table. We can guess that there is a username and
+    a password, but sometimes they could have different names, so we're going to see
+    how we can `select` the columns for a certain table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The command is going to be very similar to the `tables` command we used in
+    the preceding section, the only difference is instead of `table_name`, we''re
+    going to type `column_name`, and instead of selecting it from `information_schema.tables`,
+    we''re going to select it from `information_schema.columns`. We''re going to type
+    `where table_name = ''accounts''`, because we''re only interested in the `accounts`
+    table. If we wanted to get columns for another table, we just substitute `accounts `with
+    the required table, or column, that we want. So, our command is going to be as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The URL command changes to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command should show us all the columns that exist within the `accounts`
+    table. Run the command and, once we execute it in the address bar, we will see
+    the same columns that we saw before when we saw the structure of the `accounts`
+    database at the start of this chapter, and its `cid`, `username`, `password`,
+    `mysignature`, and `is_admin` columns, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/59b0eb82-cff2-4768-b309-b2d50e507227.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s take this one step further and `select` the `usernames` and `passwords` columns
+    from the `accounts` table. So, again, the command is going to be very similar
+    to what we''re running at the moment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, remember, we can''t select anything instead of `1` and `5` in the command
+    because they never displayed for us on the screen. The only thing that displayed
+    were `2`, `3`, and `4`, so we''re only substituting values for `2`, `3`, and `4`.
+    Our URL command changes to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re selecting `username`, `password`, and `is_admin` columns from the `accounts` database,
+    and it should return all the usernames and passwords that exist within the `accounts`
+    table. As we can see in the following screenshot, we got all the usernames and
+    passwords:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/4ae314a7-f781-4d52-a27a-85c32e50a4ff.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have the `admin`, and the password is `adminpass`; we also have other usernames
+    and their passwords. This is very useful because, on most websites, when we log
+    in as `admin`, we have more privileges than a normal person, and then we have
+    to be able to upload PHP shells or backdoors, viruses, whatever we want, and then
+    further exploit the system. So, at the moment, we can actually log in with the
+    `admin` username and the `adminpass` password, and it's going to accept that because
+    it's correct. No matter how complicated the password, we're just going to be logged
+    in because we're reading the password straight from the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading and writing files on the server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will look at how we can use SQLi to read any file in the
+    server. So, even if the file exists outside the `/www` directory, we'll be able
+    to read it exactly as with a file-disclosure vulnerability, and we'll see how
+    we can use it to write files and upload them to the system, just as with a file-upload
+    vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s take a look at reading the file; we are going to set everything
+    to `null`. So, our statement is going to be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instead of selecting a column or a table, we want to run a function called `load_file()`,
+    and we are going to set the file that we want to load. We''re going to use the
+    same file that we had a look at in the file-inclusion vulnerability, which was
+    `/etc/passwd`. The URL command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding URL, we can see from the following screenshot that we
+    managed to read all the information and all the content of `/etc/passwd` file,
+    even though it''s not in the web root:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/7891021d-71f8-4ec2-a006-f5db0d61bd80.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: It's stored in `/etc/passwd`, so we can read anything in the server from other
+    websites, or other files, by specifying the full path of that file in the `load_file()`
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we are going write to the server. This is very useful because we will
+    be able to write any code we want. We can write the code for a PHP script, we
+    can even write code for a shell, a virus, or a PHP code to get a reverse connection—code that
+    will basically just act like a file-upload vulnerability. To do that, we are going
+    to write the code that we want here and we are going to call it `example example`.
+    We''re going to use a function called `into outfile`, and then we''re going to
+    specify where we want to store that file. In the best-case scenario, we will be
+    able to write to our web root and that will mean that we can access the file through
+    the browser and execute it, so we can upload a Weevely file and then connect to
+    it. We''re going to save the file in the `/var/www/` directory (that''s our web
+    root) so we''ll be able to access things through it, or you can put it in the `/var/www/mutillidae`
+    directory. Make sure you set everything to `null` so that nothing gets written
+    to the file except what you put in `2`, which is the `example example` text, and
+    it''s going to be stored into a file in `/var/www/mutillidae/example.txt`. Following
+    is the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s try to run the statement. The URL command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we see the following screenshot, we''ll know that the command didn''t work
+    because SQL or MySQL is not allowed to create or write to the `/mutillidae` directory.
+    The problem is that we don''t have permissions that allow us to write to the `/mutillidae` location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/1ab3102c-848a-4440-a2fb-214c6c152644.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To test this exploit, we''re going to change this location to `/tmp` and running
+    the code, and we will see that we can actually write to the `/tmp` directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/473071a6-92b8-4cea-bd38-72af4dc1fdd7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding screenshot, it displays error but if we list using `ls /tmp/`,
+    we can see in the following screenshot that we have something called `example.txt`.
+    If we try to read the file, we will see that it contains the content of our `select`
+    command and the `example example` text written in the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/bb76ddca-3f29-4582-996f-103ef8c2661c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can get rid of `admin` and `adminpass` by just putting in the wrong username
+    and nothing will be displayed. The only thing that we will see is the output,
+    which is `example example`. Again, this is only useful if we are able to write
+    to our web server so we can access it, and then use our shell or our payload to
+    further exploit the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The sqlmap tool
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we are going to learn about a tool called `sqlmap`, which allows
+    us to do everything we've learned so far and even more. This tool can be used
+    against MySQL databases, which is the one that we used in our examples. It can
+    also be used against Microsoft SQL, Oracle, and other databases. The tool is very
+    useful; sometimes the injections aren't as nice as the ones we've seen, and sometimes
+    we only get one output for each record and we have to loop through all the output.
+    The tool can automate that and just do everything for us, which is much easier
+    and much simpler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the URL that we were using for the injection; `http://10.20.14.204/mutillidae/index.php?page=user-info.php&password=aaa&user-info-php-submit-button=View+Account+Details`.
+    So, the URL is using the `user-info.php` page where the username is `admin`, and
+    the password is `adminpass`. We don''t really need to use the username and password,
+    so we can put anything there, just to assume that we don''t know the password
+    and we''re only injecting SQL injections. Copy the URL and insert it into the
+    following `sqlmap` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using the `-u` option to specify the URL; make sure that you put the URL
+    between two quotation marks so that it doesn't ignore anything between them. We
+    have some signs and characters in the middle that we want to be treated as one
+    URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Hit *Enter*, and the tool will automatically look through all the parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/8ac200ff-e701-4739-b3c6-596b236d22ca.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: It's going to look through `user-info.php`, the username, and the password,
+    to see whether any of them are injectable; once it does that, it's going to store
+    it in its memory. So, it's going to know that if anything is injectable and then
+    we'll be able to further exploit the target.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we can see in the following image, it thinks that our target could be MySQL
+    or PostgreSQL, it''s asking us whether it should skip other tests, we''re going
+    to say *yes* because we know it''s MySQL. Later it will ask us whether it should
+    do all the tests for both databases, and we are going to say yes, assuming that
+    we are not sure which one it is, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/bd60de61-abd9-4014-b9d2-726ab7fabe9b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We know it''s MySQL but we are just going to let it do its thing, and we''ll
+    see whether it can do it properly or not. It checks whether it''s PostgreSQL and
+    we are assuming it''s going to, and then it''s going to know that it''s MySQL,
+    it just found out that `username` seems to be injectable, and sure enough it''s
+    telling us here that the `username` parameter is vulnerable and we can inject
+    it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/660b6b4c-98e1-4f5b-bf7e-d08e0e8c014f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'So, it''s asking us whether we want to check the other parameters, we can say
+    yes and let it do it, but we are going to say *no* because we don''t mind if it
+    just uses the `username` for the injection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/06c9dfa7-abf3-4512-b7ed-18f29bc07892.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, `sqlmap` knows that the target is injectable and that it's going to use
+    the `username` parameter to inject. As we can see in the preceding screenshot,
+    it's figured out that it's running `Linux Ubuntu`, it's using `PHP 5.2.4` with
+    `Apache 2.2.8`, and it's using the `MySQL 5.0` server as the database server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`sqlmap` is a really big tool and, in this section, we are just going to take
+    a quick look at some of the things it can do. I suggest you spend more time with
+    it and see what else it can do.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s run `sqlmap --help`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/217b8f4f-711b-40e7-9576-1afa03a06cb7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now let''s try to get `current-user` and `current-db`, so we''re going to use
+    the same command that we used before. We''ll add to the command `-- dbs` to get
+    the current databases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see in the following screenshot, we got all the databases that we
+    needed. There''s `dvwa`, `information_schema`, `metasploit`, `mysql`, `owasp10`,
+    and `tikiwiki`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/0fd7cf5a-e104-4b3a-b250-e087411bd06b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, if we run the same command replacing `--dbs` with `--current-user`, we
+    can see that we are `root`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/30015ef0-8624-40f8-9408-f7c1a31350f8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'And if we replace `--current-user` with `--current-db`, we''ll see that `owasp10`
+    is our current database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/c762126b-f5b2-4cd1-9f45-85f492670ffa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'So, now let''s try to get the tables for `owasp10`. We''re also going to use
+    the `--tables` and `D` option to specify the database, and our database is going
+    to be called `owasp10`, so the command is going to be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see in the following screenshot, the command got us all the tables
+    that exist in the `owasp10` database, such as, `accounts`, `blogs_table`, and
+    `credit_cards` tables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/21a3210e-9329-4e67-b2c6-92ee0faebae0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, if we want to get the columns, we can use the same command again, and
+    we''re going to say get  `--columns` from `-T accounts -D owasp10`. Following
+    is the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Following is the output of the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/ef54dd84-cc2c-491f-8fef-c9e273708dd5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'So, we have `is_admin`, `password`, and `username`, and we can get their data
+    using the `--dump` option. It''s the same command that we used before, so we''re
+    getting it from the `accounts` table and the `owasp10` database. Following is
+    the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Following is the output of the preceding command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](assets/c9d0babf-536f-4438-9854-c9d73f894280.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding screenshot we have `admin`, its `adminpass` password, and we
+    have `adrian` and his password is `somepassword`. So, as we said, this tool is
+    very useful. It can make our life much easier and it does everything automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preventing SQLi
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we have seen that SQL injections are very dangerous; they also occur
+    very easily and are very easy to find. We will find them everywhere, even in really
+    famous websites. People try to prevent these vulnerabilities using filters. Filters
+    can make it look like there are no exploits, but if we actually try harder, by
+    using different types of encoding, or a proxy, we will be able to bypass most
+    of these filters. Some programmers use a blacklist so, for example, they prevent
+    the use of `union` and the `insert` statement. Again, it's not 100% secure, and
+    it can be bypassed. Using a whitelist has exactly the same issues as a blacklist.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The best way to prevent SQLi is to program our web application so that it does
+    not allow code to be injected into it and then executed. So, the best way to do
+    that is to use parameterized statements, where the data and the code are separated.
+    Let''s look at an example, we are keeping the least amount of programming in this
+    example. We don''t want it to be a programming example (there are actually mistakes
+    in the programming), but we are trying to look at the concept more than how to
+    program it. Following is the example code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The vulnerable code used `Select * from accounts` where `username` is equal
+    to whatever we put in `textbox1`, and then we put in `textbox1`, say `admin`,
+    and then close the quote. Then we''re able to do `union select` and execute something
+    else; once we''re done, we add the comment (`#`), which basically ignores everything
+    that comes in after it. The code looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is very bad and very difficult to protect against. Using filters will
+    only hide the problem, it will not fix it. The best way to fix the vulnerability
+    is using parameterize statements, as in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the safe way to do it. First, we `prepare` our statement. Most languages,
+    such as PHP, actually have a function where you can `prepare ("Select * from accounts
+    where username = ?")` and then we send the values. So, PHP now knows the SQL statement
+    is `Select * from accounts where username` is equal to something, and then it''s
+    going to take the value of `textbox1`. Even if we come in and use our very sneaky
+    statement, which is `''$admin'' union select #''`, and paste it in the `execute`
+    function, the web application will know that the value for `textbox1` is `admin
+    union select`. It will actually try to use `Select * from accounts where` the
+    `username`, and then it actually will add its own quotes and try to find `username`
+    with the inserted `username`. So, it will be `select * from accounts where username
+    ="''$admin'' union select#`. Therefore, whatever we put in `textbox`, it will
+    be sent as a value, and the web application will know that this should be a value
+    not code, and it will never execute it. This will protect us against SQL injections.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use the filters as a second line of defense. It's also advised that we
+    use the least privilege possible. So, for each database, use one user with the
+    least amount of privileges required; don't allow users to do anything that they
+    want; unless it's a simple website that only does selection, then only allow the
+    user to `select`. If they only need to `select` and `insert`, then only allow
+    them to `select` and `insert`; this is a rule we should keep with everything,
+    even with Linux systems. Make sure the permissions are always as minimal as possible,
+    that each user doesn't have any extra permissions they don't need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered a vulnerability that can be exploited, which are
+    SQL injections. This SQLi can be used to perform a wide range of very dangerous
+    attacks on the databases of a machine and the server. First, we saw how we can
+    discover these injections. We also learned how we can log in to a system using
+    a URL—all we had to do was launch a few lines of code in which we had to mention
+    the password and username. Then, we saw how to bypass SQLi without using login
+    credentials. We even used the `GET` method to discover SQLi. After that, we learned
+    how to fire basic `select` statements on a database. We even learned how to use
+    the `sqlmap` tool, which is capable of performing a lot of things, but we only
+    covered the basics in this chapter. Finally, we covered methods to prevent SQLi.
+    In the next chapter, we are going to exploit cross-site scripting vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL

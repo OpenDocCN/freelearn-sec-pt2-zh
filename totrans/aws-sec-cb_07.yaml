@@ -1,0 +1,1787 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Monitoring with CloudWatch, CloudTrail, and Config
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We’ve already looked at many aspects of security, such as **Confidentiality**
+    , **Integrity** , and **Availability** ( **CIA** ) and **Authentication** , **Authorization**
+    , and **Accounting** ( **AAA** ). Accounting can be achieved through **continuous
+    monitoring** , **alerting** , and regular **auditing** . Proper monitoring and
+    alerting can also help in better availability through **auto-remediation** . In
+    this chapter, we will look into **Amazon CloudWatch** , **AWS CloudTrail** , and
+    **AWS Config** . CloudWatch is the primary service within AWS for **logging**
+    , **monitoring** , and alerting. CloudTrail can log AWS API calls. AWS Config
+    can record and evaluate configurations against predefined config rules. We will
+    also learn about **Simple Notification Service** ( **SNS** ), which will allow
+    us to send notifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an SNS topic to send emails
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with CloudWatch alarms and metrics
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a CloudWatch log group
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with EventBridge (previously CloudWatch Events)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reading and filtering logs in CloudTrail
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a trail in CloudTrail
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Athena to query CloudTrail logs in S3
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Integrating CloudWatch with CloudTrail making use of a CloudFormation template
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and using AWS Config
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following requirements and knowledge in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete the recipes within this chapter. We
+    can use an account that is part of an AWS Organization or a standalone account.
+    I will be using the **awsseccb-sandbox-1** account that we created in the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    . However, I won’t be utilizing any AWS Organizations features, meaning you can
+    follow these steps with a standalone account too.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we are working with. This can be an **Identity and Access Management**
+    ( **IAM** ) Identity Center user or an IAM user. I will be using the **awsseccbadmin1**
+    IAM Identity Center user we created in the *User management and SSO with IAM Identity
+    Center* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However, I
+    won’t be utilizing any IAM Identity Center features, meaning you can follow these
+    steps with an IAM user, too, if the user has **AdministratorAccess** permission
+    within the account. You can create an IAM user following the *Setting up IAM,
+    an account aliases, and billing alerts* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter07](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter07)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an SNS topic to send emails
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create an SNS topic for sending emails.
+    SNS is a managed **publish/subscribe messaging service** and can be used with
+    many endpoints, such as email, **SMS** , **Lambda** , **Simple Queue Service**
+    ( **SQS** ), and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To successfully complete this recipe, we need a working AWS account, and a user
+    as described in the *Technical requirements* section, and a working email address.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can configure an SNS topic to send emails as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Simple Notification Service** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From the left sidebar, click on **Topics** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create topic** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Type** , select **Standard** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For the **Name** and **Display name - optional** fields, give meaningful values.
+    I have given the name **MyEmailTopic** and the display name **My** **Email Topic**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the other options as-is and scroll down to the bottom of the page. Click
+    on **Create topic** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Subscriptions** tab of our topic.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create subscription** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Create subscription** page, set the **Protocol** field to **Email**
+    , and provide an email address that we have access to as the value for the **Endpoint**
+    field.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down and click **Create subscription** . The status of our subscription
+    will be **Pending** **confirmation** initially.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log in to your email and click on the **Confirm subscription** hyperlink. We
+    should get a **Subscription confirmed** message. If we go back to our subscription
+    in the AWS console and refresh the page, our status should be **Confirmed** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We have created an SNS topic in this recipe. We will be using this topic in
+    future recipes within this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created an SNS topic with an email subscription. To avoid
+    spam, AWS requires us to manually confirm the ownership of the email address by
+    clicking on the confirmation link that was sent to the specified email address.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we selected the **Email** protocol. The following protocols
+    are currently supported: **Email** , **Amazon Kinesis Data Firehose** , **Amazon
+    SQS** , **Amazon Lambda** , **Email-JSON** , **HTTP** , **HTTPS** , **Platform
+    application endpoint** , and **SMS** . **Email-JSON** is different from the **Email**
+    protocol. The **Email-JSON** protocol structures the output as JSON and is useful
+    for services that read emails and process them automatically.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can read more about SNS at [https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can also use **Simple Email Service** ( **SES** ) to send email notifications
+    instead of using SNS. SES is a cloud-based email service for sending and receiving
+    emails. It uses the **Simple Mail Transfer Protocol** ( **SMTP** ) interface,
+    and all connections to the SMTP endpoint should be encrypted using **Transport
+    Layer Security** ( **TLS** ). The default port for SES is **25** , but to avoid
+    **Elastic Compute Cloud** ( **EC2** ) throttling email traffic, we can also use
+    port **587** or **2587** . Read more about SES at [https://www.cloudericks.com/blog/getting-started-with-amazon-ses](https://www.cloudericks.com/blog/getting-started-with-amazon-ses)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with CloudWatch alarms and metrics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a **CloudWatch alarm** using one of the metrics
+    already available. Being the first recipe about CloudWatch, we will also learn
+    about some of the important features of CloudWatch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An SNS topic with an email subscription following the *Creating an SNS topic
+    to send emails* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a CloudWatch alarm using existing metrics as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **CloudWatch** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Expand **Alarms** from the left sidebar then click on **In alarm** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create alarm** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Select metric** . This should show us all the metrics that are available
+    to us based on the services we use.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Selecting a metric](image/B21384_07_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.1 – Selecting a metric
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Billing** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **By Service** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Amazon EC2** and click on **Select metric** . This will take us to
+    the **Specify metric and** **conditions** screen.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the **Metric** section of the **Specify metric and conditions** screen,
+    use the defaults shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – EstimatedCharges metric configuration](image/B21384_07_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.2 – EstimatedCharges metric configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Conditions** section, define the threshold value as **1** and use the
+    defaults for the other fields.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Conditions for the metric](image/B21384_07_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.3 – Conditions for the metric
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'On the **Configure actions** page, select **In alarm** for **Alarm state trigger**
+    . Under **Send a notification to the following SNS topic** , select the **Select
+    an existing SNS topic** option and select the SNS topic we created for this recipe
+    as mentioned in the *Getting ready* section. Leave the other options as-is, as
+    shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – Notification configuration for metric](image/B21384_07_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.4 – Notification configuration for metric
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Provide **Name** and **Alarm description - optional** values for our alarm.
+    I have set the name to **MyEC2BillingAlarm** and the alarm description to **My
+    EC2 Billing Alarm** . Click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the details, scroll down, and click on **Create alarm** . The alarm will
+    appear now on the **Alarms** page. Initially, the **State** field of the alarm
+    will have a value of **Insufficient data** . The state should change to **OK**
+    in some time. Make sure we have a running EC2 instance. When the alarm state changes
+    to the **In Alarm** state, we should get a notification in the email configured
+    with SNS.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: I have used a considerably lower value for the threshold and used the EC2 service
+    enough to trigger an alarm. You may use a threshold value as per your requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We specify the metric while creating a CloudWatch alarm. We can also specify
+    the time period to evaluate the metric, the number of such periods to evaluate
+    before raising an alarm, and the number of data points within the evaluation period,
+    during which the threshold should be crossed, for an alarm to trigger. An alarm’s
+    trigger can further trigger additional actions, such as sending a notification
+    through an email, configuring Auto Scaling actions, as well as EC2 actions such
+    as rebooting a failed instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A CloudWatch alarm has three states, namely **INSUFFICIENT DATA** , **OK** ,
+    and **ALARM** . Until it gets enough data to do the analysis, the state will be
+    **INSUFFICIENT DATA** . After it has enough data points to evaluate and if the
+    result does not cross the threshold over the specified time periods, the state
+    will be **OK** . If the result crosses the threshold in the specified time periods,
+    the alarm is triggered and the CloudWatch alarm goes to the **ALARM** state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s go through some important concepts related to CloudWatch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: CloudWatch metrics support alarms, metrics, and dashboards.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CloudWatch Logs provides log streams and log groups so that we can log data
+    from our applications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CloudWatch events support notifications and auto-remediation using AWS Lambda.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS gives us some metrics out of the box and allows us to create custom metrics
+    for our applications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Amazon CloudWatch can integrate with AWS X-Ray to provide traces and metrics
+    related to your application’s performance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CloudWatch integrates with services such as SNS, SQS, AWS Lambda, AWS Auto Scaling,
+    and more for notifications and auto-remediation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Under **Alarms** in the left sidebar, we have a dedicated **Billing** option.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The default EC2 metrics support important operations, including CPU utilization,
+    disk read and write operations, network input and output operations, and status
+    check failures.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Read about CloudWatch custom metrics here: [https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-custom-metrics](https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-custom-metrics)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CloudWatch dashboards provide us with a single place to look into related metrics.
+    Read about creating a dashboard in CloudWatch at [https://www.cloudericks.com/blog/creating-an-amazon-cloudwatch-dashboard](https://www.cloudericks.com/blog/creating-an-amazon-cloudwatch-dashboard)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a CloudWatch log group
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a **CloudWatch log group** that will be used
+    in other recipes in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To successfully complete this recipe, we need a working AWS account, and a user
+    as described in the *Technical* *requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a CloudWatch log group as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **CloudWatch** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Expand **Logs** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Log groups** and click on **Create** **log group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Give the log group a name that describes its purpose and leave other settings
+    as default, then click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This will create a new log group for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are not many settings that need to be provided while creating a log group.
+    We can use this log group within other recipes where we log in to CloudWatch.
+    A log group is a group of log streams. A log stream is a sequence of log events
+    from the same source. Log streams within a log group share the same retention,
+    monitoring, and access control settings. We can specify which streams to put into
+    each log group. There is no limit on the number of log streams in a log group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Log groups may be used from other services and features, such as VPC Flow Logs,
+    as we’ve seen in the book. Log groups can also be used for our custom-built applications
+    and microservices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about CloudWatch logs at [https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-logs](https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-logs)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with EventBridge (previously CloudWatch Events)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create and use the **EventBridge** service
+    (previously **CloudWatch Events** ). CloudWatch events provide us with a near-real-time
+    stream of system events from various AWS resources, and we can create rules to
+    take actions based on the event data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An SNS topic with an email subscription following the *Creating an SNS topic
+    to send emails* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can work with EventBridge (or CloudWatch events) as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Amazon EventBridge** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the left sidebar, expand **Buses** and click on **Rules** . Click on **Create
+    rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are creating events using the CloudWatch service, you have to go to the
+    **Amazon CloudWatch** service from the console. On the left sidebar, select **Rules**
+    under **Events** , and you will be redirected to the EventBridge console to create
+    a rule with a **CloudWatch Events console is now deprecated** message and use
+    the EventBridge console to create and manage event buses and rules. Click on **Create
+    rule** . The remaining steps are the same for creating events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enter **my-sec-cb-rule-1** as the name and an optional description of **My Sec
+    CB Rule 1** . Leave the **Event bus** selection as **default** . Lastly, choose
+    **Rule with an event pattern** as the rule type. Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.5 – Rule detail](image/B21384_07_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.5 – Rule detail
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Event source** , select **AWS events or EventBridge** **partner events**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Sample event - optional** , leave the default selection for **Sample
+    event type** of **AWS events** as-is, and do not select any sample events.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Including sample events is optional but recommended, as they can assist us in
+    writing and testing event patterns or filtering criteria. We can reference a sample
+    event when creating an event pattern or use it to test if the event pattern matches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Creation method** , select **Use** **pattern form** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Under **Event pattern** , do the following, as shown in *Figure 7* *.6* :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event source** to **AWS services** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **AWS service** to **EC2** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event type** to **EC2 Instance** **State-change Notification** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type Specification 1** to **Any state** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Event Type Specification 2** to **Any instance** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.6 – Event pattern section](image/B21384_07_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.6 – Event pattern section
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Target 1** , do as shown in *Figure 7* *.7* . For **Target types** ,
+    select **AWS service** . Under **Select a target** , select **SNS topic** . For
+    **Topic** , select the topic we created for this recipe, as mentioned in the *Getting*
+    *ready* section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.7 – Target 1 section](image/B21384_07_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.7 – Target 1 section
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Tags** page, optionally add tags and click **Next** . A tag is a label
+    assigned to an AWS resource, consisting of a key and an optional value. Tags can
+    be used to search and filter resources or track AWS costs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, review all details, and click **Create rule**
+    at the bottom-right corner.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should now receive a notification email with state change details whenever
+    an EC2 instance changes state. To test this, go to the EC2 dashboard and either
+    create a new instance or change the state of an existing instance.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we selected an event pattern and set the service name to **EC2**
+    and event type to **EC2 Instance State-change Notification** to match EC2 events
+    whose state gets changed. Instead of an event pattern, we can select **Schedule**
+    to invoke our targets on a schedule, just as we can with cron jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We configured to notify any state change. We can also select a specific state,
+    such as **pending** , **running** , **shutting down** , **stopped** , **stopping**
+    , or **terminated** . We also configured to apply this rule to all instances within
+    our account. Instead of doing this, we can select a specific EC2 instance. We
+    selected our SNS topic as the target. When we configure a target, CloudWatch events
+    will provide necessary permissions for targets so that they can be invoked when
+    rules are triggered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While configuring the event, we selected **SNS topic** as our target. The following
+    is a current list of target types available for us to select: **Amazon Redshift**
+    , **API Gateway** , **AppSync** , **Batch job queue** , **CloudWatch log group**
+    , **CodeBuild project** , **CodePipeline** , **EBS Create Snapshot** , **EC2 ImageBuilder**
+    , **EC2 RebootInstances API call** , **ECS task** , **Firehose stream** , **Glue
+    workflow** , **Incident Manager response plan** , **Inspector assessment template**
+    , **Kinesis stream** , **Lambda function** , **SageMaker pipeline** , **SNS topic**
+    , **SQS queue** , **Step Functions state machine** , **System Manager Automation**
+    , **System Manager OpsItem** , **System Manager** **Run Command** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can read more about CloudWatch events at [https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-events](https://www.cloudericks.com/blog/getting-started-with-amazon-cloudwatch-events)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading and filtering logs in CloudTrail
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to read and filter **CloudTrail log events**
+    that are automatically generated and made available through the CloudTrail dashboard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need a working AWS account. I will be using the **awsseccb-sandbox-1** account
+    that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can check automatically populated event logs in CloudTrail as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the management console and go to the **CloudTrail** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Event history** from the left sidebar. This will take us to the **Event**
+    **history** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.8 – Event history](image/B21384_07_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.8 – Event history
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Lookup attributes** , select **User name** from the dropdown. Type our
+    user’s name on the next field (or any name from the list, as seen in *Figure 7*
+    *.8* ) and search for all activity from that user for 10 days using the **Filter
+    by date and time** field. We should now see the filtered list.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Download events** icon at the top-right corner and then click
+    on **Download as CSV** to download the result as a CSV file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.9 – Download events](image/B21384_07_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.9 – Download events
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also download the result as a JSON file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'AWS CloudTrail is a service from Amazon that can continuously monitor and log
+    API activities within an AWS account. Without any additional configuration, CloudTrail
+    will log API activity events into our account and event logs are made available
+    for 90 days through the CloudTrail console. After going to the **Events history**
+    page, we can filter based on various criteria and time ranges. We filtered based
+    on the **User name** parameter in this recipe. Apart from **User name** , we can
+    also filter based on the following parameters: **Event name** , **Resource type**
+    , **Resource name** , **Event source** , **Event ID** , **AWS access key** , and
+    **Read only** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we queried our logs from the console. We can also query logs
+    from the CLI. The following are some important CLI commands for querying CloudTrail
+    logs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **aws cloudtrail lookup-events** command can be used to query the last 90
+    days of automatically generated event logs. A pagination token is returned if
+    there are more results.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can limit the number of items that are returned by the **aws cloudtrail lookup-events**
+    command by specifying the **max-items** option; for example, **aws cloudtrail
+    lookup-events --** **max-items 10** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can specify a date range using the **start-time** and **end-time** parameters;
+    for example, **aws cloudtrail lookup-events --start-time 2019-01-12 --end-time
+    2019-10-12** . We can also specify hours, minutes, and seconds with one of these
+    parameters; for example, **--** **start-time 2019-01-12T00:30:45** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use the **lookup-attributes** parameter to specify the values of any
+    parameter; for example, **aws cloudtrail lookup-events --** **lookupattributes
+    "AttributeKey=Username,AttributeValue=i-07d6614e1dec5e537"** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s go through some more important concepts related to CloudTrail logs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The CloudTrail service helps us achieve event-driven security by analyzing events
+    and responding to them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: CloudTrail only records events that involve AWS API calls. Therefore, if an
+    application running on an EC2 instance throws an error, it won’t be captured.
+    CloudWatch can be used for logging from applications on EC2 or from Lambda functions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By default, a trail will record events in one region. However, we can configure
+    a trail as a multi-region trail. CloudTrail can integrate with other AWS services
+    to provide additional security and compliance. These integrations include CloudWatch
+    for raising alarms, GuardDuty for analyzing patterns, Macie to discover, classify,
+    and protect sensitive data, and so on.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The current CloudTrail pricing model is as follows: the first tier in each
+    region is free (except **Simple Storage Service** ( **S3** ) and Lambda data events).
+    After the free tier, CloudTrail charges us for management events and data events.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can read more about CloudTrail at [https://www.cloudericks.com/blog/getting-started-with-aws-cloudtrail](https://www.cloudericks.com/blog/getting-started-with-aws-cloudtrail)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a trail in CloudTrail
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create a trail in **CloudTrail** and how
+    to read logs from the associated **S3 bucket** . By default, **CloudTrail API
+    event logs** are made available for 90 days. Data events, such as S3 bucket operations
+    and Lambda invocations, are also not logged by default. To store our logs for
+    more than 90 days, to enable logging data events from S3 or Lambda, and for additional
+    flexibility in searching logs, we can create a trail to log data in an S3 bucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To successfully complete this recipe, we need a working AWS account, and a user
+    as described in the *Technical* *requirements* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a trail in CloudTrail as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the **CloudTrail** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Trails** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create trail** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Provide a **Trail name** value of **aws-sec-cb-events** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave **Enable for all accounts in my organization** unchecked. To enable this,
+    we need to log in to the management account of our organization.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Storage location** , select **Create a new** **S3 bucket** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Trail log bucket and folder** , enter a unique name for a new S3 bucket
+    and specify a folder (prefix) to store your logs. We may also use the auto-populated
+    value. Remember – bucket names must be globally unique.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Log file SSE-KMS encryption** , unselect the **Enabled** checkbox.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Log file Validation** , select **Enabled** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Do not select **Enabled** for **SNS** **notification delivery** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Do not select **Enabled** for **CloudWatch Logs** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, add **Tags** and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Event type** , select **Management events** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.10 – Choosing event type](image/B21384_07_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.10 – Choosing event type
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Management events** , select **Read** and **Write** for **API activity**
+    and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.11 – Configuring management events](image/B21384_07_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.11 – Configuring management events
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Next** at the bottom right of the screen.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, review all details, and click on **Create
+    trail** . We should see a **Trail successfully** **created** message.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Trails** page and click on our trail’s S3 bucket name to go to our
+    trail’s S3 bucket. We can also manually go to the S3 dashboard and access this
+    bucket. We should see **CloudTrail** and **CloudTrail-Digest** folders. Within
+    the folders, we should see sub-folders per region.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go inside the folders until we see the actual log files.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.12 – CloudTrail log files](image/B21384_07_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.12 – CloudTrail log files
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select a file in S3, and from the **Actions** dropdown, click on **Query with**
+    **S3 Select** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.13 – Query with S3 Select](image/B21384_07_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.13 – Query with S3 Select
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **JSON** as the format, **Lines** as the JSON content type, and **GZIP**
+    for compression.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.14 – Input settings](image/B21384_07_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.14 – Input settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Output settings** , select **JSON** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down, and we should now see the **Structured Query Language** ( **SQL**
+    ) query to run. Modify the SQL as required and click on **Run** **SQL query**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.15 – Run SQL query](image/B21384_07_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.15 – Run SQL query
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We should see the actual result in another textbox, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.16 – Query result response partial](image/B21384_07_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.16 – Query result response partial
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Download results** to download the result. We can open the downloaded
+    file using any compatible application, such as Microsoft Word.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We created a trail and used it in this recipe. From the **Trails** page, we
+    can go to the configuration page for our trail, and then we can select **Delete**
+    or **Stop logging** if needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For storing logs for more than 90 days, we need to create a trail, and trails
+    will send logs into an S3 bucket. In this recipe, we created a multi-region trail.
+    We configured options to log all events. We can also select activities to log.
+    We also saw the option to stop logging for a trail on the trail’s configuration
+    page. Stopping logging will stop any new events from being sent to the log, but
+    existing logs will still be available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We configured management events in AWS CloudTrail to monitor AWS service API
+    activities and track read and write operations, as well as changes to resources
+    and configurations across our AWS account. This setup captures actions such as
+    creating, deleting, modifying, and describing AWS resources, ensuring comprehensive
+    oversight for auditing and compliance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We did not enable data events and Insights events in this recipe. Data events
+    log operations such as S3 object changes and Lambda function calls, offering detailed
+    resource monitoring, but enabling them increases logging costs. CloudTrail allows
+    logging of data events options, such as **S3** , **DynamoDB** , **Lambda** , **Amazon
+    Q apps** , **Amazon Q Business application** , **Amazon Q Business data source**
+    , **Amazon Q Business index** , **Amazon Verified Permissions** , **AWS AppConfig**
+    , **AWS Cloud Map namespace** , **AWS Cloud Map service** , **B2B Data Interchange**
+    , **Bedrock agent alias** , **Bedrock knowledge base** , **Cassandra table** ,
+    **CloudFront KeyValueStore** , **CloudTrail channel** , **CloudWatch metric**
+    , **CodeWhisperer** , **CodeWhisperer customization** , **Cognito Identity Pools**
+    , **DynamoDB Streams** , **EBS direct APIs** , **EMR write-ahead log workspace**
+    , **FinSpace** , **Guard Duty detector** , **IoT certificate** , **IoT Greengrass
+    component version** , **IoT Greengrass deployment** , **IoT SiteWise asset** ,
+    **IoT SiteWise time series** , **IoT thing** , **IoT TwinMaker entity** , **IoT
+    TwinMaker workspace** , **Kendra Ranking** , **Kinesis stream** , **Kinesis stream
+    consumer** , **Kinesis video stream** , **Lake Formation** , **Machine Learning
+    MIModel** , **Managed Blockchain** , **Managed Blockchain network** , **Managed
+    Blockchain Query** , **MedicalImaging data store** , **Neptune Graph** , **Private
+    CA Connector for Active Directory** , **Private CA Connector for SCEP** , **RDS
+    Data API - DB Cluster** , **S3 Access Point** , **S3 Object Lambda** , **S3 Outposts**
+    , **SageMaker endpoint** , **SageMaker Feature Store** , **SageMaker metrics experiment
+    trial component** , **SNS platform endpoint** , **SNS topic** , **SQS** , **Step
+    Functions state machine** , **Supply Chain** , **SWF domain** , **Systems Manager**
+    , **Systems Manager managed node** , **Thin Client Device** , **Thin Client Environment**
+    , **Timestream database** , **Timestream table** , and **X-Ray trace** . These
+    options provide additional insight into activities within our AWS resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Insight events logging focuses on detecting abnormal usage patterns or potential
+    security threats related to API calls that modify or manage AWS resources. Insight
+    events cannot be selected alone but should be paired with management events to
+    ensure comprehensive logging coverage and contextual analysis of AWS API activity
+    for security, compliance, and operational purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we queried logs in S3 directly from the S3 console. For more
+    flexibility when querying CloudTrail logs in S3, we can use Amazon Athena. We
+    will learn how to use Amazon Athena to query CloudTrail logs in the *Using Athena
+    to query CloudTrail logs in S3* recipe of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Explore more about CloudTrail at [https://www.cloudericks.com/blog/deep-dive-into-aws-cloudtrail](https://www.cloudericks.com/blog/deep-dive-into-aws-cloudtrail)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Athena to query CloudTrail logs in S3
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to use **Amazon Athena** to query CloudTrail
+    logs. Using Athena to query CloudTrail logs provides us with greater flexibility.
+    For example, we cannot filter based on an account ID from the CloudTrail console
+    when multiple accounts are sending logs to CloudTrail’s S3 bucket. However, we
+    can use Athena to query for logs from CloudTrail’s S3 bucket based on the account
+    ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A trail in CloudTrail following the *Creating a trail in CloudTrail* recipe
+    from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If we are new to Athena, before we can run our queries, we should set up a
+    query result location in Amazon S3, as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create a bucket for query results. I’ve named my bucket **aws-sec-cb2-query-results**
+    . Choose a unique name for your bucket.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Athena** service in the management console.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to **Query editor tabs** . If we are new to Athena, we should see a warning
+    stating **Before you run your first query, you need to set up a query result location
+    in Amazon S3** . Click on **Edit settings** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Browse S3 and choose the bucket we created for query results.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave other options as-is and click on **Save** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.17 – Setting query results location](image/B21384_07_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.17 – Setting query results location
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can set up Athena and query CloudTrail logs as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the **CloudTrail** service in the management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Event history** from the left sidebar. This will take us to the **Event**
+    **history** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create Athena table** , as we saw in *Figure 7* *.9* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Storage location** , select the S3 bucket of our trail.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.18 – Creating Athena table](image/B21384_07_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.18 – Creating Athena table
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click on **Create table** . We should see a success message
+    that the table has been created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now, go to **Athena** service in the management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Query editor** tab. We should see our table under **Tables** , on
+    the left, and a query editor window on the right. It might take some time for
+    the table to be created and appear on the Athena dashboard after we’ve initiated
+    its creation from the CloudTrail dashboard. We can manually refresh the table
+    list using the refresh icon in the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the button with three dots next to our table and click on **Preview
+    Table** . A sample query will be created that we can modify so that it meets our
+    needs.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'I have set the limit to **2** in the query as follows: **SELECT * FROM "default"."cloudtrail_logs_aws_cloudtrail_logs_370598287390_66c52071"**
+    **limit 2;** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Click **Run** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Download results** icon on the top right of the page to download
+    the results in CSV format.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we go to the S3 bucket that we created for storing results, which is **aws-sec-cb2-query-results**
+    in my case, we should see the query results saved there too.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we used Amazon Athena to query CloudTrail logs in S3. Athena
+    uses queries based on SQL and creates virtual tables. If we are new to Athena,
+    before we can run our queries, we should set up a query result location in Amazon
+    S3. We created an Athena table from the CloudTrail dashboard. Then, we went to
+    Athena and ran a preview query. We modified the query and executed it. Finally,
+    we exported the results into a CSV file from the results screen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to Amazon Athena:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Athena is a query service provided by AWS to analyze data in Amazon S3 using
+    SQL.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Athena can only query S3 data and not CloudTrail directly.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Amazon Athena now supports federated queries. We can run SQL queries across
+    data stored in relational, non-relational, object, and custom data sources and
+    then store the result in Amazon S3. At the time of writing, this feature is in
+    preview. Athena is serverless. We do not have to set up any infrastructure and
+    we only pay for the queries we run.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Athena, integrated with AWS Glue, allows us to crawl data sources, populate
+    table and partition definitions, and even maintain schema versioning.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cross-account CloudTrail logging
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: With cross-account CloudTrail logging, we can store logs in a separate account
+    from the account in which logs are generated. By storing logs in a separate account,
+    we isolate the logs from the source account, which will prevent anyone with access
+    to the source account from tampering with the logs. We can provide account-level
+    access to the log account to a limited set of people. Sending logs from multiple
+    accounts to a single account also provides a central place for us to query logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set up cross-account CloudTrail logging, we need two AWS accounts: a log
+    account (where logs are stored) and a logger account (which sends the logs). If
+    we are using AWS Organizations, we can enable CloudTrail across accounts from
+    the management account by selecting **Enable for all accounts in my organization**
+    while creating a trail. An organization’s trail is then created in all member
+    accounts, which means we don’t have to modify the bucket policy. However, enabling
+    this option may lead to additional charges if the member accounts already have
+    trails since only the first trail within a region is free.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we did not select the option to enable CloudTrail across accounts
+    using AWS Organizations. To set up cross-account CloudTrail logging without using
+    AWS Organizations, first configure a CloudTrail trail in the log account and set
+    up an S3 bucket to store the logs. Modify the bucket policy to allow the CloudTrail
+    service and specific IAM roles from both accounts to write logs to the bucket.
+    Then, create a trail in the logger account, specifying the log account’s S3 bucket
+    as the storage location. Verify that logs from the logger account are being correctly
+    stored in the specified S3 bucket within the log account. This setup isolates
+    the logs from the source account and centralizes log storage, enhancing security
+    and manageability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about Amazon Athena at [https://www.cloudericks.com/blog/getting-started-with-amazon-athena](https://www.cloudericks.com/blog/getting-started-with-amazon-athena)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about cross-account CloudTrail logging at [https://www.cloudericks.com/blog/getting-started-with-cross-account-cloudtrail-logging](https://www.cloudericks.com/blog/getting-started-with-cross-account-cloudtrail-logging)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Integrating CloudWatch with CloudTrail making use of a CloudFormation template
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to integrate CloudWatch with CloudTrail. Once
+    integrated, we can create **metric filters** and alarms within CloudWatch based
+    on CloudTrail logs. We will also learn how to use the CloudFormation template
+    provided by AWS to create a set of alarms within CloudWatch that uses CloudTrail
+    logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A trail, by following the *Creating a trail in CloudTrail* recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also perform the steps in this recipe while creating a trail by making
+    minor modifications to them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can integrate CloudWatch with an existing trail as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **CloudTrail** service in the management console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Trails** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the name of our trail to go to the trail’s configuration page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to the **CloudWatch Logs** section and click on **Edit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **CloudWatch Logs** , select the **Enabled** checkbox.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Log group** , select **New** and leave the log group name as-is, which
+    is **aws-cloudtrail-logs-370598287390-b9277b0a** in my case. We can also use an
+    existing log group using the **Existing** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **IAM Role** , select **New** , provide a role name, and click on **Save
+    changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Download the CloudFormation template from [https://s3-us-west-2.amazonaws.com/awscloudtrail/cloudwatch-alarms-for-cloudtrail-api-activity/CloudWatch_Alarms_for_CloudTrail_API_Activity.json](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)
+    and save it locally.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **CloudFormation** service in the management console and click on
+    **Create stack** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Prepare template** , select the **Choose an existing** **template** option.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.19 – Prepare template](image/B21384_07_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.19 – Prepare template
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Specify template** , choose the **Upload a template file** option, and
+    using the **Choose file** option, upload the template we downloaded in *Step 8*
+    of this section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.20 – Specify template](image/B21384_07_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.20 – Specify template
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Specify stack details** page, provide a stack name and email address
+    so that we’ll be notified when an API activity has triggered an alarm.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the cloud trail log group name as-is and click on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Configure stack options** page, leave the defaults as-is and click
+    on **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review and create** page, review everything and click on **Submit**
+    . Wait for our CloudFormation stack to be created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After the CloudFormation stack has been successfully created, we will receive
+    an email asking us to verify our email address. To start receiving email notifications
+    when alarms are activated, click on the **Confirm subscription** link provided
+    in the email.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we go to the **Alarms** page in **CloudWatch** , we will be able to view
+    the new alarms that were created. We can wait until the alarm state changes to
+    **OK** or **ALARM** and play around with these alarms to learn more about them.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we integrated CloudWatch with CloudTrail through our trail’s
+    settings. CloudTrail asked us for permission to deliver CloudTrail events associated
+    with API activity in our account to our log group. We allowed this from the console.
+    The following permissions were granted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**CreateLogStream** , to create a log stream in the log group we specified'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**PutLogEvents** , to deliver CloudTrail events to the log stream'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We used the CloudFormation template provided by AWS to set up some CloudWatch
+    alarms for security and network-related API activity. If we delete the CloudFormation
+    stack, all the alarms will also be deleted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS uses SNS to send notifications and created an SNS topic subscription for
+    us. We had to confirm the email subscription by verifying our email address since
+    SNS will not send notifications until we manually confirm the subscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we integrated CloudWatch with CloudTrail and used the CloudFormation
+    template provided by Amazon to create some alarms that are related to security
+    and network-related API activity. You can add these alarms to a dashboard following
+    the reference in the *See also* section of the *Working with CloudWatch alarms
+    and metrics* recipe from this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about CloudFormation at [https://www.cloudericks.com/blog/aws-cloudformation-for-absolute-beginners](https://www.cloudericks.com/blog/aws-cloudformation-for-absolute-beginners)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up and using AWS Config
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to set up and use AWS Config. We can use Config
+    to record and evaluate configurations of our AWS resources. We can create rules
+    that define security standards and find out about resources that do not comply
+    with security standards. Config also supports the auto-remediation of problems
+    whenever they are detected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account and a user as described in the *Technical* *requirements*
+    section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you want to add an SNS topic for notifications, you can create an SNS topic
+    with an email subscription by following the *Creating an SNS topic to send emails*
+    recipe of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For testing, we need at least one IAM user without **multi-factor authentication**
+    ( **MFA** ) enabled.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, we will set up AWS Config for the first time, and then we will see how
+    to use AWS Config. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we log in to the **AWS Config** service in the management console for the
+    first time, we will see a **Getting started** page. Click on **Get started** ,
+    and we will be taken to the **Settings** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Recording method** section, for **Recording strategy** , select **All
+    resource types with** **customizable overrides** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.21 – AWS Config recording method](image/B21384_07_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.21 – AWS Config recording method
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Recording frequency** , select **Continuous recording** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.22 – Recording frequency](image/B21384_07_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.22 – Recording frequency
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Override settings** section, click on **Remove** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.23 – Override settings](image/B21384_07_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.23 – Override settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Data governance** section, select **Create AWS Config service-linked
+    role** . Alternatively, we may choose a role from our account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Delivery method** section, select **Create a bucket** and give an S3
+    bucket name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.24 – Delivery method section](image/B21384_07_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.24 – Delivery method section
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Amazon SNS topic** section, select **Stream configuration changes and
+    notifications to an Amazon SNS topic** , then select **Choose a topic from your
+    account** , and finally select the topic we created as mentioned in the *Getting
+    ready* section. Alternatively, we may create a topic or choose a topic from another
+    account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 7.25 – Choosing an Amazon SNS topic](image/B21384_07_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.25 – Choosing an Amazon SNS topic
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the bottom of the page, click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **AWS Managed Rules** page, search for and select the **iam-user-mfa-enabled**
+    rule. Click **Next** . We can add more rules if we want. We can also add rules
+    after completing the setup process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Review** page, review the changes and click **Confirm** at the bottom-right
+    corner. We will be redirected to the AWS Config dashboard. In the dashboard, we
+    can see **Conformance Packs by Compliance Score** , **Compliance status** , **Noncompliant
+    rules by noncompliant resource count** , **Resource inventory** , **AWS Config
+    usage metrics** , and **AWS Config** **success metrics** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we have an IAM user without MFA enabled, as discussed in the *Getting ready*
+    section, we should see that user as not compliant with our **iam-user-mfa-enabled**
+    rule.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Please note that it will take some time for the non-compliant resources to
+    be shown in the dashboard. We can also do the following actions for the rule:
+    **Manage remediation** , **Re-evaluate** , **Delete results** , and **Delete rule**
+    .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we set up AWS Config on our account. We selected **Record all
+    resources supported in this region** and **Include global resources** (for example,
+    AWS IAM resources) against **All resources** in order to record all resources
+    across all regions. We can also configure recording for specific resources by
+    unchecking **Record all resources supported in this region** and selecting the
+    resources we want in the **Specific** **types** field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We enabled SNS notifications to receive email notifications by selecting an
+    SNS topic with an email subscription from our account. We can also choose an SNS
+    topic from another account by selecting the **Choose a topic from another account**
+    option. In the **AWS Config role** section, we selected the **Create AWS Config
+    service-linked** role. This role grants read-only access for Config to our AWS
+    resources so that we can record configuration information. The role also grants
+    permission to send information to S3 and SNS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we selected the **iam-user-mfa-enabled** rule, which is a periodic rule.
+    Periodic rules are run periodically, whereas non-periodic rules (configuration
+    changes-based rules) are run immediately when a change is made to an associated
+    configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s go through some important concepts related to AWS Config:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the checks that we can do with AWS Config include the following: check
+    if MFA is enabled, check if S3 buckets are not public, databases are encrypted,
+    VPC flow logs are enabled, and so on.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can write our own custom rules using AWS Lambda.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS Config can perform auto-remediation actions for a rule. For example, we
+    can change the configuration of an EC2 instance based on a rule. However, AWS
+    may stop and restart the EC2 instance, so we need to consider possible downtime.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To configure auto-remediation from the new console, we can go to our rule, click
+    on the **Actions** dropdown, and select **Manage remediation** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use the same set of Config rules across multiple accounts to ensure they
+    all follow a common set of rules.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can create an aggregator in AWS Config to view the AWS resource inventory
+    or Config rule compliance status for multiple accounts across all regions. In
+    the current console, we can create an aggregator by going to the **Aggregate**
+    view from the left sidebar and then clicking on **Add aggregator** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS Config is charged based on the number of rules evaluations that are recorded.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The steps for creating a custom rule can be summarized as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create an IAM role that can be used by a Lambda with the required permissions.
+    To report back to AWS Config, we need to provide **AWSConfigRulesExecutionRole**
+    . To send logs to CloudWatch, we will need to add **AWSLambdaBasicExecutionRole**
+    . Finally, we need to give access to the service it will monitor (for example,
+    **AmazonS3ReadOnlyAccess** for accessing S3).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a Lambda by selecting the IAM role we created in the previous step using
+    any of the supported programming languages.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Write some code within Lambda in order to evaluate the service parameters that
+    we are monitoring (for example, S3 bucket properties), update a **ResultToken**
+    object per evaluation, and return a list of **ResultToken** objects back to Config.
+    The **ResultToken** objects should consist of the following information: **ComplianceResourceType**
+    (for example, **AWS::S3::Bucket** ), **ComplianceResourceId** (for example, bucket
+    name), **ComplianceType** ( **COMPLIANT** or **NON_COMPLIANT** ), and **OrderingTimestamp**
+    .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Within the Config dashboard, we can go to **Rules** , then to **Add rule** ,
+    and select **Add Custom rule** . The exact screen names of these options may be
+    different when you do this.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set the **Trigger type** field to **Configuration changes** or **Periodic**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we can choose a remediation action or notification for our rule.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Save** . Our rule should be listed along with the other rules on the
+    **Rules** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about AWS Config at [https://www.cloudericks.com/blog/getting-started-with-aws-config.vp](https://www.cloudericks.com/blog/getting-started-with-aws-config.vp)
+    .
+  prefs: []
+  type: TYPE_NORMAL

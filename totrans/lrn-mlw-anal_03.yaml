@@ -1,0 +1,989 @@
+- en: Dynamic Analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Dynamic analysis (behavioral analysis) involves analyzing a sample by executing
+    it in an isolated environment and monitoring its activities, interaction, and
+    effect on the system. In the previous chapter, you learned the tools, concepts,
+    and techniques to examine the different aspects of the suspect binary without
+    executing it. In this chapter, we will build on that information to further explore
+    the nature, purpose, and functionality of the suspect binary using dynamic analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will learn the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic analysis tools and their features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Simulating internet services
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Steps involved in dynamic analysis
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitoring the malware activity and understanding its behavior
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 1\. Lab Environment Overview
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When performing dynamic analysis, you will be executing the malware specimen,
+    so you need to have a safe and secure lab environment to prevent your production
+    system from being infected. To demonstrate the concepts, I will be using the isolated
+    lab environment that was configured in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485), *Introduction
+    to Malware Analysis*. The following diagram shows the lab environment that will
+    be used to perform dynamic analysis and the same lab architecture is used throughout
+    the book:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00035.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this setup, both the Linux and Windows VM were configured to use the host-only
+    network configuration mode. The Linux VM was preconfigured to an IP address of
+    `192.168.1.100`, and the IP address of the Windows VM was set to `192.168.1.50`.
+    The default gateway and the DNS of the Windows VM were set to the IP address of
+    the Linux VM (`192.168.1.100`), so all the Windows network traffic is routed through
+    the Linux VM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Windows VM will be used to execute the malware sample during analysis, and
+    the Linux VM will be used to monitor the network traffic and will be configured
+    to simulate internet services (such as DNS, HTTP, and so on) to provide the appropriate
+    response when malware requests these services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2\. System And Network Monitoring
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When malware is executed, it can interact with a system in various ways and
+    perform different activities. For example, when executed, a malware can spawn
+    a child process, drop additional files on the filesystem, create registry keys
+    and values for its persistence, and download other components or take commands
+    from the command and control server. Monitoring a malware's interaction with the
+    system and network will help in gaining a better understanding of the nature and
+    purpose of the malware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'During dynamic analysis, when the malware is executed, you will carry out various
+    monitoring activities. The objective is to gather real-time data related to malware
+    behavior and its the impact on the system. The following list outlines different
+    types of monitoring carried out during dynamic analysis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Process monitoring**: Involves monitoring the process activity and examining
+    the properties of the result process during malware execution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**File system monitoring**: Includes monitoring the real-time file system activity
+    during malware execution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Registry monitoring**: Involves monitoring the registry keys accessed/modified
+    and registry data that is being read/written by the malicious binary.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Network monitoring**: Involves monitoring the live traffic to and from the
+    system during malware execution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The monitoring activities explained in the preceding points will help in gathering
+    host and network information related to the malware's behavior. The upcoming sections
+    will cover the practical use of these activities. In the next section, you will
+    understand various tools that can be used to perform these monitoring activities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3\. Dynamic Analysis (Monitoring) Tools
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before performing dynamic analysis, it is essential to understand the tools
+    that you will use to monitor the malware's behavior. In this chapter and throughout
+    this book, various malware analysis tools will be covered. If you have setup your
+    lab environment as described in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
+    you can download these tools to your *host machine* and then transfer/install
+    those tools to your virtual machines and take a new, clean snapshot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section covers various dynamic analysis tools and some of their features.
+    Later in this chapter, you will understand how to use these tools to monitor the
+    behavior of the malware while it is executing. You will need to run these tools
+    with administrator privileges; this can be done by right-clicking on the executable
+    and selecting Run as administrator. While you are reading, it is recommended that
+    you run these tools and get familiar with their features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.1 Process Inspection with Process Hacker
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Process Hacker* ([http://processhacker.sourceforge.net/](http://processhacker.sourceforge.net/))
+    is an open source, multi-purpose tool that helps in monitoring system resources.
+    It is a great tool for examining the processes running on the system and to inspect
+    the process attributes. It can also be used to explore services, network connections,
+    disk activity, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the malware specimen is executed, this tool can help you identify the newly
+    created malware process (its process name and process ID), and by right-clicking
+    on a process name and selecting Properties, you will be able to examine various
+    process attributes. You can also right-click on a process and terminate it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows Process Hacker listing all the processes  running on
+    the system, and the properties of `wininit.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00036.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.2 Determining System Interaction with Process Monitor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Process Monitor* ([https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx](https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx))
+    is an advanced monitoring tool that shows the real-time interaction of the processes
+    with the filesystem, registry, and process/thread activity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you run this tool (run as Administrator), you will immediately notice
+    that it captures all the system events, as shown in the following screenshot.
+    To stop capturing the events, you can press Ctrl + E, and to clear all the events
+    you can press Ctrl+ X. The following screenshot shows the activities captured
+    by Process Monitor on a clean system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00037.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From the events captured by the Process Monitor, you can see that lots of activity
+    gets generated on a clean system. When performing malware analysis, you will only
+    be interested in the activities produced by the malware. To reduce noise, you
+    can use the filtering features which hides unwanted entries and allows you to
+    filter on specific attributes. To access this feature, select the Filter menu
+    and then click on Filter (or press Ctrl + L). In the following screenshot, the
+    filter is configured to display events only related to the process, `svchost.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00038.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.3 Logging System Activities Using Noriben
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Even though Process Monitor is a great tool to monitor a malware's interaction
+    with the system, it can be very noisy, and manual effort is required to filter
+    the noise. *Noriben* ([https://github.com/Rurik/Noriben](https://github.com/Rurik/Noriben))
+    is a Python script that works in conjunction with Process Monitor and helps in
+    collecting, analyzing, and reporting runtime indicators of the malware. The advantage
+    of using Noriben is that it comes with pre-defined filters that assist in reducing
+    noise and allow you to focus on the malware-related events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use Noriben, download it to your Windows VM, extract it to a folder, and
+    copy Process Monitor (`Procmon.exe`) into the same folder before running the `Noriben.py`
+    Python script, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00039.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When you run *Noriben*, it launches *Process Monitor*. Once you are done with
+    the monitoring, you can stop Noriben by pressing Ctrl + C, which will terminate
+    Process Monitor. Once terminated, Noriben stores the results in a *text file*
+    (`.txt`) and a *CSV file* (`.csv`) in the same directory. The *text file* contains
+    events segregated based on the categories (like process, file, registry, and network
+    activity) in separate sections, as shown in the following screenshot. Also, note
+    that the number of events is much less because it applied predefined filters that
+    reduced most of the unwanted noise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00040.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The *CSV file* contains all the events (process, file, registry, and network
+    activity) sorted by the timeline (the order in which the events occurred), as
+    shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00041.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The *text file* and the *CSV* file can give different perspectives. If you are
+    interested in the summary of events based on the category then you can look at
+    the text file; if you are interested in the sequence of events in the order in
+    which it occurred then you can view the *CSV* file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4 Capturing Network Traffic With Wireshark
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When the malware is executed, you will want to capture the network traffic
+    generated as a result of running the malware; this will help you understand the
+    communication channel used by the malware and will also help in determining network-based
+    indicators. *Wireshark* ([https://www.wireshark.org/](https://www.wireshark.org/))
+    is a packet sniffer that allows you to capture the network traffic. Installation
+    of Wireshark on the *Linux VM *was covered in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
+    *Introduction to Malware Analysis*). To invoke Wireshark on Linux, run the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To start capturing the traffic on a network interface, click on Capture | **Options**
+    ( Or press *Ctrl + K*), select the network interface, and click on Start:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00042.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.5 Simulating Services with INetSim
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most malware, when executed, reach out to the internet (command and control
+    server), and it is not a good idea to allow the malware to connect to its C2 server,
+    and also sometimes these servers may be unavailable. During malware analysis,
+    you need to determine the behavior of the malware without allowing it to contact
+    the actual *command and control (C2)* server, but at the same time, you need to
+    provide all the services required by the malware so that it can continue its operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*INetSim* is a free Linux-based software suite for simulating standard internet
+    services (such as DNS, HTTP/HTTPS, and so on). The steps to install and configure
+    *INetSim* on the *Linux VM* were covered in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
+    *Introduction to Malware Analysis*. Once INetSim is launched, it simulates various
+    services, as shown in the following output, and it also runs a dummy service that
+    handles connections directed at nonstandard ports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Apart from simulating services, INetSim can log communications, and it can also
+    be configured to respond to HTTP/HTTPS requests and return any files based on
+    the extensions. For example, if malware requests an executable (`.exe`) file from
+    the C2 server, INetSim can return a dummy executable file to the malware. That
+    way, you get to know what malware does with the executable file after downloading
+    it from the C2 server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example demonstrates the use of INetSim. In this example, a malware
+    sample was executed on the *Windows VM*, and the network traffic was captured
+    using *Wireshark* on the *Linux VM* without invoking *INetSim*. The following
+    screenshot displays the traffic captured by Wireshark. It shows that the infected
+    Windows system (`192.168.1.50`) is trying to communicate with the C2 server by
+    first resolving the C2 domain, but because our Linux VM does not have a DNS server
+    running, that domain could not be resolved (as indicated by the Port Unreachable
+    message):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00043.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This time, the malware was executed, and the network traffic was captured on
+    the Linux VM with INetSim running (simulating services). From the following screenshot,
+    it can be seen that the malware first resolves the C2 domain, which is resolved
+    to the Linux VM''s IP address of `192.168.1.100`. Once resolved, it then makes
+    an HTTP communication to download a file (`settings.ini`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00044.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From the following screenshot, it can be seen that the HTTP response was given
+    by the HTTP server simulated by INetSim. In this case, the `User-Agent` field
+    in the HTTP request suggests that the standard browser did not initiate the communication
+    and such an indicator can be used to create network signatures:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00045.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: By simulating the services, it was possible to determine that the malware downloads
+    a file from the C2 server after execution. A tool such as INetSim allows a security
+    analyst to quickly determine the malware's behavior and capture its network traffic
+    without having to manually configure all the services (such as DNS, HTTP and so
+    on).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another alternative to *INetSim* is *FakeNet-NG* ([https://github.com/fireeye/flare-fakenet-ng](https://github.com/fireeye/flare-fakenet-ng)),
+    which allows you to intercept and redirect all or specific network traffic by
+    simulating network services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4\. Dynamic Analysis Steps
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'During dynamic analysis (behavioral analysis)*,* you will follow a sequence
+    of steps to determine the functionality of the malware. The following list outlines
+    the steps involved in the dynamic analysis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Reverting to the clean snapshot**: This includes reverting your virtual machines
+    to a clean state.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Running the monitoring/dynamic analysis tools**: In this step, you will run
+    the monitoring tools before executing the malware specimen. To get the most out
+    of the monitoring tools covered in the previous section, you need to run them
+    with administrator privileges.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Executing the malware specimen**: In this step, you will run the malware
+    sample with administrator privileges.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stopping the monitoring tools**: This involves terminating the monitoring
+    tools after the malware binary is executed for a specified time.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Analyzing the results**: This involves collecting the data/reports from the
+    monitoring tools and analyzing them to determine the malware''s behavior and functionality.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '5\. Putting it All Together: Analyzing a Malware Executable'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once you have an understanding of the dynamic analysis tools and steps involved
+    in dynamic analysis, these tools can be used together to glean maximum information
+    from the malware sample. In this section, we will perform both static and dynamic
+    analysis to determine the characteristics and behavior of a malware sample (`sales.exe`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.1 Static Analysis of the Sample
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s start the examination of the malware sample with static analysis. In
+    static analysis, since the malware sample is not executed, it can be performed
+    on either the *Linux VM* or the *Windows VM*, using the tools and techniques covered
+    in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485), *Static
+    Analysis*. We will start by determining the *file type* and the *cryptographic
+    hash*. Based on the following output, the malware binary is a 32-bit executable
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The ASCII strings extracted from the binary using the *strings* utility contains
+    references to a set of batch commands, which looks like a command to delete files.
+    The strings also show a reference to a batch file (`_melt.bat`), which indicates
+    that upon execution, the malware probably creates a batch (`.bat`) file and executes
+    those batch commands. The strings also have references to the `RUN` registry key;
+    this is interesting because most malware adds an entry in the `RUN` registry key
+    to persist on the system after reboot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Examining the imports shows references to *file system*-and *registry-*related
+    API calls, indicating the malware''s ability to perform file system and registry
+    operations, as highlighted in the following output. The presence of API calls
+    `WinExec` and `ShellExecuteA`, suggest the malware''s capability to invoke other
+    programs (create a new process):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Querying the hash value from the *VirusTotal* database shows 58 antivirus detections,
+    and signature names suggest that we are probably dealing with a malware sample
+    called *PoisonIvy*. To perform the hash search from VirusTotal, you need internet
+    access, and if you want to use the VirusTotal public API, then you need an API
+    key, which can be obtained by signing up for a VirusTotal account:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 5.2 Dynamic Analysis of the Sample
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To understand the malware''s behavior, the dynamic analysis tools discussed
+    in this chapter were used, and the following dynamic analysis steps were followed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both the Windows VM and the Linux VM were reverted to the clean snapshots.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On Windows VM, *Process Hacker* was started with administrator privileges to
+    determine process attributes, and the *Noriben* Python script was executed (which
+    in turn started *Process Monitor*) to inspect the malware's interaction with the
+    system.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the Linux VM, *INetSim* was launched to simulate network services, and *Wireshark*
+    was executed and configured to capture the network traffic on the network interface.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: With all the monitoring tools running, the malware was executed with administrator
+    privileges (right click | Run as Administrator) for around 40 seconds.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After 40 seconds, Noriben was stopped on the Windows VM. INetSim and Wireshark
+    were stopped on the Linux VM.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Results from the monitoring tools were collected and examined to understand
+    the malware's behavior.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After performing dynamic analysis, the following information about the malware
+    was determined from different monitoring tools:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upon executing the malware sample (`sales.exe`), a new process, `iexplorer.exe`, was
+    created with a process ID of `1272`. The process executable is located in the
+    `%Appdata%` directory. The following screenshot is the output from *Process Hacker*
+    showing the newly created process:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00046.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'By examining the Noriben logs, it can be determined that the malware dropped
+    a file called `iexplorer.exe` in the `%AppData%` directory. The name of the file
+    (`iexplorer.exe`) is similar to the file name of the Internet Explorer (`iexplore.exe`)
+    browser. This technique is a deliberate attempt by the attacker to make the malicious
+    binary look like a legitimate executable:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: After dropping the file, the malware executed the dropped file. As a result
+    of that, a new process `iexplorer.exe` was created. This was the process that
+    was displayed by the *Process Hacker:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The malware then drops another file called `MDMF5A5.tmp_melt.bat`, as shown
+    in the following output. At this point, it can be deduced that the  `_melt.bat` string
+    that we found during static analysis is concatenated with another string called `MDMF5A5.tmp`,
+    which is used to generate a file name,` MDMF5A5.tmp_melt.bat`. Once the filename
+    is generated, the malware drops a file with this name on the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It then executes the dropped batch (`.bat`) script by invoking cmd.exe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a result of `cmd.exe` executing the batch script, both the original file
+    (`sales.exe`) and the batch script (`MDMF5A5.tmp_melt.bat`) were deleted, as shown
+    in the following code snippet. This behavior confirms the delete functionality
+    of the batch (`.bat`) file (if you recall, batch commands to delete files were
+    found during the string extraction process):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The malicious binary then adds the path of the dropped file, as an entry in
+    the `RUN` registry key for persistence, which allows the malware to start even
+    after the system reboots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the network traffic captured by *Wireshark*, it can be seen that the malware
+    resolves the C2 domain and establishes a connection on port `80`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00047.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The TCP stream of the port 80 communication, as shown in the following screenshot,
+    is not standard HTTP traffic; this suggests that the malware probably uses a custom
+    protocol or encrypted communication. In most cases, the malware uses a custom
+    protocol or encrypts its network traffic to bypass network-based signatures. You
+    need to perform code analysis of malicious binaries to determine the nature of
+    the network traffic. In the upcoming chapters, you will learn the techniques to
+    perform code analysis in order to gain an insight into the inner workings of a
+    malware binary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00048.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Comparing the cryptographic hash of the dropped sample (`iexplorer.exe`) and
+    the original binary (`sales.exe`) shows that they are identical:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: To summarize, when malware is executed, it copies itself into the `%AppData%`
+    directory as `iexplorer.exe` and then drops a batch script whose job is to delete
+    the original binary and itself. The malware then adds an entry into the registry
+    key so that it can start every time the system starts. The malicious binary possibly
+    encrypts its network traffic and communicates with the *command and control (C2)*
+    server on port 80 using a non-standard protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By combining both static and dynamic analysis, it was possible to determine
+    the characteristics and the behavior of the malicious binary. These analysis techniques
+    also helped in identifying the network and host-based indicators associated with
+    the malware sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Incident response teams use the indicators determined from the malware analysis
+    to create the network and host-based signatures to detect additional infections
+    on the network. When performing malware analysis, note down those indicators that
+    can help you or your incident response team to detect infected hosts on your network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6\. Dynamic-Link Library (DLL) Analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A *Dynamic-Link Library (DLL)* is a module that contains functions (called *exported
+    functions* or *exports*) that can be used by another program (such as an Executable
+    or DLL). An executable can use the functions implemented in a DLL by importing
+    it from the DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Windows operating system contains many DLLs that export various functions
+    called *Application Programming Interfaces (APIs)*. The functions contained in
+    these DLLs are used by the processes to interact with the file system, process,
+    registry, network, and the graphical user interface (GUI).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To display the exported functions in *CFF Explorer* tool, load the PE file
+    that export functions and click on Export Directory. The following screenshot
+    show some of the functions exported by `Kernel32.dll` (it is an operating system
+    DLL and is located in the `C:\Windows\System32` directory). One of the functions
+    exported by `Kernel32.dll` is `CreateFile`; this API function is used to create
+    or open a file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00049.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the following screenshot, it can be seen that `notepad.exe` imports some
+    of the functions exported by `kernel32.dll`, including the `CreateFile` function.
+    When you open or create a file with Notepad, it calls the `CreateFile` API implemented
+    in `Kernel32.dll`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00050.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding example, `notepad.exe` did not have to implement the functionality
+    to create or open the file in its code. To do that, it just imports and calls
+    the `CreateFile` API implemented in `Kernel32.dll`. The advantage of implementing
+    the DLL is that its code can be shared by multiple applications. If an application
+    wants to call an API function, it must first load a copy of DLL that exports the
+    API into its memory space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you wish to know more about Dynamic-Link Libraries, read the following documents: [https://support.microsoft.com/en-us/help/815065/what-is-a-dll](https://support.microsoft.com/en-us/help/815065/what-is-a-dll)
+    and [https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.1 Why Attackers Use DLLs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You will often see malware authors distributing their malicious code as DLL
+    instead of executable files. The following list outlines some of the reasons why
+    attackers implement their malicious code as DLLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A DLL cannot be executed by double-clicking; DLL needs a host process to run.
+    By distributing the malicious code as a DLL, a malware author can load his/her
+    DLL into any process, including a legitimate process such as `Explorer.exe`, `winlogon.exe`,
+    and so on. This technique gives the attacker the capability to hide a malware's
+    actions, and all the malicious activity performed by the malware will appear to
+    originate from the host process.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Injecting a DLL into an already running process provides the attacker with the
+    capability to persist on the system.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When a DLL is loaded by a process into its memory space, the DLL will have access
+    to the entire process memory space, thereby giving it the ability to manipulate
+    the process's functionality. For example, an attacker can inject a DLL into a
+    browser process and steal credentials by redirecting its API function.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing a DLL is not straightforward and can be tricky compared to analyzing
+    an executable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Most malware samples drop or download a DLL and then load the DLL into the memory
+    space of another process. After loading the DLL, the dropper/loader component
+    deletes itself. As a result, when performing a malware investigation, you may
+    only find the DLL. The following section covers the techniques to analyze the
+    DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.2 Analyzing the DLL Using rundll32.exe
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To determine the malware's behavior and to monitor its activity using dynamic
+    analysis, it is essential to understand how to execute the DLL. As previously
+    mentioned, a DLL needs a process to run. On Windows, `rundll32.exe` can be used
+    to launch a DLL and to invoke functions exported from the DLL. The following is
+    a syntax to launch a DLL and to invoke an export function using `rundll32.exe`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The parameters associated with `rundll32.exe` are explained as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Full path to DLL:** Specifies the full path to the DLL, and this path cannot
+    contain spaces or special characters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Export function**: This is a function in the DLL that will be called after
+    the DLL is loaded.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Optional arguments**: The arguments are optional, and if supplied, these
+    arguments will be passed to the export function when it is called.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The comma**: This is put between the full path to the DLL and the export
+    function. The export function is required for the syntax to be correct.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 6.2.1 Working of rundll32.exe
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Understanding the workings of `rundll32.exe` is important to avoid any mistakes
+    while running the DLL. When you launch `rundll32.exe` using the command-line arguments
+    mentioned previously, the following steps are performed by `rundll32.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Command-line arguments passed to `rundll32.exe` are first validated; if the
+    syntax is incorrect, `rundll32.exe` terminates.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the syntax is correct, it loads the supplied DLL. As a result of loading
+    the DLL, the DLL entry point function gets executed (which in turn invokes the `DLLMain`
+    function). Most malware implement their malicious code in the `DLLMain` function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After loading the DLL, it obtains the address of the export function and calls
+    the function. If the address of the function cannot be determined, then `rundll32.exe`
+    terminates.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the optional arguments are provided, then the optional arguments are supplied
+    to the export function when calling it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Detailed information about the rundll32 interface and its working is explained
+    in this article: [https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface](https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.2.2 Launching the DLL Using rundll32.exe
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: During malware investigation, you will come across different variations of DLLs.
+    Understanding how to recognize and analyze them is essential in determining their
+    malicious actions. The following examples cover different scenarios involving
+    DLLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 1 – Analyzing a DLL With No Exports
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Whenever a DLL is loaded, its entry point function gets called (which in turn
+    calls its `DLLMain` function). An attacker can implement malicious functionality
+    (such as keylogging, information stealing, and so on) in the `DLLMain` function
+    without exporting any functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, the malicious DLL (`aa.dll`) does not contain any
+    exports, which tells you that, all the malicious functionality may be implemented
+    in its `DLLmain` function, which will be executed (called from the `DLL entry
+    point`) when the DLL gets loaded. From the following screenshot, it can be seen
+    that the malware imports functions from `wininet.dll` (which exports the function
+    related to HTTP or FTP). This indicates that the malware probably calls these
+    network functions within the `DLLMain` function, to interact with the C2 server
+    using HTTP or FTP protocol:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00051.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You might assume that, because there is no export, a DLL can be executed using
+    the following syntax:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: When you run a DLL with the preceding syntax, the DLL will not execute successfully;
+    at the same time, you will not receive any error. The reason for this is that
+    when `rundll32.exe` validates the command-line syntax (s*tep 1* mentioned in the
+    *Section 6.2.1* *Working of rundll32.exe*), it fails the syntax check. As a result,
+    `rundll32.exe` exits without loading the DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You need to make sure that the command-line syntax is correct to load a DLL
+    successfully. The command shown in the following output should run the DLL successfully.
+    In the following command, `test` is a dummy name, and there is no such export
+    function, it is just used to make sure the command-line syntax is correct. Before
+    running the following command, the various monitoring tools that we covered in
+    this chapter (Process Hacker, Noriben, Wireshark, Inetsim) were started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After running the command, the following error was received, but the DLL was
+    successfully executed. In this case, because the syntax is correct, `rundll32.exe`
+    loaded the DLL (*step 2,* mentioned in the *Section 6.2.1* *Working of rundll32.exe*).
+    As a result, its `DLL entry point` function was called (which in turn called `DLLMain`,
+    containing the malicious code). Then `rundll32.exe` tries to find the address
+    of the export function `test` (which is *step 3,* mentioned in the *Section 6.2.1* *Working
+    of rundll32.exe*). Since it cannot find the address of `test`, the following error
+    was displayed. Even though the error message was displayed, the DLL was successfully
+    loaded (that''s exactly what we wanted for monitoring its activity):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00052.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Upon execution, the malware establishes an HTTP connection with the C2 domain
+    and downloads a file (`Thanksgiving.jpg`), as shown in the following *Wireshark*
+    output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00053.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Example 2 – Analyzing a DLL Containing Exports
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this example, we will look at another malicious DLL (`obe.dll`). The following
+    screenshot shows two functions (`DllRegisterServer` and `DllUnRegisterServer`) exported
+    by the DLL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00054.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The DLL sample was run with the following command. Even though `obe.dll` was
+    loaded into the memory of `rundll32.exe`, it did not trigger any behavior. This
+    is because DLL''s entry point function does not implement any functionality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the other hand, running the sample with the `DllRegisterServer` function
+    as shown below, triggered an HTTPS communication to the C2 server. From this,
+    it can be deduced that `DLLRegisterServer` implements the network functionality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows the network traffic captured by Wireshark:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00055.jpeg)You can write a script to determine all the exported
+    functions (as covered in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485),
+    *Static Analysis*) in a DLL and call them in sequence while running the monitoring
+    tools. This technique can help in understanding the functionality of each exported
+    function. DLLRunner ([https://github.com/Neo23x0/DLLRunner](https://github.com/Neo23x0/DLLRunner))
+    is a Python script that executes all exported functions in a DLL.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example 3 – Analyzing a DLL Accepting Export Arguments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The following example shows how you can analyze a DLL that accepts export arguments.
+    The DLL used in this example was delivered via powerpoint, as described in this
+    link: [https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/](https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The DLL (`SearchCache.dll`) consists of an export function, `_flushfile@16`,
+    whose functionality is to delete a file. This export function accepts an argument,
+    which is the file to delete:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00056.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To demonstrate the delete functionality, a test file (`file_to_delete.txt`)
+    was created, and the monitoring tools were launched. The test file was passed
+    an argument to the export function `_flushfile@16` using the following command.
+    After running the following command, the test file was deleted from the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output from the Noriben logs showing `rundll32.exe` deleting
+    the file `(file_to_delete.txt)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: To determine the parameters and the type of parameters accepted by an export
+    function, you will need to perform code analysis. You will be learning code analysis
+    techniques in the upcoming chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6.3 Analyzing a DLL with Process Checks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most of the time, launching a DLL with `rundll32.exe` will work fine, but some
+    DLLs check if they are running under a particular process (such as `explorer.exe`
+    or `iexplore.exe`) and might change their behavior or terminate themselves if
+    they are running under any other process (including `rundll32.exe`). In such cases,
+    you will have to inject the DLL into the specific process to trigger the behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A tool such as *RemoteDLL* ([http://securityxploded.com/remotedll.php](http://securityxploded.com/remotedll.php))
+    allows you to inject a DLL into any running process on the system. It allows you
+    to inject a DLL using three different methods; this is useful because if one method
+    fails, you can try another method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The DLL (`tdl.dll`) used in the following example, is a component of *TDSS
+    Rootkit*. This DLL does not contain any exports; all of the malicious behavior
+    is implemented in the DLL''s `entry point` function. Running the DLL using the
+    following command generated an error stating that the DLL initialization routine
+    failed, this is an indication that the `DLL entry point` function was not successfully
+    executed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00057.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To understand the condition that triggered the error, static code analysis
+    (reverse engineering) was carried out. After analyzing the code, it was found
+    that the DLL, in its entry point function, performed a check to determine if it
+    is running under `spoolsv.exe` (the print spooler service). If it is running under
+    any other process, the DLL initialization fails:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For now, don't worry about how to perform code analysis. You will learn the
+    techniques to perform code analysis in the upcoming chapters.![](../images/00058.jpeg)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To trigger the behavior, malicious DLL had to be injected into the `spoolsv.exe`
+    process using the *RemoteDLL* tool. After injecting the DLL into `spoolsv.exe`,
+    the following activities were captured by the monitoring tools. The malware created
+    a folder (`resycled`) and a file `autorun.inf` on the `C:\` drive. It then dropped
+    a file `boot.com` in the newly created folder `C:\resycled`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The malware added the following registry entries; from the added entries you
+    can tell that the malware is storing some encrypted or configuration data in the
+    registry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows malware''s C2 communication on port `80`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00059.jpeg)During malware investigation, you will come across
+    DLL, that will run only when it is loaded as a service. This type of DLL is called
+    a *service DLL*. To fully understand the working of a service DLL, knowledge of
+    code analysis and the Windows API is required, which will be covered in later
+    chapters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Dynamic analysis is a great technique to understand the behavior of malware
+    and to determine its network and host-based indicators. You can use dynamic analysis
+    to validate findings obtained during static analysis. Combining static  analysis
+    and dynamic analysis helps you gain a better understanding of the malware binary.
+    Basic dynamic analysis has its limitations, and to gain a deeper insight into
+    the workings of the malware binary, you will have to perform code analysis (reverse
+    engineering).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, most malware samples used in this chapter used encrypted communication
+    to communicate with their C2 server. Using dynamic analysis, we were only able
+    to determine the encrypted communication, but to understand how the malware is
+    encrypting the traffic and what data it is encrypting, you need to learn how to
+    perform code analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next few chapters, you will learn the basics, tools, and techniques to
+    perform code analysis.
+  prefs: []
+  type: TYPE_NORMAL

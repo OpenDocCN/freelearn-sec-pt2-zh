@@ -1,0 +1,1924 @@
+- en: '4'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Securing Data on S3 with Policies and Techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will delve into securing **Amazon Simple Storage Service**
+    ( **S3** ), an **object store** on the AWS platform. Object storage, which is
+    distinct from traditional **hierarchical file systems** , operates on a key-value
+    principle whereby each object is stored with a unique key as the identifier. Think
+    of S3 as a place where each piece of data has a special name that helps you find
+    it, unlike a regular file system that sorts things into folders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have already talked about IAM policies and how to use them for securing data
+    in S3 within the *Creating a customer-managed IAM policy* recipe in [*Chapter
+    2*](B21384_02.xhtml#_idTextAnchor043) . We will extend that knowledge and focus
+    on making S3 data-safe using **Access Control Lists** ( **ACLs** ) and **bucket
+    policies** . We will also look at other important ways to keep our S3 data secure,
+    such as using S3 features such as **presigned URLs** , **encryption** , **versioning**
+    , and **replication** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter includes the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an S3 bucket policy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with S3 ACLs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating S3 presigned URLs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Protecting files with S3 versioning and object locking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Encrypting data on S3
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure that we have
+    the following knowledge and requirements in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to AWS’s cloud-based nature, a stable internet connection is essential for
+    accessing and managing services.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete most of the recipes within this chapter,
+    and for some recipes, we will need more than one AWS account (as mentioned in
+    the respective recipes).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A basic understanding of AWS’s core concept and a working knowledge of the
+    **AWS Management Console** , **AWS CLI** , and particularly Amazon S3 will benefit
+    us. If you are new to the S3 service, you can refer to the following URL for getting
+    started with S3: [https://www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud](https://www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Knowledge of **IAM Identity Center** from *Chapters 1* *and* *2* is helpful
+    if we are managing users with IAM Identity Center instead of using IAM directly.
+    If we are planning to use IAM users, we need to be familiar with IAM.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To execute AWS CLI commands, we need to install **AWS CLI v2** . We also need
+    to configure it using the AWS IAM Identity Center as needed for each recipe if
+    we are managing users with IAM Identity Center. Alternatively, if we are using
+    IAM users for any recipe, we need to configure the CLI profiles using their **access
+    key** and **secret** **access key** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: While it’s possible to manage users directly with IAM, AWS now recommends using
+    IAM Identity Center (formerly AWS SSO) whenever possible for enhanced security
+    and convenience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter04](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter04)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an S3 bucket policy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Previously, we had explored creating IAM policies. IAM policies are generally
+    used for user-level permissions across AWS services, while bucket policies are
+    specific to individual S3 buckets and offer more granular control at the bucket
+    level. For instance, bucket policies uniquely enable granting access to anonymous
+    users, enforcing **Server-Side Encryption** ( **SSE** ) by default, and restricting
+    access based on source IP or VPC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will first create a bucket policy from the Management Console
+    by generating a policy using the Policy Generator that allows **ListBucket** and
+    **GetObject** actions to everyone. Then, we will create a bucket policy from AWS
+    CLI that provides access to a specific IAM user. You can use both the policies
+    from either the Management Console or the AWS CLI; however, I wanted to show how
+    it is done with both approaches. I will also provide examples of principal types
+    in the *There’s more* section of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account is essential. I will be using the **awsseccb-sandbox-1**
+    account that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However,
+    I will not be using any features of the AWS Organizations or the IAM Identity
+    Center.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An **awsseccb_admin1** user with **AdministratorAccess** permission is also
+    important.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We also need an S3 bucket and a file in it. I will use a bucket named **awsseccbbucketpolicy**
+    with a file named **image-cloudericks.png** . Replace them with your bucket name
+    and filename. The S3 bucket should be configured with **Block all public access**
+    unchecked, especially for the settings related to bucket policies. We can do this
+    while creating a bucket, as shown in *Figure 4* *.1* . For the rest of the settings,
+    keep the defaults as they are, which, at the time of writing this book, are as
+    follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ACLs disabled (recommended)** is selected'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Bucket Versioning** is set to **Disable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Default encryption** is set to **Server-side encryption with Amazon S3 managed**
+    **keys (SSE-S3)**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Bucket Key** is set to **Enable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Object Lock** (which is found under **Advanced settings** ) is set to **Disable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 4.1 – Unchecking settings for bucket policies](image/B21384_04_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.1 – Unchecking settings for bucket policies
+  prefs: []
+  type: TYPE_NORMAL
+- en: Verify that your bucket does not allow listing for everyone by going to the
+    bucket from the browser using the **https://<bucket-name>.s3.amazonaws.com** bucket
+    URL, replacing **<bucket-name>** with your bucket name (for example, [https://seccbbucket.s3.amazonaws.com/](https://seccbbucket.s3.amazonaws.com/)
+    ).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 4.2 – Verifying access for the bucket before starting the recipe](image/B21384_04_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.2 – Verifying access for the bucket before starting the recipe
+  prefs: []
+  type: TYPE_NORMAL
+- en: For using an IAM user as the principal, as outlined in the *Granting ListBucket
+    access for an IAM user from the CLI* section, we need an IAM user with no permissions
+    called **awsseccb_user1** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will also need an environment setup for executing CLI commands with two CLI
+    profiles, **AwsSecCbAdmin** and **AwsSecCbUser** , for the **awsseccb_admin1**
+    and **awsseccb_user1** users, respectively, following the *Technical requirements*
+    section of this chapter if we want to follow the steps involving CLI commands.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, we will use bucket policies to give permission to everyone to list the
+    contents of our bucket and then retry this step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first generate a policy from the console using the policy generator.
+    Later, we will execute the policy from the CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Granting ListBucket and GetObject access from the console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can give public access to list the contents of a bucket as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **S3** service in the console, click on our bucket’s name, go to the
+    **Permissions** tab, and then go to **Bucket policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit** , then click on **Policy generator** on the upper-right side.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Within the **AWS Policy Generator** page, select or enter data as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Select Type of Policy** , select **S3** **Bucket Policy** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Effect** , select **Allow** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Principal** , enter the ***** value.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **AWS Service** , **Amazon S3** will be selected.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Actions** , select **ListBucket** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Amazon Resource Name (ARN)** , copy and paste the Bucket ARN (e.g., **arn:aws:s3:::seccbbucket**
+    ) from the **Edit bucket** **policy** page.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.3 – The AWS Policy Generator page](image/B21384_04_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.3 – The AWS Policy Generator page
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Add Statement** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Generate Policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The generated policy should look similar to the following.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.4 – The bucket policy](image/B21384_04_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.4 – The bucket policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: Copy the policy into the **Bucket policy** editor on the **Edit bucket policy**
+    page, then click **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In a browser, provide the bucket URL (e.g., [https://seccbbucket.s3.amazonaws.com](https://seccbbucket.s3.amazonaws.com/)
+    ). The contents of the bucket should now be listed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.5 – Listing the contents of the bucket](image/B21384_04_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.5 – Listing the contents of the bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the bucket policy editor, change **s3:ListBucket** to **s3:GetObject** and
+    add **/*** at the end of the resource (such as **"Resource": "arn:aws:s3:::seccbbucket/*"**
+    ), then click **Save changes** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Access the object URL from the bucket and paste it into the browser. We should
+    be able to successfully retrieve the object now:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.6 – Accessing the image from the bucket](image/B21384_04_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.6 – Accessing the image from the bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we change the resource to **arn:aws:s3:::seccbbucket/*** without an object
+    operation such as **s3:GetObject** , we will get an error stating that the action
+    does not apply to any resource. This is because, when we add any prefix (such
+    as ***** ) to the bucket, it is considered an object operation; otherwise, it
+    is considered a bucket-level operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will see how we can grant ListBucket access to an IAM user from the
+    CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Granting ListBucket Access for an IAM user from the CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the previous section, we used a policy that allows access to everyone by
+    specifying **Principal** as ***** . In this section, we will use a bucket policy
+    that provides access to a specific IAM user to demonstrate creating a bucket policy
+    from the CLI. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are following along from the previous section, delete that policy and
+    make sure that you do not have access to list the bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a bucket policy to allow our **awsseccb_user1** user to access it and
+    save it as **bucket-policy-allow-list.json** :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Remember to replace my S3 bucket name, **awsseccbbucketpolicy** , with your
+    bucket name and my AWS account ID, **207849759248** , with your AWS account ID
+    within the given policy.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Attach the policy to the bucket:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'List the contents of the bucket using the **AwsSecCbUser** profile created
+    for the **awsseccb_user1** user, using the **aws s3 ls bucketname** command as
+    shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.7 – Listing the contents of the bucket using CLI](image/B21384_04_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.7 – Listing the contents of the bucket using CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have seen how to create policies from the console and the CLI,
+    practice more scenarios with each of the available actions and conditions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this recipe, we created S3 bucket policies. A bucket policy statement can
+    have the following components: **Sid** , **Principal** , **Effect** , **Action**
+    , **Resource** , and **Condition** . All of these except Principal are the same
+    as an IAM policy and we explored them in the *Creating a customer-managed IAM
+    policy* recipe in [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043) .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Principal component for a bucket policy can be an account, user, role, or
+    everyone (denoted by ***** ). It can contain an ARN for a resource (specified
+    using the ARN element) or a canonical ID (specified using the **CanonicalUser**
+    element). More details about the principal are present in *There’s more* section
+    of this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resource, in the case of a bucket policy, is a bucket or object and is denoted
+    using a bucket ARN. The bucket ARN should be in the **arn:aws:s3:::bucket_name**
+    form. An object resource is represented in the **arn:aws:s3:::bucket_name/key_name**
+    form. To denote all objects within a bucket, we can use **arn:aws:s3:::bucket_name/***
+    . We can denote every resource in every bucket as **arn:aws:s3:::*** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Bucket policies follow the same JSON document structure as IAM policies but
+    have an additional principal field. The principal is the user or entity for which
+    a policy statement is applicable. There is no principal for an IAM policy as it
+    is attached to an IAM user. The IAM user who executes that policy is the principal
+    in the case of an IAM policy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following examples when using Principal in bucket policies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A root user can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'An IAM user can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A federated user can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'An IAM role can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A role session can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A canonical user ID can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'An AWS session can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Multiple principals can be represented in an array as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'An anonymous user can be represented as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let’s quickly go through some more important details relating to S3 bucket
+    policies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Conditions element is an optional element that allows us to conditionally
+    execute policies. We used Conditions in one of the examples.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Currently, we have around 50 bucket policy actions, including those that work
+    on an object (for example, **s3:PutObject** ), a bucket (for example, **s3:CreateBucket**
+    ), or a bucket sub-resource (for example, **PutBucketAcl** ).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The current list of bucket sub-resources with permissions includes **BucketPolicy**
+    , **BucketWebsite** , **AccelerateConfiguration** , **BucketAcl** , **BucketCORS**
+    , **BucketLocation** , **BucketLogging** , **BucketNotification** , **BucketObjectLockConfiguration**
+    , **BucketPolicyStatus** , **BucketPublicAccessBlock** , **BucketRequestPayment**
+    , **BucketTagging** , **BucketVersioning** , **EncryptionConfiguration** , **InventoryConfiguration**
+    , **LifecycleConfiguration** , **MetricsConfiguration** , **ReplicationConfiguration**
+    , and **AnalyticsConfiguration** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We cannot specify an IAM group as a principal in an S3 bucket policy. If we
+    add a group instead of a user, we will get an error: **Invalid principal** **in
+    policy** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here are some S3-specific condition keys available for use in conditions within
+    a policy: **s3:x-amz-acl** , **s3:x-amz-copy-source** , **s3:x-amz-metadatadirective**
+    , **s3:x-amz-server-side-encryption** , **s3:VersionId** , **s3:LocationConstraint**
+    , **s3:delimiter** , **s3:max-keys** , **s3:prefix** , **s3:xamz-server-side-encryption-aws-kms-key-id**
+    , **s3:ExistingObjectTag/** , **s3:RequestObjectTagKeys** , **s3:RequestObjectTag/**
+    , **s3:object-lock-remainingretention-days** , **s3:object-lock-mode** , **s3:object-lock-retain-untildate**
+    , and **s3:object-lock-legal-hold** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read about IAM policies in the *Creating a customer-managed IAM policy*
+    recipe from [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043) . For a detailed comparison
+    of ACLs, bucket policies, and IAM policies, refer to the *There’s more* section
+    of the *Working with S3 ACLs* recipe in the current chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can find many bucket policy examples at [https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html](https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with S3 ACLs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In Amazon S3, ACLs are utilized to manage access to both buckets and objects.
+    As we delve into ACLs, it’s crucial to recognize that they are now viewed as a
+    legacy tool within the AWS ecosystem. AWS recommends opting for more current solutions
+    such as IAM and bucket policies, which provide enhanced flexibility and security.
+    Nonetheless, understanding ACLs is beneficial, particularly when dealing with
+    older systems or applications that were developed before the advent of IAM and
+    bucket policies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn to grant permissions to the public (everyone)
+    to list the files of a bucket using ACLs from the AWS Management Console. We will
+    list more use cases within the *There’s more* section of the recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account is essential. I will be using the **awsseccb-sandbox-1**
+    account that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However,
+    I will not be using any features of the AWS Organizations or the IAM Identity
+    Center.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An **awsseccb_admin1** user with **AdministratorAccess** permissions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will need an environment setup for executing CLI commands with two CLI profiles,
+    **AwsSecCbAdmin** and **AwsSecCbUser** , for the **awsseccb_admin1** and **awsseccb_user1**
+    users (respectively) following the *Technical requirements* section of this chapter
+    if we want to follow the steps involving CLI commands.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We will also need an S3 bucket and a file in it. I will be using a bucket named
+    **awsseccbacldemo** with a file named **image-cloudericks.png** . Replace them
+    with your bucket name and filename. The S3 bucket should be configured with ACLs
+    enabled. We can do this while creating a bucket, as shown in *Figure 4* *.8* .
+    Also, ensure that the **Block all public access** option is unchecked, especially
+    for the settings related to ACLs. We can do this while creating a bucket, as shown
+    in *Figure 4* *.9* . For the rest of the settings, keep the defaults as they are,
+    which, at the time of writing this book, are as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Bucket Versioning** is set to **Disable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Default encryption** is set to **Server-side encryption with Amazon S3 managed**
+    **keys (SSE-S3)**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Bucket Key** is set to **Enable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Object Lock** (found under **Advanced settings** ) is set to **Disable**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'While creating an S3 bucket, we can enable ACLs as required for this recipe
+    with the following settings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.8 – Enabling ACLs for Amazon S3 object ownership](image/B21384_04_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.8 – Enabling ACLs for Amazon S3 object ownership
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Furthermore, we can uncheck the **Block all public access** option as required
+    for this recipe, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.9 – Unchecking the Block all public access setting for ACLS](image/B21384_04_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.9 – Unchecking the Block all public access setting for ACLS
+  prefs: []
+  type: TYPE_NORMAL
+- en: Verify that our bucket does not allow listing for everyone by going to the bucket
+    from the browser using the **https://<bucket-name>.s3.amazonaws.com** bucket URL,
+    replacing **<bucket-name>** with our bucket name (e.g., [https://awsseccbacldemo.s3.amazonaws.com](https://awsseccbacldemo.s3.amazonaws.com)
+    ), similar to *Figure 4* *.2* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, allow everyone to list the bucket’s contents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Perform the following steps to allow everyone to list the bucket’s contents:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **S3** service on the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on our bucket’s name (e.g., **awsseccbacldemo** ) to go to the bucket’s
+    page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Permissions** tab of the bucket, scroll down to the **Access control
+    list (ACL)** tab, and click **Edit** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Edit access control list (ACL)** page, under **Everyone (public access)**
+    , select the checkbox for **List** under **Objects** , and select the checkbox
+    next to the **I understand the effects of these changes on my objects and** **buckets**
+    statement.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.10 – Editing the ACL page](image/B21384_04_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.10 – Editing the ACL page
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Access the bucket from the browser using the **https://<bucket-name>.s3.amazonaws.com**
+    link, replacing **<bucket-name>** with your bucket name (e.g., [https://awsseccbacldemo.s3.amazonaws.com/](https://awsseccbacldemo.s3.amazonaws.com/)
+    ). You should be able to list the contents of the bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.11 – An XML file showing the contents of the bucket](image/B21384_04_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.11 – An XML file showing the contents of the bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this edition of the book, we focus on a narrower range of scenarios involving
+    ACLs, unlike the broader coverage of use cases in the previous edition of this
+    book, as ACLs are currently considered a legacy option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This recipe provided the steps for enabling the public listing of an S3 bucket’s
+    contents in AWS. The key step involved modifying the ACL settings via the AWS
+    Management Console. In doing so, we specifically configured the ACL to allow public
+    access for listing the bucket’s contents, while ensuring that general read access
+    to the bucket’s objects was not granted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this recipe, we allowed everyone to list the contents of the bucket using
+    ACLs from the Management Console. We can also do the same from CLI. ACLs provide
+    foundational read/write permissions for buckets, objects, and their ACLs. Specifically,
+    they can grant the following permissions and can be set while working with the
+    AWS CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**READ** : Allows listing objects in a bucket and reading an object and its
+    metadata'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**WRITE** : Enables the creation, overwriting, or deletion of objects in a
+    bucket; this permission is not applicable to individual objects'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**READ_ACP** : Grants the ability to read the ACL of a bucket or object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**WRITE_ACP** : Permits writing the ACL for a bucket or object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**FULL_CONTROL** : Includes all of the previous permissions, offering complete
+    authority over the bucket or object'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Prior to implementing **READ** ACLs for public access, we prepared the bucket
+    by enabling ACLs and ensuring that the **Block all public access** setting was
+    unchecked, specifically for ACL-related options. It’s important to note that ACLs,
+    often regarded as a legacy feature in comparison to more recent options such as
+    IAM and bucket policies, are disabled by default. Likewise, public access is blocked
+    by default as a security measure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s delve deeper into some important concepts related to ACLs in Amazon S3:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Basic permissions** : ACLs provide foundational read/write permissions for
+    buckets, objects, and their ACLs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Access granting** : ACLs grant access to AWS accounts and predefined groups
+    but cannot deny access. Predefined groups in Amazon S3 ACLs are fixed categories
+    set by AWS that represent broad sets of users, such as **All Users** for the public,
+    **Authenticated Users** for any logged-in AWS user, and **Log Delivery** for services
+    that deliver logs to your bucket. They simplify permission settings without specifying
+    individual user accounts. When specifying grantees, the following methods can
+    be used:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AmazonCustomerByEmail** : Set **Type** to **AmazonCustomerByEmail** and use
+    the canonical ID in the **EmailAddress** field'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CanonicalUser** : Set **Type** to **CanonicalUser** ; the account’s email
+    is provided in the **ID** field'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Group** : When **Type** is **Group** , use the URI of the predefined group
+    in the **URI** field'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Default control** : ACLs, by default, grant full control to the resource
+    owner and no permissions to anyone else.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Internal representation** : ACLs are formatted as XML documents, specifying
+    access permissions and grantees.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Non-owner object access** : ACLs allow granting access to objects not owned
+    by the bucket owner using canned ACLs such as **bucket-owner-full-control** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Canned ACLs** : These are short-hand ACL permissions that can be used to
+    provide permission for a resource from the command line. Currently, the following
+    canned ACLs are supported: **private** , **public-read** , **public-read-write**
+    , **aws-exec-read** , **authenticated-read** , **bucket-owner-read** , **bucket-owner-full-control**
+    , and **log-delivery-write** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Granular object permissions** : ACLs offer a simpler method for assigning
+    individual permissions to numerous objects compared to bucket policies.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Block public access override** : S3’s **Block Public Access** settings can
+    override ACLs granting public access.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Logging access attempts** : Both successful and denied access attempts can
+    be logged using S3 access logs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**No conditions support** : ACLs do not support conditional clauses for granting
+    access, unlike IAM or bucket policies.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Management challenges** : Managing ACLs in large environments can be complex.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Security best practices** : Regular reviews and audits of ACL settings are
+    crucial for maintaining security.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Scope and application differences** : We have the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ACLs** : Specified per resource (bucket or object)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Bucket policies** : Applied to entire buckets and can be used to define access
+    based on object prefixes'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**IAM policies** : Similar in scope to bucket policies but are assigned to
+    IAM users and groups, allowing for more centralized and granular access control'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some more important concepts related to canned ACLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **bucket-owner-read** and **bucket-owner-full-control** canned ACLs are
+    only applicable to objects and are ignored if specified while creating a bucket.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **log-delivery-write** canned ACL only applies to a bucket.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With the **aws-exec-read** canned ACL, the owner gets the **FULL_CONTROL** permission
+    and Amazon EC2 gets READ access to an **Amazon Machine Image** ( **AMI** ) from
+    S3.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With the **log-delivery-write** canned ACL, the **LogDelivery** group gets **WRITE**
+    and **READ_ACP** permissions for the bucket. This is used for S3 access logging.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When making an API call, we can specify a canned ACL in our request using the
+    **x-amz-acl** request header.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of cross-account access, if a user from account A uploads an object
+    to a bucket in account B (owned by account B), account B will have no access to
+    that object even if it is the bucket owner. Account A can, however, grant permission
+    to the bucket owner while uploading the document using the **bucket-owner-read**
+    or **bucket-owner-full-control** canned ACL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing ACLs, bucket policies, and IAM policies
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'ACLs differ from IAM policies and bucket policies in the following ways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ACLs provide only basic read/write permission to buckets, objects, and their
+    ACLs. IAM policies and bucket policies provide more fine-grained permissions than
+    ACLs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ACLs can only grant access to AWS accounts and predefined groups. ACLs cannot
+    grant permissions to IAM users. IAM policies and bucket policies can be used to
+    grant access to IAM users.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ACLs, by default, allow full control to the owner of the resource and nothing
+    to everyone else. Bucket policies and IAM policies are not attached to a resource
+    by default.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ACLs can only grant permissions. Bucket policies and IAM policies can explicitly
+    deny access.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ACLs cannot conditionally allow or deny access. Bucket policies and IAM policies
+    can conditionally allow or deny access.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ACLs are represented internally as XML documents. Bucket policies and IAM policies
+    are represented as JSON documents.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'IAM policies differ from ACLs and bucket policies in the following ways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: IAM policies are user-based and are applied to users. ACLs and bucket policies
+    are resource-based policies and are applied to resources.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IAM policies can be inline (embedded directly into a user, group, or role) or
+    standalone (they can be attached to any IAM user, group, or role). ACLs and bucket
+    policies are sub-resources of a bucket.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IAM policies can only give access to an IAM user. Bucket policies and ACLs can
+    be used to provide anonymous access as well a s access to a r oot user.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can mix ACLs, bucket policies, and IAM policies. All policies are evaluated
+    at the same time if the bucket and user are w ithin the same account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can learn about IAM policies in the *Creating a Customer Managed IAM Policy*
+    recipe in [*Chapter 2*](B21384_02.xhtml#_idTextAnchor043) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can learn more about IAM policies and permissions at [https://www.cloudericks.com/blog/demystifying-aws-policies-and-permissions](https://www.cloudericks.com/blog/demystifying-aws-policies-and-permissions)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating S3 presigned URLs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can grant temporary permission to access S3 objects using presigned URLs
+    with an expiry time. In this recipe, we will learn to use presigned URLs. We can
+    do this from the Management Console or AWS CLI or by using an SDK for a programming
+    language such as Python, Java, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account; I will be using the **awsseccb-sandbox-1** account that
+    we created [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An S3 bucket and a file in it; I will use a bucket named **seccbbucket** with
+    a file named **image-cloudericks.png** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first create a presigned URL from the console and then from the AWS
+    CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating a presigned URL from the AWS Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create a presigned URL from the console and test it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console, navigate to the **S3** service, and go
+    into our S3 bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the object for which we need to create the presigned URL, click on the
+    **Object actions** dropdown, and select **Share with a** **presigned URL** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter the value for **Number of minutes** as **5** , as shown in the following
+    figure, and click on **Create** **presigned URL** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.12 – Creating a presigned URL](image/B21384_04_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.12 – Creating a presigned URL
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We should get a **Copy presigned URL** notification as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.13 – A Copy presigned URL message](image/B21384_04_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.13 – A Copy presigned URL message
+  prefs: []
+  type: TYPE_NORMAL
+- en: Copy and paste the URL and run it from a browser within the time mentioned for
+    **Number of minutes** . We should then be able to see our file successfully.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If we run the URL after the specified time, we should get an **AccessDenied**
+    error message similar to the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.14 – Accessing the presigned URL after expiry](image/B21384_04_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.14 – Accessing the presigned URL after expiry
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will look at how to do pre-signing using the CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating a presigned URL from the CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create a presigned URL from the CLI and test it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Pre-sign a URL from the CLI as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This command will output a presigned URL similar to the following.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.15 – Generating a presigned URL (partial) from CLI](image/B21384_04_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.15 – Generating a presigned URL (partial) from CLI
+  prefs: []
+  type: TYPE_NORMAL
+- en: Run the URL from a browser (as we did in the previous section) before and after
+    the expiry.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will explore how to do pre-signing using an SDK such as Python SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the *Generating a presigned URL from the AWS Console* section, we presigned
+    a URL from the AWS console. In the *Generating a presigned URL from the CLI* section,
+    we presigned a URL from the CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Most APIs related to presigning will accept the following data for generating
+    presigned, timed URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bucket and object
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Expiry date and time
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTTP method
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Security credentials
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this recipe, we specified the bucket, object, and expiry in the code. The
+    HTTP operation was **GET** . For security credentials, we specified a user profile
+    that has permissions for the operation, which was **get_object** in our case.
+    Anyone with valid credentials can generate a presigned URL. However, if the generating
+    user does not have permission to perform the intended operation (for example,
+    **get_object** ), then the operation will eventually fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can also presign a URL using an SDK such as the Python SDK. With Python SDK,
+    we also use the boto3 library for Python. Boto is the AWS SDK for Python. It facilitates
+    the creation, configuration, and management of AWS services, such as EC2 and S3,
+    using Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Refer to the following link for more use cases for Python and Boto3 related
+    to presigned URLs: [https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting files with S3 versioning and object locking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn to implement **S3 Object Locking** . S3 Object
+    Lock is a feature that enables users to prevent the deletion or overwriting of
+    objects in S3 for a specified period of time or indefinitely. This feature is
+    essential for meeting regulatory compliance requirements and for implementing
+    data protection strategies. With Object Lock, you can apply a **Write Once, Read
+    Many** ( **WORM** ) model, ensuring that data cannot be altered or deleted until
+    the specified retention period expires. This makes it an effective tool for safeguarding
+    critical business and compliance-sensitive data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: S3 versioning is a prerequisite for S3 Object Locking. Hence, we will also quickly
+    look into how to enable versioning from within the *Getting ready* section. If
+    versioning is enabled for a bucket, S3 keeps a copy of every version of the file
+    within the bucket. Versioning thus protects data by providing a means to recover
+    it in the case of unintentional actions such as deletes and overwrites, and hence
+    may also be considered a security-related feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account; I will be using the **awsseccb-sandbox-1** account that
+    we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An S3 bucket with **Bucket Versioning** enabled; I will use a bucket named **seccbbucket**
+    with a file named **image-cloudericks.png** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can enable versioning while creating an S3 bucket as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.16 – Enabling versioning for a new bucket](image/B21384_04_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.16 – Enabling versioning for a new bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also enable S3 versioning for an existing bucket as follows. Navigate
+    to the S3 bucket’s **Properties** tab and click on **Edit** next to **Bucket Versioning**
+    . Under **Bucket Versioning** , select **Enable** , and then click on **Save changes**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.17 – Enabling versioning for an existing bucket](image/B21384_04_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.17 – Enabling versioning for an existing bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will enable Object Lock for our bucket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can enable Object Locking as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Login into the AWS Management Console and navigate to the **S3** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigate to the S3 bucket, go to the bucket’s **Properties** tab, and click
+    on **Edit** next to **Object Lock** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Edit Object Lock** screen, select **Enable** and also select the checkbox
+    to acknowledge that enabling Object Lock will permanently allow objects in this
+    bucket to be locked.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.18 – Enabling Object Lock](image/B21384_04_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.18 – Enabling Object Lock
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enable default retention to protect new objects put into the bucket by selecting
+    **Enable** under **Default retention** . Once we enable default retention, we
+    should get additional options to configure Object Locking.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.19 – Enabling default retention](image/B21384_04_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.19 – Enabling default retention
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **Governance** under **Default retention mode** , enter **30** for **Default
+    retention period** , and click on **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Upload a new object to our S3 bucket. I have uploaded an **image-heartin.png**
+    file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the bucket’s **Object** tab and click on the new object’s name to go to
+    the object’s **Properties** tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down and verify the retention configuration under **Object** **Lock retention**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.20 – Object Lock retention for new objects after setting the default
+    retention mode](image/B21384_04_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.20 – Object Lock retention for new objects after setting the default
+    retention mode
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Optionally, we can click on **Edit** on the **Object Lock retention** screen,
+    as shown in *Figure 4* *.20* , to do one of the following: **Disable** retention,
+    change **Retention mode** from **Governance mode** to **Compliance mode** , or
+    extend the retention date using the **Retain until** **date** option.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In governance mode, objects in S3 Object Lock are unchangeable until the set
+    retention period is over. To remove these objects before the retention date, retention
+    can be disabled after clicking on **Edit** , as shown in *Figure 4* *.20* . In
+    compliance mode, we won’t be able to disable retention and objects remain unchangeable
+    until their retention period ends. The only way to delete these objects before
+    the retention time expires is by closing the associated AWS account. In both modes,
+    we can extend the retention date to a future date, but we cannot reduce it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, go to any existing object’s **Properties** tab, scroll down to **Object
+    Lock retention** , and click **Edit** to enable Object Lock for that object. We
+    should get a screen similar to the screen for configuring default retention, as
+    shown in *Figure 4* *.19* , where we can configure retention for this object.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, go to any new or existing object’s **Properties** tab, scroll down
+    to **Object Lock legal hold** , and click on **Edit** to enable **Legal hold**
+    , as shown in the following figure.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.21 – Enabling Object Lock legal hold](image/B21384_04_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.21 – Enabling Object Lock legal hold
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, wait for the retention date to expire and then try to delete the
+    objects for which we added Object Lock in compliance mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Amazon S3 Object Lock is a feature designed to protect your S3 objects from
+    being deleted or overwritten. It’s particularly useful in enforcing data retention
+    policies for compliance, legal, or regulatory requirements. To use Object Lock,
+    you must first enable versioning in your S3 bucket. Versioning is a means by which
+    S3 keeps multiple versions of an object in the same bucket, allowing you to preserve,
+    retrieve, and restore every version of every object stored in your bucket. With
+    versioning enabled, Object Lock can protect individual object versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Object Lock has two primary retention modes: Governance and Compliance. In
+    Governance mode, users with specific permissions can overwrite or delete an object
+    version before its retention period expires. This mode is ideal for internal data
+    management, as it provides a balance between protection and flexibility. In contrast,
+    Compliance mode offers a stricter level of protection. Once an object is locked
+    in Compliance mode, no one can overwrite or delete the object version until its
+    retention period has passed, not even the root user in the AWS account. This mode
+    is designed for scenarios where data must be retained to comply with legal or
+    regulatory standards.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, Object Lock provides a feature called legal hold for an added
+    layer of protection. A legal hold can be applied to objects regardless of their
+    retention mode, and it prevents object version deletion without any time-bound
+    constraints. Legal Holds are ideal for situations where you might need to retain
+    an object for legal reasons. It’s important to note that both the retention modes
+    and Legal Hold can be applied to individual objects or as default settings at
+    the bucket level. Together, these features make S3 Object Lock a robust tool for
+    ensuring that critical data is not deleted or altered, thereby helping organizations
+    adhere to compliance requirements and protect their data from accidental loss
+    or deletion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: After learning about S3 Object Lock in this recipe, let us quickly look into
+    **Glacier Vault Lock** , an important AWS feature that helps keep data secure
+    within AWS Glacier, especially when the data needs to be stored for a long time.
+    At the core of Glacier Vault Lock is the WORM principle. This means that after
+    data is stored, it can be accessed but not altered. By establishing and locking
+    a policy, we can ensure that no one, not even administrators or creators, can
+    modify or erase these rules or the data they protect. These policies can range
+    from basic ones, such as setting a data retention period, to more detailed ones
+    specifying deletion permission roles or even creating a permanent archive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Setting up a Glacier Vault Lock involves the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Start a Glacier Vault** : Begin by creating a vault in Amazon Glacier using
+    the AWS Management Console.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Create a Vault Lock policy** : Develop a policy that outlines your data retention
+    preferences. This policy defines the usage and alteration guidelines for the data
+    in the vault.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Initiate the Vault Lock** : Apply your policy to the vault. This begins the
+    process but doesn’t activate the policy immediately.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Review and finalize** : AWS provides a specific timeframe (typically 24 hours)
+    for you to review and finalize your policy. No changes are allowed after this
+    period.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Lock the policy** : Conclude this waiting period by confirming and permanently
+    locking your policy. Once locked, the policy is irreversible, ensuring the data’s
+    safety according to your established rules.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: By following these steps, Glacier Vault Lock can effectively be utilized to
+    safeguard critical data requiring long-term storage, meeting compliance and security
+    requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Other important security features related to S3 include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**S3 encryption** : Amazon S3 encryption provides methods to protect our data
+    at rest. There are two main types: SSE, whereby Amazon S3 encrypts our data as
+    it writes it to disks and decrypts it when we access it, and **client-side encryption**
+    , whereby we encrypt data on our side before uploading it to S3. For SSE, we have
+    options such as **S3-Managed Keys** ( **SSE-S3** ), **AWS Key Management Service
+    Keys** ( **SSE-KMS** ), and **Customer-Provided Keys** ( **SSE-C** ). We will
+    discuss more about S3 Encryption later in this book after we discuss about the
+    AWS **Key Management** **Service** ( **KMS** ).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**S3 Access Points** : Amazon S3 Access Points facilitate data access management
+    for large-scale, shared data sets in S3 by providing unique hostnames with tailored
+    access policies. For instance, if we are operating a data lake with multiple departments
+    accessing the same S3 bucket, we can create separate access points for each department
+    – such as **finance-data-access** or **hr-data-access** – each with its specific
+    permissions and network controls. This allows us to customize access according
+    to each department’s needs, ensuring secure and efficient data handling. S3 Access
+    Points thus offer a streamlined solution for scenarios requiring distinct, role-based
+    access controls, significantly simplifying the management of complex data access
+    requirements.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**S3 access logs** : Amazon S3 access logs are a crucial component for enhancing
+    security and monitoring activity in our S3 buckets. These logs provide detailed
+    records of all requests made to a specific S3 bucket, including requester information,
+    bucket name, request time, and the action performed. This information is vital
+    for security analysis and audit trails, allowing us to track access patterns,
+    identify suspicious activities, and ensure compliance with security policies.
+    By analyzing these logs, we can gain insights into usage trends and potential
+    security vulnerabilities, as well as improve our overall data protection strategy
+    in S3.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**S3 replication** : Amazon S3 replication, encompassing both **Cross-Region
+    Replication** ( **CRR** ) and **cross-account replication** , plays a vital role
+    in enhancing data security and availability. With CRR, data is automatically replicated
+    across multiple AWS regions, providing geographical diversification, which is
+    crucial for disaster recovery and meeting data residency requirements. Cross-account
+    replication, meanwhile, offers an added security layer by replicating data between
+    buckets in different AWS accounts. This is ideal for scenarios such as auditing
+    where data integrity and separation are critical. Both replication strategies
+    can be governed by specific policies, allowing precise control over which data
+    gets replicated and the manner of its replication.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Check the *Using key policies with conditional keys* recipe in [*Chapter 3*](B21384_03.xhtml#_idTextAnchor088)
+    to see how an AWS KMS key can be used for encryption in an S3 bucket.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: While this book addresses key S3 security features, providing recipes for every
+    single one is beyond its scope. For an always up-to-date and complete list, you
+    can visit the blog post at [https://www.cloudericks.com/blog/a-comprehensive-list-of-s3-security-features-within-aws-cloud](https://www.cloudericks.com/blog/a-comprehensive-list-of-s3-security-features-within-aws-cloud)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Encrypting data on S3
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this recipe, we will learn to encrypt data on S3 at rest using SSE techniques.
+    Encryption on the server side can be done in three ways: SSE-S3, SSE-KMS, and
+    SSE-C. In client-side encryption, data is encrypted on the client side and then
+    sent to the server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need a working AWS account with the following resources configured:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an S3 bucket. I will be using a bucket with the **awssecbucket** name.
+    Replace this with your bucket name.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need a user with **AdministratorAccess** permission. Configure a CLI profile
+    for this user. I will be calling both the user and the profile on the **awssecadmin**
+    CLI.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need a customer-managed key created in KMS. Follow the *Creating keys in
+    KMS* recipe from [*Chapter 3*](B21384_03.xhtml#_idTextAnchor088) to create a key.
+    I have created one named **MyS3Key** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn about various use cases for SSE.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSE with SSE-S3
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can upload an object from the console with SSE-S3 as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to your S3 bucket in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under the **Objects** pane, click on **Upload** | **Add Files** , select your
+    file, and then click on **Upload** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now go to the **Properties** tab. In our bucket, scroll down to the **Default
+    encryption** pane and click on **Edit** . Under **Encryption type** , select **Server-side
+    encryption with Amazon S3 managed keys (SSE-S3)** , and under **Bucket Key** ,
+    select **Enable** . Finally, click on **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.22 – The default encryption options](image/B21384_04_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.22 – The default encryption options
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that, if we try to open or download the object, we will
+    still be able to see the object as-is because S3 will decrypt the object using
+    the same key.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSE with SSE-KMS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can upload an object from the console with SSE-KMS as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to your S3 bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now go to the **Properties** pane. In the **Properties** tab, scroll down to
+    the **Default encryption** pane and click on **Edit** . Under **Encryption type**
+    , select **Server-side encryption with AWS Key Management Service keys (SSE-KMS)**
+    ; under the **AWS KMS key** pane, select **Choose from your AWS KMS keys** and
+    select the key; under **Bucket Key** , select **Enable** , and finally, click
+    on **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.23 – Changing the encryption options with KMS](image/B21384_04_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.23 – Changing the encryption options with KMS
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can change encryption for an existing object to SSE-KMS as follows. Go to
+    the object’s **Properties** tab. Scroll down to the **Server-side encryption settings**
+    pane and click on **Edit** . Under **Encryption settings** , select **Use bucket
+    settings for default encryption** and click on **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 4.24 – Changing the encryption options for an existing object](image/B21384_04_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.24 – Changing the encryption options for an existing object
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can upload an object from the CLI with SSE-KMS using the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will get the following response:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.25 – The response for uploading an object from the CLI with SSE-KMS](image/B21384_04_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.25 – The response for uploading an object from the CLI with SSE-KMS
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**sse-kms-key-id** is the ID of the KMS key you created (refer to the *Getting
+    ready* section for more details).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SSE with SSE-C
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can upload an object from the CLI with SSE-C as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upload an object from the CLI with SSE-C by using the following command. Provide
+    any set of digits as the key. You will need to use the same to retrieve the object
+    later:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will get the following response:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.26 – The response for uploading an object from the CLI with SSE-C](image/B21384_04_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.26 – The response for uploading an object from the CLI with SSE-C
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Retrieve the object encrypted using SSE-C, providing the same key we used in
+    the previous command, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will get the following response:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.27 – The response for retrieving an object encrypted using SSE-C](image/B21384_04_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.27 – The response for retrieving an object encrypted using SSE-C
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we do not specify the **sse-c** option while downloading an object encrypted
+    with SSE-C, we will get a **fatal error: An error occurred (400)** exception when
+    calling **HeadObject operation: Bad Request** . If we do not specify the correct
+    key that was used for encryption (using the **sse-c-key** option) while downloading
+    an object encrypted with SSE-C, we will get a **fatal error: An error occurred
+    (403)** exception when calling **HeadObject** **operation: Forbidden** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the *SSE with SSE-S3* section, we uploaded an object from the console with
+    SSE-S3 encryption. We changed the encryption for an existing object to SSE-S3
+    encryption. We also uploaded an object with SSE-S3 encryption. When performing
+    SSE-S3 encryption from the CLI, the value of the **sse** parameter is optional.
+    The default is **AES256** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *SSE with SSE-KMS* section, we uploaded an object with SSE-KMS encryption.
+    We changed encryption for an existing object to SSE-KMS encryption. We also uploaded
+    an object from the CLI with SSE-KMS encryption. When performing SSE-KMS encryption
+    from the CLI, the value of the **sse-c** parameter is optional. The default is
+    **AES256** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *SSE with SSE-C* section, we uploaded an object from the CLI with SSE-C
+    encryption. Unlike the other two SSE techniques, SSE-S3 and SSE-KMS, the console
+    does not currently have an explicit option for SSE-C. We will need to execute
+    this using APIs. In this recipe, we used a 32-digit number as the key. However,
+    in the real world, keys are generally generated using a key generation tool. We
+    will learn more about keys when we discuss KMS later in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to S3 encryption:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data on S3 can be encrypted while at rest (stored on AWS disks) or in transit
+    (moving to and from S3). Encryption at rest can be done using SSE or by uploading
+    encrypted data from the client.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: S3 SSE techniques for data at rest use symmetric keys for encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Encryption of data in transit using SSL/TLS (HTTPS) uses asymmetric keys for
+    encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: S3 default encryption (available as bucket properties) provides a way to set
+    the default encryption behavior for an S3 bucket with SSE-S3 or SSE-KMS. Enabling
+    this property does not affect existing objects in our bucket and applies only
+    to new objects uploaded.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With client-side encryption, we need to manage keys on our own. We can also
+    use KMS to manage keys through SDKs. However, it is not currently supported by
+    all SDKs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Encryption in transit can be achieved with client-side encryption or by using
+    SSL/TLS (HTTPS).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SSE types, SSE-S3 and SSE-KMS, follow envelope encryption, while SSE-C does
+    not use envelope encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Some important features of SSE-S3 include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS takes care of all key management.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It follows envelope encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses symmetric keys to encrypt data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each object is encrypted with a unique key.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses the AES-256 algorithm.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A data key is encrypted with a master key that is automatically rotated periodically.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is free.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Some important features of SSE-KMS include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keys are managed by AWS KMS.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Keys can be shared by multiple services ( including S3).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As customers, we get more control over keys, such as creating master and data
+    keys, and disabling and rotating master keys.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It follows envelope encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses symmetric keys to encrypt data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A data key is encrypted with a master key.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses the AES-256 algorithm.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can choose which object key to encrypt while uploading objects.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use CloudTrail to monitor KMS API calls, enabling better auditing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is not free.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Some important features of SSE-C include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keys are managed by us (customers).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The customer provides a key along with data; S3 uses this key for encryption
+    and deletes the key.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The key must be supplied for decryption as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It does not use envelope encryption.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses symmetric keys to encrypt data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It uses the AES-256 algorithm.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS will force you to use HTTPS while uploading data since you are uploading
+    your symmetric key as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is free.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'By default, S3 allows both HTTP and HTTPS access to data; HTTPS can be enforced
+    with the help of a bucket policy with the following condition element:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Any requests without HTTPS will fail with this condition.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Understand the basics of Amazon S3 encryption from [https://www.cloudericks.com/blog/understanding-amazon-s3-encryption](https://www.cloudericks.com/blog/understanding-amazon-s3-encryption)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand more about S3 bucket key for SSE-KMS encryption from [https://www.cloudericks.com/blog/understanding-s3-bucket-key-for-sse-kms-encryption](https://www.cloudericks.com/blog/understanding-s3-bucket-key-for-sse-kms-encryption)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about encryption at [https://www.secdops.com/blog/getting-started-with-encryption](https://www.secdops.com/blog/getting-started-with-encryption)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

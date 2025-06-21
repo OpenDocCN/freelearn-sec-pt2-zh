@@ -1,0 +1,1323 @@
+- en: Malware Obfuscation Techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The term *obfuscation* refers to a process of obscuring meaningful information.
+    Malware authors often use various obfuscation techniques to hide the information
+    and to modify the malicious content to make detection and analysis difficult for
+    a security analyst. Adversaries typically use *encoding/encryptio*n techniques
+    to conceal the information from the security products. In addition to using encoding/encryption,
+    an attacker uses a program such as packers to obfuscate the malicious binary content,
+    which makes analysis and reverse engineering much more difficult. In this chapter,
+    we will look at identifying these obfuscation techniques and how to decode/decrypt
+    and unpack the malicious binaries. We will begin by looking at the encoding/encryption
+    techniques, and later we will look at the unpacking techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Adversaries typically use encoding and encryption for the following reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To conceal command and control communication
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To hide from a signature-based solution such as Intrusion prevention systems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To obscure the content of the configuration file used by the malware
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To encrypt information to be exfiltrated from the victim system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To obfuscate strings in the malicious binary to hide from static analysis
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before we delve into how malware uses an encryption algorithm, let's try to
+    understand the basics and some of the terms that we will use throughout this chapter.
+    A *plaintext* refers to an unencrypted message; this might be a command and control
+    (C2) traffic or content of the file that malware wants to encrypt. A *ciphertext*
+    refers to an encrypted message; this might be an encrypted executable or encrypted
+    command that malware receives from the C2 server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Malware encrypts the *plaintext*, by passing it as input along with the *key*
+    to an encryption function, which produces a *ciphertext*. The resultant ciphertext
+    is typically used by the malware to write to file or send over the network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00281.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the same manner, malware may receive an encrypted content from the C2 server
+    or from the file and then decrypt it by passing the *encrypted content* and the
+    *key* to the decryption function, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00282.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: While analyzing malware, you may want to understand how a particular content
+    is encrypted or decrypted. To do this, you will mainly focus on identifying either
+    the encryption or the decryption function and the key used to encrypt or decrypt
+    the content. For instance, if you wish to determine how the network content is
+    encrypted, then you will likely find the encryption function just before the network
+    output operation (such as `HttpSendRequest()`). In the same manner, if you wish
+    to know how the encrypted content from the C2 is decrypted, then you are likely
+    to find the decryption function after the content is retrieved from C2 using an
+    API such as `InternetReadFile()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the encryption/decryption function is identified, examining these functions
+    will give you an idea as to how the content is encrypted/decrypted, the key used,
+    and the algorithm used to obfuscate the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. Simple Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most of the time, attackers use very simple encoding algorithms such as `Base64
+    encoding` or `xor encryption` to obscure the data. The reason why attackers use
+    simple algorithms because they are easy to implement, takes fewer system resources,
+    and are just enough to obscure the content from the security products and the
+    security analyst.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.1 Caesar Cipher
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Ceaser cipher*, also known as *shift cipher*, is a traditional cipher and
+    is one of the simplest encoding techniques. It encodes the message by shifting
+    each letter in the plaintext with some fixed number of positions down the alphabet.
+    For example, if you shift character `''A''` down `3` positions, then you will
+    get `''D''`, and `''B''` will be `''E''` and so on,  wrapping back to `''A''`
+    when the shift reaches `''X''`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.1.1 Working Of Caesar Cipher
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The best way to understand Caesar cipher is to write down the letters from
+    `A` to `Z` and assign an index, from `0` to `25`, to these letters, as follows
+    In other words, `''A''` corresponds to index `0`, `''B''` corresponds to index
+    `1`, and so on. A group of all the letters from `A` to `Z` is called the *character
+    set*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00283.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, let's say you want to shift the letters by three positions, then `3` becomes
+    your key. To encrypt the letter `'A'`, add the index of letter `A`, which is `0`,
+    to the key `3`; this results in `0+3 = 3`. Now use the result `3` as an index
+    to find the corresponding letter, which is `'D'`, so `'A'` is encrypted to `'D'`.
+    To encrypt `'B'`, you will add the index of `'B' (1)` to the key `3`, which results
+    in `4`, and the index `4` is associated with `'E'`, so `'B'` encrypts to `'E'`,
+    and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The problem with the previous technique arises when we reach `''X''`, which
+    has an index of `23`. When we add `23+3`, we get `26`, but we know that there
+    is no character associated with index `26` because the maximum index value is
+    `25`. We also know that index `26`, should wrap back to index `0` (which is associated
+    with `''A''`). To solve this problem, we use the *modulus* operation with the
+    length of the character set. In this case, the length of the character set `ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+    is `26`. Now, to encrypt `''X''`, we use the index of `''X'' (23)` and add it
+    to the `key (3)` and perform the modulus operation with the length of the character
+    set `(26)`, as follows. The result of this operation is `0`, which is used as
+    the index to find the corresponding character, that is, `''A''`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The modulus operation allows you to cycle back around to the beginning. You
+    can use the same logic to encrypt all the characters (from `A` to `Z`) in the
+    character set and wrap back to the beginning. In *Caesar cipher*, you can get
+    the index of the encrypted (ciphertext) character using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the same manner, you can get the index of the plaintext (decrypted) character
+    using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The following diagram shows the character set, the encryption, and the decryption
+    of the text `"ZEUS"` using `3` as the key (shifting three positions). After encryption,
+    the text `"ZEUS"` is translated to `"CHXV"`, and then the decryption translates
+    it back to `"ZEUS"`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00284.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.1.2 Decrypting Caesar Cipher In Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following is an example of a simple Python script that decrypts the string
+    `"CHXV"` back to `"ZEUS"`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Some malware samples may use a modified version of Caesar (shift) cipher; in
+    that case, you can modify the previously mentioned script to suit your needs.
+    The malware *WEBC2-GREENCAT*, used by the APT1 group, fetched the content from
+    the C2 server and decrypted the content using the modified version of caesar cipher.
+    It used a 66-character' character set, `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/-`,
+    and a key of `56`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2 Base64 Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Using Caesar cipher, an attacker can encrypt letters, but it is not good enough
+    to encrypt binary data. Attackers use various other encoding/encryption algorithms
+    to encrypt binary data. `Base64` encoding allows an attacker to encode binary
+    data to an ASCII string format. For this reason, you will often see attackers
+    using `Base64`-encoded data in plain text protocols such as HTTP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2.1 Translating Data To Base64
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Standard Base64 encoding consists of the following 64-character set. Each 3
+    bytes (24 bits) of the binary data that you want to encode is translated into
+    four characters from the character set mentioned later. Each translated character
+    is 6 bits in size. In addition to the following characters, the `=` character
+    is used for padding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To understand how the data is translated into `Base64` encoding, first, build
+    the `Base64` index table by assigning index `0` to `63` to the letters in the
+    character set, as shown here. As per the following table, the index `0` corresponds
+    to the letter `A` and the index `62` corresponds to `+`, and so on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00285.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, let''s say we want to `Base64` encode the text `"One"`. To do this, we
+    need to convert the letters to their corresponding bit values, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Base64` algorithm processes 3 bytes (24 bits) at a time; in this case,
+    we have exactly `24` bits that are placed next to each other, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `24` bits are then split into four parts, each consisting of `6` bits and
+    converted to its equivalent decimal value. The decimal value is then used as an
+    index to find the corresponding value in the `Base64` index table, so the text
+    `One` encodes to `T25l`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Decoding Base64 is a reverse process, but it is not essential to understand
+    the workings of `Base64` encoding or decoding, because there are python modules
+    and tools that allow you to decode `Base64`-encoded data without having to understand
+    the algorithm. Understanding it will help in situations where attackers use a
+    custom version of `Base64` encoding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2.2 Encoding And Decoding Base64
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To encode data in `Python(2.x)` using `Base64`, use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To decode `base64` data in python, use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*CyberChef* by GCHQ is a great web application that allows you to carry out
+    all kinds of encoding/decoding, encryption/decryption, compression/decompression,
+    and data analysis operations within your browser. You can access CyberChef at [https://gchq.github.io/CyberChef/](https://gchq.github.io/CyberChef/),
+    and more details can be found at [https://github.com/gchq/CyberChef.](https://github.com/gchq/CyberChef)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also use a tool such as *ConverterNET* ([http://www.kahusecurity.com/tools/](http://www.kahusecurity.com/tools/))
+    to encode/decode `base64` data. *ConvertNET* offers various features and allows
+    you to convert data to/from many different formats. To encode, enter the text
+    to encode in the input field and press the Text to Base64 button. To decode, enter
+    the encoded data in the input field and press the Base64 to Text button. The following
+    screenshot shows the `Base64` encoding of the string `Hi` using ConverterNET:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00286.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `=` character at the end of the encoded string is the padding character.
+    If you recall, the algorithm converts the three bytes of input into four characters,
+    and as `Hi` has only two characters, it is padded to make it three characters;
+    whenever padding is used, you will see the `=` characters at the end of the `Base64`-encoded
+    string. What this means is the length of a valid `Base64`-encoded string will
+    always be multiples of `4`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2.3 Decoding Custom Base64
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Attackers use different variations of `Base64` encoding; the idea is to prevent
+    the `Base64` decoding tools from decoding the data successfully. In this section,
+    you will understand some of these techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some malware samples remove the padding character `(=)` from the end. A C2
+    communication made by a malware sample (*Trojan Qidmorks*) is shown later. The
+    following post payload looks like it is encoded with `base64` encoding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00287.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When you try to decode the `POST` payload, you get the `Incorrect` padding
+    error as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00288.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The reason for this error is that the length of the encoded string `(150)`
+    is not multiples of `4`. In other words, two characters are missing from the Base64-encoded
+    data, which is very likely to be padding characters (`==`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Appending two padding characters `(==)` to the encoded string successfully
+    decodes the data, as shown here. From the decoded data, it can be seen that malware
+    sends the operating system version (`6.1` that represents Windows 7), the privilege
+    level of the user, and the parent process to the C2 server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00289.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Sometimes, malware authors use a slight variation of `base64` encoding. For
+    instance, an attacker can use a character set where characters `-` and `_` are
+    used in place of `+` and `/` (63^(rd) and 64^(th) characters) as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you identify the characters that are replaced in the original character
+    set to encode the data, then you can use the code such as the one shown here.
+    The idea here is to replace the modified characters back to the original characters
+    in the standard character set and then decode it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Sometimes, malware authors alter the order of the characters in the character
+    set. For example, they may use the following character set instead of the standard
+    character set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When attackers use a nonstandard `Base64` character set, you can decode the
+    data using the following code. Note that in the following code, in addition to
+    the `64` characters, the variables `chr_set` and `non_chr_set` also include the
+    padding character `=` (65^(th) character), which is required for proper decoding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also perform custom Base64 decoding using the *ConverterNET* tool by
+    selecting Conversions | Convert Custom Base64. Just enter the custom `Base64`
+    character set in the Alphabet field, and then enter the data to decode in the
+    Input field and press the Decode button, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00290.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.2.4 Identifying Base64
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You can identify a binary using base64 encoding by looking for a long string
+    comprising the `Base64` character set (alphanumeric characters,  `+` and `/`).
+    The following screenshot shows the `Base64` character set in the malicious binary,
+    suggesting that malware probably uses `Base64` encoding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00291.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can use the strings *cross-references* feature (*covered in Chapter 5*)
+    to locate the code where the `Base64` character set is being used, as shown in
+    the following screenshot. Even though it is not necessary to know where the `Base64`
+    character set is used in the code to decode `Base64` data, sometimes, locating
+    it can be useful, such as in cases where malware authors use `Base64` encoding
+    along with other encryption algorithms. For instance, if malware encrypts the
+    C2 network traffic with some encryption algorithm and then uses `Base64` encoding;
+    in that case, locating the `Base64` character set will likely land you in the
+    `Base64` function. You can then analyze the `Base64` function or identify the
+    function that calls the `Base64` function ( Using *Xrefs to* feature), which will probably lead
+    you to the encryption function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00292.jpeg)You can use string cross-references in *x64dbg;* to
+    do this, make sure that the debugger is paused anywhere inside the module and
+    then right-click on the disassembly window (CPU window) and select Search for
+    | Current Module | String references.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another method to detect the presence of the `Base64` character set in the
+    binary is using a *YARA* rule (YARA was covered in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485),
+    *Static Analysis*) such as the one shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.3 XOR Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Apart from `Base64` encoding, another common encoding algorithm used by the
+    malware authors is the `XOR` encoding algorithm. `XOR` is a bitwise operation
+    (like `AND`*,* `OR`, and `NOT`), and it is performed on the corresponding bits
+    of the operands. The following table depicts the properties of the `XOR` operation.
+    In the `XOR` operation, when both the bits are the same, the result is `0`; otherwise,
+    the result is `1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **A** | **B** | **A^B** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `0` | `0` | `0` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `1` | `0` | `1` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `0` | `1` | `1` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `1` | `1` | `0` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'For example, when you `XOR` `2` and `4`, that is, `2 ^ 4`, the result is `6`.
+    The way it works is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.3.1 Single Byte XOR
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In a single byte `XOR`, each byte from the plaintext is `XORed` with the encryption
+    key. For example, if an attacker wants to encrypt plaintext `cat` with a key of
+    `0x40`, then each character (byte) from the text is `XORed` with `0x40`, which
+    results in the cipher-text `#!4`. The following diagram displays the encryption
+    process of each individual characters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00293.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Another interesting property of `XOR` is that when you `XOR` the *ciphertext*
+    with the same key used to encrypt, you get back the *plain text*. For example,
+    if you take the ciphertext `#!4` from the previous example and `XOR` it with `0x40`
+    (key), you get back `cat`. This means that if you know the key, then the same
+    function can be used to both encrypt and decrypt the data. The following is a
+    simple python script to perform `XOR` decryption (the same function can be used
+    to perform `XOR` encryption as well):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With an understanding of the `XOR` encoding algorithm, let''s look at an example
+    of a keylogger, which encodes all the typed keystrokes to a file. When this sample
+    is executed, it logs the keystrokes, and it opens a file (where all the keystrokes
+    will be logged) using the `CreateFileA()` API, as shown later. It then writes
+    the logged keystrokes to the file using the `WriteFile()` API. Note how the malware
+    calls a function (renamed as `enc_function`) after the call to `CreateFileA()`
+    and before the call to `WriteFile()`; this function encodes the content before
+    writing it to the file. The `enc_function` takes two arguments; the ^(1st) argument
+    is the buffer containing the data to encrypt, and the 2^(nd) argument is the length
+    of the buffer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00294.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Examining the `enc_function` shows that the malware uses single byte `XOR`.
+    It reads each character from the data buffer and encodes with a key of `0x5A`,
+    as shown here. In the following XOR loop, the `edx` register points to the data
+    buffer, the `esi` register contains the length of the buffer, and the `ecx` register
+    acts as an index into the data buffer that is incremented at the end of the loop,
+    and loop is continued as long as the index value `(ecx)` is less than the length
+    of the buffer `(esi)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00295.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.3.2 Finding XOR Key Through Brute-Force
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In a single byte `XOR`, the length of the key is one byte, so there can be
+    only `255` possible keys `(0x0 - 0xff)` with the exception of `0` as the *ke*y
+    because XORing any value with `0` will give the same value as result (that is,
+    no encryption). Since there are only `255` keys, you can try all possible keys
+    on the encrypted data. This technique is useful if you know what to find in the
+    decrypted data. For example, upon executing a malware sample, let''s say the malware
+    gets the computer hostname `mymachine` and concatenates with some data and performs
+    single byte xor encryption, which encrypts it to a ciphertext `lkwpjeia>i}ieglmja`.
+    Let''s assume that this ciphertext is exfiltrated in a C2 communication. Now,
+    to determine the key used to encrypt the ciphertext, you can either analyze the
+    encryption function or brute-force it. The following python commands implement
+    the brute-force technique; since we expect the decrypted string to contain `"mymachine"`,
+    the script decrypts the encrypted string (ciphertext) with all possible keys and
+    displays the key and the decrypted content when `"mymachine"` is found. In the
+    later-mentioned example, you can see the key was determined as `4` and the decrypted
+    content `hostname:mymachine`, includes the hostname `mymachine`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can also use a tool such as *ConverterNET* to brute-force and determine
+    the key. To do this, select Tools | Key Search/Convert. In the window that pops
+    up, enter the encrypted content and the match string and press the Search button.
+    If the key is found, it is displayed in the Result field as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00296.jpeg)The brute-force technique is useful in determining
+    the `XOR` key used to encrypt a PE file (such as EXE or DLL). Just look for the
+    match string `MZ` or `This program cannot be run in DOS mode` in the decrypted
+    content.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.3.3 NULL Ignoring XOR Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In `XOR` encoding, when a null byte `(0x00)` is `XORed` with a key, you get
+    back the key as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What this means is that whenever a buffer containing a large number of null
+    bytes is encoded, the single byte xor key becomes clearly visible. In the following
+    example, the `plaintext` variable is assigned a string containing three null bytes
+    at the end, which is encrypted with a key `0x4b`  (character `K`), and the encrypted
+    output is printed both in hex string format and text format. Note how the three
+    `null` bytes in `plaintext` variable are translated to `XOR` key values `0x4b
+    0x4b 0x4b` or (`KKK`) in the encrypted content. This property of `XOR` makes it
+    easy to spot the key if the null bytes are not ignored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows the `XOR`-encrypted communication of a malware
+    sample (*HeartBeat RAT*). Note the presence of the byte `0x2` spread all over
+    the place; this is due to malware encrypting a large buffer (containing null bytes)
+    with the `XOR` key of `0x2`. For more information on the reverse engineering of
+    this malware, refer to the author''s Cysinfo meet presentation at [https://cysinfo.com/session-10-part-1-reversing-decrypting-communications-of-heartbeat-rat/](https://cysinfo.com/session-10-part-1-reversing-decrypting-communications-of-heartbeat-rat/):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00297.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To avoid the null byte problem, malware authors ignore the null byte `(0x00)`
+    and the *encryption key* during encryption, as shown in the commands mentioned
+    here. Note that, in the following code, the plaintext characters are encrypted
+    with the key `0x4b`, except the null byte (`0x00`) and the encryption key byte
+    (`0x4b`); as a result of this, in the encrypted output, the null bytes are preserved
+    without giving away the encryption key. As you can see, when an attacker uses
+    this technique, it is not easy to determine the *key* just by looking at the encrypted
+    content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.3.4 Multi-byte XOR Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Attackers commonly use multi-byte `XOR` because it provides better defense
+    against the brute-force technique. For example, if a malware author uses 4-byte
+    `XOR` key to encrypt the data and then to brute-force, you will need to try `4,294,967,295
+    (0xFFFFFFFF)` possible keys instead of `255 (0xFF)` keys. The following screenshot
+    shows the `XOR` decryption loop of the malware (*Taidoor*). In this case, *Taidoor*
+    extracted the encrypted PE (exe) file from its resource section and decrypted
+    it using the 4-byte `XOR` key `0xEAD4AA34`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00298.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the encrypted resource in the *Resource Hacker*
+    tool. The resource can be extracted and saved to a file by right-clicking on the
+    resource and then selecting **Save Resource to a *.bin file**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00299.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following is a python script that decodes the encoded resource using a `4-byte
+    XOR` key `0xEAD4AA34` and writes the decoded content to a file (`decrypted.bin`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The decrypted content is a PE (executable file) as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 1.3.5 Identifying XOR Encoding
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To identify XOR encoding, load the binary in IDA and search for the `XOR` instruction
+    by selecting Search | text. In the dialog that appears, enter `xor` and select
+    Find all occurrences as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00300.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When you click on OK, you will be presented with all the occurrences of `XOR.`
+    It is very common to see the `XOR` operation where the operands are the same registers,
+    such as `xor eax,eax` or `xor ebx,ebx`. These instructions are used by the compiler
+    to zero out register values, and you can ignore these instructions. To identify
+    `XOR` encoding, look for *(a)* `XOR` of a register (or memory reference) with
+    a constant value such as the one shown here, or *(b)* look for `XOR` of a register
+    (or memory reference) with a different register (or memory reference). You can
+    navigate to the code by double-clicking on the entry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00301.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following are some of the tools you can use to determine the `XOR` key.
+    In addition to using XOR encoding, attackers may also use `ROL, ROT or SHIFT`
+    operations to encode data. *XORSearch* and *Balbuzard* mentioned here also support `ROL`,
+    `ROT`, and `Shift` operations in addition to `XOR`. *CyberChef* supports almost
+    all types of encoding, encryption, and compression algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*CyberChef:* [https://gchq.github.io/CyberChef/](https://gchq.github.io/CyberChef/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*XORSearch* by Didier Stevens: [https://blog.didierstevens.com/programs/xorsearch/](https://blog.didierstevens.com/programs/xorsearch/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Balbuzard:* [https://bitbucket.org/decalage/balbuzard/wiki/Home](https://bitbucket.org/decalage/balbuzard/wiki/Home)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*unXOR:* [https://github.com/tomchop/unxor/#unxor](https://github.com/tomchop/unxor/#unxor)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*brxor.py:* [https://github.com/REMnux/distro/blob/v6/brxor.py](https://github.com/REMnux/distro/blob/v6/brxor.py)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*NoMoreXOR.py:* [https://github.com/hiddenillusion/NoMoreXOR](https://github.com/hiddenillusion/NoMoreXOR)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 2\. Malware Encryption
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Malware authors often use simple encoding techniques, because it is just enough
+    to obscure the data, but sometimes, attackers also use encryption. To identify
+    the use of cryptographic functionality in the binary, you can look for cryptographic
+    indicators (signatures) such as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strings or imports that reference cryptographic functions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cryptographic constants
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unique sequences of instructions used by cryptographic routines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 2.1 Identifying Crypto Signatures Using Signsrch
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A useful tool to search for the cryptographic signatures in a file or process
+    is *Signsrch*, which can be downloaded from [http://aluigi.altervista.org/mytoolz.htm](http://aluigi.altervista.org/mytoolz.htm).
+    This tool relies on cryptographic signatures to detect encryption algorithms. 
+    The cryptographic signatures are located in a text file, `signsrch.sig`. In the
+    following output, when `signsrch` is run with the `-e` option, it displays the
+    relative virtual addresses where the `DES` signatures were detected in the binary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you know the address where the cryptographic indicators are found, you
+    can use IDA to navigate to the address. For example, if you want to navigate to
+    the address `00410438` (`DES initial permutation IP`), load the binary in IDA
+    and select Jump | Jump to address (or *G* hotkey) and enter the address as shown
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00302.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once you click on OK, you will reach the address containing the indicator (in
+    this case, `DES initial permutation IP`, labeled as `DES_ip`) as shown in the
+    following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00303.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, to know where and how this crypto indicator is used in the code, you can
+    use the cross-references (*Xrefs-to*) feature. Using the cross-references (*Xrefs
+    to*) feature shows that `DES_ip` is referenced within a function `sub_4032B0`
+    at address `0x4032E0` (`loc_4032E0`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00304.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, navigating to the address `0x4032E0` directly lands you inside the `DES`
+    encryption function, as shown in the following screenshot. Once the encryption
+    function is found, you can use cross-references to examine it further to understand
+    in what context the encryption function gets called and the key that is used to
+    encrypt the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00305.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Instead of using the `-e` option to locate the signature and then manually
+    navigating to the code where the signature is used, you can use the `-F` option,
+    which will give you the address of the first instruction where the crypto indicator
+    is used. In the following output, running `signsrch` with the `-F` option directly
+    displays the address `0x4032E0` where the crypto indicator `DES initial permutation
+    IP` (`DES_ip`) is used in the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `-e` and `-F` options display the addresses relative to the *preferred
+    base address* specified in the PE header. For instance, if the *preferred base
+    address* of the binary is `0x00400000`, then the addresses returned by the `-e`
+    and `-F` options are determined by adding the relative virtual address with the
+    preferred base address `0x00400000`. When you run (or debug) the binary, it can
+    be loaded at any address other than the preferred base address (for example, `0x01350000`).
+    If you wish to locate the address of the crypto indicator in a running process
+    or while you are debugging a binary (in IDA or x64dbg), then you can run the `signsrch`
+    with the **`-P <pid or process name>`** option. The `-P` option automatically
+    determines the base address where the executable is loaded, and then calculates
+    the virtual address of crypto signatures, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: In addition to detecting encryption algorithms, *Signsrch* can detect compression
+    algorithms, some anti-debugging code, and Windows cryptographic functions, which
+    normally starts with `Crypt` such as `CryptDecrypt()` and `CryptImportKey()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Detecting Crypto Constants Using FindCrypt2
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Findcrypt2* ([http://www.hexblog.com/ida_pro/files/findcrypt2.zip](http://www.hexblog.com/ida_pro/files/findcrypt2.zip))
+    is an IDA Pro plug-in that searches for cryptographic constants used by many different
+    algorithms in memory. To use the plugin, download it, and copy the `findcrypt.plw`
+    file into the IDA plugins folder. Now, when you load the binary, the plugin is
+    automatically run, or you can manually invoke it by selecting Edit | Plugins |
+    Find crypt v2. The results of the plugin are displayed in the output window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00306.jpeg)The *FindCrypt2* plugin can also be run when in the
+    debugging mode. *FindCrypt2* works well if you are using IDA 6.x or a lower version;
+    at the time of writing this book, it did not seem to work with IDA 7.x version
+    (possible due to changes in the IDA 7.x API).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Detecting Crypto Signatures Using YARA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another way to identify the use of cryptography in a binary is by scanning the
+    binary with YARA rules containing crypto signatures. You can either write your
+    own YARA rules, or you can download the YARA rules written by other security researchers
+    (such as at [https://github.com/x64dbg/yarasigs/blob/master/crypto_signatures.yara](https://github.com/x64dbg/yarasigs/blob/master/crypto_signatures.yara))
+    and then scan the binary with the YARA rules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The *x64dbg* integrates YARA; this is useful if you wish to scan for the crypto
+    signatures in a binary while debugging. You can load the binary into *x64dbg*
+    (make sure the execution is paused somewhere in the binary), then right-click
+    on the CPU window and select YARA (or *Ctrl + Y*); this will bring up the Yara
+    dialog shown here. Click on File and loacte the file containing *YARA* rules.
+    You can also load multiple files containing YARA rules from a directory by clicking
+    on the Directory button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00307.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the *cryptographic constants* detected in a
+    malicious binary as a result of scanning it with the YARA rules containing the
+    crypto signatures. Now you can right-click on any of the entries and select Follow
+    in Dump to look at the data in the dump window, or, if the signature is related
+    to the cryptographic routine, then you can double-click on any of the entries
+    to navigate to the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00308.jpeg)Encryption algorithms such as RC4 do not use Cryptographic
+    constants because of which it is not easy to detect it using Crypto signatures.
+    Often, you will see attackers using RC4 to encrypt the data because it is easy
+    to implement; the steps used in RC4 are explained in detail in this Talos blog
+    post: [http://blog.talosintelligence.com/2014/06/an-introduction-to-recognizing-and.html](http://blog.talosintelligence.com/2014/06/an-introduction-to-recognizing-and.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.4 Decrypting In Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After you have identified the encryption algorithm and the key used to encrypt
+    the data, you can decrypt the data using the *PyCryto* ([https://www.dlitz.net/software/pycrypto/](https://www.dlitz.net/software/pycrypto/))
+    Python module. To install *PyCrypto,* you can use `apt-get install python-crypto`
+    or `pip install pycrypto` or compile it from the source. Pycrypto supports hashing
+    algorithms such as `MD2`,  `MD4`, `MD5`,  `RIPEMD`, ` SHA1`, and `SHA256`. It
+    also supports encryption algorithms such as `AES`,  `ARC2`,  `Blowfish`,  `CAST`, 
+    `DES`,  `DES3 (Triple DES)`,   `IDEA`,  `RC5` and `ARC4`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following Python commands demonstrate how to generate `MD5`, `SHA1`, and
+    `SHA256` hashes using the *Pycrypto* module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To decrypt the content, import the appropriate encryption modules from `Crypto.Cipher`.
+    The following example shows how to encrypt and decrypt using DES in ECB mode:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 3\. Custom Encoding/Encryption
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Sometimes, attackers use custom encoding/encryption schemes, which makes it
+    difficult to identify the crypto (and the key), and it also makes reverse engineering
+    harder. One of the custom encoding methods is to use a combination of encoding
+    and encryption to obfuscate the data; an example of such a malware is *Etumbot* ([https://www.arbornetworks.com/blog/asert/illuminating-the-etumbot-apt-backdoor/](https://www.arbornetworks.com/blog/asert/illuminating-the-etumbot-apt-backdoor/)).
+    The *Etumbot* malware sample, when executed, obtains the `RC4` key from the C2
+    server; it then uses the obtained `RC4` key to encrypt the system information
+    (such as hostname, username, and IP address), and the encrypted content is further
+    encoded using custom `Base64` and exfiltrated to the C2\. The C2 communication
+    containing the obfuscated content is shown later. For reverse engineering details
+    of this sample, refer to the Author''s presentation and the video demo ([https://cysinfo.com/12th-meetup-reversing-decrypting-malware-communications/](https://cysinfo.com/12th-meetup-reversing-decrypting-malware-communications/)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00309.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To deobfuscate the content, it needs to be decoded using custom `Base64` first
+    and then decrypted using `RC4`; these steps are performed using the following
+    python commands. The output displays the decrypted system information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instead of using a combination of standard encoding/encryption algorithms,
+    some malware authors implement a completely new encoding/encryption schemes. An
+    example of such a malware is the one used by the *APT1* group. This malware decrypts
+    a string to a URL; to do this, malware calls a user-defined function (renamed
+    as `Decrypt_Func` in the later-mentioned screenshot), which implements the custom
+    encryption algorithm. The `Decrypt_Func` accepts three arguments; the 1^(st) argument
+    is the buffer containing encrypted content, the 2^(nd) argument is a buffer where
+    the decrypted content will be stored, and the 3^(rd) argument is the length of
+    the buffer. In the following screenshot, the execution is paused before executing `Decrypt_Func`,
+    and it shows the ^(1st) argument (buffer containing encrypted content):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00310.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Depending on your objective, you can either analyze the `Decrypt_Func` to understand
+    the workings of the algorithm and then write a decryptor as covered in the author''s
+    presentation ([https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/](https://cysinfo.com/8th-meetup-understanding-apt1-malware-techniques-using-malware-analysis-reverse-engineering/)),
+    or you can allow the malware to decrypt the content for you. To let the malware
+    decrypt the content, just *step over* the `Decrypt_Func` (which will finish executing
+    the decryption function) and then inspect the 2^(nd) argument (buffer where the
+    decrypted content is stored). The following screenshot shows the decrypted buffer
+    (2^(nd) argument) containing the malicious URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00311.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The previously mentioned technique of allowing the malware to decode the data
+    is useful if the decryption function is called few times. If the decryption function
+    is called multiple times in a program, it would be more efficient to automate
+    the decoding process using debugger scripting (*covered in* [Chapter 6](part0184.html#5FF7G0-ac10ba3f98854c44bac1c2c5641ca485),
+    *Debugging Malicious Binary*) rather than doing it manually. To demonstrate this,
+    consider the code snippet from a 64-bit malware sample (in the following screenshot).
+    Note how the malware calls a function (renamed as `dec_function`) multiple times;
+    if you look at the code, you will note that an encrypted string is passed to this
+    function as the 1^(st) argument (in `rcx` register), and after executing the function,
+    the return value in `eax` contains the address of the buffer where the decrypted
+    content is stored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00312.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot displays the *cross-references* to the `dec_function`;
+    as you can see, this function is called multiple times in the program:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00313.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Each time `dec_function` is called, it decrypts a string. To decrypt all the
+    strings passed to this function, we can write an *IDAPython* script (such as the
+    one shown here):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we have renamed the decryption function to `dec_function`, it is accessible
+    from the names window in IDA. The previous script iterates through the names window
+    to identify the `dec_function` and performs the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the `dec_function` is present, it determines the address of `dec_function`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It uses the address of `dec_function` to determine the cross-references (`Xrefs
+    to`) to `dec_function`, which gives all the addresses where `dec_function` is
+    called.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It sets the breakpoint on all the addresses where `dec_function` is called.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It starts the debugger automatically, and when the breakpoint is hit at `dec_function`,
+    it reads the encrypted string from the address pointed to by the `rcx` register.
+    A point to remember is, for the IDA debugger to start automatically, be sure to
+    select the debugger (such as Local Windows debugger), either from the Toolbar
+    area or by choosing **Debugger | Select debugger**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It then *steps over* the function to execute the decryption function (`dec_function`)
+    and reads the return value `(rax)`, which contains the address of the decrypted
+    string. It then prints the decrypted string.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It repeats the previous steps, to decrypt each string passed to `dec_function`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After running the previous script, the encrypted strings and their corresponding
+    decrypted strings are displayed in the output window as shown here. From the output,
+    you can see that the malware decrypts the file names, registry name, and API function
+    names during runtime to avoid suspicion. In other words, these are the strings
+    the attacker wants to hide from static analysis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00314.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 4\. Malware Unpacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Attackers go to great lengths to protect their binary from anti-virus detection
+    and to make it difficult for a malware analyst to perform static analysis and
+    reverse engineering. Malware authors often use *packers* and *cryptors* (*see*
+    [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485)*, Static Analysis,
+    for a basic introduction to packers and how to detect them*) to obfuscate the
+    executable content. A *packer* is a program that takes a normal executable, compresses
+    its contents, and generates a new obfuscated executable. A *cryptor* is like a
+    packer instead of compressing the binary; it encrypts it. In other words, a packer
+    or cryptor transforms an executable into a form that is difficult to analyze.
+    When a binary is packed, it reveals very less information; you will not find strings
+    revealing any valuable information, the number of imported functions will be lower,
+    and the program instructions will be obscured. To make sense of a packed binary,
+    you need to remove the obfuscation layer (unpack) applied to the program; to do
+    this, it is important to first understand the workings of a packer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When a normal executable is passed through a packer, the executable content
+    is compressed, and it adds an *unpacking stub* (*decompression routine*). The
+    packer then modifies the executable''s entry point to the location of the stub
+    and generates a new packed executable. When the packed binary is executed, the
+    unpacking stub extracts the original binary (during runtime) and then triggers
+    the execution of the original binary by transferring the control to the *original
+    entry point (OEP)* as depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00315.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To unpack a packed binary, you can either use automated tools or do it manually.
+    The automated approach saves time, but it's not completely reliable (sometimes
+    it works and sometimes it doesn't), whereas the manual method is time-consuming,
+    but once you acquire the skills, it is the most reliable method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.1 Manual Unpacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To unpack the binary packed with a packer, we normally perform the following
+    general steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step is to identify the *OEP;* as mentioned previously, when a packed
+    binary is executed, it extracts the original binary, and at some point, it transfers
+    control to the *OEP*. The original entry point (OEP) is the address of the malware's
+    first instruction (where malicious code begins) before it was packed. In this
+    step, we identify the instruction in the packed binary that will jump (lead us)
+    to the OEP.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The next step involves executing the program until the OEP is reached; the idea
+    is to allow the malware stub to unpack itself in memory and pause at the OEP (before
+    executing malicious code).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The third step involves dumping the unpacked process from the memory to disk.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The final step involves fixing the *Import Address Table (IAT)* of the dumped
+    file.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the next few sections, we will look at these steps in detail. To demonstrate
+    the previous concepts, we will use a malware packed with the *UPX packer* ([https://upx.github.io/](https://upx.github.io/)).
+    The tools and techniques covered in the next few sections should give you an idea
+    of the manual unpacking process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.1.1 Identifying The OEP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, you will understand the techniques to identify the OEP in
+    the packed binary. In the following screenshot, examining the packed binary in *pestudio* ([https://www.winitor.com/](https://www.winitor.com/)) shows
+    many indicators that suggest the file is packed. The packed binary contains three
+    sections, `UPX0`, `UPX1`, and `.rsrc`. From the screenshot, you can see that the
+    entry point of the packed binary is in the `UPX1` section, so the execution begins
+    here, and this section contains the decompression stub that will unpack the original
+    executable at runtime. Another indicator is that the raw-size of the `UPX0` section
+    is `0`, but the virtual-size is `0x1f000`; this suggests that the `UPX0` section
+    does not occupy any space on the disk, but it occupies space in memory; to be
+    specific, it occupies a size of `0x1f000` bytes (this is because the malware decompresses
+    the executable in memory and stores it in the `UPX0` section during runtime).
+    Also, the `UPX0` section has a `read`, `write`, `execute` permission, most likely
+    because after decompressing the original binary, the malicious code will start
+    executing in `UPX0`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00316.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Another indicator is that the packed binary contains obfuscated strings, and
+    when you load the binary in IDA, IDA recognizes that the import address table
+    (*IAT*) is in a nonstandard location and displays the following warning; this
+    is due to `UPX` packing all the sections and *IAT*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00317.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The binary consists of only one built-in function and only 5 imported functions;
+    all these indicators suggest that the binary is packed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00318.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To find the OEP, you will need to locate the instruction in the packed program
+    that transfers control to the OEP. Depending on the packer, this can be simple
+    or challenging; you will normally focus on those instructions that transfer control
+    to an unclear destination. Examining the flowchart of the function in the packed
+    binary shows a jump to a location, which is highlighted in red by IDA:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00319.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The red color is IDA''s way of saying it cannot analyze because the jump destination
+    is unclear. The following screenshot shows the jump instruction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00320.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Double-clicking on the *jump destination* `(byte_40259B)` shows that the jump
+    will be taken to `UPX0` (from `UPX1`). In other words, upon execution, the malware
+    executes decompression stub in `UPX1`, which unpacks the original binary, copies
+    unpacked code in `UPX0`, and the jump instruction will most likely transfer the
+    control to the unpacked code in `UPX0` (from `UPX1`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00321.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, we have located the instruction that we believe will jump to
+    the `OEP`. The next step is to load the binary in a debugger and set a *breakpoint*
+    at the instruction performing the jump and execute until it reaches that instruction.
+    To do that, the binary was loaded into *x64dbg* (you can also use the IDA debugger
+    and follow the same steps) and a *breakpoint* was set and executed until the jump
+    instruction. As shown in the following screenshot, the execution is paused at
+    that jump instruction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00322.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can now assume that the malware has finished unpacking; now, you can press
+    *F7* once (step into), which takes you to the original entry point at address
+    `0x0040259B.` At this point, we are at the malware''s first instruction (after
+    unpacking):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00323.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 4.1.2 Dumping Process Memory With Scylla
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we have located the OEP, the next step is to dump the process memory
+    to disk. To dump the process, we will use a tool named *Scylla* ([https://github.com/NtQuery/Scylla](https://github.com/NtQuery/Scylla));
+    it is a great tool to dump the process memory and to rebuild the import address
+    table. One of the great features of *x64dbg* is that it integrates *Scylla*, and
+    Scylla can be launched by clicking on Plugins | Scylla, (or *Ctrl* *+ I*). To
+    dump the process memory, while the execution is paused at the OEP, launch Scylla,
+    make sure that the OEP field is set to correct address as follows; if not you
+    need to set it manually and click on the Dump button and save the dumped executable
+    to disk (in this case, it was saved as `packed_dump.exe`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00324.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, when you load the dumped executable into IDA, you will see the entire
+    list of built-in functions (which was not visible in the packed program before),
+    and the function code is no longer obfuscated, but still, the *imports* are not
+    visible, and the API call displays addresses instead of names. To overcome this
+    problem, you need to rebuild the import table of the packed binary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00325.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 4.1.3 Fixing The Import Table
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To fix the imports, go back to *Scylla*, and click on the IAT Autosearch button,
+    which will scan the memory of the process to locate the import table; if found,
+    it populates the VA and the size fields with appropriate values. To get the list
+    of imports, click on the Get Imports button. The list of imported functions determined
+    using this method is shown here. Sometimes, you may note invalid entries (with
+    no tick mark next to the entry) in the results; in such case, right-click those
+    entries and choose Cut Thunk to delete them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00326.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After determining the imported functions using the previous step, you need
+    to apply the patch to the dumped executable (`packed_dump.exe`). To do that, click
+    on the Fix Dump button, which will launch the file browser where you can select
+    the file that you dumped before. *Scylla* will patch the binary with the determined
+    import functions, and a new file will be created with a file name containing `_SCY`
+    at the end (such as `packed_dumped_SCY.exe`). Now, when you load the patched file
+    in IDA, you will see references to the imported function, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00327.jpeg)When you are dealing with some of the packers, the IAT
+    Autosearch button in Scylla may not be able to find the module''s import table;
+    in such a case, you may need to put in some extra effort to manually determine
+    the start of the import table and the size of the import table and enter them
+    in the VA and the Size fields.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.2 Automated Unpacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are various tools that allow you to unpack the malware packed with common
+    packers such as *UPX*, *FSG*, and *AsPack*. Automated tools are great for known
+    packers and can save time, but remember, it may not always work; that is when
+    the manual unpacking skills will help. *TitanMist* by ReversingLabs ([https://www.reversinglabs.com/open-source/titanmist.html](https://www.reversinglabs.com/open-source/titanmist.html))
+    is a great tool that consists of various *packer signatures* and *unpacking scripts*.
+    After you download and extract it, you can run it against the packed binary using
+    the command shown here; using `-i`, you specify the input file (packed file),
+    and `-o` specifies the output filename, and `-t` specifies the type of unpacker.
+    In the later-mentioned command, *TitanMist* was run against the binary packed
+    with *UPX; *note how it automatically identified the packer and performed the
+    unpacking process. The tool automatically identified the OEP and import table,
+    dumped the process, fixed the imports, and applied the patch to the dumped process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another option is to use the IDA Pro''s *Universal PE Unpacker plugin*. This
+    plugin relies on debugging the malware, to determine when the code jumps to the
+    OEP. For detailed information on this plugin, refer to this article ([https://www.hex-rays.com/products/ida/support/tutorials/unpack_pe/unpacking.pdf](https://www.hex-rays.com/products/ida/support/tutorials/unpack_pe/unpacking.pdf)).
+    To invoke this plugin, load the binary into IDA and select Edit | Plugins | Universal
+    PE unpacker. Running the plugin launches the program in the debugger, and it tries
+    to suspend it, as soon as the packer finishes unpacking. After loading the *UPX-*packed
+    malware (the same sample used in manual unpacking) in IDA and launching the plugin,
+    the following dialog is displayed. In the following screenshot, IDA set the start
+    address and end address to the range of the `UPX0` section; this range is treated
+    as the `OEP` range. In other words, when the execution reaches this section (from
+    `UPX1`, which contains decompression stub), IDA will suspend the program execution,
+    giving you a chance to take further action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00328.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the following screenshot, note how IDA automatically determined the OEP
+    address and then showed the following dialog:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00329.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If you click on the Yes button, the execution is stopped, and the process is
+    exited but before that, IDA automatically determines the import address table
+    (IAT) and it creates a new segment to rebuild the import section of the program.
+    At this point, you can analyze the unpacked code. The following screenshot shows
+    the newly rebuilt import address table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00330.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Instead of clicking the YES button, if you click on the No button, then IDA
+    will pause the debugger execution at the OEP, and At this point, you can either
+    debug the unpacked code or manually dump the executable, fix the imports using
+    a tool such as *Scylla* by entering the proper OEP (as covered in *Section 4.1
+    manual unpacking*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In *x64dbg,* you can perform automated unpacking using unpacking scripts, which
+    can be downloaded from [https://github.com/x64dbg/Scripts](https://github.com/x64dbg/Scripts).
+    To unpack, make sure that the binary is loaded and paused at the entry point.
+    Depending on the packer you are dealing with, you need to load the appropriate
+    unpacker script by right-clicking on the script pane and then by selecting Load
+    Script | Open (or *Ctrl + O*). The following screenshot shows the contents of
+    the UPX unpacker script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00331.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After loading the script, run the script by right-clicking on the script pane
+    and by selecting Run. If the script successfully unpacks it, a message box pops
+    up saying Script Finished and the execution will be paused at the OEP. The following
+    screenshot shows the breakpoint (In the CPU pane) automatically set at the OEP
+    as a result of running the UPX unpacker script. Now, you can start debugging the
+    unpacked code or you can use *Scylla* to dump the process and fix the imports
+    (as described in *section 4.1 manual unpacking*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00332.jpeg)In addition to the earlier-mentioned tools, there
+    are various other resources that can help you with automatic unpacking. See *Ether
+    Unpack Service*: [http://ether.gtisc.gatech.edu/web_unpack/](http://ether.gtisc.gatech.edu/web_unpack/),
+    *FUU (Faster Universal Unpacker)*: [https://github.com/crackinglandia/fuu.](https://github.com/crackinglandia/fuu)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Malware authors use obfuscation techniques to conceal the data and to hide information
+    from the security analyst. In this chapter, we looked at various encoding, encryption,
+    and packing techniques commonly used by the malware authors, and we also looked
+    at different strategies to deobfuscate the data. In the next chapter, you will
+    be introduced to the concept of memory forensics, and you will understand how
+    to use memory forensics to investigate malware capabilities.
+  prefs: []
+  type: TYPE_NORMAL

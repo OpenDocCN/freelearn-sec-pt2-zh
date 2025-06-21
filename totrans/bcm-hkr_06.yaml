@@ -1,0 +1,803 @@
+- en: Chapter 6. Out-of-Band Exploitation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at confirming and exploiting file inclusion
+    attacks. The confirmation piece was straightforward, since the server immediately
+    made it obvious that the application was vulnerable. What happens when things
+    are not so clear? What if the server is vulnerable but does not show any indication
+    of it when given unexpected input? When testing for the existence of, say, a SQL
+    injection vulnerability, attackers will usually feed specially crafted values
+    into the input and observe the application's behavior. Sometimes, if they are
+    lucky, the server returns a bright-red SQL error message, which can indicate the
+    existence of an injection point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As applications and frameworks get more complex, production applications are
+    hardened and the behavioral hints that we used to rely on to confirm a vulnerability
+    are no longer as obvious. Modern applications tend to suppress error messages
+    by default and may not always process the input synchronously. If our payload
+    is executed by a backend batch job every eight hours, we would not see the effect
+    in the HTTP response and could miss a potentially critical vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Out-of-band** vulnerability discovery is the process by which we can force
+    the application to interact with an external service that we control. If an application
+    is vulnerable to a SQL injection attack but there are no immediate hints during
+    the initial scan, we can feed it a payload that tricks the application into communicating
+    with our C2 server, just enough that it proves our payload was executed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will look at the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a C2 server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using **INetSim** to emulate services
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Confirming vulnerabilities using out-of-band techniques
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Advanced data exfiltration
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A common scenario
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Imagine that the application `http://vuln.app.internal/user.aspx?name=Dade`
+    is vulnerable to a SQL injection attack on the `name` parameter. Traditional payloads
+    and polyglots do not seem to affect the application's response. Perhaps database
+    error messages are disabled and the `name` value is not processed synchronously
+    by the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Somewhere on the backend **Microsoft SQL** (**MS SQL**) server, the following
+    query is executed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A simple single-quote value for `name` would produce a SQL error and we''d
+    be in business, but in this case, the error messages are suppressed, so from a
+    client perspective, we''d have no idea something went wrong. Taking it a step
+    further, we can force the application to delay the response by a significant amount
+    of time to confirm the vulnerability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This payload injects a 20 second delay into the query return, which is noticeable
+    enough that it would raise some flags, but the query is executed asynchronously.
+    That is, the application responds to us before the query has completed because
+    it probably doesn't depend on the result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is where forcing an out-of-band service interaction comes in handy while
+    hunting for obscure vulnerabilities. Instead of the `WAITFOR DELAY` payload, the
+    following will force an MS SQL server to connect to an arbitrary host over the
+    **Server Message Block** (**SMB**) protocol, a host that we control:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'While unusual, the payload is fairly simple to understand, even for those of
+    us who don''t work with SQL every day. The code will:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Allocate space for a string variable `@q` (type `varchar`, length `99` bytes)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set the `@q` variable value to a **Universal Naming Convention** (**UNC**)
+    path pointing to our server: `\\attacker.c2\test`'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Execute a directory listing of the UNC path stored in `@q`
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The server may or may not be able to negotiate an SMB connection to our server
+    and grab a list of files. Whether or not the SMB protocol communication was successful
+    is irrelevant. If we have control over the `attacker.c2` domain, we almost immediately
+    have proof of the SQL injection. This is true for many other types of vulnerabilities
+    that are hard to discover with traditional scanning. **XML External Entity** (**XXE**)
+    attacks, for example, can also be confirmed out-of-band using the exact same methodology.
+    Some XSS vulnerabilities are not always obvious from the attacker's point of view.
+    Injected JavaScript code may only show up in a control panel that is never presented
+    to the attacker, but once an administrator logs on, the exploit triggers. This
+    could be hours, maybe days after the payload was injected. Out-of-band discovery
+    and exploitation would alert the attacker as soon as the payload executes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we get ahead of ourselves, we need proper C2 infrastructure to help us
+    to verify some of these vulnerabilities. The C2 needs to not only accept connections
+    from our target application, but also DNS queries. On the off chance that the
+    application backend is firewalled on the egress ruleset, it will not be able to
+    negotiate an SMB handshake. DNS queries over UDP port `53`, on the other hand,
+    are almost always allowed outbound. Even if the application is not allowed to
+    connect to our server directly, by design, DNS servers on the target network will proxy
+    the resolution request until it reaches our server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Command and control
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are many cloud providers and thanks to competition, they are fairly cheap.
+    We don''t need a beefy machine: we can get away with a micro instance from any
+    of these providers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google Cloud
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Amazon AWS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Microsoft Azure
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DigitalOcean
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Google Cloud and Amazon AWS have tiers that provide you with all the VM resources
+    you need for free; for a limited time, of course. However, the few dollars a month
+    it costs to run VMs in the cloud is well worth it for those of us who rely on
+    C2 infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: These C2 instances should also be a per-client deployment and the disks should
+    be encrypted. Due to the nature of our work, sensitive customer data may flow
+    in and could be stored insecurely. Once an engagement is complete, destroy the
+    instance, along with any client data it may have collected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the VM is up and running, it is usually assigned an ephemeral external
+    IP address. In some cases, you can request a static IP, but this is generally
+    not required. Ephemeral external IPs will remain unchanged while the VM is powered
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Command and control](graphics/B09238_06_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.1: The c2.spider.ml VM instance is up and running in Google Cloud'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make note of the external IP, as this VM will have to be the authoritative **nameserver**
+    (**NS**) for the C2 domain. We can use any domain, or subdomain for that matter,
+    that we control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following example, the authoritative zone `spider.ml` delegates the C2
+    subdomain to our VM's IP. A record is required (`ns1.spider.ml`) for the NS, as you cannot
+    delegate directly to an IP address.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Command and control](graphics/B09238_06_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.2: The zone configuration and the delegation of c2.spider.ml to our
+    C2 instance''s IP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With these two records, queries for `c2.spider.ml` will effectively be sent
+    to the C2 server we've just created. Any query for a subdomain of `c2.spider.ml`
+    will also be sent to this IP address for resolution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is important, as we have to be able to see all the connection requests
+    for `c2.spider.ml`. There are a couple of ways to do this; the traditional way
+    being configuring a **BIND** service with authority over the newly delegated zone:
+    `c2.spider.ml`. For less complex C2 infrastructure, there is a simpler-to-configure
+    alternative, with many other features.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s Encrypt Communication
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In order to provide some transport security, we may want spawn an HTTPS server
+    or maybe use SMTPS. We could use self-signed certificates, but this is not ideal.
+    Clients become suspicious when the TLS alert pops up on their browser, or network
+    proxies may drop the connection altogether. We want to use a certificate which
+    is signed by a trusted root certificate authority. There are countless paid services
+    which offer all manner of TLS certificates, but the easiest and most cost effective
+    is Let’s Encrypt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s Encrypt, a root certificate authority trusted by most clients, allows
+    server administrators to request free, domain-validated certificates for their
+    hosts. Their mission is to help move us towards an encrypted internet, and free
+    certificates is a great step forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let’s Encrypt provides free domain-validated certificates for hostnames and
+    even wildcard certificates. More information can be found on [https://letsencrypt.org/](https://letsencrypt.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For demonstration purposes, our C2 will be hosted under the `spider.ml` domain
+    and we will request a wildcard certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First step is to download the `certbot-auto` wrapper script which installs
+    dependencies and automates a lot of Let’s Encrypt’s certificate request process.
+    On Debian distributions such as Kali, this script is available from:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Certbot does have the option to automatically update web server configuration
+    but for our purposes, we will do a manual request. This will drop the new certificate
+    somewhere on disk and we can use it as we please.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `--manual` switch will allow us to walk through a request with custom options.
+    We will specify which domains the certificate is valid for using the `-d` switch.
+    For wildcard certificates, we have to specify the parent domain `spider.ml` and
+    the wildcard as well, `*.spider.ml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: For wildcard domains, we will use the DNS challenge, meaning we will have to
+    add a custom TXT record in order for Let’s Encrypt to be able to verify that we
+    actually own this the parent domain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The certbot wizard will eventually prompt us to create a `TXT` record `_acme-challenge.spider.ml`
+    using a randomly generated nonce.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before pressing *Enter*, we have to add the record in the DNS manager for `spider.ml`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Let’s Encrypt Communication](graphics/B09238_06_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.3 : Adding a TXT DNS record'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The wizard may prompt you again to update the `TXT` value to something new,
+    in which case you may have to wait a few minutes before continuing. A low TTL
+    value such as 5 minutes or less will help with the wait.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If everything is in order and Let’s Encrypt was able to verify the `TXT` records,
+    a new certificate will be issues and stored on disk somewhere in `/etc/letsencrypt/live/`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: These certificates are only valid for a few months at a time, as per Let’s Encrypt
+    policy. You will have to renew these using a similar process as the initial request.
+    Certbot keeps a record of requested certificates and their expiry dates. Issuing
+    a renew command will iterate through our certificates and automatically renew
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These PEM files can now be used in Apache, NGINX, INetSim or any other web server
+    we stand-up for command and control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can point our INetSIM instance to the newly minted certificates by adjusting
+    the configuration file. The options to look for are `https_ssl_keyfile` which
+    points to the private key, and `https_ssl_certfile` which is the certificate itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: INetSIM looks for these files in the `certs` directory which is typically located
+    under `/usr/share/inetsim/data`/.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next step is to copy the `privkey.pem` and `fullchain.pem` files from the
+    Let’s Encrypt `live` directory to the INetSIM `certs` directory. We will have
+    to remember to do this whenever we renew the certificates. Automation through
+    `crontab` is also an option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We should probably try to secure the private key as much as possible as well.
+    We will set the owner of the file to `inetsim` and trim the permissions for all
+    other users using `chmod`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now enable the simulated HTTPS service and test the certificate validity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Let’s Encrypt Communication](graphics/B09238_06_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.4 : C2 HTTPS certificate provided by Let''s Encrypt'
+  prefs: []
+  type: TYPE_NORMAL
+- en: INet simulation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To keep things simple, we will use INetSim to emulate a variety of network
+    services. It quickly sets up listeners for a slew of known ports and even provides
+    default responses using the appropriate protocol. For example, an FTP service
+    can be started, which will accept any credentials and will allow the connectee
+    to interact with the service: upload, download, list files, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: INetSim binaries, source, and documentation is available on [http://www.inetsim.org/](http://www.inetsim.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: INetSim is frequently used on closed networks to fake C2 servers for malware,
+    and to capture valuable data. We can leverage the same INetSim tool to quickly
+    setup a simple infrastructure that will handle connections from our targets, with
+    the added benefit of producing a report of each session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On our Debian VM instance in the cloud, we can add the official package repository
+    for a quick install using the following `echo` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To keep Debian''s `apt` from complaining during installation, we can fetch
+    the signing key using the `wget` command. We will pipe the response to the `apt-key`
+    in order to add it to our keychain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The next step is to grab the `inetsim` package from the newly installed `apt`
+    repository and install it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The INetSim default configuration may be a bit too much for our purposes. Services
+    such as FTP, which allow arbitrary credentials and provide upload support, should
+    not be enabled on the internet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: INetSim is a great tool, but use with care. If the C2 server you are building is
+    intended for a long-term engagement, it is better to use a proper daemon for each
+    service you are intercepting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can go ahead and disable services that we will not need by editing the `/etc/inetsim/inetsim.conf`
+    file. We can prepend each `start_service` line we wish to disable with a pound
+    sign (`#`), as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![INet simulation](graphics/B09238_06_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.5: Editing the INetSim configuration file to enable only DNS, HTTP,
+    and HTTPS simulation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The default DNS configuration will also have to be altered to match the `c2.spider.ml`
+    delegated zone. The `dns_default_ip` value should point to the C2 external IP,
+    as we want HTTP traffic to be redirected there as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `dns_default_hostname` value will be set to the zone subdomain `c2`, while
+    the `dns_default_domainname` value will be the `spider.ml` parent domain. This essentially
+    tells INetSim to respond to any queries in that zone with the `dns_default_ip`
+    value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This will be useful in our out-of-band vulnerability discovery and has other
+    uses, as we will see later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![INet simulation](graphics/B09238_06_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.6: The dns_default_* settings modified in the /etc/inetsim/inetsim.conf
+    configuration file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, INetSim responds to requests with default "fake" data for whatever
+    protocol is being queried. These "fake" files are stored in `/var/lib/inetsim`
+    and they're fairly descriptive. To be a bit more stealthy, we should at least
+    add some innocuous text to the default HTTP responses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following `echo` command will replace the contents of the sample HTTP files
+    with benign JavaScript code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get our simple C2 server online, we have to start the INetSim daemon and
+    tell it to bind service listeners to `0.0.0.0`, using the `--bind-address` switch,
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can test the DNS server provided by INetSim by either browsing to a random
+    subdomain within the scope of the delegated domain, or by issuing a `dig` query
+    from our attack Kali machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the path our DNS query takes through the internet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The client asks their local DNS servers for an answer
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Local DNS server forwards to the internet root name servers
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Root servers will forward the query to the authority for the ML top-level domain
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The ML authority will forward the query to the `spider.ml` authority
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The NS record that we've added earlier will forward the query to our C2 server
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Since we control this DNS server responsible for the `c2` zone, we can inspect
+    `/var/log/inetsim/service.log` and observe the response sent to the `dig` request,
+    using the `tail` command as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The C2 infrastructure is ready for out-of-band vulnerability discovery scans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The confirmation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that the cloud server is properly configured to record incoming requests
+    over DNS, we can go back to our earlier example and leverage the cloud to confirm
+    the vulnerability out-of-band.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You'll recall that the vulnerable application allows unsanitized input to be
+    executed on the SQL server via the `name` parameter. The challenge we sometimes
+    face, as attackers, is the difficulty in confirming the existence of this type
+    of vulnerability when the application does not behave differently based on the
+    input given. Sometimes, we may even be lucky enough to examine source code, in
+    which case we'd just skip right to exploiting the vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `WAITFOR DELAY` payload will work for most blind SQL injections, as the
+    majority of application views depend on the result from SQL queries that the controller
+    executes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the surprisingly common scenario where the vulnerable query is executed asynchronously
+    and the page does not return any useful information, we can trick the SQL server
+    into contacting our newly created C2 infrastructure and get confirmation without
+    the application's help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The payload to accomplish this will look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When the backend system builds the query for execution, it will translate into
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once again, if we inspect the `/var/log/inetsim/service.log` file on our C2
+    server, we can see the query coming in from the SQL server backend in an attempt
+    to resolve the `sqli-test-payload-1.c2.spider.ml` domain before the directory
+    listing of the share can be carried out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: We've forced the application to make a DNS query to a server that we control.
+    Seeing the very specific query in the C2 logs, we're able to confirm that there
+    is an exploitable SQL injection vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Async data exfiltration
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There is one more challenge with this particular type of vulnerability. Its
+    asynchronous nature makes it impossible to use traditional methods for data exfiltration.
+    While the query may execute successfully and the SQL server will delay the query
+    result, we'd never be able to measure this, as the application that we are targeting
+    does not wait for the SQL server response and returns immediately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have to be a bit more clever to extract data and successfully compromise
+    the target. MS SQL server, MySQL, PostgreSQL, and others all have ways to accomplish
+    our goal. We'll just go over an MS SQL method, but with a little creativity, any
+    database engine can bend to the attacker's will. It's also important to remember
+    that this method can be used when confirming not just SQL injection vulnerabilities
+    but also XSS and XXE, discussed in other chapters of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and revisit the method we''ve used to confirm the vulnerability
+    in the first place. We''ve passed in a query that forced the SQL server to resolve
+    an arbitrary domain name in an attempt to list the contents of a network share
+    over SMB. Since we control the DNS server that has authority over the share domain,
+    we can intercept any query sent to it. Confirmation was just a matter of observing
+    the application server attempting to resolve the domain for the network share
+    we passed in. To actually get the data out, we''ll have to build a query that
+    performs these actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selects one high-value user by role (`admin`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Selects that user's password
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Concatenates the two values with a period: `[admin].[hash]`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Prepends that value to the `c2.spider.ml` domain
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forces a DNS query
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Similar to our first payload, we will declare a variable `@q`, which will store
+    the data we will be pulling from the database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will use a couple of `SELECT` statements to read the `user` field
+    for the first account with the `admin` role:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will also select the `password` field for this particular user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to exfiltrate this data, we need to concatenate the two values using
+    MS SQL''s `CONCAT()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result of the concatenation will be stored in the `@q` variable, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we execute the `xp_fileexist` MS SQL function to force a DNS and SMB
+    request to our C2 server, with the contents of `@q` as the subdomain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The confusing double and single quotes preceding the double backslash is just
+    the Windows way to escape the single quote.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final payload is a bit messy but should do the trick. We will combine all
+    of our statements into one line, with each statement separated by a semicolon:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the backend, the SQL query to be executed will look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just as with the out-of-band confirmation, we've declared a variable whose value
+    will be the concatenated administrative username and its respective password hash.
+    The final command instructs the SQL server to execute the `xp_fileexist` command
+    through the `EXEC()` MS SQL function. As before, we don't care about the result;
+    we just want to force the server to issue a DNS query for the domain we control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The C2 server should have received a DNS query containing the credentials extracted
+    from the database in the form of a domain name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great! Now all we have to do is "crack" the hash. We could launch **John the
+    Ripper** or **hashcat** to perform a dictionary or brute-force attack, or we can
+    check whether this value was already computed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Async data exfiltration](graphics/B09238_06_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.7: A quick search on Hashtoolkit.com for the retrieved password hash
+    with the value "summer17" popping up in the results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Hash Toolkit lets you run searches for MD5 and SHA-* hashes to quickly return
+    their plaintext counterparts. The most common passwords have already been cracked
+    or computed by somebody somewhere and sites like Hash Toolkit provide a quick
+    index for the results. As with anything on the internet, be aware of what data
+    you submit to an untrusted medium. Hash Toolkit is available on [https://hashtoolkit.com/](https://hashtoolkit.com/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data inference
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's consider a simpler scenario where the application does not process the
+    payload asynchronously. This is a far more common scenario. Typically, in a blind
+    injection scenario we can use conditional statements in the injected query to
+    infer data from the database. If the preceding example vulnerability was not asynchronous,
+    we could introduce a significant delay in the response. Combine that with a traditional
+    if-then-else and we can make assumptions about the data we are trying to retrieve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The high-level pseudocode we''d use for this type of attack looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: We could repeatedly check for the contents of the `password` field for a particular
+    user, simply by observing the server response time. In the preceding pseudocode,
+    after the first three iterations, we'd be able to infer that the `password` value
+    begins with `ab`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to generate that observable delay, in MS SQL we can ask the server
+    to repeatedly perform an arbitrary operation using the `BENCHMARK()` function.
+    If we use a CPU-intensive function, such as `MD5()`, we will introduce a significant
+    and measurable delay in the return of the query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following MS SQL function can be used to induce a delay in the server response:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The benchmark operation will calculate the MD5 hash of the lowercase "c" character,
+    represented by `CHAR(99)`, five million times. We may have to play with the number
+    of iterations if the server is really powerful or if it is very slow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the number of iterations is too low, the server would return a result quickly,
+    making it harder to determine if the injection was successful. We also don't want
+    to introduce too much of a delay, as enumerating a database could take days.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final attack payload will combine the `IF` statement and the benchmark
+    operation. We will also use the `UNION` keyword to combine the existing `SELECT`
+    with our very own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The backend SQL query to be executed will, once again, look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: If there is a significant delay in the response, we can infer that the admin
+    user password begins with lowercase "a." To find the entire value, we'd have to
+    loop over hundreds of queries and modify the `SUBSTRING()` parameters, and "walk"
+    through the string as more of the password value is uncovered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we've used a pretty common SQL injection example to showcase
+    potential issues with vulnerability discovery when the application does not provide
+    any kind of feedback to the attacker. There are ways around these types of obstacles
+    and some tricks can even exfiltrate sensitive data asynchronously. We've also
+    looked at how to manually retrieve data through inference in a blind injection
+    scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key takeaway here is the ability to alter the application behavior in a
+    way that is measurable by the attacker. Even some of the more secure application
+    development environments, which aggressively filter outgoing traffic, tend to
+    allow at least DNS UDP packets to fly through. Filtering egress DNS queries is
+    a difficult exercise and I don't envy any security team charged with doing so.
+    As attackers, once again we are able to take full advantage of these limitations
+    and as I've shown in the earlier example, fully compromise the application by
+    exploiting a difficult-to-discover vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following chapter, we will look at automating some of this activity,
+    including leveraging Burp's Collaborator feature to make out-of-band discovery
+    easier.
+  prefs: []
+  type: TYPE_NORMAL

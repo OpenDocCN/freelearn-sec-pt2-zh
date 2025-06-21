@@ -1,0 +1,1434 @@
+- en: Disassembly Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Code analysis* is often used to understand the inner workings of a malicious
+    binary when the source code is unavailable. In the previous chapter, you learned
+    the code analysis skills and techniques to interpret assembly code and to understand
+    a program''s functionality; the programs that we used were simple C programs,
+    but when you are dealing with malware, it can contain thousands of lines of code
+    and hundreds of functions, making it difficult to keep track of all of the variables
+    and functions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Code analysis tools offer various features to simplify code analysis. This chapter
+    will introduce you to one such code analysis tool, named *IDA Pro (*also known
+    as *IDA)*. You will learn how to leverage the features of IDA Pro to enhance your
+    disassembly. Before we delve into the features of IDA, let's go over different
+    code analysis tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. Code Analysis Tools
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Code analysis tools can be classified based on their functionalities, described
+    below.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A *disassembler* is a program that translates machine code back to assembly
+    code; it allows you to perform static code analysis. *Static code analysis* is
+    a technique you can use to interpret the code to understand the program's behavior,
+    without executing the binary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A *debugger* is a program which also disassembles the code; apart from that,
+    it allows you to execute the compiled binary in a controlled manner. Using debuggers,
+    you can execute either a single instruction or selected functions, instead of
+    executing the entire program. A Debugger allows you to perform *dynamic code analysis,*
+    and helps you examine the aspects of the suspect binary while it is running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A *decompiler* is a program that translates the machine code into the code in
+    a high-level language (pseudocode). Decompilers can greatly assist you with the
+    reverse engineering process and can simplify your work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2\. Static Code Analysis (Disassembly) Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Hex-Rays IDA Pro* is the most powerful and popular commercial disassembler/debugger
+    ([https://www.hex-rays.com/products/ida/index.shtml](https://www.hex-rays.com/products/ida/index.shtml));
+    it is used by reverse engineers, malware analysts, and vulnerability researchers.
+    IDA can run on various platforms (Windows, Linux, and macOS) and supports analysis
+    of various file formats, including the *PE/ELF/Macho-O* formats. Apart from the
+    commercial version, IDA is distributed in two other versions: *IDA demo version
+    (evaluation version)* and *IDA Freeware version;* both these versions have certain
+    limitations. You can download the *freeware version* of IDA for non-commercial
+    use from [https://www.hex-rays.com/products/ida/support/download_freeware.shtml](https://www.hex-rays.com/products/ida/support/download_freeware.shtml).
+    At the time of writing this book, the distributed freeware version is IDA 7.0;
+    it lets you disassemble both 32-bit and 64-bit Windows binary but you will not
+    be able to debug the binary, using the free version. The *demo version (evaluation
+    version)* of IDA can be requested by filling in a form ([https://out7.hex-rays.com/demo/request](https://out7.hex-rays.com/demo/request));
+    it lets you disassemble both 32-bit and 64-bit Windows binary, and you can debug
+    32-bit binary (but not 64-bit binary) with it. Another restriction in the demo
+    version is that you will not able to save the database (covered later in this
+    chapter). Both demo and freeware version lacks *IDAPython* support. The *commercial
+    version* of IDA does not lack any functionality and comes with full-year free
+    email support and upgrades.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section and later sections, we will look at various features of IDA
+    Pro, and you will learn how to use IDA to perform *static code analysis (disassembly)*. It
+    is not possible to cover all the features of IDA; only those features that are
+    relevant to malware analysis will be covered in this chapter. If you are interested
+    in gaining a deeper understanding of IDA Pro, it is recommended to the read the
+    book, *The IDA Pro Book (2nd Edition)* by Chris Eagle. To get a better understanding
+    of IDA, just load a binary and explore various features of IDA while you are reading
+    this section and later sections. Remember the restrictions in various versions
+    of IDA, if you are using the *commercial version* of IDA, you will be able to
+    explore all the features covered in this book. If you are using the *demo version*
+    you will be able to explore only the disassembly and debugging (32-bit binary
+    only) features, but you will not be able to test *IDAPython* scripting capabilities.
+    If you are using the *freeware version*, you will only be able to try out the
+    disassembly features (no debugging and no IDAPython scripting). I highly recommend
+    using either the *commercial version* or the *demo version* of IDA, using these
+    versions you will be able to try out all/most of the features covered in this
+    book. If you wish to look at an alternate tool for debugging 32-bit and 64-bit
+    binary, you can use *x64dbg* (an open source x64/x86 debugger), which is covered
+    in the next chapter. With an understanding of different versions of IDA, let'us,
+    now explore its features, and you will understand how it can speed up your reverse
+    engineering and malware analysis tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1 Loading Binary in IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To load an executable, Launch IDA Pro (right-click and select Run as administrator).
+    When you launch IDA, it will briefly display a screen showing your license information;
+    immediately after that, you will be presented with the following screen. Choose
+    New and select the file you wish to analyze. If you select Go, IDA will open the
+    empty workspace. To load a file, you can either drag and drop or click on File
+    | Open and select the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00092.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The file that you give to IDA will be loaded into the memory (IDA acts like
+    a Windows loader). To load the file into the memory, IDA determines the best possible
+    loaders, and from the file header, it determines the processor type that should
+    be used during the disassembly process. After you select the file,  IDA shows
+    the loading dialog (as shown in the following screenshot). From the screenshot,
+    it can be seen that IDA determined the appropriate loaders (`pe.ldw` and `dos.ldw`)
+    and the processor type. The Binary file option (if you are using the IDA demo
+    version, you will not see this option) is used by the IDA to load the files that
+    it does not recognize. You will normally use this option when you are dealing
+    with a shellcode. By default, IDA does not load the *PE headers* and the *resource*
+    section in the disassembly. By using the manual load checkbox option, you can
+    manually specify the base address where the executable has to be loaded, and IDA
+    will prompt you on whether you want to load each section, including the PE headers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00093.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: After you click OK, IDA loads the file into memory, and the disassembly engine
+    disassembles the machine code. After the disassembly, IDA performs an initial
+    analysis to identify the compiler, function arguments, local variables, library
+    functions, and their parameters. Once the executable has been loaded, you will
+    be taken to the IDA desktop, showing the disassembled output of the program.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Exploring IDA Displays
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The IDA desktop integrates the features of many common static analysis tools
+    into a single interface. This section will give you an understanding of the IDA
+    desktop and its various windows. The following screenshot shows the IDA desktop
+    after loading an executable file. The IDA desktop contains multiple tabs (IDA
+    View-A**,** Hex View-1, and so on); clicking on each tab brings up a different
+    window. Each window contains different information extracted from the binary.
+    You can also add additional tabs via the View | Open Subviews menu:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00094.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.2.1 Disassembly Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After the executable has been loaded, you will be presented with the disassembly
+    window (also known as the IDA-view window). This is the primary window, and it
+    displays the disassembled code. You will mostly be using this window for analyzing
+    binaries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'IDA can show the disassembled code in two display modes: G*raph view* and T*ext
+    view*. *Graph view* is the default view, and when the disassembly view (IDA-view)
+    is active, you can switch between the graph and text views by pressing the spacebar
+    button.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the graph view mode, IDA displays only one function at a time, in a flowchart-style
+    graph, and the function is broken down into basic blocks. This mode is useful
+    to quickly recognize *branching* and *looping* statements. In the graph view mode,
+    the color and the direction of the arrows indicate the path that will be taken,
+    based on a particular decision. The *conditional jumps* use *green* and *red*
+    arrows; the *green* arrow indicates that the jump will be taken if the condition
+    is true, and the *red* arrow indicates that the jump will not be taken (normal
+    flow). The *blue* arrow is used for an *unconditional* jump, and the loop is indicated
+    by the upward (backward) *blue* arrow. In the graph view, the virtual addresses
+    are not displayed by default (this is to minimize the amount of space required
+    to display each basic block). To display virtual address information, click on
+    Options | General and enable line prefixes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows the disassembly of the `main` function in the
+    graph view mode. Notice the conditional check at the addresses `0x0040100B` and
+    `0x0040100F`. If the condition is true, then the control is transferred to the
+    address `0x0040101A` (indicated by a green arrow), and if the condition is false,
+    the control gets transferred to `0x00401011` (indicated by a red arrow). In other
+    words, the *green arrow* indicates jump and the *red arrow* indicates the normal
+    flow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00095.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the *text view* mode, the entire disassembly is presented in a linear fashion.
+    The following screenshot shows the text view of the same program; the virtual
+    addresses are displayed by default, in the `<section name>:<virtual address>`
+    format. The left-hand portion of the text view window is called the *arrows window*;
+    it is used to indicate the program''s nonlinear flow. The *dashed arrows* represent
+    `conditional jumps`, the *solid arrows* indicate `unconditional jumps`, and the
+    *backward arrows* (arrows facing up) indicate loops:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00096.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.2.2 Functions Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The *functions window* displays all the functions recognized by IDA, and it
+    also shows the virtual address where each function can be found, the size of each
+    function, and various other properties of the function. You can double-click on
+    any of these functions to jump to a selected function. Each function is associated
+    with various flags (such as `R`, `F`, `L`, and so on). You can get more information
+    about these flags in the help file (by pressing *F1*). One of the useful flags
+    is the `L` flag, which indicates that the function is a *library function*. Library
+    functions are compiler-generated and are not written by a malware author; from
+    a code analysis perspective, we would be interested in analyzing the malware code,
+    not the library code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.3 Output Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The *output window* displays the messages generated by IDA and the IDA plugins.
+    These messages can give information about the analysis of the binary and the various
+    operations that you perform. You can look at the contents of the output window
+    to get an idea of various operations performed by IDA when an executable is loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.4 Hex View Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You can click on the Hex View-1 tab to display the *hex window*. The hex window
+    displays a sequence of bytes in a hex dump and the ASCII format. By default, the
+    hex window is synchronized with the disassembly window; this means, when you select
+    any item in the disassembly window, the corresponding bytes are highlighted in
+    the hex window. The hex window is useful to inspect the contents of the memory
+    address.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.5 Structures Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Clicking on the Structures tab will bring up the structures window. The structures
+    window lists the layout of the standard data structures used in the program, and
+    it also allows you to create your own data structures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.6 Imports Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The *imports window* lists all of the functions imported by the binary. The
+    following screenshot shows the imported functions and the shared libraries (DLL)
+    from which these functions are imported. Detailed information about imports was
+    covered in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485)*,
+    Static Analysis*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00097.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.2.7 Exports Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The *exports window* lists all of the exported functions. The exported functions
+    are normally found in the DLLs, so this window can be useful when you are analyzing
+    malicious DLLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.8 Strings Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: IDA does not show *strings window* by default; you can bring up the strings
+    window by clicking on View | Open Subviews | Strings (or *Shift *+ *F12*). The
+    strings window displays the list of strings extracted from the binary and the
+    address where these strings can be found. By default, the strings window displays
+    only the *null-terminated ASCII strings* of at least five characters in length.
+    In [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485)*, Static
+    Analysis*, we saw that a malicious binary can use *UNICODE strings*. You can configure
+    IDA to display different types of strings; to do that, while you are in the strings
+    window, right-click onSetup (or *Ctrl* + *U*), check Unicode C-style (16 bits),
+    and click OK**.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2.9 Segments Window
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The segments window is available via View | Open Subviews | Segments (or *Shift*
+    + *F7*). The segments window lists the sections (`.text`, `.data`, and so on)
+    in the binary file. The displayed information contains the *start address*, the
+    *end address*, and the *memory permissions* of each section. The start and end
+    address specify the virtual address of each section that is mapped into memory
+    during runtime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Improving Disassembly Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we will explore various features of IDA, and you will learn
+    how to combine the knowledge you gained in the previous chapter with the capabilities
+    offered by IDA to enhance the disassembly process. Consider the following trivial
+    program, which copies the content of one local variable to another:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After compiling the preceding code and loading it in IDA, the program disassembles
+    to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: When an executable is loaded, IDA performs an analysis on every function that
+    it disassembles to determine the layout of the *stack frame*. Apart from that,
+    it uses various signatures and runs pattern matching algorithms to determine whether
+    a disassembled function matches any of the signatures known to IDA. At ➊, notice
+    how after performing initial analysis, IDA added a comment (the comment starts
+    with a semicolon), that tells you that an `ebp` based stack frame is used; this
+    means that the `ebp` register is used to reference the local variables and the
+    function parameters (the details regarding `ebp` based stack frames were covered
+    while discussing functions in the previous chapter). At ➋, IDA used its robust
+    detection to identify the function as the `main` function and inserted the `function
+    prototype` comment. During analysis this feature can be useful to determine, how
+    many parameters are accepted by a function, and their data types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At ➌, IDA gives you a summary of the stack view; IDA was able to identify the
+    *local variables* and *function arguments*. In the `main` function, IDA identified
+    two local variables, which are automatically named as `var_4` and `var_8.` IDA
+    also tells you that `var_4` corresponds to the value `-4`, and `var_8` corresponds
+    to the value `-8`. The `-4` and `-8` specify the offset distance from the `ebp`
+    (*frame pointer*); this is IDA's way of saying that it has replaced `var_4` for
+    `-4` and `var_8` for `-8` in the code. Notice the instructions at ➍,and ➎ you
+    can see that IDA replaced the memory reference `[ebp-4]` with `[ebp+var_4]` and
+    `[ebp-8]` with `[ebp+var_8]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If IDA had not replaced the values, then the instructions at ➍, and ➎ would
+    look like the ones shown here, and you'd have to manually label all of these addresses
+    (as covered in the previous chapter).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The IDA automatically generated *dummy names* for the variables/arguments and
+    used these names in the code; this saved the manual work of labeling the addresses
+    and made it easy to recognize the local variables and arguments because of the
+    `var_xxx` and `arg_xxx` prefixes added by IDA. You can now treat the `[ebp+var_4]`
+    at ➍ as just `[var_4]`, so the instruction `mov [ebp+var_4],1` can be treated
+    as `mov [var_4],1`, and you can read it as `var_4` being assigned the value `1`
+    (in other words, `var_4 = 1`). Similarly, the instruction `mov [ebp+var_8],eax`
+    can be treated as `mov [var_8],eax` (in other words, `var_8 = eax`); this feature
+    of IDA makes reading assembly code much easier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding program can be simplified by ignoring `function prologue`, `function
+    epilogue`, and the instructions used to allocate space for the local variables
+    at ➏. From the concepts covered in the previous chapter, we know that these instructions
+    are just used for setting up the function environment. After the cleanup, we are
+    left with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 2.3.1 Renaming Locations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, we have seen how IDA performs analysis on our program and how it adds
+    *dummy names*. The dummy names are useful, but these names do not tell the purpose
+    of a variable. When analyzing malware, you should change the variable/function
+    names to more meaningful names. To rename a variable or an argument, right-click
+    on the variable name or argument and select rename (or press *N*); this will bring
+    up the following dialog. After you rename it, IDA will propagate the new name
+    to wherever that item is referenced. You can use the rename feature to give meaningful
+    names to the functions, and variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00098.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Changing the name of `var_4` to `x` and `var_8` to `y` in the preceding code
+    would result in the new listing shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can now translate the preceding instructions to pseudocode (as covered in
+    the previous chapter). To do that, let's make use of the comment feature in IDA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.2 Commenting in IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Comments are useful to remind you of something important in the program. To
+    add a regular comment, place the cursor on any line in the disassembly listing,
+    and press the hotkey *colon* (*:*), this will bring up the comment entry dialog
+    where you can enter the comments. The following listing shows the comments (starting
+    with `;`) describing individual instructions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The regular comments are particularly useful for describing a single line (even
+    though you can enter multiple lines), but it would be great if we could group
+    the preceding comments together to describe what the `main` function does. IDA
+    offers another type of comments called *function comments*, which allow you to
+    group comments and display them at the top of the function''s disassembly listing.
+    To add a function comment, highlight the function name, such as `_main` shown
+    at ➐ in the previous disassembly listing, and press colon (:). The following shows
+    the pseudocode added at the top of the `_main` function at ➑ as a result of using
+    a function comment. The pseudocode can now remind you of the function''s behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have used some of IDA's features to analyze the binary, wouldn't
+    it be nice if there was a way to save the name of the variable and the comments
+    that we added, so that next time, when you load the same binary into IDA, you
+    don't have to follow these steps all over again?. In fact, whatever manipulation
+    was done earlier (like renaming or adding a comment) was done to the database,
+    not to the executable; in the next section, you will learn how easy it is to save
+    the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.3 IDA Database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When an executable is loaded into IDA, it creates a database consisting of
+    five files (whose extensions are `.id0`, `.id1`, `.nam`, `.id2`, and `.til`) in
+    the working directory. Each of these files stores various information and has
+    a base name that matches the selected executable. These files are archived and
+    compressed into a database file with a `.idb` (for 32-bit binary) or `.i64` (for
+    64-bit binary) extension. Upon loading the executable, the database is created
+    and populated with the information from the executable files. The various displays
+    that are presented to you are simply views into the database that gives information
+    in a format that is useful for code analysis. Any modifications that you make
+    (such as *renaming*, *commenting*, and so on) are reflected in the views and saved
+    in the database, but these changes do not modify the original executable file.
+    You can save the database by closing IDA; when you close IDA, you will be presented
+    with a Save database dialog, as shown in the following screenshot. The Pack database
+    option (the default option) archives all of the files into a single IDB (`.idb`)
+    or i64 (`.i64`) file. When you reopen the `.idb` or `.i64` file, you should be
+    able to see the renamed variables and comments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00099.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s look at another simple program and explore a few more features of IDA.
+    The following program consists of the global variables `a` and `b`, which are
+    assigned values inside of the `main` function. The variables `x`, `y`, and `string`
+    are local variables; `x` holds the value of `a`, whereas `y` and `string` hold
+    the addresses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The program translates to the following disassembly listing. IDA identified
+    three local variables at ➊ and propagated this information in the program. IDA
+    also identified the global variables and assigned names such as `dword_403374`
+    and `byte_403370`; note how the fixed memory addresses are used to reference the
+    global variables at ➋, ➌, and ➍. The reason for that, is when a variable is defined
+    in the global data area, the address and size of the variables are known to the
+    compiler at compile time. The dummy global variable names assigned by IDA specify
+    the addresses of the variables and what types of data they contain. For example, `dword_403374`
+    tells you that the address `0x403374` can contain a `dword` value (4 bytes); similarly,
+    `byte_403370` tells you that `0x403370` can hold a single `byte` value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'IDA used the `offset` keyword at ➎ and ➏ to indicate that addresses of variables
+    are used (rather than the content of the variables), and because addresses are
+    assigned to the local variables `var_8` and `var_C` at ➎ and ➏, you can tell that
+    `var_8` and `var_C` hold addresses (`pointer` variables). At ➏, IDA assigned the
+    dummy name `aTest` to the address containing the string (string variable). This
+    dummy name is generated using the characters of the string, and the string `"test"`
+    itself is added as a `comment`, to indicate that the address contains the string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: So far, in this program, we have seen how IDA helped by performing its analysis
+    and by assigning dummy names to addresses (you can rename these addresses to more
+    meaningful names using the rename option covered previously). In the next few
+    sections, we will see what other features of IDA we can use to further improve
+    the disassembly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.4 Formatting Operands
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'At ➋, and ➌ in the preceding listing, the operands (`29h` and `41h`) are represented
+    as hexadecimal constant values, whereas in the source code, we used the decimal
+    value `41` and the character `''A''`. IDA gives you the ability to reformat constant
+    values as a `decimal`, `octal`, or `binary` values. If the constant falls within
+    the ASCII printable range, then you can also format the constant value as a `character`.
+    For example, to change the format of `41h`, right-click on the constant value
+    `(41h)`, after which you will be presented with different options, as shown in
+    the following screenshot. Choose the ones that suit your needs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00100.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.3.5 Navigating Locations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another great feature of IDA is that it makes navigating to anywhere within
+    a program much easier. When a program is disassembled, IDA labels every location
+    in the program, and double-clicking on the locations will jump the display to
+    the selected location. In the preceding example, you can navigate to any of the
+    named locations (such as `dword_403374`, `byte_403370`, and `aTest`) by double-clicking
+    on them. For example, double-clicking on `aTest` at ➏ jumps the display to a virtual
+    address in the `.data` section, shown as follows. Notice how IDA labeled the address
+    `0x00403000`, containing the string `"test"`, as `aTest`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, double-clicking on the address `dword_403374` relocates to the virtual
+    address shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'IDA keeps track of your navigation history; any time you navigate to a new
+    location and would like to go back to your original position, you can use the
+    navigation buttons. In the preceding example, to go back to the disassembly window,
+    simply use the backward navigation button, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00101.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Sometimes, you will know the exact address you would like to navigate to. To
+    jump to a particular address, click on Jump | Jump to Address (or press the *G*
+    key); this will bring up the Jump to address dialog. Just specify the address
+    and click on OK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.6 Cross-References
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another way to navigate is by using *cross-references* (also referred to as
+    *Xrefs*). The cross-references link relates addresses together. Cross-references
+    can be either *data cross-references* or *code cross-references*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A *data cross-reference* specifies how the data is accessed within a binary.
+    An example of a data cross-reference is shown at ➐, ➑, and ➒, in the preceding
+    listing. For example, the data cross-references at ➑ tell us that this data is
+    referenced by the instruction which is at the offset `0x6`, from the start of the `_main`
+    function (in other words, the instruction at ➋). The character `w` indicates a
+    *write cross-reference*; this tells us that the instruction writes content into
+    this memory location (note that `29h` is written to this memory location at ➋).
+    The character `r` at ➒ indicates a *read cross-reference*, which tells us that
+    the instruction `_main+17` (in other words, the instruction at ➍) reads the content
+    from this memory location. The ellipsis (`...`) at ➒ indicates that there are
+    more cross-references, but they could not be displayed because of the display
+    limit. Another type of data cross-reference is an *offset cross-reference* (indicated
+    by character `o`), which indicates that the address of a location is being used,
+    rather than the content. The arrays and strings (character arrays) are accessed
+    using their start addresses, because of which the string data at ➐ is marked as
+    an offset cross-reference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A *code cross-reference* indicates the control flow from one instruction to
+    an another (such as *jump* or *function call*). The following displays a simple
+    `if` statement in C:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The program disassembles to the following listing. At ➊, note how the `equal
+    to` (`==`) condition from the C code is reversed to `jnz` (which is an alias for
+    `jne` or `jump, if not equal`); this is done to implement the branching from ➊ to ➋.
+    You can read it as `if var_4 is not equal to 0`; then, the jump is taken to `loc_401018`
+    (which is outside of the `if` block). The *jump cross-reference* comment is shown
+    at the jump target ➌ in the following listing, to indicate that the control is
+    transferred from an instruction, which is at the offset `0xF` from the start of
+    the main function (in other words, ➊). The character `j` at the end signifies
+    that the control was transferred as a result of the jump. You can simply double-click
+    the cross-reference comment `(_Main+Fj)` to change the display to the referencing
+    instruction at ➊:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding listing can be viewed in the graph view mode by pressing the
+    *spacebar* key. The graph view is especially useful to get a visual representation
+    of *branching/looping* statements. As mentioned before, the *green arrow* indicates
+    that the jump is taken (the condition is satisfied), the *red arrow* indicates
+    that the jump is not taken, and the *blue arrow* indicates the normal path:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00102.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, to understand the *function cross-reference*, consider the following C
+    code, which calls the `test()` function within `main()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the disassembly listing of the `main` function. The `sub_401000` at ➊
+    represents the `test` function. IDA automatically named the function address with
+    the `sub_` prefix, to indicate a *subroutine ( Or function)*. For example, when
+    you see `sub_401000`, you can read it as a subroutine at the address `0x401000`
+    (you can also rename it to a more meaningful name). If you wish, you can navigate
+    to the function by double-clicking on the function name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the start of the `sub_401000` (`test` function), a code cross-reference
+    comment was added by IDA, ➋, to indicate that this function, `sub_401000`, was
+    called from an instruction which is at the offset `3` from the start of the `_main`
+    function (that is called from ➊). You can navigate to the `_main` function simply
+    by double-clicking `_main+3p`. The `p` suffix signifies that the control is transferred
+    to the address `0x401000` as a result of the *function (procedure)* call:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 2.3.7 Listing All Cross-References
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Cross-references* are very useful when analyzing malicious binary. During
+    analysis, if you come across a *string* or a *useful function* and if you would
+    like to know how they are used in the code, then you can use cross-references
+    to quickly navigate to the location where the string or function is referenced.
+    Cross-reference comments added by IDA are a great way to navigate between addresses,
+    but there is a display limit (of two entries); as a result, you will not be able
+    to see all of the cross-references. Consider the following data cross-reference
+    at ➊; the ellipsis (`...`) indicates that there are more cross-references:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Suppose that you want to list all of the cross-references; just click on the
+    named location such as `dword_403374` and press the *X* key. This will bring up
+    a window, that lists all the locations where the named location is referenced,
+    as follows. You can double-click on any of these entries to reach the location
+    in the program where the data is used. You can use this technique to find all
+    of the cross-references to a *string* or *function*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00103.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A program normally contains many functions. A single function can be called
+    by single/multiple functions, or it can, in turn, call single or multiple functions.
+    When performing malware analysis, you might be interested in getting a quick overview
+    of a function. In such a case, you can highlight the function name and choose
+    View | Open Subviews | Function Calls to get the function cross-references. The
+    following screenshot shows the function *Xrefs* for the function `sub_4013CD`
+    (from a malware sample). The upper half of the window tells you that the function
+    `sub_401466` calls `sub_4013CD.` The lower half of the window displays all of
+    the functions that will be called by `sub_4013CD`; notice that the lower window
+    displays the API functions (`CreateFile` and `WriteFile`) that will be called
+    by `sub_4013CD`;  based on this information, you can tell that the `sub_4013CD`
+    function interacts with the filesystem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00104.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.3.8 Proximity View And Graphs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'IDA''s graphing options are a great way to visualize cross-references. Apart
+    from the graph view shown previously, you can use the IDA''s integrated graphing
+    feature, called *proximity view*, to display the callgraph of a program. To view
+    the callgraph of the function `sub_4013CD` from the previous example, while placing
+    the cursor anywhere inside the function, click View | Open subviews | Proximity
+    browser; this will change the view in the disassembly window to the proximity
+    view, shown as follows. In proximity view, functions and data references are represented
+    as nodes, and the cross-references between them are represented as edges (the
+    lines that connect the nodes). The following graph displays *Xrefs to* and *Xrefs
+    from* `sub_4013CD`. The parent of `sub_4013CD` (which is `sub_401466`) represents
+    its calling function, and the functions called by `sub_4013CD` are represented
+    as children. You can further drill down the parent/child relationship (*Xrefs
+    to and from)* by double-clicking the *plus* icon or by right-clicking on the *plus*
+    icon and selecting expand node. You can also right-click on the node and use the
+    expand parents/children or collapse parents/children option to expand or collapse
+    parents or children of a node. You can also zoom in and zoom out by using *Ctrl*
+    + *Wheel mouse* *button*. To go back to the disassembly view from the proximity
+    view, just right-click on the background and choose either Graph view or Text
+    view:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00105.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Apart from the integrated graphing, IDA can also display graphs using third-party
+    graphing applications. To use these graphing options, right-click on the Toolbar
+    area and select Graphs, which will display five buttons in the toolbar area:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00106.gif)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can generate different types of graphs by clicking on any these buttons,
+    but these graphs are not interactive (unlike the integrated graph-based disassembly
+    view and proximity view). The following outlines the functionality of these buttons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **![](../images/00107.gif)** | It displays the external flow chart of the
+    current function. This resembles IDA''s interactive graph view mode of the disassembly window.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **![](../images/00108.gif)** | It displays the call graph for the entire
+    program; this can be used to get a quick overview of the hierarchy of the function
+    calls within a program, but if the binary contains too many functions, the graph
+    might be difficult to view, as it can get very large and cluttered. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![](../images/00109.gif) | It displays the cross-reference to *(*Xrefs to)
+    a function; this is useful if you want to see the various paths taken by a program
+    to reach a specific function. The following screenshot shows the path taken to
+    reach the `sub_4013CD` function: ![](../images/00110.gif)       |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![](../images/00111.gif) | It displays the cross-references from (Xrefs from)
+    a function; this is useful in order to know all of the functions called by a particular
+    function. The following diagram will give you an idea of all of the functions
+    that will be called by `sub_4013CD`:   ![](../images/00112.gif)   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![](../images/00113.gif) | This is the *User Xref* button, which allows you
+    to generate custom cross-reference graphs.  |'
+  prefs: []
+  type: TYPE_TB
+- en: With an understanding of how to leverage IDA's features to enhance your disassembly,
+    let's move on to the next topic, where you will learn how malware uses the Windows
+    API to interact with the system. You will learn how to get more information about
+    an API function, and how to distinguish and interpret the Windows API from a 32-bit
+    and 64-bit malware.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3\. Disassembling Windows API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Malware normally uses *Windows API functions* (*Application Programming Interface)*
+    to interact with the operating system (for performing filesystem, process, memory,
+    and network operations). As explained in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485)*, Static
+    Analysis,* and [Chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485), *Dynamic
+    Analysis*, Windows exports the majority of its functions required for these interactions
+    in *Dynamic Link Libary (DLL)* files. Executables import and call these API functions
+    from various DLLs, which provide different functionalities. To call the API, the
+    executable process loads the DLL into its memory and then calls the API function.
+    Inspecting the DLLs that a malware relies upon and the API functions that it imports
+    can give an idea of the functionality and capability of the malware. The following
+    table outlines some of the common DLLs, and the functionalities that they implement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **DLL** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Kernel32.dll` | This DLL exports functions related to process, memory, hardware,
+    and filesystem operations. Malware imports API functions from these DLLs to carry
+    out filesystem-memory-and process-related operations. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Advapi32.dll` | This contains functionality related to service and registry.
+    Malware uses the API functions from this DLL to carry out service-and registry
+    related operations. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Gdi32.dll` | It exports functions related to graphics. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `User32.dll` | It implements functions that create and manipulate Windows
+    user interface components, such as the desktop, windows, menus, message boxes,
+    prompts, and so on. Some malware programs use functions from this DLL for performing
+    DLL injections and for monitoring keyboard (for keylogging) and mouse events.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `MSVCRT.dll` | It contains implementations of C standard library functions.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `WS2_32.dll` and `WSock32.dll` | They contain functions for communicating
+    on the network. Malware import functions from these DLLs for performing network-related
+    tasks.  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Wininet.dll` | It exposes high-level functions to interact with HTTP and
+    FTP protocols. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Urlmon.dll` | It is a wrapper around `WinInet.dll`, and it is responsible
+    for MIME-type handling and the downloading of web content. Malware downloaders
+    use functions from this DLL for downloading additional malware content.  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `NTDLL.dll` | It exports Windows Native API functions and acts as the interface
+    between the user mode programs and the kernel. For example, when a program calls
+    API functions in `kernel32.dll` (or `kernelbase.dll`), the API, in turn, calls
+    short stub in `ntdll.dll`. A program typically does not import functions from
+    `ntdll.dll` directly; the functions in `ntdll.dll` are indirectly imported by
+    DLL such as `Kernel32.dll`. Most of the functions in `ntdll.dll` are undocumented,
+    and malware authors sometimes import functions from this DLL directly. |'
+  prefs: []
+  type: TYPE_TB
+- en: 3.1 Understanding Windows API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To demonstrate how malware makes use of the Windows API and to help you understand
+    how to get more information about an API, let''s look at a malware sample. Loading
+    the malware sample in IDA and inspecting the imported functions in the Imports
+    window show reference to the `CreateFile` API function, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00114.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Before we determine the location where this API is referenced in the code,
+    let''s try to get more information about the API call. Whenever you encounter
+    a Windows API function (like the one shown in the preceding example), you can
+    learn more about the API function by simply searching for it in the *Microsoft
+    Developer Network (MSDN)* at [https://msdn.microsoft.com/](https://msdn.microsoft.com/),
+    or by *Googling it*. The MSDN documentation gives a description of the API function,
+    its function parameters (their data types), and the return value. The function
+    prototype for `CreateFile` (as mentioned in the documentation at [https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx))
+    is shown in the following snippet. From the documentation, you can tell that this
+    function is used to *create* or *open* a file. To understand what file the program
+    creates or opens, you will have to inspect the first parameter (`lpFilename`),
+    which specifies the filename. The second parameter (`dwDesiredAccess`) specifies
+    the requested access (such as *read* or *write* access), and the fifth parameter
+    specifies the action to take on the file (such as creating a new file or opening
+    an existing file):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The Windows API uses *Hungarian notation* for naming variables. In this notation,
+    the variable is prefixed with an abbreviation of its datatype; this makes it easy
+    to understand the data type of a given variable. In the preceding example, consider
+    the second parameter, `dwDesiredAccess`; the `dw` prefix specifies that it is
+    of the `DWORD` data type. The `Win32` API supports many different data types ([https://msdn.microsoft.com/en-us/library/windows/desktop/aa383751(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/aa383751(v=vs.85).aspx)).
+    The following table outlines some of the relevant data types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Data Type** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `BYTE (b)` | Unsigned 8-bit value. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `WORD (w)` | Unsigned 16-bit value. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `DWORD (dw)` | Unsigned 32-bit value. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `QWORD (qw)` | Unsigned 64-bit value. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Char (c)` | 8-bit ANSI character. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `WCHAR` | 16-bit Unicode character. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `TCHAR` | Generic character (1-byte ASCII character or wide, 2-byte Unicode
+    character). |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Long Pointer (LP)` | This is a pointer to another data type. For example,
+    `LPDWORD` is a pointer to `DWORD`, `LPCSTR` is a constant string, `LPCTSTR` is
+    a const `TCHAR` (1-byte ASCII characters, or wide, 2-byte Unicode characters)
+    string, `LPSTR` is a non-constant string, and `LPTSTR` is a non-constant `TCHAR`
+    (ASCII or Unicode) string. Sometimes, you will see `Pointer (P)` used instead
+    of `Long Pointer(LP)`. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `Handle (H)` | It represents the `handle` data type. A handle is a reference
+    to an object. Before a process can access an object (such as a file, registry,
+    process, Mutex, and so on), it must first open a handle to the object. For example,
+    if a process wants to *write* to a file, the process first calls the API, such
+    as `CreateFile`, which returns the *handle* to the file; the process then uses
+    the handle to write to the file by passing the handle to the `WriteFile` API.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: Apart from the datatypes and variables, the preceding function prototype contains
+    *annotations*, such as `_In_` and `_Out_`, which describe how the function uses
+    its *parameters* and *return value*. The `_In_` specifies that it is an input
+    parameter, and the caller must provide valid parameters for the function to work.
+    The `_IN_OPT` specifies that it is an optional input parameter (or it can be `NULL`).
+    The `_Out_` specifies output parameter; it means that the function will fill in
+    the parameter on return. This convention is useful to know if the API call stores
+    any data in the output parameter after the function call. The `_Inout_` object
+    tells you that the parameter both passes values to the function and receives the
+    output from the function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With an understanding of how to get information about an API from the documentation,
+    let''s go back to our malware sample. Using the cross-references to `CreateFile`,
+    we can determine that the `CreateFile` API is referenced in two functions, `StartAddress`
+    and `start`, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00115.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Double-clicking the first entry in the preceding screenshot jumps the display
+    to the following code in the disassembly window. The following code highlights
+    another great feature of IDA. Upon disassembly, IDA employs a technology called
+    *Fast Library Identification and Recognition Technology (FLIRT)*, which contains
+    pattern matching algorithms to identify whether the disassembled function is a
+    *library* or an *imported function* (a function imported from DLLs). In this case,
+    IDA was able to recognize the disassembled function at ➊ as an imported function,
+    and named it `CreateFileA`. IDA''s capability to identify libraries and imported
+    functions is extremely useful, because when you are analyzing malware, you really
+    don''t want to waste time reverse engineering a library or import function. IDA
+    also added names of parameters as comments to indicate which parameter was being
+    pushed at each instruction leading up to the `CreateFileA` Windows API call:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the preceding disassembly listing, you can tell that malware either *creates*
+    or *opens* a file (`psto.exe`) that is passed as the first argument (➋) to `CreateFile`.
+    From the documentation, you know that the second argument (➌) specifies the requested
+    access (such as *read* or *write*). The constant `40000000h`, passed as the second
+    argument, represents the symbolic constant `GENERIC_WRITE`. Malware authors often
+    use symbolic constants, such as `GENERIC_WRITE`, in their source code; but during
+    the compilation process, these constants are replaced with their equivalent values
+    (such as `40000000h`), making it difficult to determine whether it is a numeric
+    constant or a symbolic constant. In this case, from the Windows API documentation,
+    we know that the value `40000000h` at ➌ is a symbolic constant that represents
+    `GENERIC_WRITE`. Similarly, the value `2`, passed as the fifth argument (➍), represents the
+    symbolic name `CREATE_ALWAYS`; this tells you that malware creates the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another feature of IDA is that it maintains a list of standard *symbolic constants*
+    for the Windows API or the C standard library function. To replace the constant
+    value such as `40000000h` at ➌, with the symbolic constant, just right-click on
+    the constant value and choose the Use standard symbolic constant option; this
+    will bring up the window displaying all of the symbolic names for the selected
+    value (in this case, `40000000h`), as shown in the following screenshot. You need
+    to select the one that is appropriate; in this case, the appropriate one is `GENERIC_WRITE`.
+    In the same manner, you can also replace the constant value `2`, passed as the
+    fifth argument, to its symbolic name, `CREATE_ALWAYS`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00116.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After replacing the constants with symbolic names, the disassembly listing
+    is translated to the one shown in the following snippet. The code is now more
+    readable, and from the code, you can tell that malware creates the file `psto.exe`
+    on the filesystem. After the functional call, the *handle* to the file (which
+    can be found in the `EAX` register) is returned. The handle to the file returned
+    by this function can be passed to other APIs, such as `ReadFile()` or `WriteFile()`,
+    to perform subsequent operations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 3.1.1 ANSI and Unicode API Functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Windows supports two parallel sets of APIs: one for *ANSI strings*, and the
+    other for *Unicode strings*. Many functions that take a string as an argument
+    include an `A` or `W` at the end of their names, such as `CreateFileA`. In other
+    words, the trailing character can give you an idea of what type of string (ANSI
+    or Unicode) is passed to the function. In the preceding example, the malware calls `CreateFileA`
+    to create a file; the trailing character `A` specifies that the `CreateFile` function
+    takes an ANSI string as input. You will also see malware using APIs such as `CreateFileW`;
+    the `W` at the end specifies that the function takes a `Unicode` string as input.
+    During malware analysis, when you come across a function such as `CreateFileA`
+    or `CreateFileW`, just remove the trailing `A` and `W` characters and use `CreateFile`
+    to search MSDN for the function documentation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.1.2 Extended API Functions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will often encounter function names with an `Ex` suffix in their names,
+    such as `RegCreateKeyEx` (which is an extended version of `RegCreateKey`). When
+    Microsoft updates a function that is incompatible with an old function, the updated
+    function has an `Ex` suffix added to its name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.2 Windows API 32-Bit and 64-Bit Comparison
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s look at an example of a 32-bit malware to understand how malware uses
+    multiple API functions to interact with the operating system, and let''s also
+    try to understand how to interpret disassembly code to understand the operations
+    performed by the malware. In the following disassembly output, the 32-bit malware
+    calls the `RegOpenKeyEx` API to open a handle to the `Run` registry key. Since
+    we are dealing with 32-bit malware, all the parameters to the `RegOpenKeyEx` API
+    are pushed onto the stack. As per the documentation at [https://msdn.microsoft.com/en-us/library/windows/desktop/ms724897(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724897(v=vs.85).aspx),
+    the output parameter `phkResult` is a pointer variable (output parameter is indicated
+    by the `_Out_` annotation) that receives the handle to the opened registry key
+    after the function call. Notice that at ➊, the address of `phkResult` is copied
+    into the `ecx` register, and at ➋, this address is passed as the fifth parameter
+    to the `RegOpenKeyEx` API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After the malware opens the handle to the `Run` registry key by calling `RegOpenKeyEx`,
+    the returned handle (stored in the `phkResult` variable ➌) is moved into the `ecx`
+    register and then passed as the first parameter ➍ to `RegSetValueExW`. From the
+    MSDN documentation for this API, you can tell that the malware uses the `RegSetValueEx`
+    API to set a value in the `Run` registry key (for persistence). The value that
+    it sets is passed as the second parameter ➎, which is the string `System`. The
+    data that it adds to the registry can be determined by examining the fifth parameter
+    ➏, which is passed in the `eax` register. From the previous instruction ➐, it
+    can be determined that `eax` holds the address of the variable `pszPath`. The
+    `pszPath` variable is populated with some content during runtime; so, just by
+    looking at the code, it''s hard to say what data the malware is adding to the
+    registry key (you can determine that by debugging the malware, which will be covered
+    in the next chapter). But, at this point, by using static code analysis (disassembly),
+    you can tell that malware adds an entry into the registry key for persistence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After adding the entry to the registry key, the malware closes the handle to
+    the registry key by passing the handle it acquired previously (which was stored
+    in the `phkResult` variable) to the `RegCloseKey` API function, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding example demonstrates how malware makes use of multiple Windows
+    API functions to add an entry into the registry key, which will allow it to run
+    automatically when the computer reboots. You also saw how malware acquires a handle
+    to an object (such as the registry key) and then shares that handle with other
+    API functions to perform subsequent operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you are looking at the disassembled output of the function from 64-bit
+    malware, it might look different because of the way the parameters are passed
+    in the x64 architecture (this was covered in the previous chapter). The following
+    is an example of 64-bit malware calling the `CreateFile` function. In the previous
+    chapter, while discussing the x64 architecture, you learned that the first four
+    parameters are passed in registers (`rcx`,`rdx`, `r8`, and `r9`), and the rest
+    of the parameters are placed on the stack. In the following disassembly, notice
+    how the first parameter (`lpfilename`) is passed in the `rcx` register at ➊, the
+    second parameter in the `edx` register at ➋, the third parameter in the `r8` register
+    at ➌, and the fourth parameter in the `r9` register at ➍. The additional parameters
+    are placed on the stack (notice that there is no `push` instruction) using `mov`
+    instructions, at ➎ and ➏. Notice how IDA was able to recognize the parameters
+    and add a comment next to the instructions. The return value of this function
+    (which is the handle to the file) is moved from the `rax` register to the `rsi`
+    register at ➐:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following disassembly listing of `WriteFile` API, notice how the file
+    handle which was copied into the `rsi` register in the previous API call, is now
+    moved into the `rcx` register to pass it as the first parameter to the `WriteFile`
+    function at ➑. In the same manner, the other parameters are placed in the register
+    and on the stack, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the preceding example, you can see that the malware creates a file and
+    writes some content into the file, but when you are looking at the code statically, it
+    is not clear what file the malware creates or what content it writes to the file.
+    For example, to know the filename created by the program, you need to examine
+    the content of the address specified by the variable `lpFileName` (passed as an
+    argument to the `CreateFile`); but the `lpFileName` variable, in this case, is
+    not hardcoded, and is populated only when the program runs. In the next chapter,
+    you will learn the technique to execute the program in a controlled manner by
+    using a debugger, which allows you to inspect the contents of the variable (memory
+    locations).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4\. Patching Binary Using IDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When performing malware analysis, you may want to modify the binary to change
+    its inner workings or reverse its logic to suit your needs. Using IDA, it is possible
+    to modify the *data* or *instructions* of a program. You can perform patching
+    by selecting Edit | Patch program menu, as shown in the following screenshot.
+    Using the submenu items, you can modify a *byte*, *word*, or *assembly instructions*.
+    A point to remember is that when you are using these menu options on the binary,
+    you are not really modifying the binary; the modification is made to the IDA database.
+    To apply the modification to the original binary, you need to use the Apply patches
+    to input file submenu item:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00117.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 4.1 Patching Program Bytes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Consider the code excerpt from the 32-bit malware DLL (*TDSS rootkit*), which
+    is performing a check to make sure that it is running under `spoolsv.exe`. This
+    check is performed using string comparison at ➊; if the string comparison fails,
+    then the code jumps to end of the function ➋ and returns from the function. To
+    be specific, this DLL generates malicious behavior only when it is loaded by `spoolsv.exe`; otherwise,
+    it just returns from the function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Suppose you want the malicious DLL to generate the behavior on any other process,
+    such as `notepad.exe`. You can change the hardcoded string from `spoolsv.exe` to `notepad.exe`.
+    To do that, navigate to the hardcoded address by clicking on `aSpoolsv_exe`, which
+    will land you in the region shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00118.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, place your mouse cursor on the variable name (`aSpoolsv_exe`). At this
+    point, the hex view window should be synchronized with this address. Now, clicking
+    on the Hex View-1 tab displays the hex and ASCII dump of this memory address.
+    To patch the bytes, select Edit | Patch program | Change byte; this will bring
+    up the patch bytes dialog shown in the following screenshot. You can modify the
+    original bytes by entering the new byte values in the Values field. The Address
+    field represents the virtual address of the cursor location, and the File offset
+    field specifies the offset in the file where the bytes reside in the binary. The Original value
+    field shows the original bytes at the current address; the values in this field
+    do not change, even if you modify the values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00119.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The modification that you make is applied to the IDA database; to apply the
+    changes to the original executable file, you can select Edit | Patch program |
+    Apply patches to the input file. The following screenshot shows the Apply patches
+    to input file dialog. When you click on **OK,** the changes will be applied to
+    the original file; you can keep a backup of the original file by checking the Create
+    backup option; in that case, it will save your original file with a `.bak` extension:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00120.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The preceding example demonstrated patching the bytes; in the same manner, you
+    can patch *one word* (2-byte) at a time by selecting Edit | Patch program | Change
+    word. You can also modify bytes from the *hex view* window, by right-clicking on
+    a byte and choosing Edit (*F2*), and you can apply the changes by right-clicking again and
+    by choosing Apply changes (*F2*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.2 Patching Instructions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous example, the *TDSS **rootkit* DLL performed a check to see
+    if it is running under `spoolsv.exe`. We modified the bytes in the program so
+    that the DLL can run under `notepad.exe` instead of `spoolsv.exe`. What if you
+    wanted to reverse the logic so that DLL can run under any process (other than `spoolsv.exe`)?
+    To do that, we can change the `jnz` instruction to `jz` by selecting Edit | Patch
+    program | Assemble, as shown in the following screenshot. This will reverse the
+    logic and cause the program to return from the function without exhibiting any
+    behavior when the DLL is running under `spoolsv.exe`. Whereas when the DLL is
+    running under any other process, it exhibits malicious behavior. After changing
+    the instructions, when you click on OK, the instruction is assembled but the dialog
+    remains open, prompting you to assemble another instruction at the next address.
+    If you do not have any more instructions to assemble, you can click the Cancel
+    button. To make the changes to the original file, select Edit | Patch program
+    | Apply patches to input file and follow the steps mentioned previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00121.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When you are patching an instruction, care needs to be taken to make sure that
+    the instruction alignment is correct; otherwise, the patched program may exhibit
+    unexpected behavior. If the new instruction is shorter than the instruction you
+    are replacing, then `nop` instructions can be inserted to keep the alignment intact.
+    If you are assembling a new instruction that is longer than the one that is being
+    replaced, IDA will overwrite the bytes of the subsequent instructions, which may
+    not be the behavior you want:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5\. IDA Scripting and Plugins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'IDA offers scripting capabilities that give you access to the contents of an
+    IDA database. Using the scripting functionality, you can automate some of the
+    common tasks and complex analysis operations. IDA supports two scripting languages:
+    *IDC*, which is a native, built-in language (with syntax similar to C), and Python
+    scripting through *IDAPython*. In September 2017, Hex-Rays released a new version
+    of IDAPython API that is compatible with IDA 7.0 and later versions. This section
+    will give you a feel of the scripting capabilities using IDAPython; the IDAPython
+    scripts demonstrated in this section makes use of the new IDAPython API, which
+    means that if you are using older versions of IDA (lower than IDA 7.0), these
+    scripts will not work. After you have become familiar with IDA and the reverse
+    engineering concepts, you may want to automate tasks the following resources should
+    help you get started with *IDAPython *scripting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*The Beginner’s Guide to IDAPython* by Alexander Hanel: [https://leanpub.com/IDAPython-Book](https://leanpub.com/IDAPython-Book)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Hex-Rays IDAPython documentation*: [https://www.hex-rays.com/products/ida/support/idapython_docs/](https://www.hex-rays.com/products/ida/support/idapython_docs/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 5.1 Executing IDA Scripts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Scripts can be executed in different ways. You can execute standalone *IDC*
+    or *IDAPython* scripts by choosing File | Script file. If you wish to execute
+    only a few statements instead of creating a script file, you can do that by selecting
+    File | Script Command (*Shift* + *F2*), then by choosing the appropriate scripting
+    language (IDC or Python) from the drop-down menu, shown as follows. After running
+    the following script commands, the virtual address of the current cursor location
+    and the disassembly text for the given address are displayed in the output window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00122.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Another way to execute script commands is by typing the command in the IDA''s
+    command line, which is located beneath the *output* window, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00123.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 5.2 IDAPython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*IDAPython* is a set of powerful Python bindings for IDA. It combines the power
+    of Python with the analysis features of IDA, allowing for more powerful scripting
+    capabilities. IDAPython consists of three modules: `idaapi`, which provides access
+    to the IDA API; `idautils`, which provides high-level utility functions for IDA;
+    and `idc`, an IDC compatibility module. Most of the IDAPython functions accept
+    an *address* as the parameter, and, while reading the IDAPython documentation,
+    you will find that the address is referred to as `ea`. Many IDAPython functions
+    return addresses; one common function is `idc.get_screen_ea()`, which gets the
+    address of the current cursor location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code snippet shows how you can pass the address returned by `idc.get_screen_ea()`
+    to the `idc.get_segm_name()` function to determine the name of the segment associated
+    with the address:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following code snippet, the address returned by `idc.get_screen_ea()`
+    is passed to `idc.generate_disasm_line()` function to generate the disassembly
+    text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following code, the address returned by the `idc.get_screen_ea()` function
+    is passed to `idc.get_func_name()` to determine the name of the function associated
+    with the address. For more examples, refer to Alexander Hanel''s *The Beginner’s
+    Guide to* *IDAPython* book ([https://leanpub.com/IDAPython-Book](https://leanpub.com/IDAPython-Book)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: During malware analysis, often, you will want to know if the malware imports
+    a specific function (or functions), such as `CreateFile`, and where in the code
+    the function is called. You can do that by using the *cross-references* feature
+    covered previously. To give you a feel for IDAPython, the following examples demonstrate
+    how to use IDAPython to check for the presence of the `CreateFile` API and to
+    identify cross-references to `CreateFile`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.2.1 Checking The Presence Of CreateFile API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you recall, upon disassembly, IDA tries to identify whether the disassembled
+    function is a library function or an import function by using pattern matching
+    algorithms. It also derives the list of names from the symbol table; such derived
+    names can be accessed by using the Names window (via View | Open subview | Names
+    or *Shift* + *F4*). The Names window contains the list of imported, exported,
+    and library functions, and named data locations. The following screenshot displays
+    the `CreateFileA` API functions in the Names window:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00124.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can also programmatically access the named items. The following IDAPython
+    script checks for the presence of the `CreateFile` API function by iterating through
+    each named item:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding script calls the `idautils.Names()` function, which returns a
+    named item (tuple), containing the *virtual address* and the *name*. The named
+    item is iterated and checked for the presence of `CreateFile`. Running the preceding
+    script returns the address of the `CreateFileA` API, as shown in the following
+    snippet. Since the code for an imported function resides in a shared library (DLL)
+    that will only be loaded during runtime, the address (`0x407010`) listed in the
+    following snippet is the virtual address of the associated import table entry
+    (not the address where the code for the `CreateFileA` function can be found):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another method to determine the presence of the `CreateFileA` function is by
+    using the following code. The `idc.get_name_ea_simple()` function returns the
+    virtual address of `CreateFileA`. If `CreateFileA` does not exist, then it returns
+    a value of `-1` (`idaapi.BADADDR`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 5.2.2 Code Cross-References to CreateFile Using IDAPython
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Having identified the reference to the `CreateFileA` function, let''s try to
+    identify *cross-references* to (*Xrefs to*) the `CreateFileA` function; this will
+    give us all the addresses where `CreateFileA` is called from. The following script
+    builds on the previous script and identifies the cross-references to the `CreateFileA`
+    function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output generated as a result of running the preceding
+    script. The output displays all of the instructions that call the `CreateFileA`
+    API function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 5.3 IDA Plugins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: IDA plugins greatly enhance the capabilities of IDA, and most of the third-party
+    software that are developed to be used with IDA are distributed in the form of
+    plugins. A commercial plugin that is of great value to a malware analyst and reverse
+    engineer is the *Hex-Rays Decompiler* ([https://www.hex-rays.com/products/decompiler/](https://www.hex-rays.com/products/decompiler/)).
+    This decompiles the processor code into a human-readable C-like pseudocode, making
+    it easier to read the code, and can speed up your analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best place to find some of the interesting plugins is the Hex-Rays plugin
+    contest page at [https://www.hex-rays.com/contests/index.shtml](https://www.hex-rays.com/contests/index.shtml).
+    You can also find a list of useful IDA plugins at [https://github.com/onethawt/idaplugins-list](https://github.com/onethawt/idaplugins-list).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 6\. Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This chapter covered *IDA Pro*: its features, and how to use it to perform
+    static code analysis (disassembly). In this chapter, we also looked at some of
+    the concepts related to the Windows API. Combining the knowledge that you gained
+    from the previous chapter, and utilizing the features offered by IDA, can greatly
+    enhance your reverse engineering and malware analysis capabilities. Even though
+    disassembly allows us to understand what a program does, most variables are not
+    hardcoded and get populated only when a program is executing. In the next chapter,
+    you will learn how to execute malware in a controlled manner with the help of
+    a debugger, and you will also learn how to explore various aspects of a binary
+    while it is executing under a debugger.'
+  prefs: []
+  type: TYPE_NORMAL

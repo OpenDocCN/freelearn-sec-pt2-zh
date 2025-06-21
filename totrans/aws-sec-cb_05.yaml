@@ -1,0 +1,2364 @@
+- en: '5'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Network and EC2 Security with VPCs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: An Amazon **Virtual Private Cloud** ( **VPC** ) is a foundational component
+    within the AWS cloud that allows the creation of private networks within the AWS
+    cloud, distinct and isolated from the broader AWS public cloud. It enables us
+    to launch AWS resources into a **Virtual Private Network** ( **VPN** ) that we
+    have defined within our AWS account. This virtual network is similar to a traditional
+    network we might run in our own data center but comes with the added advantage
+    of AWS’s scalable infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Users have complete control over their virtual network environment. This means
+    they can choose their IP address ranges, set up public and private subnets, and
+    customize route tables and network gateways to suit their requirements. This flexibility
+    enables the deployment of internet-accessible instances, such as web servers,
+    in public subnets, while positioning internal-use instances, such as database
+    servers, in private subnets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, Amazon VPC enhances security with a robust suite of features such
+    as **security groups** , **Network Access Control Lists** ( **NACLs** ), **flow
+    logs** , VPN connections, integration with AWS **Identity and Access Management**
+    ( **IAM** ), **PrivateLink** , **endpoint services** , and **gateway endpoints**
+    . Together, these security features significantly fortify the security measures
+    within a VPC, creating a secure, robust, and controlled network environment for
+    the deployment and management of AWS resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter includes the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up VPC plus VPC resources with minimal effort
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a bare VPC and setting up public and private subnets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Launching an EC2 instance with a web server using user data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and configuring security groups
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with NACLs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a VPC gateway endpoint to connect to S3
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring and using VPC flow logs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and configuring NAT gateways
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following knowledge and requirements in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete the recipes within this chapter. We
+    can use an account that is part of an AWS Organization or a standalone account.
+    I will be using the **awsseccb-sandbox-1** account that we created in the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    . However, I won’t be utilizing any AWS Organizations features, meaning you can
+    follow these steps with a standalone account too.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we are working with. This can be an IAM Identity Center user
+    or an IAM user. I will be using the **awsseccbadmin1** IAM Identity Center user
+    we created in the *User management and SSO with IAM Identity Center* recipe in
+    [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However, I won’t be utilizing
+    any IAM Identity Center features, meaning you can follow these steps with an IAM
+    user, too, if the user has **AdministratorAccess** permission within the account.
+    You can create an IAM user by following the *Setting up IAM, account aliases,
+    and billing alerts* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is beneficial to have a foundational understanding of essential computer
+    networking concepts. You can learn the computer networking concepts needed for
+    this chapter at [https://www.secdops.com/blog/essential-computer-networking-concepts-for-the-cloud](https://www.secdops.com/blog/essential-computer-networking-concepts-for-the-cloud)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter05](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter05)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up VPC plus VPC resources with minimal effort
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a VPC along with network resources such as **public
+    subnets** , **private subnets** , **route tables** , **Internet Gateway** ( **IGW**
+    ), **Network Address Translation** ( **NAT** ) **gateway** , and **VPC Endpoints**
+    ( **S3 Gateway** ). We can also create these components individually if needed,
+    as we will see in subsequent recipes within this chapter. To explore all possibilities,
+    I will be selecting all network resource components available to select in this
+    recipe. Some of these components, such as the NAT gateway, have associated charges.
+    Select components and their quantity as per your needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To follow this recipe, we need a working **awsseccb-sandbox-1** AWS account,
+    and a **awsseccbadmin1** user, as described in the *Technical* *requirements*
+    section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Please also note that the default options shown here may change over time,
+    so check the preview to make sure you are only creating the resources that you
+    need before creating the VPC. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **VPC** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From the left sidebar, under the **Virtual private cloud** heading, click on
+    **Your VPCs** . We will be taken to the **Your VPCs** page, where we can see our
+    VPCs. If we are using VPCs for the first time, we will only see the default VPC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'On the **Your VPCs** page, click on **Create VPC** . Within the **Create VPC**
+    screen, select **VPC and more** , then select **Auto-generate** . After that,
+    provide the **awsseccb** project prefix, as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.1 – Creating a VPC with network resources](image/B21384_05_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.1 – Creating a VPC with network resources
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provide the **10.0.0.0/16** value under **IPv4** **CIDR block** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For **IPv6 CIDR block** , we have two options: **No IPv6 CIDR block** and **Amazon-provided
+    IPv6 CIDR block** . Select **No IPv6** **CIDR block** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For **Tenancy** , there are two options: **Default** and **Dedicated** . Select
+    **Default** .'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For **Number of Availability Zones (AZs)** , select **2** ; for **Number of
+    public subnets** , select **2** ; and for **Number of private subnets** , select
+    **2** , as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.2 – Configuring the number of AZs and subnets](image/B21384_05_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.2 – Configuring the number of AZs and subnets
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, we can select AZs for our subnets after expanding **Customize AZs**
+    and customize the CIDR blocks using the **Customize subnets CIDR** **blocks**
+    option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **NAT gateways ($)** , select **1 in 1 AZ** ; for **VPC endpoints** , select
+    **S3 Gateway** ; and for **DNS options** , select **Enable DNS hostnames** and
+    **Enable** **DNS resolution** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.3 – Configuring NAT gateways, VPC endpoints and DNS options](image/B21384_05_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.3 – Configuring NAT gateways, VPC endpoints and DNS options
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'AWS will show us a preview of the VPC in the right pane of the page and network
+    resources it will create as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A VPC with the **awsseccb-vpc** name
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subnets named **awsseccb-subnet-public1-us-east-1a** , **awsseccb-subnet-private1-us-east-1a**
+    , **us-east-1b, awsseccb-subnet-public2-us-east-1b** , and **awsseccb-subnet-private2-us-east-1b**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Route tables named **awsseccb-rtb-public** , **awsseccb-rtb-private1-us-east-1a**
+    , and **awsseccb-rtb-private2-us-east-1b**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Network connections named **awsseccb-igw** , **awsseccb-nat-public1-us-east-1a**
+    and **awsseccb-vpce-s3**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: A single route table is shared among all public subnets while there is a route
+    table per private subnet. Even though this is not shown in the preview, a main
+    route table is also created that dictates the default rules for subnets not associated
+    with any route table. The selection of public subnets necessitates the creation
+    of an IGW, which is then linked to these public subnets, facilitating internet
+    access. Additionally, NAT gateways, which provide internet access to instances
+    in private subnets while preventing direct inbound internet traffic, must be deployed
+    within a public subnet and, thus, also rely on the existence of an IGW for outbound
+    internet traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create VPC** to create the VPC with the network resources shown in
+    the preview.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Verify that all the resources that were listed in the preview have been created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In this recipe, we created a VPC along with VPC resources. To create only a
+    VPC without additional resources, we can select the **VPC only** option instead
+    of **VPC and more** as we saw in *Figure 5* *.1* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we successfully configured a VPC and its associated network
+    resources. Let us learn more about these components. A VPC is a virtual network
+    dedicated to our AWS account. It is isolated from other virtual networks in the
+    AWS Cloud. It allows us to launch AWS resources, such as EC2 instances, into a
+    network that we have defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **IPv4 CIDR block** defines a range of private IPv4 addresses allocated
+    to our VPC, facilitating internal communication within our VPC while keeping it
+    isolated from external networks. In this recipe, we chose a **10.0.0.0/16** **Classless
+    Inter-Domain Routing** ( **CIDR** ) block for our VPC, representing the broadest
+    range of addresses AWS permits for a VPC. CIDR is a method for allocating IP addresses
+    and routing IP packets. It allows multiple IP addresses to be represented as a
+    single expression, significantly simplifying network configuration and management.
+    CIDR is a slightly complex topic for beginners. You can learn more about CIDR
+    at [https://www.secdops.com/blog/understanding-ip-addresses-and-subnetting](https://www.secdops.com/blog/understanding-ip-addresses-and-subnetting)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**IPv6 CIDR Block** is an optional range of IPv6 addresses for our VPC. Selecting
+    **No IPv6 CIDR block** means our VPC will only use IPv4 addresses. IPv6 addresses
+    provide a much larger address space and are becoming increasingly important for
+    future-proofing and global reach.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Tenancy** option lets us choose between a shared or dedicated hardware
+    host for our VPC. The **Default** option allows AWS to place our instances on
+    any shared hardware, which is sufficient for most use cases. The **Dedicated**
+    option is typically used for compliance or regulatory requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Availability Zones** ( **AZs** ) are distinct locations within a region engineered
+    to be isolated from failures in other AZs. By selecting multiple AZs, we can achieve
+    high availability. Each subnet is tied to a specific AZ for fault tolerance and
+    low latency. In this recipe, we created two AZs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A subnet is a logical subdivision of an IP network. Within cloud environments
+    such as AWS, subnets facilitate the organization of a VPC by segmenting the network
+    and directing traffic flow between resources. This segmentation allows for the
+    creation of **public subnets** , which provide direct internet access for resources
+    such as web servers, and **private subnets** . These are designed for resources
+    such as database servers that require restricted access, typically only from within
+    the network or a specific subnet, such as a web server subnet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the **VPC and more** option when creating a VPC, subnets are allocated
+    equally across AZs. Therefore, we can select subnets in multiples of the number
+    of AZs we selected. If we select **1 AZ** , we get the **0** and **1** options
+    for the public subnet and **0** , **1** , and **2** for the private subnet. Similarly,
+    if we select 3 AZs, we get the **0** and **2** options for the public subnets
+    and **0** , **3** , and **6** for the private subnets. In this recipe, we created
+    four subnets – two public subnets and two private subnets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An IGW is a resource that allows communication between instances in our VPC
+    and the internet. It is necessary for any subnet that requires direct access to
+    the internet. As we opted to create a public subnet within our recipe, AWS created
+    an IGW and associated our public subnets with the IGW. For public subnets, we
+    also need to route all internet-bound traffic to the IGW. This is done using **route
+    tables** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Route tables contain a set of rules, known as routes, that determine where
+    network traffic from our subnets or the VPC router is directed. The following
+    are the routes created by AWS in the route table associated with our public subnets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4 – A route table with a route for an IGW](image/B21384_05_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.4 – A route table with a route for an IGW
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we select the **VPC and more** option, a single route table is shared among
+    all public subnets while each private subnet is associated with a distinct route
+    table. Apart from these, there is also a **main route table** created per VPC
+    irrespective of whether we use the **VPC only** or **VPC and more** options. The
+    main route table dictates the default rules for subnets not associated with any
+    route table. By default, no subnets are associated explicitly with the main route
+    table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All subnets not associated with any route table explicitly within a VPC are
+    associated implicitly with the main route table. This means that the main route
+    table’s routing behavior applies to all subnets not associated with any other
+    route tables. In this recipe, all subnets are associated with a route table and
+    hence there will not be any association for the main route table. We can experiment
+    by removing a subnet’s association with a route table and we can see that it will
+    be implicitly associated with the default route table. We can set a different
+    route table as the main route table if we want to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consequently, with a configuration of two public subnets and two private subnets,
+    there will be four route tables: one for the public subnets, one for each private
+    subnets, and one main route table. If the configuration includes two public subnets
+    and four private subnets, the total rises to six route tables: one for the public
+    subnets, one for each of the private subnets, and one main route table.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A NAT gateway allows instances in a private subnet to initiate outbound internet
+    traffic but prevents unsolicited inbound traffic from the internet. This is crucial
+    for updating, patching, or downloading dependencies for instances that do not
+    need to be directly accessible from the outside world. NAT is a method that enables
+    private subnet resources to access the internet or other network services without
+    exposing their private IP addresses. By translating these private IP addresses
+    to a public one, NAT gateways facilitate secure internet access for services within
+    a private subnet, ensuring that the internal structure of a private network remains
+    shielded from external traffic and threats. NAT gateways are deployed on a public
+    subnet and therefore, if we opt not to create any public subnet with the **VPC
+    and more** option and try to select the NAT gateway option, then we will get an
+    error message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: VPC endpoints enable private connections between our VPC and AWS services without
+    requiring traffic to traverse the internet. Selecting an **S3 Gateway** endpoint
+    allows our instances to securely access S3 buckets without an IGW or NAT gateway,
+    improving security and potentially reducing costs. Finally, enabling DNS options
+    such as **DNS hostnames** and **DNS resolution** within our VPC allows our AWS
+    resources to communicate with each other using hostnames instead of IP addresses,
+    simplifying network management and configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even though it was not shown in the preview while creating the VPC, a NACL
+    was also created. An NACL acts as a firewall for controlling traffic at the subnet
+    level. NACLs examine and filter traffic entering and leaving every subnet within
+    our VPC. When we create the VPC using the **VPC and more** option or the **VPC
+    only** option, a default NACL is created that allows all inbound and outbound
+    traffic. Subnets created are associated automatically with the default NACL. However,
+    we can change the associate to a different NACL. The following are the inbound
+    rules for the default NACL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.5 – Inbound rules for default NACL](image/B21384_05_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.5 – Inbound rules for default NACL
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we created the VPC, a security group called **default** was created by
+    AWS within our VPC. In AWS, a security group functions as a virtual firewall that
+    governs inbound and outbound traffic for EC2 instances. It operates at the instance
+    level, whereas NACLs control traffic at the subnet level. Security groups and
+    NACLs complement each other, providing layered security within AWS environments.
+    We can use security groups for fine-grained, stateful control over individual
+    instances, while NACLs provide an additional layer of stateless, subnet-level
+    security, allowing or blocking types of traffic before they reach your instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'A default VPC is provided in every AWS region by AWS and includes a public
+    subnet in each AZ, an IGW, and a configured DNS resolution. The default VPC allows
+    the instant launch of Amazon EC2 instances without creating a VPC. The following
+    are some of the important settings of the default VPC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subnets in the default VPC have an outbound route to the internet through an
+    IGW.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A subnet is created per AZ.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**DHCP options set** is updated. My default VPC has the following options set:
+    **domain-name = ec2.internal** and **domain-name-servers =** **AmazonProvidedDNS**
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some more important concepts related to AWS VPCs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS VPCs consist of subresources such as IGWs, route tables, NACLs, subnets,
+    and security groups.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'AWS creates a default VPC ready for us to use in every region. The following
+    are some of its important characteristics:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subnets in the default VPC are routed to the internet.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A subnet is created per AZ.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**DHCP Options Set** is updated.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: VPC peering can be used to connect one VPC to another through a direct route
+    using private IP addresses, making the associated instances behave as though they
+    are on the same network.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: VPC peering can be done within the same region, across regions, and even across
+    AWS accounts.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transitive peering is currently not supported for AWS VPCs. Every VPC must be
+    peered to every other required VPC in a star topology-like structure.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To avoid the overhead of managing many point-to-point connections with VPC peering,
+    we can make use of the AWS Transit Gateway to connect all the VPCs and even on-premises
+    networks to a single gateway.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Apart from the standard reserved IP addresses of network address and broadcast
+    address, AWS also reserves three more IP addresses. So, a total of five addresses
+    are reserved in a VPC.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to subnets in AWS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first IP address of a subnet represents the subnet ID, while the last IP
+    address represents the subnet’s directed broadcast address. Therefore, we cannot
+    use the first and last IP address of a subnet for hosts. AWS reserves additional
+    IP addresses.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The first IP address of the first subnet of a network represents the subnet
+    ID, as well as the network’s ID. Similarly, the last IP address of the last subnet
+    of a network represents the subnet’s and the network’s directed broadcast address.
+    When using these IP addresses from outside the network, they will be considered
+    as the networks’ IPs, and when using them within the network, they will be considered
+    as the subnets’ IPs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A subnet in AWS VPC is always associated with one AZ. While we cannot have one
+    subnet associated with more than one AZ at a time, we can have multiple subnets
+    associated with a single AZ.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: AWS allows us to choose a subnet without contiguous IP addresses, as shown in
+    the following figure. However, it is good practice to use contiguous IP address
+    ranges, just like we did in this recipe with **10.0.1.0/24** and **10.0.2.0/24**
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 5.6 – Subnets without continuous IP addresses](image/B21384_05_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.6 – Subnets without continuous IP addresses
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will learn about network ACLs, security groups, and IGW in later recipes
+    within this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about default VPC at [https://www.cloudericks.com/blog/understanding-aws-default-vpc](https://www.cloudericks.com/blog/understanding-aws-default-vpc)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about the main route table at [https://www.cloudericks.com/blog/understanding-the-main-route-table-in-aws-vpc](https://www.cloudericks.com/blog/understanding-the-main-route-table-in-aws-vpc)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: While we have expanded our understanding of VPCs and their associated network
+    resources, it is important to keep in mind that the primary focus of this book
+    is on security rather than networking. A solid grasp of networking principles
+    is undoubtedly crucial for developing effective security measures; however, delving
+    too deeply into the intricacies of networking could shift our attention away from
+    the broad spectrum of security topics we aim to explore. Readers keen on deepening
+    their networking knowledge can do so at [https://www.cloudericks.com/blog/beginners-roadmap-to-mastering-aws-networking](https://www.cloudericks.com/blog/beginners-roadmap-to-mastering-aws-networking)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a bare VPC and setting up public and private subnets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A public subnet is specifically designed to enable instances within it to be
+    accessible from the internet. This is achieved by routing the internet traffic
+    through an IGW by configuring route tables. In the *Setting up VPC plus VPC resources
+    with minimal effort* recipe from this chapter, we selected the **VPC and more**
+    option while creating the VPC as we saw in *Figure 5* *.1* , which automatically
+    set up public and private subnets, along with a pre-configured IGW and route tables.
+    For this recipe, we will choose the **VPC only** option to create a VPC without
+    the additional networking resources and set up an IGW and a route table to enable
+    internet access to the instances in our subnet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To follow this recipe, we need a working **awsseccb-sandbox-1** AWS account,
+    and a **awsseccbadmin1** user, as described in the *Technical* *requirements*
+    section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we will create a bare VPC and a subnet, and then we will set up IGW and
+    route tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a bare VPC
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create a VPC only without additional resources as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console and go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From the left sidebar, under the **Virtual private cloud** heading, click on
+    **Your VPCs** . We will be taken to the **Your VPCs** page, where we can see our
+    VPCs. If we are using VPCs for the first time, we should see the default VPC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Your VPCs** page, click on **Create VPC** , and on the **Create VPC**
+    screen, select the **VPC only** option. Give the **awsseccb-vpc2** name. For **IPv4
+    CIDR block** , select **IPv4 CIDR manual input** and give the value as **10.0.0.0/24**
+    . For **IPv6 CIDR block** , select **No IPv6** **CIDR block** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.7 – Only creating a VPC](image/B21384_05_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.7 – Only creating a VPC
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down, leave the automatically generated tag ( **Key** is **Name** and
+    **Value** is **awsseccb-vpc2** ) as-is, optionally add any new tags, and click
+    **Create VPC** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Our VPC is created now. Next, we will create a subnet within the VPC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a subnet within a VPC
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We created a VPC with a CIDR block range of **10.0.0.0/24** in the previous
+    section. We will add a subnet with a netmask of **/25** . We need to create subnets
+    within a VPC’s IP address range without any overlap with other subnets. Let us
+    get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Subnets** in the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create subnet** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Create subnet** page, under **VPC ID** , select the VPC we created
+    in the previous section using the drop-down box.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Subnet settings** , set the **Subnet name** field to **awsseccb-vpc2-public-subnet**
+    . If we plan to create a private subnet, give the **awsseccb-vpc2-private-subnet**
+    name. Complete the remaining steps within the current section, but skip the remaining
+    sections of this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **No preference** under **Availability Zone** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For the **IPv4 VPC CIDR block** , keep the default value.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **IPv4 subnet CIDR block** , provide an IP address range that is a subset
+    of our VPC’s IP address range. I will be using **10.0.0.0/25** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down and click on **Create subnet** to create the subnets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Subnets** page from the sidebar. We should be able to see the new
+    subnet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We have created a subnet within this recipe without any internet connectivity
+    yet. If you are looking to create a private subnet, you have done it. To set up
+    the subnet as a public subnet, continue with the rest of the sections of this
+    recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enable auto-assign public IPv4 address
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To make the subnet a public subnet, it is good to enable the auto-assign public
+    IPv4 address feature as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the subnet we created, click on the **Actions** dropdown, and click on
+    **Edit** **subnet settings** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Enable auto-assign public IPv4 address** and click **Save** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Subnets** page from the sidebar. We should be able to see **Auto-assign
+    public IPv4 address** set to **Yes** for our first subnet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will create an IGW.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and configuring an IGW
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create and attach an IGW to our VPC for setting up a public subnet as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Internet gateways** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** **internet gateway** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Give a descriptive name for **Name tag** such as **awsseccb-vpc2-igw** . Leave
+    the automatically generated tag ( **Key** is **Name** and **Value** is **awsseccb-vpc2-igw**
+    ) as-is, optionally add any new tags, and click **Create internet gateway** .
+    We should get a success message stating that the IGW has been created. If we go
+    to the **Internet gateways** screen, we will see that the **State** of our IGW
+    is currently **Detached** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the IGW we created, click on the **Actions** dropdown, and click on **Attach**
+    **to VPC** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Attach to VPC** screen, select the VPC we created in this recipe and
+    click on **Attach internet gateway** . If we go to the **Internet gateways** screen,
+    we will see that the **State** of our IGW is now **Attached** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will create and configure a route table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating and configuring a route table
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create and configure the route table for setting up a public subnet
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Route tables** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** **route table** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Provide the **awsseccb-vpc2-rtb-public** name and select the VPC we created
+    in this recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the automatically generated tag ( **Key** is **Name** and **Value** is
+    **awsseccb-vpc2-rtb-public** ) as-is, optionally add any new tags, and click on
+    **Create** **route table** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Route tables** from the left sidebar, select the route table we created,
+    click on the **Actions** dropdown or go to the **Routes** tab, and click on **Edit
+    routes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Edit routes** page, click **Add route** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Destination** , select **0.0.0.0/0** . For **Target** , select **Internet
+    Gateway** , then select the IGW we created in this recipe, and click **Save changes**
+    . If we want to add a route for the IPv6 address, we can add a similar entry with
+    the destination set to **::/0** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to our route table and go to the **Subnet** **associations** tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit subnet associations** , select the subnet we created in this
+    recipe, and click on **Save associations** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can now launch EC2 instances into our public subnet with the appropriate
+    security group rules and verify the changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We first created a bare VPC. When we create a bare VPC using the **VPC only**
+    option, a main route table, a default NACL, and a default security group are also
+    created along with the VPC. The main route table dictates the default rules for
+    subnets not associated with any route table. In our case, the main route table
+    includes only a local route that enables communication within the VPC. This is
+    crucial for allowing instances within the same VPC to communicate with each other
+    without needing to traverse the internet or any other external network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A network ACL acts as a firewall for controlling traffic at the subnet level.
+    In our case, a default NACL was created that allows all traffic. A security group
+    in AWS acts like a virtual firewall for our EC2 instances to control inbound and
+    outbound traffic. In our case, a default security group was created that will
+    allow all traffic. We will see NACLs and security groups again in later recipes
+    within this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We selected the **Enable auto-assign public IPv4 address** option, which makes
+    it the default option while creating an EC2 instance within this subnet. We can
+    override this if we want during the instance creation. We can also create and
+    attach an Elastic IP address later to our EC2 instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We created and attached an IGW. We also created and configured a route table
+    for internet access. We can make the main route table public if we want to, by
+    editing the routes. However, if we make the main route table public, it will implicitly
+    make all the new subnets public until we associate it with a private route table.
+    Therefore, it is a good practice to create a separate route table for public access
+    and then attach the subnets that need public access to that VPC. We will do this
+    next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the previous recipe from this chapter, *Setting up VPC plus VPC resources
+    with minimal effort* , we discussed VPC and VPC resources in detail. Therefore,
+    I will not repeat. Please refer to the *How it works* , *There’s more…* , and
+    *See also* sections of that recipe even if you do not want to practice the *How
+    to do* *it* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about IGWs at [https://www.cloudericks.com/blog/understanding-internet-gateway-in-aws](https://www.cloudericks.com/blog/understanding-internet-gateway-in-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about AWS VPC route tables at [https://www.cloudericks.com/blog/understanding-aws-vpc-route-tables](https://www.cloudericks.com/blog/understanding-aws-vpc-route-tables)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Launching an EC2 instance with a web server using user data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will use the EC2 user data feature to set up a simple web
+    server during the launch of an EC2 instance. We will use this instance to test
+    the VPC and public subnet we created in the previous recipes. We will also use
+    this recipe in future recipes where we need to launch an EC2 instance. The EC2
+    user data feature also significantly enhances security by enabling automated security
+    patching, ensuring instances are updated with the latest protections upon booting
+    and reducing vulnerabilities. Moreover, it guarantees consistent security configurations
+    across all instances, fostering a uniform security posture that prevents configuration
+    drifts and strictly adheres to established security standards from the start.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working **awsseccb-sandbox-1** AWS account, and a **awsseccbadmin1** user,
+    as described in the *Technical* *requirements* section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An **awsseccb-vpc** VPC following the *Setting up VPC plus VPC resources with
+    minimal effort* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first set up an EC2 instance as a web server using EC2 user data and
+    verify it from the browser. Then we will see how we can log into the instance
+    using **Secure** **Shell** ( **SSH** ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a web server using EC2 user data
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can launch an EC2 instance with a web server using user data as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console and go to the **EC2** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Instances** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Launch instances** at the top right of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Name** , provide the **Cloudericks Web** **Server** value.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Application and OS Images (Amazon Machine Image)** section, select
+    **Amazon Linux** , and for **Amazon Machine Image (AMI)** , select **Amazon Linux**
+    **2023 AMI** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.8 – Selecting Amazon Linux](image/B21384_05_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.8 – Selecting Amazon Linux
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **Instance type** , select **t2.micro** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For **Key pair (login)** , either select the key pair name of a key pair we
+    have already generated and have access to or, if we do not have a key pair, click
+    on the **Create new key pair** link and complete the following steps:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter a key pair name.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Key pair type** to **RSA** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Private key file format** to **.pem** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** **key pair** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should save the key safely. If we are using a Unix or Mac system, then we
+    need to change the file permission to read-only access with the **chmod** **400**
+    command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Network settings** section, click on **Edit** and do the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **VPC** , select our VPC, which is named **awsseccb-vpc** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Subnet** , select a public subnet in the **us-east-1a** AZ. If you have
+    created a subnet as mentioned in the *Getting ready* section, these details are
+    included in the name of the subnet.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Auto-assign public IP** to **Enable** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.9 – The launch instance network settings](image/B21384_05_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.9 – The launch instance network settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Firewall (security groups)** in the **Networks** settings section, select
+    **Create security group** . For **Security group name** , enter **cloudericks-web-server**
+    . For **Description** , replace the default security group name within the **Description**
+    field with **cloudericks-web-server** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.10 Creating a security group](image/B21384_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.10 Creating a security group
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under **Inbound Security Group Rules** within the **Network settings** section,
+    add rules for **HTTP** and **HTTPS** with **Source type** as **Anywhere** . Add
+    the **SSH** rule with the **Source type** as **My IP** to allow SSH only from
+    our IP.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We allowed SSH traffic from our own IP address. In a production environment,
+    SSH access is typically restricted to a bastion host or jump host, which is a
+    dedicated server configured to provide a secure and controlled access point to
+    the internal network from an external source. With a bastion host setup, we first
+    log in to the bastion host and, from there, securely log in to our web server.
+    We may also use one of the options shown such as EC2 Instance Connect, Session
+    Manager, and EC2 serial console, as shown in *Figure 5* *.13* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Advanced details** section, copy and paste the following script code
+    into the **User** **data** field:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Leave other values and selections as-is and click on **Launch instance** . Once
+    the instance is launched successfully, go to the **Instances** page, select our
+    new EC2 instance, and explore its parameters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Copy either the **Public IPv4 DNS** or the **Public IPv4** address, open it
+    from a browser tab, and use **http** instead of **https** . We should see our
+    web server’s index.html page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.11 – The web server’s index.html page from a browser](image/B21384_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.11 – The web server’s index.html page from a browser
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we created a simple web server and accessed the web page from
+    the internet using HTTP. It is listed as **Not Secure** since we are using HTTP
+    and not HTTPS. If we try to run the URL with HTTPS, it will give a response similar
+    to this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.12 – No HTTPS website](image/B21384_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.12 – No HTTPS website
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will connect to the instance using SSH, and in [*Chapter
+    6*](B21384_06.xhtml#_idTextAnchor220) , we will enable HTTPS on this machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting to EC2 instance using SSH
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can connect to the EC2 instance over SSH as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **Instances** page in the **EC2** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select our instance and, from the **Actions** drop-down menu, click on **Connect**
+    . This will give us ways to connect to an EC2 instance such as **EC2 Instance
+    Connect** , **Session Manager** , **SSH client** , and **EC2** **serial console**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.13 – The Connect to instance options](image/B21384_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.13 – The Connect to instance options
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go to the **SSH client** tab. We should see the steps to connect to our instance
+    using SSH, as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.14 – Connecting to an instance with the SSH client](image/B21384_05_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.14 – Connecting to an instance with the SSH client
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can follow the given steps and connect to our EC2 instance. If we are connecting
+    to the instance for the first time, we will get a confirmation message to trust
+    the site and continue connecting. Enter **yes** for the same:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.15 – Connecting to the instance with SSH](image/B21384_05_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.15 – Connecting to the instance with SSH
+  prefs: []
+  type: TYPE_NORMAL
+- en: We connected to our instance using SSH. It is worth noting that there are a
+    few other options available, such as EC2 Instance Connect, Session Manager, and
+    EC2 serial console, as we saw in *Figure 5* *.13* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First, we set up a web server using EC2 user data. The EC2 user data feature
+    allows us to configure a set of scripts or commands that will be run only once
+    when the instance first starts. This capability is helpful for installing software,
+    updating the system, downloading files, or configuring settings to match specific
+    requirements. The user data script is injected into the instance before it is
+    even booted, making it an efficient method to bootstrap the instance with all
+    the necessary configurations and software. This helps to ensure that the instance
+    is fully prepared for its role, whether it be a web server, database, or any other
+    service, from the moment it becomes operational. This feature significantly streamlines
+    the deployment process, eliminating the need for manual setup and allowing for
+    more agile and scalable cloud architecture designs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also connected to our instance using SSH. SSH is a cryptographic network
+    protocol employed for secure communication between a client and a server over
+    an unsecured network. It’s widely used for a variety of network services, with
+    the most common being remote command-line login and execution. SSH provides a
+    secure channel over an unsecured network, encrypting the data exchanged to prevent
+    unauthorized access, eavesdropping, and hijacking. Aside from its primary function
+    of secure remote administration, SSH also supports tunneling, forwarding **Transmission
+    Control Protocol** ( **TCP** ) ports, and transferring files using associated
+    protocols such as SFTP or SCP. Its versatility and security features make SSH
+    an essential tool for managing servers, configuring networks, and securely transferring
+    data across the internet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We connected to our instance using SSH. AWS also provides a few alternatives
+    to connect to our instance, as we saw in *Figure 5* *.14* . Let us quickly explore
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: EC2 Instance Connect provides a simple and secure way to connect to your instances
+    using SSH directly from the AWS Management Console. Unlike traditional SSH, which
+    requires you to manage SSH keys, Instance Connect handles key management for you,
+    generating a one-time-use SSH key for each connection session. This method enhances
+    security by avoiding the need to share and manage SSH keys manually and provides
+    an easy way to control access through AWS IAM policies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**AWS Systems Manager Session Manager** is a feature of AWS Systems Manager
+    that lets you manage your EC2 instances through an interactive shell or automation
+    scripts without needing to open inbound ports, set up a bastion host, or manage
+    SSH keys. It provides secure, auditable instance management without the complexity
+    of traditional access methods. Session Manager sessions are encrypted and can
+    be logged and audited, making it an ideal choice for enterprises concerned with
+    security and compliance. It also integrates with AWS IAM for access control.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The EC2 serial console allows you to troubleshoot boot and network connectivity
+    issues by providing secure, serial access to your EC2 instances. This is particularly
+    useful when you cannot connect to your instance using SSH or RDP. Access to the
+    serial console does not require network connectivity, making it an invaluable
+    tool for resolving issues that prevent an instance from starting up correctly.
+    Access to the EC2 serial console is controlled through IAM policies, ensuring
+    that only authorized users can use this feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of these connection methods serves different use cases, from simplifying
+    SSH key management with EC2 Instance Connect, offering secure and auditable access
+    with Session Manager, to providing a last-resort troubleshooting tool with the
+    EC2 Serial Console. Depending on our security requirements, operational practices,
+    and troubleshooting needs, we can choose the method that best fits our scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about the different ways to connect to an EC2 instance at [https://www.cloudericks.com/blog/different-ways-to-connect-to-ec2-instances-in-aws](https://www.cloudericks.com/blog/different-ways-to-connect-to-ec2-instances-in-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can further increase EC2 security by encrypting the EBS instance following
+    the steps available at [https://www.cloudericks.com/blog/steps-to-encrypt-ebs-data-with-aws-kms](https://www.cloudericks.com/blog/steps-to-encrypt-ebs-data-with-aws-kms)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating and configuring security groups
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create a security group from the VPC dashboard.
+    Similar steps can be followed to create a security group from the EC2 dashboard.
+    We can also create a security group while launching an EC2 instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete the steps within this recipe, we need the following configurations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account is essential. I will be using the **awsseccb-sandbox-1**
+    account that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However,
+    I will not be using any features of the AWS Organizations or the IAM Identity
+    Center.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to create a VPC and a public subnet under that. We can create a VPC
+    and subnet by following the *Creating a bare VPC and setting up public and private
+    subnets* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a security group from the VPC dashboard as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the VPC dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the left sidebar under **Security** , click on **Security groups** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Security Groups** page, click on **Create** **security group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Provide values for **Security group name** and **Description** ; select our
+    VPC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.16 – Creating a security group](image/B21384_05_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.16 – Creating a security group
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Under **Inbound rules** on the same page, we need to add the rules that follow:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add rule** . Set **Type** to **HTTP** , **Source type** to **Anywhere-IPv4**
+    , and **Source** to **0.0.0.0/0** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Add rule** . Set **Type** to **HTTPS** , **Source type** to **Anywhere-IPv4**
+    , and **Source** to **0.0.0.0/0** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Add rule** . Set **Type** to **SSH** and **Source type** to **My IP**
+    . Our IP address should be populated under **Source** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.17 – Setting the inbound rules for the security group](image/B21384_05_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.17 – Setting the inbound rules for the security group
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If IPv6 traffic is required, we can also add a CIDR range of **: :/0** under
+    **Source** to the rules.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Under **Outbound rules** , we can see a default rule already created as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.18 – The default outbound rule](image/B21384_05_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.18 – The default outbound rule
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Default outbound rules for a security group allow all outbound traffic. For
+    added security, we can provide outbound access to only the required protocols,
+    such as HTTP and HTTPS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we need to change the outbound rules so that we only allow HTTP and HTTPS
+    traffic, edit the default rule on the same page as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Set **Type** to **HTTP** , **Destination type** to **Anywhere-IPv4** , and **Destination**
+    to **0.0.0.0/0** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click **Add rule** . Set **Type** to **HTTPS** , **Destination type** to **Anywhere-IPv4**
+    , and **Destination** to **0.0.0.0/0** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.19 – Outbound rules for the security group](image/B21384_05_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.19 – Outbound rules for the security group
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If IPv6 traffic is required, we can also add a CIDR range of **: :/0** under
+    **Destination** to the rules.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Create** **security group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should get a success message stating that the security group was created.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The exact rules will be different for each recipe. The preceding rules may be
+    used for instances of a public subnet that hosts a web server. We also provided
+    SSH access to our local IP; however, in most projects, we would give SSH access
+    to a dedicated machine, referred to as a jump host or a bastion host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created and configured a security group with inbound and
+    outbound rules that are applicable to an EC2 instance in a public subnet running
+    a web server. We will use these steps to create security groups in other recipes.
+    The exact rules may differ based on the use case. Instead of providing the CIDR
+    range, we can also specify another security group in a rule to say that only instances
+    with that security group should be allowed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the *Working with NACLs* recipe later in this chapter, we will explicitly
+    allow the **1024** – **65535** **ephemeral port** range for outbound requests.
+    This isn’t needed for security groups since security groups are stateful. If an
+    outbound port is opened, the response for a request going through that port is
+    also allowed, irrespective of the inbound rules. Similarly, if an inbound port
+    is opened, the response for a request coming through that port is also allowed,
+    irrespective of the outbound rules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We created security groups from the VPC dashboard. We can also create them from
+    the EC2 dashboard. Refer to the links within the *See also* section of this recipe
+    for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to security groups:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Security groups do not span across VPCs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can create security groups from the EC2 launch wizard, EC2 dashboard, or
+    VPC dashboard.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Security groups are stateful, unlike NACLs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'It is good practice to have multiple security groups based on usage. For example,
+    we can create separate security groups: one for SSH and one for application-specific
+    ports. We can configure the rules for a security group to allow instances from
+    another security group instead of providing a CIDR. We can also specify our own
+    security group to allow only instances within the same security group to talk
+    to each other.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about security groups in AWS at [https://www.cloudericks.com/blog/understanding-security-groups-in-aws](https://www.cloudericks.com/blog/understanding-security-groups-in-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A rules reference for security groups can be found at [https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules-reference.html](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules-reference.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with NACLs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a new NACL with no SSH support and associate
+    one of our subnets with that NACL. By doing this, we will see that we cannot do
+    SSH into EC2 instances within that subnet. After, we will add SSH support to the
+    NACL and try to SSH again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete the steps within this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to create a VPC and a public subnet under that. We can create a VPC
+    and subnet by following the *Creating a bare VPC and setting up public and private
+    subnets* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to create a security group for our instance; this security group should
+    allow inbound traffic for SSH. We can do this by referring to the *Creating and
+    configuring security groups* recipe in this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need an EC2 instance launched into a public subnet; we can do this by referring
+    to the *Launching an EC2 instance with a web server using user data* recipe in
+    this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create an NACL with no SSH permission as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Network ACLs** on the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create network ACL** at the top of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In **Create network ACL** under **Network ACL settings** , provide a name and
+    select the VPC we created in the previous section from the dropdown for the **VPC**
+    field.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create network ACL** to create the network ACL.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.20 – Creating a network ACL](image/B21384_05_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.20 – Creating a network ACL
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we go to the NACL list, we will see that our new NACL doesn’t have any subnets
+    associated with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.21 – A new NACL is created without any associated subnets](image/B21384_05_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.21 – A new NACL is created without any associated subnets
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select our new NACL, scroll down, and verify the inbound and outbound rules
+    of the new NACL from its **Inbound Rules** and **Outbound Rules** tabs, respectively.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The inbound rules should be as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.22 – The inbound rules for the new NACL created](image/B21384_05_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.22 – The inbound rules for the new NACL created
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The outbound rules should be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.23 – The outbound rules for the new NACL created](image/B21384_05_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.23 – The outbound rules for the new NACL created
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on the **Subnet** **associations** tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit** **subnet associations** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the subnet we created ( **AWSPublicSubnet** ) and click **Save changes**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.24 – Associating subnets](image/B21384_05_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.24 – Associating subnets
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select our new network ACL and check its subnet associations. Our public subnet
+    should now be associated with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.25 – The NACL with the associated subnets](image/B21384_05_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.25 – The NACL with the associated subnets
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Try to SSH into our public EC2 instance. Run the command that follows in the
+    CLI:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The **<key path>** path is the path to the key pair that you had downloaded
+    as part of the *Launching an EC2 instance with a web server using user data* recipe
+    mentioned in the *Getting ready* section of this recipe. For **<EC2 user name@the
+    public ip>** , go to **Instances** , select the EC2 instance we created, and click
+    on **Connect** . Click on the **SSH client** tab. Copy the second part of the
+    **Example** command like **ec2-user@54.198.244.252** . It will look similar to
+    the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are using AWS CloudShell, we can use the **Example** command from the
+    **SSH client** tab without any modification. It will look similar to **ssh -i
+    "awsdemo.pem" ec2-user@35.174.184.142** . Make sure to upload the key pair file
+    before running the command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The exact command or steps may differ between operating systems. On Windows,
+    macOS, and most Linux systems, we can use the SSH command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The operation should time out, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.26 – A connection time-out response without SSL](image/B21384_05_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.26 – A connection time-out response without SSL
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can add SSH support to our NACL as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go back to the VPC dashboard, click on **Network ACLs** from the left sidebar,
+    and select our NACL.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Inbound rules** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit** **inbound rules** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add** **new rule** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter **100** under **Rule number** , select **SSH (22)** under **Type** , leave
+    the source as **0.0.0.0/0** , set **Allow/Deny** to **Allow** , and click on **Save
+    changes** .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we try to SSH into the EC2 instance now, the SSH will fail, as we have not
+    enabled the ephemeral ports for outbound traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Outbound rules** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Edit** **outbound rules** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Add** **new rule** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter **100** under **Rule number** , select **Custom TCP** under **Type** ,
+    set **Port range** to **1024 - 65535** , set **Allow/Deny** to **Allow** , set
+    **Destination** to **0.0.0.0/0** , and click on **Save changes** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Try to SSH into our public EC2 instance. The exact command or steps may differ
+    between operating systems. On Windows, macOS, and most Linux systems, we can use
+    the SSH command that follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, we should be able to SSH successfully.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.27 – A successful SSH response](image/B21384_05_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.27 – A successful SSH response
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we only added one inbound rule and one outbound rule. We can
+    add more rules as required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: NACLs allow us to define inbound and outbound rules for the subnets of our VPC.
+    We can explicitly allow or deny traffic through a port, or a range of ports. The
+    default NACL that was created by AWS allows all inbound and outbound traffic.
+    However, by default, a custom NACL denies all inbound and outbound traffic. First,
+    we created a new NACL. Then, we associated our public subnet with that NACL and
+    verified that we could not SSH from our local machine. A new NACL denies inbound
+    and outbound traffic by default. To allow SSH, we added an inbound rule for SSH
+    in our NACL and an outbound rule to allow the **1024** – **65535** ephemeral port
+    range.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: An ephemeral port is a short-lived port for IP communications with transport
+    protocols such as TCP, **User Datagram Protocol** ( **UDP** ), **Stream Control
+    Transmission Protocol** ( **SCTP** ), and so on. It is usually used for the return
+    traffic from the instance or service we are connecting to. For example, the server
+    accepts SSH traffic on port **22** and then communicates to the client through
+    one of the ephemeral ports. In this recipe, we added outbound rules that allow
+    the ephemeral port range as suggested by AWS for public-facing instances to cover
+    various client types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to network ACLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we create a VPC, a default NACL is created by AWS. The value of the **Default**
+    column will be **Yes** for the default NACL within the NACL list in our VPC.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Default NACL allows all inbound and outbound traffic. However, when we create
+    a new custom NACL, all inbound and outbound traffic is denied by default.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Every subnet needs to be associated with one NACL at a time. By default, a subnet
+    is associated with the default NACL.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: One subnet can only be associated with one NACL at a time. When we associate
+    it with a new NACL, the current association will be removed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A single NACL can be associated with multiple subnets.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: NACLs contain a numbered set of rules. These rules are evaluated in the order
+    of the rule numbers. If we have an **Allow** rule before a **Deny** rule for the
+    same port, access will be allowed for that port. Similarly, if we have a **Deny**
+    rule before an **Allow** rule for the same port, access will be denied for that
+    port. AWS recommends using rule numbers in multiples of 100 initially as that
+    will let us add new rules in between if needed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can block specific IP addresses with NACL, but this is not possible with
+    security groups.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: NACLs are evaluated before security groups.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Security groups are considered stateful, while NACLs are considered stateless.
+    With a security group, if we send a request from the instance, the response is
+    allowed, irrespective of the inbound rules. Similarly, if we allow an inbound
+    request, the corresponding outbound response can go, regardless of the outbound
+    rules. With NACL, we need to allow both inbound and outbound traffic explicitly
+    for any port.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about NACLs at [https://www.cloudericks.com/blog/understanding-network-acls-in-aws-vpc](https://www.cloudericks.com/blog/understanding-network-acls-in-aws-vpc)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a VPC gateway endpoint to connect to S3
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a **VPC gateway endpoint** for S3 and connect
+    to S3 from our private subnet without any internet access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete the steps within this recipe, we need to have the following ready:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need a VPC with associated subnets. We can create one by referring to the
+    *Creating a bare VPC and setting up public and private subnets* recipe from this
+    chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to configure a gateway and a route table for internet access. We may
+    refer to the *Creating a bare VPC and setting up public and private subnets* recipe
+    from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subnets should be associated with the default NACL. Otherwise, we should define
+    proper inbound and outbound rules so that we can log in to the private EC2 instance
+    through the public EC2 instance. We can refer to the *Working with NACLs* recipe
+    from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need an S3 bucket in any region. I will be using **us-east-1** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We should have no internet access for the private subnet. Verify this by running
+    **aws s3 ls --region us-east-1** from our private subnet. Our requests should
+    fail with a timeout. If a NAT gateway or a NAT instance has been configured, remove
+    its route from the main route table.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Associate an IAM role with S3 access to a private EC2 instance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have not configured an IAM role correctly, you might get an error that
+    says **Unable to locate credentials** . You can configure credentials by running
+    **aws configure** . Fix the issue and test again before proceeding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a VPC endpoint gateway for S3 as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Endpoints** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create endpoint** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Create endpoint** pane, under **Endpoint settings** , enter **VPCEndpoint**
+    as the value for **Name tag** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Service category** , select **AWS services** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Service Name** , select **com.amazonaws.us-east-1.s3**
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.28 – Selecting the service name for endpoint creation](image/B21384_05_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.28 – Selecting the service name for endpoint creation
+  prefs: []
+  type: TYPE_NORMAL
+- en: For **VPC** , select the VPC we created in the *Getting* *ready* section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Route tables** , select the route table we created in the *Getting* *ready*
+    section.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Leave the **Policy** field set to **Full access** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create endpoint** . We should get a success message.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Connect to our EC2 instance and try running the following S3 command from the
+    private subnet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '![Figure 5.29 – A successful response for S3 list operation](image/B21384_05_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.29 – A successful response for S3 list operation
+  prefs: []
+  type: TYPE_NORMAL
+- en: This should list the S3 items successfully.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: VPC endpoints allow us to connect to supported AWS services from our VPC privately.
+    With VPC endpoints, instances in the VPC do not need a public IP address to communicate
+    with supported AWS services. The traffic between our VPC and the supported AWS
+    services does not leave AWS. VPC endpoints can be considered highly available
+    virtual devices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we configured a VPC endpoint of the gateway endpoint type to
+    access S3 from our subnet. We removed all public routes from our subnet, and we
+    could still connect to S3. VPC gateway endpoints are also supported by **DynamoDB**
+    and work similarly to a VPC gateway. For most other services, VPC endpoints are
+    supported through interface endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some important concepts related to VPC endpoints.
+    There are two types of VPC endpoints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Interface endpoints** : This is an **Elastic Network Interface** ( **ENI**
+    ) with a private address that allows traffic to a supported service. There are
+    around 20 supported services. Examples of such supported services include Amazon
+    API Gateway, Amazon CloudWatch, AWS Config, AWS KMS, and so on.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Gateway endpoints** : Like NAT gateways, they do not have private IP addresses.
+    This is only supported for limited services such as S3 and DynamoDB.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about the VPC gateway endpoint at [https://www.cloudericks.com/blog/understanding-aws-vpc-gateway-endpoint](https://www.cloudericks.com/blog/understanding-aws-vpc-gateway-endpoint)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring and using VPC flow logs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will enable flow logs at the VPC level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following resources for completing the steps within this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A **CloudWatch log group** will be needed. The detailed steps are provided later
+    in this section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to set up a VPC. If one hasn’t been created previously, please refer
+    to the *Creating a bare VPC and setting up public and private* *subnets* recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An IAM role with permissions to publish to the CloudWatch log group with full
+    access will also be needed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can perform the following steps to create a CloudWatch log group:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the CloudWatch service in the AWS console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Logs** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Log groups** and click on **Create** **log group** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Give the log group a name that describes its purpose, keep the other values
+    as their defaults, and click on **Create** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can configure VPC flow logs from the console as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **VPC** service in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Your VPCs** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select our VPC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Flow** **Logs** tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **Actions** dropdown and select **Create** **flow log** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Flow log settings** , provide a name, and for the **Filter** , select
+    **All** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Maximum aggregation interval** , select the time based on your preferences.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set **Destination** to **Send to** **CloudWatch Logs** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select **Destination log group** as the log group we created in the *Getting
+    ready* section of this recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the option we created in the *Getting ready* section of this recipe from
+    the drop-down list for the **IAM role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Log record format** , select **AWS** **default format** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on **Create flow log** . We should see a success message. We should be
+    able to see all further IP traffic logs within our flow logs. The following is
+    an example of a log record from the log group for VPC logs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.30 – A sample log record](image/B21384_05_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.30 – A sample log record
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: VPC flow logs help us capture IP traffic to and from our VPCs. Data from VPC
+    flow logs can be published to either CloudWatch logs or to an S3 bucket. We can
+    choose to log only accepted traffic, rejected traffic, or both. VPC flow logs
+    can be created at different levels, such as the VPC level, subnet level, and network
+    interface level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the recipe, within the **Filter** dropdown, we selected **All** to log all
+    IP traffic to and from our VPCs. We can choose **Accept** to log only accepted
+    traffic, **Reject** to log only rejected traffic, and **All** to log both accepted
+    and rejected traffic. We needed a CloudWatch log group and an IAM role with permission
+    to log to that log group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some more important concepts related to flow logs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Currently, we cannot change a flow log configuration, such as changing the associated
+    IAM role, once it’s been created.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Some of the IP traffic, including the ones listed here, are not monitored by
+    flow logs:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Traffic to the reserved IP addresses of the default VPC router
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Dynamic Host Configuration Protocol** ( **DHCP** ) traffic'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Traffic set to **169.254.169.254** for querying instance metadata
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Traffic while contacting Amazon DNS servers via instances; however, traffic
+    to our own DNS server is logged
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows license activation traffic
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about VPC flow logs at [https://www.cloudericks.com/blog/understanding-aws-vpc-flow-logs](https://www.cloudericks.com/blog/understanding-aws-vpc-flow-logs)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Find examples of log records at [https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-records-examples.html](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-records-examples.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up and configuring NAT gateways
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn how to create and configure NAT gateways, which
+    is the latest and preferred option for NAT in AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete the steps within this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account is essential. I will be using the **awsseccb-sandbox-1**
+    account that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create a VPC, subnets, an IGW, and a route table by following the *Creating
+    a bare VPC and setting up public and private subnets* recipe from this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Launch instances in the public and private subnets with the appropriate security
+    group configurations by following the *Creating and configuring a security group*
+    recipe and the *Getting ready* section of the *Working with NACLs* recipe in this
+    chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a NAT gateway as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to **VPC dashboard** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **NAT gateways** on the left pane.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create** **NAT gateway** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under the **NAT gateway settings** , type **NAT-Gateway** under **Name** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Subnet** , in the drop-down list, select our public subnet.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For **Connectivity type** , select **Public** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on **Allocate Elastic IP** to populate the allocation ID for an Elastic
+    IP and select it for **Elastic IP allocation ID** or, if we already have an Elastic
+    IP created, we can select one of them. The filled page should look as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 5.31 – NAT gateway settings](image/B21384_05_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.31 – NAT gateway settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Create a NAT gateway** . We will get a message saying that the NAT
+    gateway was created successfully.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Route tables** , select our public route table, and go to the **Routes**
+    tab. Click on **Edit routes** and then on **Add route** . Select **0.0.0.0/8**
+    as the **Destination** . From the dropdown for **Target** , select **NAT Gateway**
+    and then select the NAT gateway we created in *Step 8* . Click on **Save changes**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go back to EC2 instances, select our instance, click on **Connect** , then on
+    the **Connect to instance** page, click on **Connect** again.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Try running any command from the terminal that requires internet access, as
+    follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We should get back a successful response if there is a route to the internet;
+    otherwise, it will time out:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.32 – A successful response to the ping command](image/B21384_05_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.32 – A successful response to the ping command
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also run a yum update command as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Follow the remaining prompts. The update will happen successfully if there is
+    a route to the internet; otherwise, it will time out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Internet access may be required for instances in our private subnets for activities
+    such as patching, downloading software, and so on. NAT allows a private subnet
+    in our VPC to talk to the internet. NAT is a process of remapping the IP address
+    of a packet by modifying its IP header while in transit. AWS provides us with
+    two ways to achieve NAT with VPCs: NAT gateways and NAT instances. We created
+    and configured a NAT gateway in this recipe. Unlike NAT instances, NAT gateways
+    are not associated with any security groups and hence, we did not create or configure
+    any security groups.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After creating the NAT gateway, we need to add a route for it within the route
+    table that our private subnets are associated with. We added the route to our
+    main route table since our private subnets are associated with the main route
+    table. A subnet that is not associated explicitly with any route table will be
+    implicitly associated with the main route table. If our architecture has a different
+    route table for private subnets, we will need to add the route for the NAT gateway
+    within that route table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some more important concepts related to NAT gateways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: NAT gateways are maintained by AWS and AWS takes care of patching, availability,
+    and scaling.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: NAT gateways are not associated with any security groups. NAT gateways are redundant
+    within an AZ, but cannot span an AZ. Therefore, for better availability, we may
+    need to create a NAT gateway per region.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: NAT is currently not supported for IPv6 traffic. We need to use an egress-only
+    IGW instead of NAT for IPv6 traffic. We can create an egress-only IGW from the
+    VPC dashboard.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about NAT gateways at [https://www.cloudericks.com/blog/understanding-nat-gateways-in-aws](https://www.cloudericks.com/blog/understanding-nat-gateways-in-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read about how we can securely connect our VPC to supported AWS services, other
+    VPCs, and on-premises applications, without exposing our traffic to the public
+    internet using PrivateLink, at [https://www.cloudericks.com/blog/understanding-aws-privatelink](https://www.cloudericks.com/blog/understanding-aws-privatelink)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

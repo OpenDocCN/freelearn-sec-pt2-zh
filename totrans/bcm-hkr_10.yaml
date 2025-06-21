@@ -1,0 +1,1067 @@
+- en: Chapter 10. Practical Server-Side Attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we went through a series of practical attacks against
+    users, leveraging application vulnerabilities to achieve our goal. The focus of
+    this chapter will be server-side attacks, primarily by exploiting XML vulnerabilities.
+    Despite the fact that JSON has gained a large market share of data exchange in
+    web applications, XML is still fairly prevalent. It's not as clean as JSON and
+    can be a bit harder to read, but it is mature. There are a ton of XML-parsing
+    libraries for any language a developer may choose to complete a project with.
+    Java is still popular in the enterprise world and the Android phenomenon has only
+    spawned more Java enthusiasts. Microsoft is still very fond of XML and you'll
+    find it all over its operating system, in the application manifests, and in IIS
+    website configuration files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The goal of this chapter is to get you comfortable with XML attacks and, by
+    the end, you will be familiar with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: DoS conditions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Server-Side Request Forgery** (**SSRF**) attacks'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Information leaks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Blind exploitation and out-of-band exfiltration of data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remote code execution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'On your travels, you no doubt have come across XML and, at first glance, it
+    looks similar to HTML. There''s a header that describes the document and it typically
+    looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is followed by arbitrary tags, which describe the data contained within
+    the document. While HTML instructs a client, such as a browser, on how to render
+    data, XML is used to describe the data itself and is therefore referred to as
+    self-describing. The data is defined, or described, by building blocks called
+    elements. An example XML document looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `<user>` element indicates the type of record and its boundary is `</user>`,
+    much like HTML. This is also the root element. Within this record, we have `<name>`,
+    `<id>`, and `<email>` entries with the appropriate values. It's important to note
+    that any application that parses this data must know what to do with the contents.
+    Modern web browsers know what to do with HTML's `<div>` and `<a>` because they
+    all follow a standard. Applications exchanging XML data must agree on what that
+    data is, and how it is processed or rendered. An XML structure can be valid from
+    a syntax point of view (that is, all the tags are properly closed, there's a root
+    element, and the document header is present), but it may be missing expected elements
+    and applications may crash or waste resources attempting to parse the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Internal and external references
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A **document type definition** (**DTD**) is used to the proper way to build a particular
+    document. DTDs are referenced in XML documents by the use of a document type declaration
+    (`DOCTYPE`) element. DTDs can be written out in full inside the XML document,
+    or they can be referenced externally for the parser to download and process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Internal DTDs can be found near the top of the XML document, in the `DOCTYPE`
+    tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding internal DTD defines the `user` root element and an internal entity,
+    `company`, which is defined to hold the string value `"Ellingson Mineral Company"`.
+    Within the document itself, the company entity can be referenced using the ampersand
+    and semicolon wrappers, which should look familiar if you have some HTML experience.
+    When the parser reaches the `&company;` string, it will insert the value defined
+    in the preceding DTD.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As I''ve said previously, it is also possible to point the XML parser of our
+    document to an external DTD file. The parser will simply go and fetch this file
+    before the rest of the document is processed. External DTDs are referenced in
+    the `DOCTYPE` by preceding them with the `SYSTEM` keyword:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `user.dtd` file will contain our entity and element definitions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `company` entity will be expanded, as before, once the DTD is successfully
+    downloaded and parsed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like our external DTD definition, we can reference external entities as
+    well. The syntax is similar to referencing external DTDs: it calls for the `SYSTEM`
+    keyword and a URI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can pass this XML document to a parser as part of, say, an API authentication
+    request. When it's time to resolve the `&company;` entity, the parser will make
+    an HTTP connection to `config.ecorp.local` and the contents will be echoed in
+    the `<company>` element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The attacker mindset will take note of the ability of a user to influence server
+    behavior and potentially look for ways to abuse it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XXE attacks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: XXE attacks take advantage of the fact that XML libraries allow for these external
+    references for DTDs or entities. Developers may not be aware of this potential
+    attack vector and XML input is sometimes left unsanitized. As attackers communicating
+    with an API, for example, we can intercept SOAP XML requests and inject our own
+    XML elements in the payload. The server-side component must parse this payload
+    in order to know what to do with the data. If the parser is not properly configured
+    and it allows external entities, we can abuse the server to read files on the
+    system, perform SSRF attacks, perform DoS attacks, and in some cases even execute
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A billion laughs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **billion laughs attack**, also known as an **XML bomb**, is a DoS attack
+    that aims to overload the XML parser by causing it to allocate more memory than
+    it has available with a relatively small input buffer. On older systems, or virtual
+    machines with limited memory, a parser bomb could quickly crash the application
+    or even the host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The XML bomb exploits the fact that file formats such as XML allow the user
+    to specify references or pointers to other arbitrarily defined data. In the earlier
+    examples, we used entity expansion to replace `&company;` with data defined either in the
+    header of the document or somewhere externally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An XML bomb looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A billion laughs](graphics/B09238_10_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.1: XML bomb attack'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A parser will look at this data and begin expanding the entities, starting with
+    the `<lolz>` root element. A reference to the `&lol9;` entity will point to 10
+    other references defined by `&lol8`;. This is repeated until the first entity,
+    `&lol`;, expands to the `"lol"` string. The result is the memory allocation of
+    10^9 (1,000,000,000) instances of the `"lol"` string, or a billion lols. This
+    alone can take up to 3 GB of memory, depending on the parser and how it handles
+    strings in memory. On modern servers, the impact may be minimal, unless this attack
+    is distributed through multiple connections to the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As always, take care when testing for these types of vulnerabilities on client
+    systems. DoS attacks are not usually allowed during engagements. On rare occasions
+    where DoS is allowed, an XML bomb may be a good way to tie up resources in the
+    blue team while you focus on other parts of the network, provided the system is
+    not business-critical.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'XML is not the only file format that allows for this type of DoS attack. In
+    fact, any language that has constructs for creating pointers to other data can
+    be abused in a similar fashion. YAML, a human-readable file format typically used
+    in configuration files, also allows for pointers to data and thus the YAML bomb:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A billion laughs](graphics/B09238_10_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.2: YAML billion laughs attack'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The effect of these attacks varies greatly, depending on the library and its
+    memory management, as well as the underlying operating system and its available
+    memory. While not all bombs will crash a system, they do illustrate the importance
+    of input sanitization. Subverting confidentiality and violating integrity may
+    be sexier, but when availability can so easily be influenced with a few lines
+    of code, defenders should pay attention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Request forgery
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **request forgery** attack occurs when an application is coerced into making
+    a request to another host or hosts of the attacker's choosing. External entity
+    expansion attacks are a form of SSRF, as they coerce the application into connecting to
+    arbitrary URLs in order to download DTDs or other XML data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the worst-case scenario (or best case, depending on your perspective), a
+    request forgery such as XXE can result in information leakage, blind data exfiltration,
+    or even remote code execution, as we'll see later on. However, SSRF can also be
+    used to chain attacks to internal, non-public servers, or even to conduct port
+    scans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate this particular attack, we will use this XML parsing application
+    written in PHP. The code should be fairly simple to understand for most non-developers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.3: Simple PHP XML parser'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A quick overview of the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lines 7 to 11 define a form in HTML that allows the user to submit XML data
+    via a `POST` request.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Lines 2 to 5 will process the incoming XML text using the `SimpleXML` PHP module.
+    The parsed data will be stored as an XML object: `$xml_object`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Lines 13 to 23 will neatly display the parsed XML data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can start a temporary web server from the command-line to test some SSRF
+    attacks against our vulnerable XML-parsing application using the built-in PHP
+    test server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For the sake of this demo, our application will be accessible via `http://xml.parser.local`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.4: Vulnerable PHP XML parser running'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to test the parser's external entity expansion capabilities, we can
+    use the form to send a short XML payload describing a book. We will use an external
+    entity hosted by Burp Collaborator. This isn't a valid payload, as Collaborator
+    responds with a canned HTML answer, but it will allow us to confirm that the application
+    is vulnerable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a new Collaborator client instance and pass the generated host
+    to the application in our payload:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the **Burp** menu, select the **Burp Collaborator client** option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.5: Starting the Burp Collaborator client module'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will generate one Collaborator host and select **Copy to clipboard** in
+    the client window. It''s important that we do not close the Collaborator client
+    for the duration of the attack after generating a hostname. If we close it prematurely,
+    Collaborator will not be able to link out-of-band requests made to the hostname
+    with our Burp session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.6: Copy the generated Collaborator hostname to the clipboard'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The value generated will look similar to this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will now build an XML document that fetches the `publisher` value from the
+    Burp Collaborator host we''ve just generated. We hope that when the vulnerable
+    application attempts to fetch the external content, Burp Collaborator will be
+    able to intercept the request and confirm the vulnerability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Collaborator is not required for this confirmation. We can use a simple HTTP
+    server running on our C2 server somewhere in the cloud. Collaborator is useful
+    when HTTPS is needed in a rush, or if confirmation has to be done via DNS or some
+    other protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result is a neatly­ parsed object displayed in red at the bottom of the
+    screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.7: Submitting the XML payload and observing the response'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see that the `&publisher;` entity was resolved by the parser, which
+    means the application made an external HTTP connection to our Collaborator instance.
+    It''s interesting to note that the HTML response was successfully interpreted
+    as XML successfully by the parser, due to the structure similarity of XML and
+    HTML:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Polling the Collaborator server from the client confirms the existence of this
+    vulnerability and now we know we can influence the server in some way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Request forgery](graphics/B09238_10_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.8: Collaborator client confirms SSRF vulnerability'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The port scanner
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Knowing that we can point the application to any URL and it will connect to
+    it, we can abuse this to perform a crude port scan of the internal network (or
+    any other host for that matter). We can scan for more than just HTTP ports. URLs
+    allow for the specification of an arbitrary port, and while it may try to negotiate
+    an HTTP connection, we can still infer the existence of an SMTP service by just
+    examining the parser connection attempt error message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we are forging our request to come from the vulnerable XML parser application,
+    all port scan attempts will appear to come from an internal trusted system. This
+    is good from a stealth perspective, and in some cases, can avoid triggering alarms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The XML code we''ll use for our XXE port scanner will target the `10.0.5.19`
+    internal host, looking for interesting services: `8080`, `80`, `443`, `22`, and
+    `21`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once uploaded to the application for parsing, the payload will force the XML
+    parser into systematically connecting to each specified port, in an attempt to
+    fetch data for the `&portN;` entities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The port scanner](graphics/B09238_10_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.9: XXE port scanner showing error messages for open ports'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The server response is a bit messy, but it does provide us with enough information
+    to see that port `80` is actually open on the internal `10.0.5.19` host. The parser
+    was able to connect to the port and, while it failed to parse its contents, the
+    error message speaks volumes. Conversely, entity `&port0;` returned a `Connection
+    timed out` error message, which indicates that the port is likely firewalled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Burp Suite has a neat feature where it allows us to copy any request captured
+    as a `curl` command. If we wish to repeat this attack on another internal host
+    and perhaps parse the response for another tool, we can quickly copy the payload
+    with a single click:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The port scanner](graphics/B09238_10_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.10: Save the Burp request as a curl command'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The generated `curl` command can be piped to `grep` and we can filter only
+    lines containing `"http:"` to make reading the output a bit cleaner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: From here, we can get a bit more fancy by automating payload generation or cleaning
+    up the output further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Information leak
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: XXE can also be used to read any file on disk that the application has access
+    to. Of course, most of the time, the more valuable files are the application's
+    source code, which is a common target for attackers. Remember that external entities
+    are accessed using a URL, and in PHP, the file system is accessible via the `file://`
+    URL prefix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To read the `/etc/passwd` file on a Linux system, a simple payload such as
+    this will work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is predictable and a good proof of concept for our report to the
+    client. The XML parser will reach out over the `file://` scheme, grab the contents
+    of `/etc/passwd`, and display them no the screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information leak](graphics/B09238_10_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.11: Exploiting XXE to retrieve /etc/passwd'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As I alluded to earlier, there are more high-value targets to consider for
+    exfiltration with this type of attack: the application''s source code, private
+    keys (SSH private keys and certificate private keys), history files, operating
+    system configuration files or scripts, and much more. If the application can read
+    the files on disk, so can we.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Local files are not the only thing we can touch with this exploit, however.
+    SSRF attacks, such as XXE, can also be used to target internal applications that
+    may not be accessible from an outside network, such as other virtual local area
+    networks (VLANs) or the internet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The internal application running on `10.0.5.19` that we will use for demonstration
+    purposes is the awesome **badguys** project from Mike Pirnat. The web application
+    code can be downloaded from [https://github.com/mpirnat/lets-be-bad-guys](https://github.com/mpirnat/lets-be-bad-guys).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider a scenario where, after further investigation of the server that we
+    successfully scanned earlier, we've realized `10.0.5.19` was running an application
+    vulnerable to LFI attacks. We cannot access `10.0.5.19` directly from our network
+    segment and only the target `xml.parser.local` application is exposed to us. Normally,
+    we'd be unable to attack `10.0.5.19`, but thanks to the XXE SSRF issue, we can
+    force the XML parser to conduct the attack on our behalf.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will build a payload to pass to `xml.parser.local`, which will force it to
+    connect to our target internal server and retrieve the settings file from the
+    vulnerable application using an LFI attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The badguys application running on the internal `10.0.5.19` host is vulnerable
+    to LFI in the `/user-pic` URL parameter, `p`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This particular vulnerable application is open-source and a quick GitHub search
+    tells us everything we need to know about the file folder structure. This is also
+    true for other frameworks and CMSs. A WordPress installation vulnerable to LFI
+    can be exploited to grab the contents of `wp-config.php` just as easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We know what the relative path to the settings file is because we looked it
+    up, and we can use that as the injection payload for the LFI exploitation. The
+    badguys application stores its settings in a file called `settings.py`, usually
+    stored two directories up the chain from the current working directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To grab this file''s contents, our XML payload will look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instead of the Collaborator hostname, we will ask the XML server to reach out
+    to the internal host and return the response back to us. If all goes well, the
+    XML parser will exploit the internal badguys application running on `10.0.5.19`,
+    giving us the contents of the `settings.py` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information leak](graphics/B09238_10_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.12: Using XXE to exploit LFI on an internal host'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `settings.py` file has some interesting information, including database
+    credentials and `sqlite3` file paths. It doesn't hurt to make a note of this for
+    future use. A file of interest is the SQLite 3 database itself, located at `c:\db\badguys.sqlite3`
+    on the `10.0.5.19` internal host.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use the same LFI attack to grab its contents as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is one problem with just changing the `p` path to the database file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: In normal LFI situations, this will work just fine. We traverse enough directories
+    to reach the root of the drive, change directory to `db`, and fetch the `badguys.sqlite3` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You''ll notice that, in our payload, the contents of the SQLite 3 database
+    will be fetched and inserted in the `<xxe>` tag before the parser processes the
+    XML data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: SQLite 3's file format will contain characters that most XML parsers will have
+    a problem processing, and therefore parse errors may prevent us from grabbing
+    the contents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run our payload as is, we observe that even though the contents of the
+    database were fetched, the application did not return them because it tried to
+    parse them as part of the `<xxe>` tag. SQLite 3''s binary format is not really
+    XML-friendly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information leak](graphics/B09238_10_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.13: XXE attack fails to return the contents of the database'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get around this issue, ideally, we want the XML parser to encode the data
+    it retrieves from the vulnerable internal application before it injects it into
+    the `<xxe>` tag for processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The XML parser application is written in PHP and therefore has access to various
+    conversion filters, which can be applied to streaming data, such as a resource
+    fetched from a URL. Filters can be accessed via the `php://` scheme, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: One of the conversion filters available is `base64-encode`, which will prove
+    useful in our case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: PHP's documentation shows all the available filters at [http://php.net/manual/en/filters.php](http://php.net/manual/en/filters.php).
+    Data can be converted, encrypted, or compressed in-flight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To Base64-encode the contents of the SQLite 3 database, we will have to forge
+    a request to the following URI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `convert.base64-encode` filter is applied to the remote resource containing
+    the database contents we need. The return will be a long Base64 string and it
+    shouldn''t cause any more parser errors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information leak](graphics/B09238_10_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.14: Repeating the attack using the PHP Base64 filter modification'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now run the Base64 response through CyberChef with the option of saving
+    the decoded data to a file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information leak](graphics/B09238_10_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.15: SQL database extracted from an internal host'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: CyberChef is a great tool for data manipulation, available online or for download
+    from GCHQ at [https://gchq.github.io/CyberChef/](https://gchq.github.io/CyberChef/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Success! We managed to leak a database from an internal system by chaining
+    two exploits:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we've seen, request forgery, particularly XXE (since we can retrieve the
+    contents of the response), can be extremely valuable in an engagement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blind XXE
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As you have probably witnessed in your day-to-day role, not all XML parsers
+    are as verbose as the preceding example. Many web applications are configured
+    to suppress errors and warnings, and sometimes will not echo any useful data back
+    to you. The preceding attacks relied on the fact that the payload was processed
+    and the entities were echoed out to the screen. This allowed us to exfiltrate
+    the data easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some cases, however, this may not be possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To showcase this attack, we will patch our XML parser application to suppress
+    PHP error messages and display a generic message after every submission:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Blind XXE](graphics/B09238_10_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.16: The modified PHP XML parser does not return data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lines 2, 3, and 22 will render our previous information leak attacks useless.
+    Even if we exploit XXE successfully, we will not be able to see the contents of
+    whatever file we attempt to retrieve. SSRF attacks will still work, however, but
+    are not as straightforward to exploit practically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Blind XXE](graphics/B09238_10_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.17: A blind XXE attack does not produce any useable output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How do we go about exfiltrating the data if the application does not return
+    anything useful after exploitation?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have to get a bit more creative. Out-of-band vulnerability identification
+    uses a C2 server to confirm that the application is vulnerable, by observing incoming
+    network connections. Confirming blind XXE vulnerabilities can be done out-of-band
+    as well and, as shown in the previous example, using Burp Collaborator or an external
+    C2 server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What if, instead of instructing the XML parser to return the data we need with
+    the `<xxe>&exfil;</xxe>` tag, we take an out-of-band approach? Since we cannot
+    return data in the browser, we can ask the parser to connect to a C2 server and
+    append the data to the URL. This will allow us to retrieve the contents by analyzing
+    the C2 server's access logs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We know we can Base64-encode the contents of a file with a stream filter. Let's
+    combine these two and attempt to send our data to our C2 instead of the web browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The entities we need to define in our XML payload will look something like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A keen eye will notice the new percent character preceding the entity names.
+    This denotes a parameter entity as opposed to a general entity, as we''ve used
+    so far. General entities can be referenced somewhere in the root element tree,
+    while parameter entities can be referenced in the DTD or the header of the document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parameter entities are prefixed with a percent character (`%`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: General entities are prefixed with an ampersand character (`&`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The next step is to try these two entities in our previous payload:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we are defining the `%data` and `%conn` parameter entities in
+    our `DOCTYPE`. The `%conn` entity also defines a general entity, `&exfil`, which
+    will attach the Base64-encoded `%data` entity to our C2 URL for exfiltration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Immediately following the parameter entity definition, we evaluate `%conn`,
+    which will kickstart the data collection and encoding. This will also define `&exfil`,
+    which is later called in the body of the document.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Simply put, the vulnerable XML parser will perform the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attempt to expand `%data` and, by extension, grab the contents of the `/etc/issue`
+    file
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use the `php://filter` scheme to encode the contents of `/etc/issue`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Attempt to expand `%conn` and, by extension, connect to our C2 server, `c2.spider.ml`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pass the Base64 contents of `%data` via the URL
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unfortunately, the payload will not work as is due to XML standard restrictions.
+    References to parameter entities (such as `%data` and `%conn`) are not allowed
+    in the markup declarations. We have to use an external DTD to define these.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can check our payload for errors locally using the `xmllint` Linux command,
+    as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`xmllint` is available in the `libxml2-utils` package on Debian-based distributions,
+    such as Kali.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The workaround is easy enough. We will store the entity declarations for `%data`
+    and `%conn` on our C2 server in an external DTD file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will also setup a simple web server to provide `payload.dtd` to our target
+    using the `php -S` command, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The modified payload will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The only real difference here is that we moved our two parameter entity declarations
+    into an external DTD and we are now referencing it in our XML `DOCTYPE`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As expected, our XML data did not generate any errors and it did not return
+    any data either. We are flying blind:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Blind XXE](graphics/B09238_10_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.18: The modified XML exploit code'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, on the `c2.spider.ml C2 server`, we can see the two HTTP requests
+    coming in from the target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first request comes in for the `payload.dtd` file; this means we have confirmed
+    the XXE vulnerability. The contents are processed and the subsequent call to the
+    `exfil` URL containing our data shows up in the logs almost immediately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using CyberChef once more, Base64-decoding the URL data results in the contents
+    of the `/etc/issue` file on the XML parser application server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Blind XXE](graphics/B09238_10_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.19: CyberChef decoding Base64 exfiltrated data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method of exfiltration works great for smaller files, however, there may
+    be issues with sending a large Base64 chunk over HTTP. Most clients, such as PHP
+    or Java, will not make requests with URLs longer than around 2,000 characters.
+    In some cases, up to 4,000 characters may be allowed. It varies greatly between
+    client implementations, so whenever you're trying to steal some data with XXE,
+    keep these limits in mind.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remote code execution
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Ah, yes, the holy grail of penetration testing. While much less common, remote
+    code execution is possible in certain XXE-vulnerable application deployments.
+    Lax configuration and vulnerable components could allow us to abuse the XML parser,
+    leading to remote code execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the previous examples, we leveraged a fairly simple payload to read data
+    from the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once parsed, the `<xxe>` tag would contain the contents of the `/etc/passwd`
+    file. Asking PHP to execute code is not much more difficult thanks to PHP's `expect`
+    module. Although not typically deployed by default, the `expect` extension provides
+    PHP applications with an `expect://` wrapper, allowing developers to execute shell
+    commands through a URL-like syntax.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Much like the `file://` wrapper, `expect://` provides read and write access
+    to the PTY stream, as opposed to the filesystem. Developers can use the `fopen`
+    function with an `expect://` wrapper to execute commands and retrieve their output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code will open a read-only stream to the underlying system shell,
+    execute the `ssh root@remotehost` command, and, once connected, the command uptime
+    will be executed on the remotehost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once completed, the result can be used in the rest of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When attacking XML, we don't need to execute PHP code and call the `fopen` function.
+    The `expect://` wrapper is readily available to XML parsers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are advantages to using `expect://` over the built-in system `passthru`
+    command execution, as it allows some interaction with the terminal, whereas shell
+    `passthru` commands are more limited. For this reason, you may still encounter
+    this module being installed and enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see this in action on a system with the `expect` module enabled, we can
+    execute the following payload. The command we pass to `expect://` is a simple
+    netcat bash redirector pointing to our C2 server in the cloud, `c2.spider.ml`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The beauty of this is we don't necessarily care about the output. If this is
+    a blind XXE attack, our shell will spawn just fine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the XML payload is parsed and the application attempts to expand the shell
+    entity, the `expect` module will execute our netcat command on the target and
+    we will gain shell access to the application server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Netcat is not the only shell option available. If we have code execution through
+    `expect://`, we can also upload a Meterpreter payload and gain access through
+    the Metasploit console, giving us more post-exploitation tools at our fingertips.
+    With remote code execution, the sky is the limit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interactive shells
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Reverse shells over netcat are good enough to execute some commands and perhaps
+    read files, but they don't provide interactivity. To be more productive during
+    post-exploitation, we need access to various tools, such as Vim or SSH, which
+    require a proper terminal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a few steps we need to take, which some may call magic, in order
+    to upgrade our shell. First, we can call `python` to spawn a new TTY bash shell.
+    Although not perfect, it''s better than what we had before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The one-liner may look strange if you're not familiar with Python, but all it
+    really does is import the `pty` package and spawn a bash shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our reverse shell, we execute the `python` command and the result should
+    look familiar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are some issues with this still: while Vim will work, there''s no access
+    to history, or *Tab* completion, and *Ctrl*-*C* will terminate the shell.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's go a step further and try to upgrade to a full TTY using `stty` and the
+    local terminal configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, once the shell is upgraded using the preceding Python one-liner, we
+    have to send the process to the background using *Ctrl*-*Z*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to find the current terminal type by inspecting the `$TERM` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Our C2 server is running in a `screen` session, but you can expect to see `xterm-256color`
+    or Linux on a typical Kali installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need the configured rows and columns for the terminal display. To get
+    these values, we use the `stty` program with the `-a` option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: The next command may seem as though it breaks the terminal, but in order to
+    prevent *Ctrl*-*C* from killing our shell, we have to turn the TTY to `raw` and
+    disable the echo of each character. The commands we input in our shell will still
+    be processed, but the terminal itself, without a reverse shell active, may look
+    broken.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We tell `stty` to set the terminal to `raw` and disable echo with `-echo`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To get our shell back from the background, we issue the `fg` command. You will
+    notice that this is not echoed into the terminal, due to the previously issued
+    `stty raw -echo` command, but it should still be processed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Returning from the background, you will see the reverse shell command echoed
+    back to the screen: `nc -lvp 443`, and everything may look a bit broken again.
+    No problem– we can type `reset` to clean it up.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Inside the reverse shell, now that everything looks good again, we also need
+    to set the same terminal options, including rows, columns, and type, in order
+    for the shell to work properly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is a fully working terminal with all the fancy features, and yes,
+    we can even run `screen` in our netcat reverse shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Interactive shells](graphics/B09238_10_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 10.20: A fully functional interactive reverse shell'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at how XXE exploitation can be practical in an engagement.
+    We then explored the potential DoS conditions that, when used with care, can provide
+    distraction during a red-team attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also examined XML-based request forgery attacks to not only perform a port
+    scan but also chain exploits to reach vulnerable applications that we would otherwise
+    not have access to. A more common use of XXE is to leak valuable information from
+    the target application. We not only looked at the traditional exfiltration of
+    data but also scenarios in which out-of-band communication was necessary. Using
+    our cloud C2 server, we were able to exfiltrate data using a blind XXE attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we discovered how remote code execution can be achieved using XXE.
+    While not as common, older application deployments may still fall victim to these
+    types of exploits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As shown throughout this chapter, file format parsers may seem benign, but with
+    added features comes complexity, and complexity is, as they say, the enemy of
+    security. XML is still everywhere and, when deployed and locked down properly,
+    it is very powerful. Unfortunately, this is not always the case and we will be
+    there to take advantage of every little mistake. In the upcoming chapter, we will
+    focus our attention on APIs and how to effectively test and attack them. All of
+    the skills you have learned up to this point will come in handy.
+  prefs: []
+  type: TYPE_NORMAL

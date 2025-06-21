@@ -1,0 +1,1171 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Web Application Pentesting with Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter explores how to use Bash for web application pentesting. We’ll
+    look at how Bash’s flexibility can help you find vulnerabilities, automate tasks,
+    analyze responses, and manage web data. By the end of this chapter, you’ll be
+    able to use Bash to discover and exploit common web vulnerabilities, extract data
+    efficiently, and integrate with other pentesting tools for a thorough web assessment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are generally five use cases for testing web application security:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing a single web application in depth
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Quickly testing (automated scanning) many web applications during a network
+    pentest
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating scripts to fuzz for vulnerabilities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating **proof-of-concept** ( **PoC** ) exploits
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Continuous integration and continuous delivery/deployment** ( **CI/CD** )
+    testing'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This chapter focuses on the second, third, and fourth use cases. If I were testing
+    in the first use case, I would prefer browser proxies such as **ZED Attack Proxy**
+    ( [https://www.zaproxy.org](https://www.zaproxy.org) ), also known as **ZAP**
+    , or Burp Suite ( [https://portswigger.net/burp](https://portswigger.net/burp)
+    ). These tools enable a tester to thoroughly explore an application. In the case
+    of ZAP, it does allow you to run the tool in a Bash terminal without showing the
+    **graphical user interface** ( **GUI** ) to automate scanning. I’ll be showing
+    how to use ZAP in the terminal later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we’re going to cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating HTTP requests in Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing web application security with Bash
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learning advanced data manipulation techniques
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first prerequisite is that you started reading from [*Chapter 1*](B22229_01.xhtml#_idTextAnchor017)
+    and have access to a Bash shell. You should be using Kali Linux, as discussed
+    in [*Chapter 1*](B22229_01.xhtml#_idTextAnchor017) . You will find it difficult
+    to follow along if you’re using a different operating system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ensure that you have installed **ProjectDiscovery** tools before advancing:
+    [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter01#install-project-discovery-tools](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter01#install-project-discovery-tools)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following commands to configure software prerequisites:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The **httpx** entry must be removed because the command name clashes with the
+    **httpx** command from ProjectDiscovery.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter09](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter09)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to follow along interactively with the section that shows how to
+    use **curl** to automate testing for **SQL injection** ( **SQLi** ), you’ll need
+    to install **Damn Vulnerable Web Application** ( **DVWA** ), available at [https://github.com/digininja/DVWA](https://github.com/digininja/DVWA)
+    . I’ll be running DVWA in Docker, which is the quickest way to start up the application.
+    I’ll also be using Vulhub ( [https://github.com/vulhub/vulhub](https://github.com/vulhub/vulhub)
+    ) when demonstrating a **nuclei** scan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating HTTP requests in Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Any serious discussion on making HTTP requests in a terminal must start with
+    **curl** . The **curl** tool is a command-line tool used for transferring data
+    to or from a server using various protocols such as HTTP, HTTPS, FTP, and more.
+    It is widely used in pentesting to interact with web applications, sending custom
+    requests to uncover vulnerabilities. You can visit the **curl** website and learn
+    more by visiting [https://curl.se](https://curl.se) .
+  prefs: []
+  type: TYPE_NORMAL
+- en: I believe that most pentesters would prefer to use a browser proxy such as ZAP
+    or Burp, or Python scripts for web application testing. However, knowledge of
+    using **curl** in a Bash shell comes in handy. While I was writing this chapter,
+    someone I worked with reached out to me for my help recreating a Metasploit HTTP
+    exploit module in Bash because they couldn’t install Metasploit or any Python
+    modules in the testing environment. The testing environment did have Bash and
+    common command-line tools such as **curl** installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are some common **curl** options that are useful for pentesters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**-X** or **--request** : Specify the request method ( **GET** , **POST** ,
+    **PUT** , **DELETE** , and so on)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-d** or **--data** : Send data with a **POST** request'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-H** or **--header** : Pass custom headers to the server'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-I** or **--head** : Show response header info only'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-u** or **--user** : Include user authentication'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-o** or **--output** : Write output to a file'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-s** or **--silent** : Silent mode (no progress bar or error messages)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-k** or **--insecure** : Allow insecure server connections when using SSL'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-L** or **--location** : Follow redirects'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-w** or **--write-out <format>** : Make **curl** display information on **stdout**
+    after a completed transfer'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The format is a string that may contain plain text mixed with any number of
+    variables.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**-Z** or **--parallel** : Makes **curl** perform its transfers in parallel
+    as compared to the regular serial manner'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We’ll be covering usage examples of the preceding options throughout this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**GET** and **POST** requests are the most common HTTP request methods. There
+    are many more. To learn more, see [https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A **GET** request is used to retrieve information from a server. Here’s how
+    to use **curl** to make a **GET** request: **curl -X** **GET** [https://example.com](https://example.com)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an explanation of this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**curl** : Invokes the **curl** command'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-X GET** : Specifies the request method as **GET**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**https://example.com** : The URL of the target server'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A **POST** request is used to send data to a server in the body of a request.
+    Here’s an example: **curl -X POST https://example.com/login -** **d "username=user&password=pass"**
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following points explain this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**-X POST** : Specifies the request method as **POST**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-d "username=user&password=pass"** : Sends data with the request'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The key difference between a **GET** and a **POST** request is how data is
+    sent to the server. A **GET** request sends data in the URL as parameters. A raw
+    **GET** request looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – An example GET request](image/B22229_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – An example GET request
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key area to focus on in the preceding figure is the first line, which starts
+    with the **GET** method, followed by the relative URL ( **/admin/report?year=2024&month=7**
+    ) and HTTP specification ( **HTTP/2** ). As you can see in the figure, data is
+    sent to the server in the URL as the **year** and **month** parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **POST** request method sends data in the request body. A raw **POST**
+    request looks similar to the one shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – An example POST request](image/B22229_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.2 – An example POST request
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key point to notice in the preceding figure is that data is sent to the
+    server in the request body (the last line), which follows the headers ( **keyword:**
+    **value** pairs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Many web applications require authentication headers. Here’s how to include
+    them in your request: **curl -X GET https://example.com/protected -H "Authorization:**
+    **Bearer <token>"** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can send data from a file using the **--data-binary** option: **curl -X
+    POST https://example.com/upload --** **data-binary @file.txt** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Often, pentesters need to combine multiple options to craft specific requests.
+    Here’s an advanced example: **curl -X POST https://example.com/api -H "Authorization:
+    Bearer <token>" -H "Content-Type: application/json" -** **d @data.json** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following points explain the preceding command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**-H "Content-Type: application/json"** : Specifies the content type of the
+    data being sent'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-d @data.json** : Sends the contents of **data.json** with the request'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'It’s crucial to handle HTTP responses to analyze the behavior of the web application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s look at the code more closely:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**response=$(...)** : It captures the HTTP response code in a variable.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**-s -o /dev/null -w "%{http_code}"** : Silent mode, discard output, and print
+    only the HTTP response code. See [https://curl.se/docs/manpage.html#-w](https://curl.se/docs/manpage.html#-w)
+    for more information about the **-w** option and its use.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **if** block analyzes the response code. If the response code is **200**
+    , the request was successful.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Pentesters often need to automate multiple requests. Here’s an example using
+    a loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s break down the code and understand it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**for i in {1..10}** : Loops from 1 to 10'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**"https://example.com/page$i"** : Dynamically constructs the URL for the page
+    number for each iteration'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Sometimes, you just want to check the HTTP response headers and discard the
+    rest: **curl -** **I "https://www.example.com/**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.3 – Capturing the headers from an HTTP request](image/B22229_09_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.3 – Capturing the headers from an HTTP request
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you experience errors when creating HTTP requests in the Bash shell, send
+    requests through a proxy or save a packet capture to aid troubleshooting. This
+    will allow you to see what is being sent and received, which may look different
+    from what you intended due to encoding issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have a good foundation of knowledge on using **curl** to make HTTP
+    requests, let’s put that knowledge to work and examine a real-world use case.
+    The next example will demonstrate how to use Bash scripting for SQLi payloads.
+    The example code can be found in the **ch09_sqliscanner.sh** file in this chapter’s
+    folder in the GitHub repository. As in previous chapters, I’ll be breaking the
+    script up into sections so that I can explain the code. It may be helpful to open
+    the code from GitHub on another screen or use split-screen to help you follow
+    the script structure at a high level as we examine each line in detail in this
+    text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code is a function to check if **curl** and **parallel** dependencies
+    are installed. If not, print an error message and exit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The **print_usage** function contains the usage instructions for the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In another part of the script, if the proper command-line arguments are not
+    provided, it calls this function, which prints the usage instructions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **perform_sql_test** function sets two local variables and initializes
+    them to the two provided function arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following code, we ensure the URL contains **FUZZ** for payload insertion;
+    otherwise, print an error and exit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here we define an array of SQLi payloads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following code, we loop through the array of payloads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The start time is saved to the **start_time** variable for reference at the
+    end of the loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **fuzzed_url** variable is assigned the result of the **${url//FUZZ/$payload}**
+    parameter expansion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a parameter expansion syntax in Bash used for string manipulation. This
+    tells Bash to replace all occurrences of the **FUZZ** string within the **url**
+    variable with the current value of **$payload** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here we send a request to the fuzzed URL with or without the cookie header,
+    depending on command-line arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code calculates the duration of the request:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code checks if the request duration indicates a potential time-based
+    SQLi vulnerability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: A value of 7 seconds was included in each payload. We expect the response to
+    take at least 7 seconds or longer based on network conditions and server load.
+    We exported the function so that it can be called in the shell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here we process a list of URLs by either reading from a file or using a single
+    URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we call the **check_dependencies** function defined at the start of the
+    script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code parses the command-line arguments for the URL, URL file,
+    and cookie header:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here we validate the input and ensure that either a URL or a URL file is provided:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we process the URLs based on the provided input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following output is found in the terminal after one of the payloads results
+    in a response that takes longer than 7 seconds to complete. The URL and payload
+    that triggered the SQLi is printed to the terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.4 – A successful SQLi URL and payload are printed to the terminal](image/B22229_09_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.4 – A successful SQLi URL and payload are printed to the terminal
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: When including authentication cookies or tokens with a **curl** request, bear
+    in mind the difference between the **-b** and **-H** options. If you use **-b**
+    , **curl** inserts **Cookie:** in the request, followed by the cookie value you
+    specify. If you use **-H** , supply the full value. See the **-b** parameter in
+    *Figure 9* *.4* where I left off the beginning of the **Cookie** header, and compare
+    that to *Figure 9* *.5* .
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.5 – The Cookie header is highlighted to make a point](image/B22229_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.5 – The Cookie header is highlighted to make a point
+  prefs: []
+  type: TYPE_NORMAL
+- en: After learning about **curl** , I want to briefly mention **wget** . Both **curl**
+    and **wget** are command-line tools for downloading files from the internet, but
+    they have different features and use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are features of **curl** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designed for transferring data with URL syntax
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Supports a wide range of protocols (HTTP, HTTPS, FTP, SFTP, SCP, and so on)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can send data to a server using various HTTP methods ( **GET** , **POST** ,
+    **PUT** , **DELETE** , and so on)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Supports uploading files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More suitable for complex operations such as interacting with APIs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following are features of **wget** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Primarily designed for downloading files from the web
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Supports HTTP, HTTPS, and FTP protocols
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can recursively download files, which makes it useful for mirroring websites
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Designed to handle unreliable network connections by retrying downloads
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More suitable for bulk downloading and website mirroring
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The most straightforward use of **wget** is to download a single file from
+    a URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can specify a different name for the downloaded file using the **-** **O**
+    option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If a download gets interrupted, you can resume it with the **-** **c** option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can download files in the background using the **-** **b** option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can mirror a website using the **-r** (recursive) and **-p** (page requisites)
+    options. The **-k** option converts the links to be suitable for local viewing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can limit the download speed using the **--** **limit-rate** option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can download files with a specific file extension using the **-** **A**
+    option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this section, you learned the most commonly used **curl** and **wget** options
+    and examined common uses. Using **curl** and **wget** in Bash scripts allows pentesters
+    to interact with web applications efficiently, sending customized requests to
+    identify and exploit vulnerabilities. Mastering these options and techniques is
+    essential for effective web application pentesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next section will show how to use more advanced web application pentesting
+    tools that you can use in the Bash shell, such as various ProjectDiscovery tools,
+    as well as running command-line ZAP scans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing web application security with Bash
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This section will examine common command-line tools that you should have in
+    your toolbox for web application security testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ProjectDiscovery
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'ProjectDiscovery maintains a variety of command-line tools you can run in your
+    Bash shell. They’re designed to accept input and pass output via the shell pipeline,
+    allowing you to chain together multiple tools. Their most popular tools include
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**nuclei** : An open source vulnerability scanner that uses YAML templates'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**nuclei-templates** : Templates for the **nuclei** engine to find security
+    vulnerabilities'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**subfinder** : A passive subdomain enumeration tool'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**httpx** : An HTTP toolkit that allows running sending probes to identify
+    HTTP services'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**cvemap** : A CLI to search for CVE'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**katana** : A web crawling and spidering framework'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**naabu** : A port scanner that integrates easily with other ProjectDiscovery
+    tools'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**mapcidr** : A utility program to perform multiple operations for a given
+    subnet/CIDR range'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can find the ProjectDiscovery tools at [https://github.com/projectdiscovery](https://github.com/projectdiscovery)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: An example workflow combining these tools would start with **mapcidr** to expand
+    a network address into individual IP addresses, piped to **naabu** to scan for
+    open ports, piped to **httpx** to discover web services, and piped to **nuclei**
+    to test for known vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s examine some of these tools individually before experimenting with how
+    they can be used together in a chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **mapcidr** tool accepts input via **stdin** . Here’s an example usage:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Example output is shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – An example of mapcidr usage](image/B22229_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.6 – An example of mapcidr usage
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding figure, I use the Bash shell pipe ( **|** ) operator to pass
+    the network address to the input of the **mapcidr** tool. The output contains
+    the network address expanded to individual IP addresses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, all ProjectDiscovery tools output a banner. Since we’ll be piping
+    the output of each tool to the input of the next tool, this is undesired behavior.
+    Include the **-silent** option with the ProjectDiscovery tools to suppress the
+    banner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **naabu** tool is a ProjectDiscovery tool that scans for open ports. You
+    can include command-line options that follow up on each open port with an **nmap**
+    scan, in addition to a large list of other options. Where **naabu** becomes helpful
+    is its ability to fit in a command pipeline, piping the **stdout** of one ProjectDiscovery
+    tool to the **stdin** of the next. In its default configuration, **naabu** scans
+    a limited number of ports. However, command-line options include the ability to
+    specify a list or range of ports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – An example naabu port scan is executed](image/B22229_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.7 – An example naabu port scan is executed
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ProjectDiscovery **httpx** tool probes open ports for listening HTTP servers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.8 – An example httpx scan is executed](image/B22229_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.8 – An example httpx scan is executed
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding figure, I use the Bash shell pipe ( **|** ) operator to send
+    the IP address **10.2.10.1** to the **naabu** **stdin** input. I include the silent
+    option ( **-silent** ) to suppress banner output, followed by a list of ports
+    ( **-p** ). The output is piped to the **httpx** tool using the **-silent** option.
+    The output of **https** is a list of HTTP URLs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ProjectDiscovery **nuclei** tool scans for known vulnerabilities and misconfigurations.
+    The **nuclei** templates also include *fuzzing* templates that scan for unknown
+    vulnerabilities belonging to common vulnerability classes such as **cross-site
+    scripting** ( **XSS** ) and SQLi.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure demonstrates a **nuclei** scan:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.9 – An example nuclei scan is executed in a piped command](image/B22229_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.9 – An example nuclei scan is executed in a piped command
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: ProjectDiscovery tools have far more capability than I’ve shown here. You really
+    should take the time to explore the documentation. These tools are an important
+    part of any pentester or bug bounty hunter’s toolbox.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The ProjectDiscovery **katana** tool crawls or spiders web applications and
+    prints discovered URLs. The following figure demonstrates using the **katana**
+    tool to crawl a website:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – The katana tool is used to crawl a website](image/B22229_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.10 – The katana tool is used to crawl a website
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next figure, I demonstrate piping output ( **|** ) from a **katana**
+    crawl to a **nuclei** scan using the fuzzing templates ( **-dast** option). An
+    XSS vulnerability is detected and displayed in the tool output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.11 – Katana output is piped to a nuclei scan](image/B22229_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.11 – Katana output is piped to a nuclei scan
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: When running tools in the Bash shell that connect to websites, always change
+    the user agent, as shown in the preceding figures. You’ll frequently get blocked
+    if you use the default user agent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, you’re not limited to piping the ProjectDiscovery tool output to
+    other ProjectDiscovery tools. This command uses the Bash pipe to send **httpx**
+    output to **dirsearch** to discover content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s look at the explanation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As before, I echo the IP address and pipe it to the input to **naabu** with
+    the silent option and a list of ports
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The output of the **naabu** port scan is piped to **httpx**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The URL’s output from **httpx** is piped to **dirsearch** for content discovery
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **dirsearch** options accept input from **stdin** ( **--stdin** ), output
+    the full URL ( **--full-url** ), suppress printing any banners ( **-q** ), and
+    save the output ( **-o** ) to a file in CSV format ( **--format=csv** )
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'An **awk** filter I commonly use to show only 200 or 302 responses from the
+    CSV file uses a comma field separator ( **-F'',''** ) and filters the second field
+    for 200 or 302 responses is shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The ProjectDiscovery tools are great for discovering known vulnerabilities and
+    misconfigurations. A recent update extended **nuclei** ’s ability to fuzz for
+    vulnerabilities. However, for more thorough web application vulnerability scans,
+    I would recommend using ZAP. Think of these tools as complementary. Let’s move
+    forward and explore ZAP scans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running command-line scans with ZAP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: ZAP is a web application vulnerability scanner and browser proxy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The GUI component of ZAP can be started from the GUI system menu or the terminal
+    with the **zaproxy** command. However, this section will focus on running the
+    **/usr/share/zaproxy/zap.sh** command-line scanner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enter this command in your Bash terminal to examine ZAP command-line options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One of the commands I run at the beginning of any web application pentest is
+    **zapit** . This performs a quick reconnaissance scan. The output lists important
+    details about the web application. Before running **zapit** , you must install
+    the **wappalyzer** add-on using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You need to run the add-on installation command only once. Next, run a **zapit**
+    scan. In this example, I’m scanning an application in my lab:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.12 – A zapit scan fingerprints the web application](image/B22229_09_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.12 – A zapit scan fingerprints the web application
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find a large list of vulnerable web app [lications for your lab at https:](https://github.com/vulhub/vulhub)
+    //github.com/vulhub/vulhub .
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding figure, you see that the **zapit** scan revealed the application
+    frameworks in the **Technology** section and some interesting information in the
+    **Number of alerts** section. This is critical information needed for any application
+    pentest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let’s run a vulnerability scan of the application. For the output parameter
+    value ( **-quickout** ), we precede the path with **$(pwd)** to save the report
+    to the current working directory because we don’t have permission to write to
+    **/u sr/share/zaproxy** :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a look at the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.13 – Examining the ZAP quick scan output in JSON format](image/B22229_09_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.13 – Examining the ZAP quick scan output in JSON format
+  prefs: []
+  type: TYPE_NORMAL
+- en: ZAP scan output can be saved in HTML, JSON, Markdown, and XML formats. For human-readable
+    outputs, stick with HTML reports. For inclusion in an automation framework that
+    relies on using Bash scripting to parse the output, use either JSON or XML.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section covered common use cases for using ProjectDiscovery and ZAP in
+    your Bash shell. We’ve just scratched the surface here. There are many more options
+    available in ProjectDiscovery tools and ZAP, including configuring automated scanning
+    with credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next section will explore using Bash aliases and functions to transform
+    data related to web application pentesting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning advanced data manipulation techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we’ll explore various data encoding, encryption, and hashing
+    algorithms that are common to testing web application security. You can put these
+    functions in your **.bashrc** file and call them in your scripts. The following
+    functions can be found in this chapter’s GitHub repository as **ch09_data_functions.sh**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Base64 encoding is a method for converting binary data into an ASCII string
+    format by encoding it into a Base64 representation. This encoding uses a set of
+    64 characters, including uppercase and lowercase letters ( **A-Z** , **a-z** ),
+    digits ( **0-9** ), and the symbols **+** and **/** , to represent the data. The
+    primary purpose of Base64 encoding is to ensure that binary data, such as images
+    or files, can be safely transmitted over media that are designed to handle textual
+    data, such as email and URLs, without corruption. Base64 encoding also adds padding
+    with the **=** character to ensure the encoded data is a multiple of 4 bytes,
+    maintaining data integrity during transport and storage. Base64 encoding in Bash
+    is very simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a Base64 encoding example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And the following is a Base64 decoding example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Base64 encoding and Base64 URL-safe encoding are methods for converting binary
+    data into text strings, but they differ in their character sets and intended use
+    cases. Base64 encoding uses a set of 64 characters, including uppercase and lowercase
+    letters (A-Z, a-z), digits (0-9), and two special characters ( **+** and **/**
+    ). This encoding is often used to encode data that needs to be stored or transmitted
+    over media designed to handle textual data. However, the **+** and **/** characters
+    are not URL-safe, which can cause issues when used in URLs or filenames. To address
+    this, Base64 URL-safe encoding modifies the character set by replacing **+** with
+    **-** (hyphen) and **/** with **_** (underscore), and it typically omits padding
+    characters ( **=** ). This ensures that the encoded data can be safely included
+    in URLs and filenames without the risk of being misinterpreted or causing errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This function encodes data to a URL-safe Base64 representation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'An example of URL-safe Base64 decoding is demonstrated here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The **gzip** data format is extensively utilized in HTTP communications to
+    compress data transferred between web servers and clients, enhancing the efficiency
+    of data transmission. When a web server sends data to a client, such as a web
+    browser, it can use **gzip** to compress the content, significantly reducing the
+    file size and thereby speeding up the download process. The compressed data includes
+    a header with metadata, the compressed content, and a footer with a **Cyclic Redundancy
+    Check 32** ( **CRC-32** ) checksum for verifying data integrity. Clients that
+    support **gzip** , indicated via the **Accept-Encoding: gzip** HTTP header, can
+    decompress the received content using **gunzip** to display or process the original
+    data. This method of compression helps to improve load times, reduce bandwidth
+    usage, and enhance overall web performance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **gzip** program is commonly installed on Linux systems by default. Here
+    are some examples showing how to compress and uncompress data in the Bash shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.14 – A demonstration of compressing and uncompressing data](image/B22229_09_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.14 – A demonstration of compressing and uncompressing data
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Message-Digest Algorithm 5** ( **MD5** ) hashing is a widely used cryptographic
+    hash function that produces a 128-bit (16-byte) hash value, typically rendered
+    as a 32-character hexadecimal number. MD5 takes an input (or *message* ) and returns
+    a fixed-size string of characters, which is unique to the input data. However,
+    MD5 is considered weak due to its susceptibility to hash collisions, where two
+    different inputs produce the same hash output. MD5 is no longer recommended for
+    security-critical applications, with more secure algorithms such as **Secure Hash
+    Algorithm 256-bit** ( **SHA-256** ) being preferred for hashing purposes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following function creates an MD5 hash of a string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is another example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: SHA-256 is a cryptographic hash function that generates a fixed-size 256-bit
+    (32-byte) hash value from any input data, often represented as a 64-character
+    hexadecimal number. Developed by the **National Security Agency** ( **NSA** )
+    and part of the SHA-2 family, SHA-256 takes an input and produces a unique output,
+    acting like a digital fingerprint of the data. It’s designed to be computationally
+    infeasible to reverse the process or find two different inputs that produce the
+    same hash (a collision). This makes SHA-256 highly secure and reliable for verifying
+    data integrity and authenticity, which is why it’s widely used in various security
+    applications, including SSL/TLS certificates, digital signatures, and blockchain
+    technology.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This function prints a SHA-256 hash of an input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'See the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Advanced Encryption Standard with a 256-bit key** ( **AES-256** ) is a symmetric
+    encryption algorithm widely used to secure data. It works by taking plaintext
+    data and transforming it into ciphertext using a secret key, ensuring that only
+    someone with the same key can decrypt and access the original information. The
+    *256* in AES-256 refers to the length of the encryption key, which is 256 bits
+    long, making it extremely difficult to break using brute-force attacks. AES-256
+    is known for its strong security and efficiency, which is why it is commonly used
+    for protecting sensitive data in applications such as secure file storage, internet
+    communications, and financial transactions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is an AES encryption function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This function must be called as follows: **echo "data to be encrypted" |**
+    **aes_encrypt "password"** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is an AES decryption function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: The **openssl** command specifies the AES algorithm with a 256-bit key size
+    in **Cipher Block Chaining** ( **CBC** ) mode. The **-d** option means to decrypt.
+    The **-pbkdf2** option indicates that the **Password-Based Key Derivation Function
+    2** ( **PBKDF2** ) algorithm is used to derive the encryption key from a password.
+    This enhances security by making brute-force attacks more difficult, as it applies
+    a computationally intensive function iteratively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to the encryption function, the data to decrypt must be passed in via
+    a **stdin** pipe, and the decryption password must follow: **echo "data to be
+    decrypted" |** **aes_decrypt "password"** .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an AES-256 encryption and decryption example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: HTML encoding is the process of converting special characters in HTML into their
+    corresponding character entities to ensure they are displayed correctly in web
+    browsers. This is necessary because certain characters, such as **<** , **>**
+    , **&** , and **"** , have specific meanings in HTML syntax and can disrupt the
+    structure of the HTML document if not properly encoded. For instance, **<** is
+    used to start a tag, so encoding it as **&lt;** prevents it from being interpreted
+    as the start of an HTML tag. Conversely, HTML decoding converts these character
+    entities back into their original characters. This process is crucial for web
+    security and functionality, as it prevents HTML injection attacks and ensures
+    that content is rendered correctly without unintended formatting or behavior.
+    By encoding special characters, developers can safely include user-generated content,
+    code snippets, or other data within HTML documents without risking the integrity
+    of the web page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following HTML function encodes the input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reminder
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following characters must be escaped when included as part of a string,
+    as seen in the **html_encode** and **html_encode** functions: **\** , **$** ,
+    **`** , **''** , **"** , **&** , ***** , **?** , **(** , **)** , **{** , **}**
+    , **[** , **]** , **|** , **;** , **<** , **>** , **!** , **#** , **~** , **^**
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is not necessary to escape them when the characters are used inside single
+    quotes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example of escaping these characters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s the corresponding decoding function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is an example of HTML decoding data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: The section demonstrated how to use Bash to convert common data formats found
+    in web application pentesting. Populate your **.bashrc** file with these functions
+    in advance, and you’ll be prepared to solve even the most advanced data manipulation
+    tasks in your pentests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You can’t always depend on having the ability to install tools or programming
+    libraries in the testing environment. Bash scripting provides a way to use the
+    built-in shell and tools to accomplish almost any task. In hindsight, there were
+    many times in my career when I felt that I was hindered in my ability to accomplish
+    a test without installing additional tools, or resorted to writing the tool in
+    another language such as Python. This was due to my lack of knowledge of Bash
+    scripting. Armed with this knowledge, you’re ready to tackle the most complex
+    web application testing challenges using Bash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we’ll explore network and infrastructure pentesting with
+    Bash.
+  prefs: []
+  type: TYPE_NORMAL

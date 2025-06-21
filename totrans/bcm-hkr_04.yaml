@@ -1,0 +1,965 @@
+- en: Chapter 4. Advanced Brute-forcing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Certain engagements require a bit more stealth and the noisiest part of the
+    engagement is usually the brute-force scans. Whether we are looking for valid credentials
+    on a particular login form or scanning for interesting URLs, lots of connections
+    to the target in a short period of time can alert defenders to our activities,
+    and the test could be over before it really begins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most penetration testing engagements are "smash and grab" operations. These
+    types of assessments are usually more time-restricted, and throttling our connections
+    for the sake of stealth during a brute-force attack can hinder progress. For engagements
+    that may require a bit more finesse, the traditional penetration testing approach
+    to brute-forcing and dictionary attacks may be too aggressive and could sound
+    the alarm for the blue team. If the goal is to stay under the radar for the duration
+    of the engagement, it may be best to employ more subtle ways to guess passwords
+    or to look for unprotected web content using SecLists dictionaries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will look at the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Password spraying** attacks'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Metadata harvesting** and **public site scraping**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using **Tor** to evade **intrusion detection systems** (**IDS**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using **Amazon Web Services** (**AWS**) to evade IDS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Password spraying
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A common issue that comes up with brute-forcing for account credentials is that
+    the backend authentication system may simply lockout the target account after
+    too many invalid attempts are made in a short period of time. Microsoft's **Active
+    Directory** (**AD**) has default policies set on all its users that do just that.
+    The typical policy is stringent enough that it would make attacking a single account
+    with a large password list very time-consuming for most attackers, with little
+    hope for a return on investment. Applications that integrate authentication with
+    AD will be subject to these policies and traditional brute-force attacks may cause
+    account lockouts, potentially firing alerts on the defender side, and certainly
+    raising some red flags with the locked-out user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A clever way to get around some of these lockout controls, while also increasing
+    your chances of success, is referred to as a reverse brute-force attack or password
+    spraying. The idea is simple and it is based on the fact that as attackers, we
+    usually only need one set of credentials to compromise an application or the environment
+    that hosts it. Instead of focusing the brute-force attack on just one user and
+    risk locking them out, we'd target multiple known valid users with a smaller,
+    more targeted password list. As long as we keep the attempts per account below
+    the lockout policy, we should successfully avoid triggering alerts. Password spraying
+    is not only useful when attempting to gain access to the organization VPN web
+    application or to **Outlook Web Access** (**OWA**), but can also be used with
+    any other application login system. Although lockout policies are almost certainly
+    in effect for applications integrating with AD, they may also be present in other
+    applications with standalone authentication mechanisms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to properly spray for credentials, we need a large list of legitimate
+    usernames, in the form of email addresses or the familiar `DOMAIN\ID` format.
+    Farming legitimate users or account names is easier than it may sound. Without
+    a SQL or **Lightweight Directory Access Protocol** **(LDAP)** injection dump,
+    the first place to look should be on the target company's public websites. There
+    are usually plenty of hints as to how the company structures account names or
+    user IDs. Email addresses commonly used in applications integrating with AD are
+    in the `ldap@company.com` format and can be mined from their **Contact Us**, **About**,
+    or **Team** pages. Some account information can also be found in the source code,
+    usually in JavaScript libraries, HTML, or CSS for publicly facing web applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is a sample JavaScript library containing useful information
+    when constructing a list of accounts to use when performing a password spraying
+    attack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code not only gives us at least two accounts to target in our
+    spray, but also hints at how user account names are structured. If we look through
+    the contact information on the **Meet the Executive Team** page, we can make educated
+    guesses as to what these employees' account names could be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Common formats for usernames, especially for LDAP-based authentication, are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`FirstName.LastName`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`[First Initial]LastName`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`LastName[First Initial]`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`FirstNameLastName`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Any contact emails listed on the public site we can add to our list of potential
+    users to target for a spraying attack. Chances are good that these also correspond
+    to their login credentials. If, for example, we farm a ton of company emails in
+    the `david.lightman@antihacker.com` format and we know nothing else, we could
+    build a user list containing the following entries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`david.lightman`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dlightman`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`lightmand`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`davidl`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`davidlightman`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Some organizations have also made the decision to limit their employees' account
+    names to eight characters or less as a general company-wide policy. This simplifies
+    account provisioning for those legacy systems that do not support long account
+    names. Common employee names, such as John Smith, in larger organizations can
+    also cause conflicts, and this is usually resolved by appending a number to the
+    account name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For these reasons, we should also add a few variations of the following to
+    the list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`dlightma`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dlightm2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dlightm3`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We should also be cognizant of how many failed attempts at authentication we
+    are willing to make. While we will avoid account lockout by password spraying
+    10 username variations with one password, we will also generate at least nine
+    failed authentication attempts, if only one of those names is valid. If we are
+    targeting 300 employees with 10 variations each, that's a fairly high authentication
+    failure rate, which may trigger IDS and alert defenders to our activities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: LinkedIn scraping
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'LinkedIn is also a great source for employee names that we can use to build
+    an effective list of account names. A little **Google hacking** can list all the
+    public LinkedIn profiles for people who have indicated publicly that they work
+    at our target company. Google hacking refers to the art of using search terms
+    in a query to return interesting information that the search giant has indexed
+    over the years. For example, if we wish to target Yahoo!, we can focus our Google
+    search query to return a filtered list of employee names using the `site` and
+    `inurl` query modifiers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Modifiers and their parameters are separated by a colon (`:`) and can also be
+    prefixed with a minus (`-`) sign to indicate whether the value should be included
+    or excluded from the results. The `inurl` modifier can instruct Google to return
+    only search results that contain a particular string in the URL that was indexed.
+    Conversely, the `-inurl` modifier will exclude results that contain the specific
+    string in their URL. We can also wrap search terms in quotations to indicate that
+    we want results that match the exact string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our example, we are looking for indexed LinkedIn profiles that contain `/pub/`
+    in the URL and `"at Yahoo"` somewhere in the body. Using the inverse (`-`) `inurl`
+    modifier, we are also excluding URLs that contain `/dir/` to ensure results contain
+    employee profiles and not directories. The search is also limited to the `linkedin.com`
+    domain using the site modifier. The results should contain text that suggests
+    the user is working "at company."
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LinkedIn scraping](graphics/B09238_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.1: Google hacking example'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The employee names returned by the search query can be scraped and stored in
+    a text file, `linkedin.txt`, for processing in the `First[space]Last` format.
+    For our password spraying attack, we will need to convert the `First Last` entries
+    in the text file to potential account names. We can accomplish this quickly with
+    a little bit of Python code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we will need to open the `linkedin.txt` file in read mode (`r`) and
+    store a pointer to it in the `fp` variable, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can use a `for` loop to iterate the contents of `fp` using the `iter` function.
+    This will allow us to iterate over each line in the text file, storing the respective
+    value in the `name` variable for every loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, for each line, presumably containing a space delimited first and last
+    name entry, we can `split()` the two by a whitespace (`'' ''`) using the following
+    one-liner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The variables `first` and `last` will contain the values you'd expect, in lowercase
+    and cleaned up of any extra spaces after chaining `strip()` and `lower()` function
+    calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we can output a potential username using the formatting rules we established
+    earlier. Using the `print` statement and a combination of `first` and `last` variables,
+    we can easily display these to the screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we will also print a combination of the first initial and last name,
+    as well as less than the maximum eight-character versions of each employee name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will save the resulting script in a file called `name2account.py`, which
+    should look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All that''s left to do is run the script and observe the output, as the following
+    figure shows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![LinkedIn scraping](graphics/B09238_04_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.2: Running the account name generator'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use this output in an attack, we can redirect it to another text file, to
+    be later imported in Burp or ZAP, by using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Metadata
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It's also possible to gather valid usernames by analyzing our list of users,
+    by looking at what is already available on the internet. Publicly indexed documents
+    are a good source for user IDs, as they often contain valuable metadata information,
+    either in the contents or somewhere in the file header. When documents are created
+    by company employees, Microsoft Office and Adobe PDF, among many other types of
+    document-authoring software, by default will save the name of the currently logged-on
+    user as the file author in the metadata. These documents don't have to be top
+    secret; they can be flyers and marketing material. It could be public data meant
+    to be shared with the world and we can make use of the automatically populated
+    metadata for our password spraying attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Fingerprinting Organizations with Collected Archives** (**FOCA**) is a great
+    tool from **ElevenPaths** that scrapes search engine results for indexed documents,
+    such as PDF, Excel, or Word files. These files typically store valuable information
+    in their metadata; usually the AD ID responsible for authoring the file.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It may not always be the domain username (it could be an email address), but
+    this is still valuable information to us when we build our target account list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With FOCA, we can quickly launch a search for all publicly available documents
+    for our target and one-click analyze their metadata.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You'll notice that the query is similar to the LinkedIn scraping we used earlier.
+    This is because FOCA will use search engine hacking under the hood and leverage
+    not only Google, but also Bing and other information directories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following example, we are looking for publicly available documents from
+    `vancouver.ca` and analyzing their metadata. FOCA will download each PDF, parse
+    the header, and store any users it finds in the left column under Metadata Summary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Metadata](graphics/B09238_04_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.3: FOCA displaying publicly indexed documents'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This valuable username data can be exported to a file to be used in a password
+    spraying attack. Not only do we have valid accounts in these public documents,
+    but they also hint at how the company structures its usernames. We can combine
+    this knowledge with a LinkedIn scrape and build better target account lists, while
+    minimizing authentication failures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: FOCA is available from ElevenPaths on [https://www.elevenpaths.com/labstools/foca/index.html](https://www.elevenpaths.com/labstools/foca/index.html)
+    or on GitHub at [https://github.com/ElevenPaths/FOCA](https://github.com/ElevenPaths/FOCA).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cluster bomb
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to conduct a password spraying attack, we need an easy way to feed
+    our target the user list, as well as a small, but specific, password list. We
+    also want the option to throttle each attempt, if needed, to avoid detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp Suite's Intruder module has several payload delivery options, and among
+    them is the cluster bomb attack type, allowing us to specify multiple positions
+    in our HTTP request in which we can insert our payloads. Intruder will submit
+    a request for each possible combination, which is ideal for password spraying
+    attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The password list will be much more focused, and instead of throwing the massive
+    `rockyou.txt` dictionary at each of the usernames, we will compose a shorter list
+    of a more commonly used set of values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When users forget their passwords, they call in tech support and request a
+    password reset. Usually, instead of an elaborate reset procedure, support will
+    reset the password to something simple to read over the phone, so the employee
+    can login and resume working quickly. A common password scheme is `[Current Season][Current
+    Year]`. Something like `Fall2017` is easy to communicate over the phone and will
+    satisfy most password complexity policies. At times, a special character may be
+    sprinkled in there as well: `Fall@2017` or `Fall2017!`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This isn't really an issue if the user logs in and resets their password immediately.
+    AD has an option for tech support that requires the user to change their password
+    after the first successful login. Unfortunately, legacy systems and complex authentication
+    schemes do not always support password reset on first login, forcing organizations
+    to require users to do this manually. While the majority of users will reset their
+    password immediately, some won't and we usually only need just one user to slip
+    up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A sample set of passwords to try could look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Fall2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Fall17`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Fall2017!`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Fall@2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Summer2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Summer17`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Summer2017!`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Summer@2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Spring2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Spring17`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Spring2017!`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Spring@2017`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can also be smart about how we construct this list. If we know anything about
+    the password requirements of the application, we may choose to eliminate passwords
+    that don't fit. Perhaps the target company is headquartered in a region where
+    use of the word `autumn` is more common than `fall`, in which case we adjust accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's important to consider the account lockout as well. Our Intruder attack
+    will generate as many authentication requests per user as there are passwords
+    in the list, meaning there is a possibility we could lockout accounts. The cluster
+    bomb Intruder attack type will try the first password in the list for each username
+    until it reaches the end, and it will start again at the top. It will then try
+    the second password for each username, then the third, and so on until it exhausts
+    the password list. If we don't throttle the requests per username, we can risk
+    locking out the account and alerting defenders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have a password and username list, we can start the password spraying
+    attack by leveraging the Intruder module. For the sake of this scenario, we will
+    be targeting an application available on `target.org.local` on port `80`, as shown
+    in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The cluster bomb](graphics/B09238_04_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.4: Specifying the attack target in Intruder'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The request we will send will be a `POST` to the `/login` page. We can specify
+    the request body and payload positions under the Intruder **Positions** tab. Highlighting
+    the dummy values for `username` and `password`, we can click the **Add** button
+    on the right side to denote a payload position, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The cluster bomb](graphics/B09238_04_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.5: Defining the payload positions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've also selected the **Cluster bomb** attack type, as mentioned previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next up, we have to load our payloads, more specifically, the username and
+    password lists we compiled earlier. Payload set 1 will be our username list, as shown in
+    the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The cluster bomb](graphics/B09238_04_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.6: Loading the usernames into payload set 1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our second payload set will be the passwords to be tested for each username.
+    Once again, this is not where we'd load `rockyou.txt` and let it rip. In a password
+    spraying attack, we target a large list of known-good user IDs, with only a few
+    very common passwords. We want to avoid locking out and triggering alerts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows a sample small payload set 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The cluster bomb](graphics/B09238_04_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.7: Loading the passwords into payload set 2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding configuration will make four password guess attempts per user,
+    hopefully keeping our attack under the radar and avoiding any lockouts. The more
+    users we can feed this attack to, the better the chance we will find a user who
+    has forgotten to change their password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp Suite Professional provides some options for performing a low and slow
+    attack, and they can be set in the **Options** tab. While the free edition of
+    Burp Suite does not allow multiple threads or throttling, OWASP ZAP offers similar
+    attack types, with the ability to throttle and increase thread count.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After loading our target users list and specifying a few passwords, we can
+    spray the application by clicking **Start attack**. The following figure shows
+    the Intruder attack window and all of the requests made during the password spraying
+    attack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The cluster bomb](graphics/B09238_04_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.8: Password spraying attack running'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Behind seven proxies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'These days, it is fairly common for more mature companies to implement IDS,
+    **intrusion prevention systems** (**IPS**), and **security information and event
+    management** (**SIEM**) with alerting for when they detect abuse against a particular
+    application. When an unknown IP is performing too many operations in a short time
+    on a protected application, IDS or IPS may take action against the source. If
+    we are conducting a password spraying attack, we may avoid lockouts but we''re
+    still hammering the server from one source: our machine.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A good way to evade these types of detection systems is to distribute the connection
+    requests from the attacker machine over many IPs, which is commonly done by malicious
+    actors through networks of compromised hosts. With the advent of cloud computing
+    and computing time becoming increasingly cheap, even free in some cases, we don't
+    have to stray outside of the law and build a botnet. The **Tor network** is also
+    a free and effective way to change the public IP during an attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Torify
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **Tor Project** was started to provide a way for users to browse the internet
+    anonymously. It is by far the best way to anonymize traffic and best of all, it's
+    free. Tor is a network of independently operated nodes interconnected to form
+    a network through which packets can be routed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following graphic shows how a user, Alice, can connect to Bob through a randomly
+    generated path or circuit, through the Tor network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Torify](graphics/B09238_04_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.9: The Tor network traffic flow (source: https://www.torproject.org/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of connecting directly to the destination, the client connection from
+    Alice to Bob will be routed through a randomly chosen set of nodes in the Tor
+    network. Each packet is encrypted and every node can only decrypt enough information
+    to route it to the next hop along the path. The exit node is the final node in
+    the chain, which will make the connection to the intended destination on behalf
+    of the client. When the packet arrives at Bob's machine, the request will look
+    like it's coming from the exit node and not Alice's public IP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'More information on Tor can be found on the official site: [https://www.torproject.org](https://www.torproject.org).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While Tor is important for anonymity, we're not really concerned with staying
+    completely anonymous. We can, however, leverage the randomly chosen exit nodes
+    to mask our public IP when attacking an application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tor packages are available on most Linux distributions. On Kali, it can be
+    installed using the package manager. The `apt-get` command shown in the following
+    code will install Tor, as well as a useful application called **torsocks**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Torsocks is a nice tool that can "torify" applications and even provide an interactive
+    shell that automatically routes all traffic through an active Tor tunnel. This
+    will allow us to force applications that don't natively support routing through
+    Tor to use the anonymous network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Torsocks can be found on the Tor Project Git repository: [https://gitweb.torproject.org/torsocks.git](https://gitweb.torproject.org/torsocks.git).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There isn''t much that we need to change in the Tor default configuration;
+    we can just go ahead and launch it from the Kali prompt, using the `tor` binary,
+    as show in the following code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once the Tor client has initialized and a tunnel (circuit) has been selected,
+    a SOCKS proxy server is launched on the localhost, listening on port `9050`. To
+    force our attack traffic through the Tor network and mask our external IP, we
+    can configure Burp Suite to use the newly spawned proxy for all outgoing connections.
+    Any other programs that do not support SOCKS can be "torified" using either ProxyChains
+    or the previously installed torsocks utility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: ProxyChains is available on all penetration testing distros and on [http://proxychains.sourceforge.net/](http://proxychains.sourceforge.net/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Burp Suite, under the **Project options** tab, we can select the **Override
+    user options** check to enable the SOCKS configuration fields. The values for
+    SOCKS proxy and port will be `localhost` and `9050` respectively, and it's a good
+    idea to make DNS lookups through the proxy as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Torify](graphics/B09238_04_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.10: Configuring the upstream SOCKS proxy in Burp'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can perform a test request, using the Repeater module, to `ipinfo.io` and it should
+    show a randomly selected Tor exit node as our external IP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the response to our torified request to `ipinfo.io`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Torify](graphics/B09238_04_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.11: Repeater response showing a Tor exit node as our effective IP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the Tor client does refresh the circuit periodically, it may not be quick
+    enough for a brute-force attack, where rotating IPs is needed for evasion. We
+    don't want to throttle our connection so much that the scan does not finish before
+    the engagement is over.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Tor proxy can be forced to update the current circuit with a **process hang
+    up signal** (**SIGHUP**). Using the `killall` or `kill` Linux commands, we can
+    issue a `HUP` signal to the Tor application and force the process to rotate our
+    exit node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we can drop into a torsocks shell to hook all `curl` requests and forward
+    them through the Tor network. The `torsocks` command can be called using the `--shell`
+    parameter, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Subsequent network requests from applications spawned from the torsocks shell
+    should be forwarded through Tor. To see the SIGHUP in action, we can use `curl`
+    requests to an online service, which returns our current public IP, `ipinfo.io`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Each request to the IP service returned a new Tor exit node. We can also crudely
+    automate sending the HUP signal using the `watch` command in a separate terminal.
+    The `-n` option specifies how often to execute the `killall` command. In this
+    case, Tor will be issued a SIGHUP every `10` seconds, effectively rotating our
+    external IP at the same time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: If our plan is to attempt a password spraying attack against the `c2.spider.ml`
+    application, for example, we can configure Burp Suite to use a cluster bomb Intruder
+    configuration along with a list of common usernames and passwords. Meanwhile,
+    in the background, the `watch` command is refreshing the Tor circuit every 10
+    seconds. We will throttle the Burp requests to one request every 10 seconds, which
+    will ensure each password guess attempt will come from a different IP, improving
+    our stealth. It should be noted that Burp's free edition does not support throttling.
+    The same functionality can be accomplished using OWASP ZAP, with `watch` running
+    in the background cycling the Tor circuit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the `watch` command running the `killall` command
+    on the Tor application every 10 seconds, while Burp''s Intruder module performs
+    a password guessing attack:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Torify](graphics/B09238_04_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.12: Running a password guessing attack with a constantly changing
+    exit IP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As expected, the `c2.spider.ml` application server log shows the attack coming
+    in every 10 seconds from a new exit node IP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following shows a sample PHP webserver listing each HTTP request, the time,
+    and the originating IP:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The low and slow nature of the attack, coupled with an ever-changing source
+    IP, makes it more difficult for defenders to differentiate our attack traffic
+    from legitimate traffic. It's not impossible to design effective rules that find
+    brute-force attacks coming from many IPs in many regions, but it is fairly difficult
+    to do without generating false positives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a couple of issues with conducting attacks through the Tor network.
+    The routing protocol is inherently slower than a more direct connection. This
+    is because Tor adds several layers of encryption to each transmission, and each
+    transmission is forwarded through three Tor nodes on top of the normal routing
+    that internet communication requires. This process improves anonymity but also
+    increases communication delay significantly. The lag is noticeable for normal
+    web browsing, but this is a tolerable trade-off. For large volume scans, it may
+    not be the ideal transport.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It should also be noted that Tor is used heavily in regions of the world where
+    privacy is of utmost importance. Conducting large volume attacks through Tor is
+    discouraged, as it can lead to unnecessary network slowdowns and can impact legitimate
+    users. Low and slow attacks shouldn't cause any problems. Some red-team engagements
+    may even require testing from the Tor network to verify related IDS/IPS rules
+    are working as intended, but caution should be taken when launching attacks through
+    a limited-resource public medium.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The other problem with Tor is that the exit nodes are public. Firewalls, IDS,
+    IPS, and even host-based controls can be configured to outright block any connection
+    from known Tor nodes. While there are legitimate users on Tor, it also has a long
+    history of being used for illegal activity; the risk of annoying a small number
+    of potential customers by disallowing Tor connections is generally acceptable
+    by organizations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A list of active Tor exit nodes can be found here: [https://check.torproject.org/cgi-bin/TorBulkExitList.py](https://check.torproject.org/cgi-bin/TorBulkExitList.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proxy cannon
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An alternative to using Tor for diversifying our attack IPs is to simply use
+    the cloud. There are countless **Infrastructure as a Service** (**IaaS**) providers,
+    each with a large IP space available for free to VM instances. VMs are cheap and
+    sometimes free as well, so routing our traffic through them should be fairly cost
+    effective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon, Microsoft, and Google all have an easy-to-use API for automating the
+    management of VM instances. If we can spawn a new VM with a new external IP periodically,
+    we can route our traffic to the target application through it and mask our true
+    origin. This should make it much more difficult for automated systems to detect
+    and alert on our activities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cue **ProxyCannon**, a great tool that does all the heavy lifting of talking
+    to Amazon's AWS API, creating and destroying VM instances, rotating external IPs,
+    and routing our traffic through them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'ProxyCannon was developed by Shellntel and is available on GitHub: [https://github.com/Shellntel/scripts/blob/master/proxyCannon.py](https://github.com/Shellntel/scripts/blob/master/proxyCannon.py).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ProxyCannon requires `boto`, a Python library that provides API access to Amazon''s
+    AWS. We can use Python''s `pip` command to install the required dependency:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The ProxyCannon tool should now be ready to use with the `-h` option showing
+    all of the available options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Proxy cannon](graphics/B09238_04_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: By default, ProxyCannon creates `t2.nano` virtual instances in AWS, which should
+    be free for a limited time with new accounts. They have very little resources
+    but are typically enough for most attacks. To change the type of instance, we
+    can supply the `-t` switch. The default region is `us-east-1` and can be adjusted
+    using the `--region` switch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ProxyCannon will create as many instances as specified in the `num_of_instances`
+    and using the `-r` switch, it will rotate them regularly. The `-l` switch is also
+    useful to keep track of what public IPs ProxyCannon is using over the course of
+    the execution. This is useful for reporting purposes: the blue team may need a
+    list of all the IPs used in the attack.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order for the tool to be able to communicate with our AWS account and to
+    manage instances automatically, we have to create API access keys in the AWS console.
+    The interface is fairly straightforward and can be accessed in the account **Security
+    Credentials** page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The access key ID and the secret keys are randomly generated and should be stored
+    securely. Once the engagement is over, you should delete the keys in the AWS console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Proxy cannon](graphics/B09238_04_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.13: Generating a new AWS API access key'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can start ProxyCannon using the `-r` and `-l` switches, and specify that
+    we want `3` instances running at the same time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Upon first run, ProxyCannon will ask you for these values and store them in
+    the `~/.boto` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, these are stored in plaintext, so make sure this file is properly
+    protected. Amazon recommends that these keys are rotated frequently. It's probably
+    a good idea to create new ones for each engagement and delete them from AWS as
+    soon as they're not required anymore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ProxyCannon will connect to Amazon EC2, setup the SSH keys, adjust the security
+    groups, and start the VM instances. This process may take a couple of minutes
+    to complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'ProxyCannon will overwrite the current system `iptables` configuration to properly
+    route all traffic through whatever instance is chosen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: As promised, ProxyCannon will periodically rotate our effective external IP
+    using SSH tunnels and by modifying the routing table. All of this is done automatically,
+    in the background, while Burp Suite or ZAP runs the password spraying attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is the periodic output from ProxyCannon showing the IPs being
+    rotated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the AWS console, we can see the started `t2.nano` instances and their public
+    IPs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Proxy cannon](graphics/B09238_04_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 4.14: AWS instances created to route our traffic through'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As with our Tor example earlier, we can test ProxyCannon by repeating a `curl`
+    request to our target application using the `watch` command. We don't need to
+    drop in a shell similar to torsocks because ProxyCannon modifies the local system
+    routing to help us change our external IP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the target application side, `c2.spider.ml`, the server log, shows connection
+    attempts from various IPs belonging to the Amazon address space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: It should be noted that there is a lower limit to how often we can rotate the
+    IPs on Amazon or any cloud provider for that matter. It takes a while for instances
+    to boot and IP addresses to be reserved, associated, and become active. ProxyCannon
+    has a hardcoded value of about 90 seconds to ensure the effective IP actually
+    changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at a couple of techniques for staying under the radar
+    while conducting brute-force attacks during an engagement. Low and slow attacks,
+    with frequently rotating IPs, is a great way to guess passwords or look for interesting
+    URLs. If we can combine this with a password spray, we can increase the chance
+    of success while evading intrusion detection, or prevention systems and firewalls.
+    We've also looked at scraping metadata from LinkedIn and Google to build effective
+    user and password lists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These deviations from the normal brute-force attack make an attack difficult
+    to defend against, requiring the blue team to have properly tuned alerts, with
+    low false-positive rates and, frankly, lots of resources dedicated to monitoring
+    the detection systems. As attackers, we know that the blue team is more often
+    than not stretched far too thin to enable rules that produce large amounts of
+    false positives but that can also catch our attempts. Generally speaking, unless
+    the target organization has a very mature security program with lots of funding,
+    these types of attacks are easy to pull off and frequently successful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will delve into exploiting vulnerabilities in how applications
+    handle files and file paths from untrusted sources.
+  prefs: []
+  type: TYPE_NORMAL

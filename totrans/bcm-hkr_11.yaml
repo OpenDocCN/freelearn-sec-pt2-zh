@@ -1,0 +1,1148 @@
+- en: Chapter 11. Attacking APIs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we've looked at attacking a traditional application — one with a user interface
+    and a login panel, and maybe a dashboard of some sort. Modern applications tend
+    to implement a decoupled infrastructure and, unlike traditional applications,
+    they are split into smaller applications or **microservices,** all working together
+    to provide functionality for the user. **Application programming interfaces**
+    (**APIs**) are not a new concept. The term API is used for anything from the Windows
+    library of code, which allows our user-land code to interact with the operating
+    system kernel, to the service exposed on the web that powers our note-taking apps.
+    Obviously, we will not be focusing on the **Windows API** (**WinAPI**), but we
+    will look at the web applications that power seemingly everything on the internet.
+    When I speak of APIs in this chapter, I am referring to web services specifically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microservices are a relatively new concept adopted by application developers,
+    moving away from typical monolithic application design to a more decoupled approach.
+    The idea is to split components into their own instances and access them via a
+    common language, usually over the network, and more specifically, the HTTP protocol.
+    This does wonders for development and agility, as it allows code to be pushed
+    asynchronously to each component. Developers can focus on a specific component
+    without fear of breaking anything else, so long as the interface to this component
+    adheres to an agreed standard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's not all rainbows with this type of approach, however. New security challenges
+    are introduced with this model. Decoupled services mean a larger attack surface
+    with multiple instances, be they virtual machines or Docker containers. More components
+    usually equate to a greater chance of misconfiguration, which can, of course,
+    be taken advantage of by us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication and authorization enforcement between components is a new problem
+    to solve as well. If my monolithic application has every component built in, I
+    don't really need to worry about securely communicating with the authentication
+    module, as it resides on the same server, and sometimes in the same process. If
+    my authentication module was decoupled and it is now an HTTP web service running
+    in the cloud, I have to consider the network communication between my user interface
+    and the authentication module instance in the cloud. How does the API authenticate
+    my user interface? How can the two components securely negotiate an authentication
+    response so that the user is allowed access to the other components?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decoupling has other interesting effects on security as well. Suppose an API
+    is developed to handle data for a Windows application. The API will accept an
+    HTTP verb (`GET`, `PUT`, and so on) and respond with either JSON or XML. The Windows-native
+    application reads the response and displays an error message returned in the JSON
+    object. A Windows popup containing arbitrary strings is not inherently dangerous
+    to display. There's no need to escape dangerous HTML code in the API response
+    because the `MessageBox()` function of `user32.dll` does not do any kind of rendering
+    of the string it displays. Now suppose that same API is suddenly integrated with
+    a brand-new web application. Unescaped HTML data in the JSON response could be
+    problematic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of the chapter, you will be comfortable with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The different types of web API architecture
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How APIs handle authentication
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**JSON Web Tokens** (**JWTs**)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automating API attacks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: API communication protocols
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'At their core, web APIs are simple HTTP client-server environments. A request
+    comes in over HTTP and a response goes out. To standardize things a bit more,
+    a couple of protocols have been developed, and many APIs follow one or the other to
+    process requests. This is by no means an exhaustive list, but it is likely what you''ll encounter
+    in the wild:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Representational State Transfer** (**REST**)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Simple Object Access Protocol** (**SOAP**)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are certainly other types of protocols that APIs can use, but while their
+    protocols differ, the majority of the same security challenges remain. The most
+    popular protocols are RESTful APIs, followed by SOAP APIs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SOAP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SOAP was developed by Microsoft because **Distributed Component Object Model**
+    (**DCOM**) is a binary protocol, which makes communication over the internet a
+    bit more complicated. SOAP leverages XML instead, a more structured and human-readable
+    language, to exchange messages between the client and the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: SOAP is standardized and is available for review in its entirety at [https://www.w3.org/TR/soap12/](https://www.w3.org/TR/soap12/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A typical SOAP request to an API host looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The response from the server, as you would expect, is also XML-formatted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is a lot of overhead just to get user details. SOAP requires a header
+    defining the XML version, the envelope specification, a body, and finally, the
+    parameters. The response has similar structure requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While SOAP is bloated by today's standards, its design is time-tested and has
+    been around for a long time. As attackers, we are not concerned with performance
+    or network bandwidth utilization. We just need to know all the possible injection
+    points and understand how authentication is performed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the `Envelope`, `Body`, and `Header` tags are standardized, the contents
+    of the body can vary depending on the request type, the application, and the web
+    service implementation itself. The `GetUserRequest` action and its `Name` parameter
+    are specific to the `/UserData` endpoint. To look for potential vulnerabilities,
+    we need to know all the possible endpoints and their respective actions or parameters.
+    How can we grab this information in a black-box scenario?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The SOAP XML structure for requests and responses is typically defined in a
+    **Web Services Description Language** (**WSDL**) file. For public APIs, this is
+    commonly available by querying the API itself directly and attaching `?wsdl` to
+    the specific endpoint URL. If properly configured, the web service will respond
+    with a large XML file with every possible action and parameter for that endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![SOAP](graphics/B09238_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.1: WSDL response for a public API'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This file is extremely useful in an engagement but is not always available.
+    In situations where the WSDL is not downloadable, it's best to reach out to the
+    client and simply ask for the definitions or a list of sample requests. It's also
+    possible that the client will refuse and want to test the API from an external
+    threat's point of view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last resort is, obviously, just observing the web, mobile, or native applications
+    interacting with the API, capturing the HTTP traffic in Burp, and replaying it
+    through the Intruder or Scanner modules. This is certainly not ideal, as vulnerable
+    parameters or actions may never be called under normal application operation.
+    When the scope allows, it's always best to get the WSDL straight from the developer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: REST
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: REST is the dominant architectural style you will likely encounter in modern
+    applications. It is simple to implement and easy to read, and therefore widely
+    adopted by developers. While not as mature as SOAP, it does provide a simple way to
+    achieve decoupled design with microservices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Much like SOAP, RESTful APIs operate over HTTP and they make heavy use of the protocol
+    verbs, including but not limited to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GET`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`POST`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PUT`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`DELETE`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If we wish to query information about a user, a RESTful API may implement a `GET` verb
+    with a `/users` endpoint. The query would then be submitted via the URL parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Of note in the request are the `Content-Type`, `Accept`, and `Authorization`
+    headers. The `Content-Type` header specifies in what format the incoming data
+    is to be processed by the API. The `Accept` header specifies what format the client
+    will accept in the response from the server. The typical APIs will support JSON
+    or XML, or sometimes both. Finally, the `Authorization` header specifies a bearer
+    token and will be required for endpoints that enforce authentication. This allows
+    the server to identify which user is making the request and whether they are authorized
+    to do so.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some custom APIs might employ custom headers for authentication and authorization
+    purposes, such as `X-Auth-Token`, but the principle is the same. Once we know
+    how authentication and authorization tokens are passed between the client and
+    the server, we can start looking for weaknesses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The server response to our earlier request is predictably simple and easy to
+    read:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: A `200` HTTP response indicates that it was successful, our token was valid,
+    and we now have a JSON object with all the details concerning the admin user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RESTful APIs typically use JSON for requests and responses, but there is no
+    hard standard and developers may choose to use a custom XML protocol or even raw
+    binary. This is unusual, as microservices interoperability and maintenance becomes
+    difficult, but it is not unheard of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: API authentication
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decoupling brings about a few more challenges when it comes to authentication
+    and authorization. It's not uncommon to have an API that does not require authentication,
+    but the chances are some web services you'll encounter will require their clients
+    to authenticate in one way or another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, how do we achieve authentication with APIs? This process is not that different
+    from a typical application. At its core, authentication requires that you provide
+    something you know and, optionally, something you have, which corresponds to a record
+    in the API's database. If that something you know and something you have is a
+    secret and only the holder of this information, presumably, has access to it,
+    the API can be reasonably sure that the client providing this information is given
+    access. The API now only needs to track this particular client, since HTTP is
+    stateless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Traditional web applications will accept authentication data (something you
+    know, along with a username and password combination) and may require a second factor
+    (something you have, a one-time password, an SMS number, or a mobile push notification).
+    Once the application has verified you, it will issue a session ID, which your
+    browser will pass for subsequent authentication requests via cookies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: APIs are similar in that they require some sort of secret key or token to be
+    passed back with each request that requires authentication. This token is usually
+    generated by the API and given to the user after successfully authenticating via
+    other means. While a typical web application will almost always use the `Cookie`
+    header to track the session, APIs have a few options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Yes, this is also common in web applications but is generally not used in modern
+    applications, due to security concerns. Basic authentication will pass the username
+    and password in cleartext via the `Authorization` header:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The obvious issues with this are that the credentials are flying over the wire
+    in cleartext and attackers only need to capture one request to compromise the
+    user. Session IDs and tokens will still provide attackers with access, but they
+    can expire and can be blacklisted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic authentication should be sent over HTTPS, since the user credentials are
+    sent in plaintext over the wire. Modern APIs tend to avoid this type of authentication
+    because credentials can be cached by proxies, can be intercepted using **man-in-the-middle**
+    (**MITM**) attacks, or can be extracted from memory dumps. If the API uses LDAP
+    to authenticate users to an Active Directory domain, it's not a good idea to have
+    the user domain credentials flying over the wire with every API request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: API keys
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A more common way to authenticate is by supplying a key or token with our API
+    request. The key is unique to the account with access to the web service and should
+    be kept secret, much like a password. Unlike a password, however, it is not (usually)
+    generated by the user and thus is less likely to be reused in other applications.
+    There's no industry standard on how to pass this value to APIs, although **Open
+    Authorization** (**OAuth**) and SOAP have some requirements defined by the protocol.
+    Custom headers, the `Cookie` header, and even through a `GET` parameter are some
+    of the common ways tokens or keys are sent along with the request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using a `GET` URL parameter to pass the key is generally a bad idea because
+    this value can be cached by browsers, proxies, and web server log files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another option is using a custom header to send the API key with the request.
+    This is a slightly better alternative but still requires secrecy through HTTPS
+    to prevent MITM attacks from capturing this value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Bearer authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Similar to keys, bearer tokens are secret values that are usually passed via
+    the `Authorization` HTTP header as well, but instead of using the `Basic` type,
+    we use the `Bearer` type. For REST APIs, as long as the client and server agree
+    on how to exchange this token, there is no standard defining this process and
+    therefore you may see slight variations of this in the wild:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding bearer token is an example of a JWT. It's a bit longer than a
+    traditional opaque token, but it has some advantages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JWTs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: JWTs are a relatively new authentication mechanism that is gaining market share with
+    web services. They are a compact, self-contained method of passing information
+    securely between two parties.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JWTs are versatile and easy to implement in authentication protocols. SOAP and OAuth
+    can both easily implement JWT as the bearer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: OAuth information can be found at [https://oauth.net/2/](https://oauth.net/2/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'JWTs are essentially claims that have been signed using either **hash-based
+    message authentication code** (**HMAC**) and a secret key, or with an RSA key
+    pair. HMAC is an algorithm that can be used to verify both the data integrity
+    and the authentication of a message, which works well for JWTs. JWTs are a combination
+    of a `base64url` encoded header, payload, and the corresponding signature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The header of the token will specify the algorithm used for signing and the
+    payload will be the claim (for example, I am user1 and I am an administrator),
+    while the third chunk will be the signature itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we inspect the preceding bearer token, we can see the make-up of a typical
+    JWT. There are three chunks of information separated by a period, encoded using
+    URL-safe Base64.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: URL-safe Base64-encoded uses the same alphabet as traditional Base64, with the
+    exception of replacing the characters `+` with `-` and `/` with `_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first chunk is the header, describing the algorithm used for signing. In
+    this case, HMAC with SHA-256\. The type is defined as a JWT.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use JavaScript''s `atob()` function in the browser console to decode
+    the chunk to readable text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The second chunk, or payload, is usually arbitrary data that makes a particular
+    claim, also known as the payload. In this case, it tells the server that I am
+    an administrative user called `admin`, with the user ID `1`, and a timestamp of
+    `104507750`. Timestamps are a good idea, as they can prevent replay attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final piece is a `base64url` encoded 32-byte SHA-256 HMAC signature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When the API server receives this three-piece token, it will:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Parse the header to determine the algorithm: HMAC SHA-256 in this case'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Calculate the HMAC SHA-256 value of the `base64url` encoded first two chunks
+    concatenated by a period:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: If the signature validates, consider the payload as valid as well
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: JWT quirks
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: While this process is currently cryptographically safe, there are a few ways
+    we can play with this token to try to fool poor API implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First of all, while the header and the payload are signed, we can actually modify
+    them. The token data is within our control. The only portion we don't know is
+    the secret key. If we modify the payload, the signature will fail and we expect
+    the server to reject our request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember, though, that the header chunk is parsed before the signature is verified.
+    This is because the header contains instructions on how the API will verify the
+    message. This means we could potentially change this data and break something
+    in the implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What''s interesting about JWT is that the **Request for Comments** (**RFC**)
+    specifies a supported signature algorithm called "none", which can be used by
+    an implementation to assume that the token was validated by other means:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![JWT quirks](graphics/B09238_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.2: The RFC mention of an unsecured JWT using the "none" algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The full JWT RFC is available here: [https://tools.ietf.org/html/rfc7519](https://tools.ietf.org/html/rfc7519).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some JWT libraries will follow the standard and support this particular algorithm
+    as well. So, what happens when we use the "none" algorithm with our preceding
+    payload?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our token would look like this, with no signature appended after the last period:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The token will be verified and deemed valid if the server-side library adheres
+    to the JWT RFC. We can test this modified token using the Burp Suite **JSON Web
+    Tokens** extension, which can be downloaded from the BApp Store:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![JWT quirks](graphics/B09238_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.3: JWT Burp extension'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can enter the JWT value in the first field and supply a dummy key. Since
+    we are no longer using the keyed HMAC, this value will be ignored. The extension
+    should confirm that the signature and JWT token are valid:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![JWT quirks](graphics/B09238_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.4: JWT with no signature deemed valid'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'More information on this type of attack can be found on Auth0: [https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/](https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This simple attack could be devastating in an API that uses a library with an
+    insecure JWT implementation. The ability to forge authentication tickets could
+    be very useful to us as attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Burp JWT support
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Manually splitting the header, payload, and signature pieces is a bit tedious
+    and we'd like to automate this process. If we are targeting the JWT implementation
+    on the server, we may also want to modify some of the parameters. This can be
+    tedious, especially if we have to recalculate the signature every time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **JWT4B** extension was created to check requests for JWT data, parse it,
+    and verify the signature, all in the Burp Suite user proxy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: JWT4B is available for download on GitHub at [https://github.com/mvetsch/JWT4B](https://github.com/mvetsch/JWT4B).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have downloaded the JWT4B JAR file to disk, we can load it manually
+    into Burp. In the **Extender** tab, under **Extensions,** click the **Add** button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp JWT support](graphics/B09238_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.5: The Burp Extensions tab'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the **Load Burp Extension** popup window, we can tell Burp to load the JWT4B
+    JAR file from the location on disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp JWT support](graphics/B09238_11_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.6: Loading the JWT4B JAR extension file'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'JWT4B will allow us to intercept requests with authorization headers containing
+    a JWT, replace the payload, and re-sign with either the same key (if we have it)
+    or a random key, or even change the algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Burp JWT support](graphics/B09238_11_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.7: Modifying JWTs on the fly'
+  prefs: []
+  type: TYPE_NORMAL
+- en: JWT4B makes attacking JWT implementations much simpler, as it can do some of
+    the heavy-lifting for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Postman
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When testing a typical web application, we first configure the system proxy
+    to point to Burp Suite. Now, all of our requests can be inspected as we walk through
+    the app. It's easy to launch attacks because these requests are built for us by
+    the user interface that Burp can see over the wire. During normal operation, users
+    enter data in a search field, for example, and the application constructs the
+    `GET` or `POST` request with all the appropriate parameters, before sending it
+    over the wire. All of these valid requests are now available for replay, modification,
+    and scanning through the attack proxy. The discovery process is much simpler when
+    there is a user interface to drive traffic generation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If there is no user interface component and all we have is an API endpoint,
+    and some documentation to work with, it is very tedious to build a series of `curl`
+    requests and manually parse the responses. If authentication is required for interaction,
+    requesting tokens would be a nightmare for complex web services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Postman** is a fantastic tool that we can use to build a collection of requests
+    to the target API and make testing a breeze. This is especially true if there
+    is cooperation from the client and the developers. To use testing time more efficiently,
+    clients can provide us with a collection of already-generated requests, which
+    can greatly speed up the application testing process.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our engagements are usually time-sensitive and building attack payloads for
+    a RESTful API is extremely time-consuming, even with documentation. A tool such
+    as Postman supports **Collections**, which are essentially a sequence of fully
+    customizable API tests. Developers or other testers can create these collections,
+    which include requests for every possible endpoint, with every possible parameter.
+    They can even automate capturing the data, such as authentication tokens, and
+    automatically insert it into subsequent requests. Postman makes testing APIs easy;
+    developers love it and so do we.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As attackers, we can grab a fully decked-out collection from the client and
+    just run it in our own environment. We can see exactly how the API is supposed
+    to behave, as the developers intended it to. Postman also conveniently supports
+    upstream proxies, so we can push all the properly formatted requests from the
+    **Collection Runner** through Burp and quickly start our attack through Burp's
+    Intruder, Scanner, and Repeater modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a free version of Postman that supports up to 1000 calls per month,
+    but if you find yourself testing more and more APIs, the Pro and Enterprise versions
+    may be a good investment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Postman is available in Free, Pro, and Enterprise versions at [https://www.getpostman.com/](https://www.getpostman.com/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For demonstration purposes, in this chapter, we will be using the vulnerable-API
+    Docker application available from Matt Valdes at [https://github.com/mattvaldes/vulnerable-api](https://github.com/mattvaldes/vulnerable-api).
+    In our demo, the API is running on `http://api.ecorp.local:8081/`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With Docker installed, the vulnerable API can be downloaded and executed with
+    the `docker run` command from the Linux terminal. We can also specify the port
+    to expose in the container using the `-p` switch. Finally, the `--name` parameter
+    will instruct Docker to go fetch the `mkam/vulnerable-api-demo` container:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To test functionality, we can use `curl` to perform a `GET` request on the
+    root URL for the Docker API we''ve just launched:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Installation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are Linux, Mac, and Windows versions of the Postman client. For simplicity's
+    sake, we will use the Linux client on our attack machine, Kali. Installation is
+    fairly straightforward on Windows and Mac, but on Linux you may need a couple
+    of dependencies to get going.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Postman client is an Electron application, making it fairly portable, but
+    it does require `libgconf`, available in the Kali repositories. We can install
+    this dependency using the `apt-get install` command from the terminal, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To grab the latest compiled Postman build, we can `wget` the gzipped tarball
+    from its Linux x64 repository, available at [https://dl.pstmn.io/download/latest/linux64](https://dl.pstmn.io/download/latest/linux64).
+    The `wget` command will save the file to `postman.tar.gz` in the local directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will extract the contents to disk in our `tools` directory using the `tar
+    zxvf` command, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With dependencies installed, Postman can be launched by calling the precompiled
+    `Postman` binary. This is, predictably, located in the `Postman/` directory we''ve
+    just extracted from the tarball:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Installation](graphics/B09238_11_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.8: Postman client running on Linux'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To play around with basic functionality, we can create a new request and the
+    default workspace opens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The user interface is fairly self-explanatory for the most part. We can enter
+    an API URL, change the HTTP verb, pass in custom headers, and even build a valid
+    authorization with a couple of clicks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a test, we can issue the same request we made with `curl` earlier. The response
+    will appear in the **Body** tab, shown in the following screenshot, with the option
+    to beautify the contents. Postman can automatically parse and format the response
+    as XML, HTML, JSON, or plaintext. This is a welcome feature when the response
+    is a massive blob of data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Installation](graphics/B09238_11_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.9: Sample Postman request to the API'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of Postman's strengths comes in its ability to record all of the requests
+    we've made in the left-hand **History** pane. This allows us, API developers or
+    **Quality Assurance** (**QA**) analysts, to save requests and responses in Collections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Collections can be exported by developers and imported by us during an engagement.
+    This saves us a ton of time building our own queries and we can jump straight
+    into looking for security vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Upstream proxy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Postman also supports routing requests through either the system proxy or a
+    custom server. The wise choice is Burp or OWASP ZAP. Once we import and run a collection,
+    every request will be captured, and ready to be inspected and replayed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Under **File** and **SETTINGS**, there is a **Proxy** tab, which should let
+    us point to the local Burp proxy, `127.0.0.1` on port `8080` by default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Upstream proxy](graphics/B09238_11_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.10: Postman upstream proxy configuration'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All of our subsequent requests in Postman will show up in Burp''s proxy HTTP
+    history as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Upstream proxy](graphics/B09238_11_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.11: Burp showing Postman-generated requests'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The environment
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In order to build effective collections, we should create a new Postman environment
+    for each target API. Postman environments allow us to store data in variables
+    that will prove useful for activities, such as passing authorization tokens between
+    requests within a collection. To create a new environment, we can use the **Create
+    New** tab in the top-left corner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The environment](graphics/B09238_11_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.12: Creating a new environment in Postman'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the popup window, enter a meaningful name and click **Add** to create the
+    new empty environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The environment](graphics/B09238_11_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.13: Adding a new Postman environment'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Requests can now be associated with our ECorp API environment. Collections can
+    also be run in specific environments, allowing the creation and passing of variables
+    between requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows a simple `GET` request queued to run in the ECorp
+    API environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The environment](graphics/B09238_11_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.14: Specifying an environment for a request'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Collections
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we said earlier, a collection is simply a list of API requests in a particular
+    sequence. They can be exported to JSON and imported into any Postman client, making
+    them really portable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To showcase the power of Postman collections, we will create one for our vulnerable
+    API instance, `api.ecorp.local,` running on port `8081`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we look at the documentation for Matt Valdes' vulnerable API, we notice that
+    most interactions require an authorization token passed via a custom `X-Auth-Token`
+    HTTP header. While most RESTful APIs try to use the `Authorization` header for
+    tokens, custom headers are not all that uncommon. This is why highly customizable
+    tools such as Burp and Postman are ideal for security testing, as we can automate
+    much of the work even when we encounter deviations from the norm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The documentation can be found in the `README.md` for [https://github.com/mattvaldes/vulnerable-api](https://github.com/mattvaldes/vulnerable-api).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The documentation states that we can get a new token if we send a `POST` to
+    `/tokens` with the body containing JSON-formatted authentication data. The default
+    credentials are `user1` with `pass1`. Our authentication request `POST` body should
+    look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The API will respond with another JSON-formatted object containing the token
+    needed for subsequent authenticated requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then pass the `id` value to the `/user/1` endpoint via the `X-Auth-Token`
+    header and the request should succeed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.15: Successful authenticated request to the vulnerable API'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a sequence of requests, we want to create a collection and
+    automate some of this testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once again, from the **Create New** button in the top-left, select **Collection**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.16: Creating a new collection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the popup, we can enter the name, and a description if needed, before clicking
+    the **Create** button:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.17: Creating a new collection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All of the requests we''ve made are recorded in the **History** tab in the
+    workspace. We can highlight the ones we need for the collection and click the
+    **Save** button next to **Send** in the top-right corner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.18: Saving requests to a collection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the bottom, we should see our new ECorp API collection and we can select
+    it to save our requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.19: Selecting the destination collection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Repeat this process for any requests that must go into this collection. When
+    run, we expect our collection to get a new token in the first request and make
+    a second authenticated request to `/user/1` using the newly provided token:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.20: Authenticated Postman request'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we can export and import it somewhere else. As it stands, our
+    collection will run, but the token will not be passed through to the second request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this, we need to leverage a Postman feature called **Tests**. Each request
+    can be configured to execute tests and perform an action before continuing. Typically,
+    these can be used to validate that the request was successful. Developers can
+    leverage Tests to make sure the code they just pushed didn't break anything.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tests are written in JavaScript, so a little bit of coding knowledge will go
+    a long way. Thankfully, there are canned tests that we can repurpose for our needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our `Get Auth Token` request in the ECorp API collection, the test needs
+    to inspect the response, parse it as JSON, and extract the token ID. To pass it
+    to another request, we can leverage the ECorp API environment and store the data
+    in a variable we call `auth_token`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code to achieve this is fairly straightforward, albeit a bit strange if
+    you''re not familiar with JavaScript. Each `pm.test` entry is a separate test
+    to be executed in the order listed. If any of the tests fail, the run will alert
+    us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first test simply checks to see whether the HTTP response from the API was
+    `200`. Anything else will throw an error during the collection run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second test will parse the response text as JSON and store it in the local
+    `data` variable. If you recall the hierarchy of the `/tokens` response, we need
+    to access the `id` value in the `access.token` field using the JavaScript array
+    notation: `data[''access''][''token''][''id'']`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `pm.environment.set` function, we store the `id` value in the `auth_token`
+    environment variable, making it available to other requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each time this request in this collection runs, `auth_token` will be updated.
+    Environments can be inspected by clicking the "eye" icon next to the name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.21: Inspecting the Postman environment'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our second request to `/user/1` requires that we pass this value via the `X-Auth-Token`
+    header. To do this, we add a new custom header and, for the value, we pull up
+    a list of existing variables by typing `{{` in the **Value** field. Postman will
+    autocomplete existing variables for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.22: Using environment variables in requests'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clicking **Send**, we can verify that the authenticated request succeeded:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collections](graphics/B09238_11_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.23: The authenticated request succeeds'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Collection Runner
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Collections can be exported and imported using the familiar JSON format. Importing
+    is a straightforward drag-and-drop operation. Developers and QAs can create these
+    collections the same way we did earlier, export them, and as part of the engagement,
+    send the file to us. This greatly simplifies our job of assessing the API, because
+    the time-consuming work has already been done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once imported, our collection can be executed by the Postman Runner, accessible
+    via the **Runner** button near to the **New** button in the menu:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collection Runner](graphics/B09238_11_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.24: Opening the Runner component'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A new **Collection Runner** window opens with all the imported collections.
+    Select the ECorp API collection, the ECorp API environment, and click **Run ECorp
+    API**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collection Runner](graphics/B09238_11_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.25: Running the ECorp collection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If all goes well, we should see green across the board, as our tests should
+    have succeeded, meaning the authentication request was successful, the token was
+    extracted, and the user query returned some data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collection Runner](graphics/B09238_11_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.26: Successful Postman collection run'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More importantly, all of the requests in the collection were passed upstream
+    to our Burp proxy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Collection Runner](graphics/B09238_11_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.27: Burp-captured Postman collection run'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From here, we can launch the Burp Scanner, Intruder, and Sequencer modules or
+    replay any request to manipulate the data and look for vulnerabilities, as we
+    normally do with traditional applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attack considerations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Targeting HTTP-based APIs is really no different than traditional web applications.
+    We have to follow the same basic procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identify injection points
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Send unexpected input and observe how the API behaves
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Look for the usual suspects: SQLi, XXE, XSS, command injection, LFI, and RFI'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can use all the tips and tricks we already know to find these issues, with
+    some exceptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XSS vulnerabilities in a typical web application are easy to prove. You send
+    the input, the input is reflected to the client as HTML or JavaScript, the browser
+    renders the content, and the code executes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With web services, the response is typically not rendered, primarily due to
+    the `Content-Type` header set by the response. This is usually JSON or XML, which
+    most browsers will not render as HTML. I say "most" because, unfortunately, some
+    older browsers may still render the content, ignoring the content type stated
+    by the server, and guessing based on the data in the response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following reflected input issue was discovered in the `api.ecorp.local/user/1` URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We pass in the JavaScript payload and observe that the API reflects it back
+    to the client, unescaped:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Normally, this would be enough to prove the vulnerability exists and users can
+    be targeted using social engineering. However, if you look closely, you'll notice
+    the content type is set to `application/json`, and this means that modern browsers
+    will not render the response as HTML, rendering our payload useless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With APIs, we may still have hope. Web services are not typically accessed directly
+    in a decoupled environment. It is possible that this particular API is leveraged
+    by a web application. That error message could eventually find its way into a
+    browser, which may eventually render our payload. What if all errors are logged
+    by the web service and later neatly rendered in a status dashboard that's only
+    visible internally? We would then have JavaScript code execution on any analyst
+    who inspects the state of the API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Web application scanners may identify this issue but mark it as informational,
+    and it could be missed. It's important to consider the context around each vulnerability
+    and how the affected service may be used by different clients. Remember out-of-band
+    discovery and exploitation when attacking APIs, as not all vulnerabilities are immediately
+    obvious.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at different ways we can make attacking APIs easier.
+    We described the two most common standards for web services, SOAP and REST. We
+    looked at how authentication is handled and what role JWTs play in secure communication.
+    We explored tools and extensions that help make us more efficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also played around with Postman and the idea of automating discovery, and the
+    testing of API inputs and endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: APIs may be the latest trend for web and mobile applications, but they're not
+    that different from the usual HTTP application. In fact, as we saw earlier, microservice
+    architecture brings about some new challenges when it comes to authentication,
+    which can be exploited alongside the usual server-side and client-side vulnerabilities.
+    Coming up in the next chapter, we will look at CMSs, and some ways to discover
+    and subvert them for fun and profit.
+  prefs: []
+  type: TYPE_NORMAL

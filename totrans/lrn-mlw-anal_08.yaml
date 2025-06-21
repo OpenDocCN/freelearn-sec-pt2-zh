@@ -1,0 +1,1552 @@
+- en: Code Injection and Hooking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we looked at the different persistence mechanisms used
+    by malware to remain on a victim system. In this chapter, you will learn how malicious
+    programs inject code into another process (called *target process* or *remote
+    process*) to perform malicious actions. The technique of injecting malicious code
+    into a target process's memory and executing the malicious code within the context
+    of the target process is called *code injection (or process injection)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An attacker typically chooses a legitimate process (such as `explorer.exe` or
+    `svchost.exe`) as the target process. Once the malicious code is injected into
+    the target process, it can then perform malicious actions, such as logging keystrokes,
+    stealing passwords, and exfiltrating data, within the context of the target process.
+    After injecting the code into the memory of the target process, the malware component
+    responsible for injecting code can either continue to persist on the system, thereby
+    injecting code into the target process every time the system reboots, or it can
+    delete itself from the filesystem, keeping the malicious code in memory only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we delve into the malware code injection techniques, it is essential
+    to understand the virtual memory concept.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1\. Virtual Memory
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When you double-click a program containing a sequence of instructions, a process
+    is created. The Windows operating system provides each new process created with
+    its own private memory address space (called the *process memory*). The process
+    memory is a part of *virtual memory*; virtual memory is not real memory, but an
+    illusion created by the operating system''s memory manager. It is because of this
+    illusion that each process thinks that it has its own private memory space. During
+    runtime, the Windows memory manager, with the help of hardware, translates the
+    virtual address into the physical address (in RAM) where the actual data resides;
+    to manage the memory, it pages some of the memory to the disk. When the process''s
+    thread accesses the virtual address that is paged to the disk, the memory manager
+    loads it from the disk back to the memory. The following diagram illustrates two
+    processes, A and B, whose process memories are mapped to the physical memory while
+    some parts are paged to the disk:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00231.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Since we normally deal with virtual addresses (the ones that you see in your
+    debugger), we will keep physical memory out of the discussion for the rest of
+    the chapter. Now, let's focus on virtual memory. *Virtual memory* is segregated
+    into *process memory* (process space or user space) and *kernel memory* (kernel
+    space or system space). The size of the virtual memory address space depends on
+    the hardware platform. For example, on a 32-bit architecture, by default, the
+    total virtual address space (for both process and kernel memory) is a maximum
+    of 4 GB. The lower half (lower 2 GB), ranging from `0x00000000` through `0x7FFFFFFF`,
+    is reserved for user processes (process memory or user space), and the upper half
+    of the address (upper 2 GB), ranging from `0x80000000` through `0xFFFFFFFF`, is
+    reserved for kernel memory (kernel space).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On a 32-bit system, out of the 4 GB virtual address space, each process thinks
+    that it has 2 GB of process memory, ranging from `0x00000000` - `0x7FFFFFFF`.
+    Since each process thinks that it has its own private virtual address space (which
+    ultimately gets mapped to physical memory), the total virtual address gets much
+    larger than the available physical memory (RAM). The Windows memory manager addresses
+    this by paging some of the memory to the disk; this frees the physical memory,
+    which can be used for other processes, or for the operating system itself. Even
+    though each Windows process has its own private memory space, the kernel memory
+    is, for the most part, common, and is shared by all the processes. The following
+    diagram shows the memory layout of 32-bit architecture. You may notice a 64 KB
+    gap between the user and kernel space; this region is not accessible and ensures
+    that the kernel does not accidentally cross the boundary and corrupt the user-space.
+    You can determine the upper boundary (last usable address) of the process address
+    space by examining the symbol `MmHighestUserAddress`, and the lower boundary (first
+    usable address) of the kernel space by querying the symbol `MmSystemRangeStart`
+    with a kernel debugger such as *Windbg*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00232.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Even though the virtual address range is the same for each process (`x00000000
+    - 0x7FFFFFFF`), both the hardware and Windows make sure that the physical addresses
+    mapped to this range are different for each process. For instance, when two processes
+    access the same virtual address, each process will end up accessing a different
+    address in the physical memory. By providing private address space for each process,
+    the operating system ensures that processes do not overwrite each other's data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The virtual memory space need not always be divided into 2 GB halves; that
+    is just the default setup. For example, you can enable a 3 GB boot switch by using
+    the following command, which increases the process memory to 3 GB, ranging from
+    `0x00000000` - `0xBFFFFFFF`; the kernel memory gets the remaining 1 GB, from `0xC0000000` - `0xFFFFFFFF`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The x64 architecture provides much larger address space for both the process
+    and kernel memory, as shown in the following diagram. On x64 architecture, the
+    user space ranges from `0x0000000000000000 - 0x000007ffffffffff`, and the kernel
+    space from `0xffff080000000000` and above. You may notice a huge address gap between
+    the user-space and the kernel space; this address range is not usable. Even though,
+    in the following screenshot, the kernel space is shown as starting from `0xffff080000000000`,
+    the first usable address in the kernel space starts at `ffff800000000000`. The
+    reason for this is that all addresses used in x64 code must be canonical. An address
+    is said to be canonical if it has the bits `47-63` either all *set* or all *clear*.
+    Attempting to use a non-canonical address results in a page fault exception:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00233.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 1.1 Process Memory Components (User Space)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With an understanding of virtual memory, let us focus our attention on a part
+    of the virtual memory called *process memory*. Process memory is the memory used
+    by *user applications*. The following screenshot shows two processes and gives
+    a high-level overview of the components which reside in the process memory. In
+    the following screenshot, the kernel space is deliberately left blank for simplicity
+    (we will fill in that blank in the next section). Keep in mind that processes
+    share the same kernel space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00234.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Process memory consists of the following major components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Process executable**: This region contains the executable associated with
+    the application. When a program on the disk is double-clicked, a process is created,
+    and the executable associated with the program is loaded into the process memory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Dynamic Linked Libraries (DLLs)**: When a process is created, all its associated
+    DLLs get loaded into the process memory. This region represents all DLLs associated
+    with a process.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Process environment variables:** This memory region stores the process''s
+    environment variables, such as the temporary directories, home directory, AppData
+    directory, and so on.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Process heap(s):** This region specifies the process heap. Each process has
+    a single heap and can create additional heaps as required. This region specifies
+    the dynamic input that the process receives.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Thread stack(s):** This region represents the dedicated range of process
+    memory allocated to each thread, called its *runtime stack*. Each thread gets
+    its own stack, and this is where function arguments, local variables, and return
+    addresses can be found.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Process Environment Block (PEB)**: This region represents the `PEB` structure,
+    which contains information about where the executable is loaded, its full path
+    on the disk, and where to find the DLLs in memory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can examine the contents of a process memory by using the* Process Hacker*
+    ([https://processhacker.sourceforge.io/](https://processhacker.sourceforge.io/))tool.
+    To do that, launch Process Hacker, right-click on the desired process, select
+    Properties, and choose the Memory tab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 1.2 Kernel Memory Contents (Kernel Space)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The *kernel memory* contains the operating system and the device drivers. The
+    following screenshot shows the user-space and kernel space components. In this
+    section, we will  mainly focus on the kernel space components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00235.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The kernel memory consists of the following key components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`hal.dll`: The *hardware abstraction layer (HAL)* is implemented in the loadable
+    kernel module `hal.dll`. HAL isolates the operating system from the hardware;
+    it implements functions to support different hardware platforms (mostly chipsets).
+    It primarily provides services to the *Windows executive*, *kernel*, and kernel
+    mode *device drivers*. The kernel mode device drivers invoke functions exposed
+    by `hal.dll` to interact with the hardware, instead of directly communicating
+    with the hardware.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ntoskrnl.exe`: This binary is the core component of the Windows operating
+    system known as kernel image. The `ntoskrnl.exe` binary provides two types of
+    functionality: the *executive* and the *kernel*. The *executive* implements functions
+    called *system service routines,* which are callable by user-mode applications
+    via a controlled mechanism. The executive also implements major operating system
+    components, such as the memory manager, I/O manager, object manager, process/thread
+    manager, and so on. The *kernel* implements low-level operating system services
+    and exposes sets of routines, which are built upon by the executive to provide
+    high-level services.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Win32K.sys`: This kernel mode driver implements *UI* and *graphics device
+    interface (GDI)* services, which are used to render graphics on output devices
+    (such as monitors). It exposes functions for GUI applications.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 2\. User Mode And Kernel Mode
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we saw how virtual memory is divided into user-space
+    (process memory) and kernel space (kernel memory). The *user-space* contains code
+    (such as executable and DLL) that runs with restricted access, known as the *user
+    mode*. In other words, the executable or DLL code that runs in the user space
+    cannot access anything in the kernel space or directly interact with the hardware.
+    The *kernel space* contains the kernel itself (`ntoskrnl.exe`) and the *device
+    drivers*. The code running in the kernel space executes with a high privilege,
+    known as *kernel mode*, and it can access both the user-space and the kernel space.
+    By providing the kernel with a high privilege level, the operating system ensures
+    that a user-mode application cannot cause system instability by accessing protected
+    memory or I/O ports. Third-party drivers can get their code to run in kernel mode
+    by implementing and installing signed drivers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The difference between the space (user space/kernel space) and the mode (user
+    mode/kernel mode) is that *space* specifies the location where the contents (data/code)
+    are stored, and *mode* refers to the execution mode, which specifies how an application's
+    instructions are allowed to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the user-mode applications cannot directly interact with the hardware, then
+    the question is, how can a malware binary running in user-mode write content to
+    a file on the disk by calling the `WriteFile` API?. In fact, most of the APIs
+    called by user-mode applications, end up calling the *system service routines*
+    (functions) implemented in the kernel executive (`ntoskrnl.exe`), which in turn
+    interacts with the hardware (such as, for writing to a file on the disk). In the
+    same manner, any user-mode application that calls a GUI-related API ends up calling
+    the functions exposed by `win32k.sys` in the kernel space. The following diagram
+    illustrates this concept; I have removed some components from the user-space,
+    to keep it simple. The `ntdll.dll` (residing in the user-space) acts as the gateway
+    between the user-space and the kernel space. In the same way, `user32.dll` acts
+    as a gateway for the GUI applications. In the next section, we will mainly focus
+    on the transition of the API call to the kernel executive''s system service routines
+    via `ntdll.dll`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00236.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 2.1 Windows API Call Flow
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The Windows operating system provides services by exposing APIs implemented
+    in DLLs. An application uses the service by calling the API implemented in the
+    DLL. Most API functions end up calling the *system service routine* in the `ntoskrnl.exe`
+    (kernel executive). In this section, we will examine what happens when an application
+    calls an API, and how the API ends up calling the system service routines in `ntoskrnl.exe`
+    (executive). Specifically, we will look at what happens when an application invokes
+    the `WriteFile()` API. The following diagram gives a high-level overview of the
+    API call flow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00237.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: When a process is invoked by double-clicking a program, the process executable
+    image and all its associated DLLs are loaded into the process memory by the Windows
+    loader. When a process starts, the main thread gets created, which reads the executable
+    code from the memory and starts executing it. An important point to remember is
+    that it is not the process that executes the code, it is the thread that executes
+    the code (a process is merely a container for the threads). The thread that is
+    created starts executing in the user-mode (with restricted access). A process
+    may explicitly create additional threads, as required.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let's suppose that an application needs to call the `WriteFile()` API, which
+    is exported by `kernel32.dll`. To transfer the execution control to `WriteFile()`,
+    the thread has to know the address of `WriteFile()` in the memory. If the application
+    imports `WriteFile()`, then it can determine its address by looking in a table
+    of function pointers called the *Import Address Table (IAT)*, as shown in the
+    preceding diagram. This table is located in an application's executable image
+    in the memory, and it is populated by the windows loader with the function addresses
+    when the DLLs are loaded.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: An application can also load a DLL during runtime by calling the `LoadLibrary()`
+    API, and it can determine the address of a function within the loaded DLL by using
+    the `GetProcessAddress()` API. If an application loads a DLL during runtime, then
+    the IAT does not get populated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the thread determines the address of `WriteFile()` from the IAT or during
+    runtime, it calls `WriteFile()`, implemented in `kernel32.dll`. The code in the
+    `WriteFile()` function ends up calling a function, `NtWriteFile()`, exported by
+    the gateway DLL, `ntdll.dll`. The `NtWriteFile()` function in `ntdll.dll` is not
+    a real implementation of `NtWriteFile()`. The actual function, with the same name, `NtWriteFile()`
+    (system service routine), resides in `ntoskrnl.exe` (executive), which contains
+    the real implementation. The `NtWriteFile()` in `ntdll.dll` is just a stub routine
+    that executes either `SYSENTER` (x86) or `SYSCALL` (x64) instructions. These instructions
+    transition the code to the kernel mode.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now, the thread running in kernel mode (with unrestricted access) needs to find
+    the address of the actual function, `NtWriteFile()`, implemented in `ntoskrnl.exe`.
+    To do that, it consults a table in the kernel space called the *System Service
+    Descriptor Table (SSDT)* and determines the address of `NtWriteFile()`. It then
+    calls the actual `NtWriteFile()` (system service routine) in the Windows executive
+    (in `ntoskrnl.exe`), which directs the request to the I/O functions in the *I/O
+    manager*. The I/O manager then directs the request to the appropriate kernel-mode
+    device driver. The kernel-mode device driver uses the routines exported by `HAL`
+    to interface with the hardware.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 3\. Code Injection Techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, the objective of a code injection technique is to inject
+    code into the remote process memory and execute the injected code within the context
+    of a remote process. The injected code could be a module such as an executable,
+    DLL, or even shellcode. Code injection techniques provide many benefits for attackers;
+    once the code is injected into the remote process, an adversary can do the following
+    things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Force the remote process to execute the injected code to perform malicious actions
+    (such as downloading additional files or stealing keystrokes).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Inject a malicious module (such as a DLL) and redirect the API call made by
+    the remote process to a malicious function in the injected module. The malicious
+    function can then intercept the input parameters of the API call, and also filter
+    the output parameters. For example, *Internet Explorer* uses `HttpSendRequest()`
+    to send a request containing an optional POST payload to the web server, and it
+    uses `InternetReadFile()` to fetch the bytes from the server's response to display
+    it in the browser. An attacker can inject a module into Internet Explorer's process
+    memory and redirect the `HttpSendRequest()` to the malicious function within the
+    injected module to extract credentials from the POST payload. In the same manner,
+    it can intercept the data received from the `InternetReadFile()` API to read the
+    data or modify the data received from the web server. This enables an attacker
+    to intercept the data (such as banking credentials) before it reaches the web
+    server, and it also allows an attacker to replace or insert additional data into
+    the server’s response (such as inserting an extra field into the HTML content)
+    before it reaches the victim's browser.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Injecting code into an already running process allows an adversary to achieve
+    persistence.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Injecting code into trusted processes allows an attacker to bypass security
+    products (such as whitelisting software) and hide from the user.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this section, we will mainly focus on the code injection techniques in the
+    user-space. We will look at various methods used by the attackers to perform code
+    injection into the remote process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following code injection techniques, there is a malware process (*launcher*
+    or *loader*) that injects code, and a legitimate process (such as `explorer.exe`)
+    into which the code will be injected. Before performing code injection, the launcher
+    needs to first identify the process to inject the code. This is typically done
+    by enumerating the processes running on the system; it uses three API calls: `CreateToolhelp32Snapshot()`,
+    `Process32First()`, and `Process32Next()`. `CreateToolhelp32Snapshot()` is used
+    to obtain the snapshot of all of the running processes; `Process32First()` gets
+    the information about the first process in the snapshot; `Process32Next()` is
+    used in a loop to iterate through all of the processes. The `Process32First()`
+    and `Process32Next()` APIs get information about the process, such as the executable
+    name, the process ID, and the parent process ID; this information can be used
+    by malware to determine whether it is the target process or not. Sometimes, instead
+    of injecting code into an already running process, malicious programs launch a
+    new process (such as `notepad.exe`) and then inject code into it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Whether the malware injects code into an already running process or launches
+    a new process to inject code, the objective in all the code injection techniques
+    (covered next) is to inject malicious code (either DLL, executable, or Shellcode)
+    into the address space of the target (legitimate) process and force the legitimate
+    process to execute the injected code. Depending on the code injection technique,
+    the malicious component to be injected can reside on the disk or in the memory.
+    The following diagram should give you a high-level overview of code injection
+    techniques in the user-space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00238.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.1 Remote DLL Injection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this technique, the target (remote) process is forced to load a malicious
+    DLL into its process memory space via the `LoadLibrary()` API. The `kernel32.dll`
+    exports `LoadLibrary()`, and this function takes a single argument, which is the
+    path to the DLL on the disk, and loads that DLL into the address space of the
+    calling process. In this injection technique, the malware process creates a thread
+    in the target process, and the thread is made to call `LoadLibrary()` by passing
+    a malicious DLL path as the argument. Since the thread gets created in the target
+    process, the target process loads the malicious DLL into its address space. Once
+    the target process loads the malicious DLL, the operating system automatically
+    calls the DLL's `DllMain()` function, thus executing the malicious code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe in detail how this technique is performed, with
+    an example of a malware named `nps.exe` (loader or launcher) that injects a DLL
+    via `LoadLibrary()` into the legitimate `explorer.exe` process. Before injecting
+    the malicious DLL component, it is dropped onto the disk, and then the following
+    steps are performed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The malware process (`nps.exe`) identifies the target process (`explorer.exe`,
+    in this case) and gets its process ID (pid). The idea of getting the pid is to
+    open a handle to the target process so that the malware process can interact with
+    it. To open a handle, the `OpenProcess()` API is used, and one of the parameters
+    it accepts is the pid of the process. In the following screenshot, the malware
+    calls `OpenProcess()` by passing the pid of `explorer.exe` (`0x624`, which is
+    `1572`) as the third parameter. The return value of `OpenProcess()` is the handle
+    to the `explorer.exe` process:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00239.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware process then allocates memory in the target process using the `VirutualAllocEx()`
+    API. In the following screenshot, the 1^(st) argument (`0x30`) is the handle to
+    `explorer.exe` (the target process), which it acquired from the previous step.
+    The 3^(rd) argument, `0x27 (39)`, represents the number of bytes to be allocated
+    in the target process, and the 5^(th) argument (`0x4`) is a constant value that
+    represents the memory protection of `PAGE_READWRITE`. The return value of `VirtualAllocEx()`
+    is the address of the allocated memory in `explorer.exe`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00240.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The reason for allocating the memory in the target process is to copy a string
+    that identifies the full path of the malicious DLL on the disk. The malware uses
+    `WriteProcessMemory()` to copy the DLL pathname to the allocated memory in the
+    target process. In the following screenshot, the 2^(nd )argument, `0x01E30000`,
+    is the address of the allocated memory in the target process, and the 3^(rd) argument
+    is the full path to the DLL that will be written to the allocated memory address
+    `0x01E30000` in `explorer.exe`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00241.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The idea of copying the DLL pathname to the target process memory is that, later,
+    when the remote thread is created in the target process and when `LoadLibrary()`
+    is called via a remote thread, the DLL path will be passed as the argument to
+    `LoadLibrary()`. Before creating a remote thread, malware must determine the address
+    of `LoadLibrary()` in `kernel32.dll`; to do that, it calls the `GetModuleHandleA()`
+    API and passes `kernel32.dll` as the argument, which will return the base address
+    of `Kernel32.dll`. Once it gets the base address of `kernel32.dll`, it determines
+    the address of `LoadLibrary()` by calling `GetProcessAddress()`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'At this point, the malware has copied the DLL pathname in the target process
+    memory, and it has determined the address of `LoadLibrary()`. Now, the malware
+    needs to create a thread in the target process (`explorer.exe`), and this thread
+    must be made to execute `LoadLibrary()` by passing the copied DLL pathname so
+    that the malicious DLL will be loaded by `explorer.exe`. To do that, the malware
+    calls `CreateRemoteThread()` (or the undocumented API `NtCreateThreadEx()`), which
+    creates a thread in the target process. In the following screenshot, the 1^(st)
+    argument, `0x30`, to `CreateRemoteThread()` is the handle to the `explorer.exe`
+    process, in which the thread will be created. The 4^(th) argument is the address
+    in the target process memory where the thread will start executing, which is the
+    address of `LoadLibrary()`, and the 5^(th) argument is the address in the target
+    process memory that contains the full path to the DLL. After calling `CreateRemoteThread()`,
+    the thread created in `explorer.exe` invokes `LoadLibrary()`, which will load
+    the DLL from the disk into the `explorer.exe` process memory space. As a result
+    of loading the malicious DLL, its `DLLMain()` function gets called automatically,
+    thereby executing malicious code within the context of `explorer.exe`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00242.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once the injection is complete, the malware calls the `VirtualFree()` API to
+    free the memory containing the DLL path and closes the handle to the target process
+    (`explorer.exe`) by using the `CloseHandle()` API.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A malicious process can inject code into other processes running with the same
+    integrity level or lower. For instance, a malware process running with medium
+    integrity can inject code into the `explorer.exe` process (which also runs with
+    a medium integrity level). To manipulate the system-level process, a malicious
+    process needs to enable `SE_DEBUG_PRIVILEGE` (which requires administrator privileges)
+    by calling `AdjustTokenPrivileges()`; this allows it to read, write, or inject
+    code into another process's memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.2 DLL Injection Using APC (APC Injection)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous technique, after writing the DLL pathname, `CreateRemoteThread()`
+    was invoked to create a thread in the target process, which in turn called `LoadLibrary()`
+    to load the malicious DLL. The *APC injection* technique is similar to remote
+    DLL injection, but instead of using `CreateRemoteThread()`, a malware makes use
+    of *Asynchronous Procedure Calls (APCs)* to force the thread of a target process
+    to load the malicious DLL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An APC is a function that executes asynchronously in the context of a particular
+    thread. Each thread contains a queue of APCs that will be executed when the target
+    thread enters an alertable state. As per Microsoft documentation ([https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx)),
+    a thread enters an alertable state if it calls one of the following functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The way the APC injection technique works is, a malware process identifies the
+    thread in the target process (the process into which the code will be injected)
+    that is in an alertable state, or likely to go into an alertable state. It then
+    places the custom code in that thread's APC queue by using the `QueueUserAPC()`
+    function. The idea of queuing the custom code is that, when the thread enters
+    the alertable state, the custom code gets picked up from the APC queue, and it
+    gets executed by the thread of the target process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe a malware sample using APC injection to load a
+    malicious DLL into the Internet Explorer `(iexplore.exe)` process. This technique
+    starts with the same four steps as remote DLL injection (in other words, it opens
+    a handle to `iexplore.exe`, allocates memory in the target process, copies the
+    malicious DLL pathname into the allocated memory, and determines the address of
+    `Loadlibrary()`). It then follows these steps to force the remote thread to load
+    the malicious DLL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It opens a handle to the thread of the target process using the `OpenThread()`
+    API. In the following screenshot, the 3^(rd) argument, `0xBEC(3052)`, is the thread
+    ID (TID) of the `iexplore.exe` process. The return value of `OpenThread()` is
+    the handle to the thread of `iexplore.exe`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00243.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware process then calls `QueueUserAPC()` to queue the APC function in
+    the Internet Explorer thread''s APC queue. In the following screenshot, the 1^(st)
+    argument to `QueueUserAPC()` is the pointer to the APC function that the malware
+    wants the target thread to execute. In this case, the APC function is the `LoadLibrary()`
+    whose address was determined previously. The 2^(nd) argument, `0x22c`, is the
+    handle to the target thread of `iexplore.exe`. The 3^(rd) argument, `0x2270000`,
+    is the address in the target process (`iexplore.exe`) memory containing the full
+    path to the malicious DLL; this argument will automatically be passed as the parameter
+    to the APC function (`LoadLibrary()`) when the thread executes it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00244.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following screenshot shows the content of the address `0x2270000` in Internet
+    Explorer''s process memory  (this was passed as the 3rd argument to `QueueUserAPC()`);
+    this address contains the full path to the DLL that was previously written by
+    the malware:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00245.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, the injection is complete, and when the thread of the target
+    process enters an alertable state, the thread executes `LoadLibrary()` from the
+    APC queue, and the full path to the DLL is passed as an argument to `LoadLibrary()`.
+    As a result, the malicious DLL gets loaded into the target process address space,
+    which in turn invokes the `DLLMain()` function containing the malicious code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.3 DLL Injection Using SetWindowsHookEx()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter (refer to *Section 1.3.2, Keylogger Using SetWindowsHookEx*),
+    we looked at how malware uses the `SetWindowsHookEx()` API to install a *hook
+    procedure* to monitor keyboard events. The `SetWindowsHookEx()` API can also be
+    used to load a DLL into a target process address space and execute malicious code.
+    To do that, a malware first loads the malicious DLL into its own address space.
+    It then installs a *hook procedure* (a function exported by the malicious DLL)
+    for a particular event (such as a *keyboard* or *mouse event*), and it associates
+    the event with the thread of the target process (or all of the threads in the
+    current desktop). The idea is that when a particular event is triggered, for which
+    the hook is installed, the thread of the target process will invoke the hook procedure.
+    To invoke a hook procedure defined in the DLL, it must load the DLL (containing
+    the hook procedure) into the address space of the target process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, an attacker creates a DLL containing an *export* function. The
+    export function containing the malicious code is set as the *hook procedure* for
+    a particular event. The hook procedure is associated with a thread of the target
+    process, and when the event is triggered, the attacker's DLL is loaded into the
+    address space of the target process, and the hook procedure is invoked by the
+    target process's thread, thereby executing malicious code. The malware can set
+    the hook for any type of event, as long as that event is likely to occur. The
+    point here is that the DLL is loaded into the address space of the target process,
+    and performs malicious actions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following describes the steps used by the malware sample (*Trojan Padador*)
+    to load its DLL into the address space of the remote process and to execute the
+    malicious code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The malware executable drops a DLL named `tckdll.dll` on the disk. The DLL
+    contains an entrypoint function, and an export function named `TRAINER`, shown
+    as follows. The DLL entry point function does not do much, whereas the `TRAINER` function
+    contains the malicious code. This means that whenever a DLL is loaded (its entry
+    point function is invoked), no malicious code is executed; only when the `TRAINER` function
+    is invoked are the malicious actions performed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00246.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Malware loads the DLL (`tckdll.dll`) into its own address space using the `LoadLibrary()` API,
+    but no malicious code is executed at this point. The return value of `LoadLibrary()` is
+    the handle to the loaded module (`tckdll.dll`). It then determines the address
+    of the `TRAINER` function by using `GetProcAddress()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00247.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware uses the handle to the `tckdll.dll` and the address of the `TRAINER` function
+    to register a *hook procedure* for the keyboard event. In the following screenshot,
+    the 1^(st) argument, `WH_KEYBOARD` (constant value `2`), specifies the type of
+    event that will invoke the hook routine. The 2^(nd) argument is the address of
+    the hook routine, which is the address of the `TRAINER` function determined in
+    the previous step. The 3^(rd) argument is the handle to the `tckdll.dll`, which
+    contains the hook procedure. The fourth argument, `0`, specifies that the hook
+    procedure must be associated with all of the threads in the current desktop. Instead
+    of associating the hook procedure with all of the desktop threads, a malware may
+    choose to target a specific thread by providing its thread ID:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00248.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: After performing the preceding steps, when the keyboard event is triggered within
+    an application, that application will load the malicious DLL and invoke the `TRAINER` function.
+    For instance, when you launch *Notepad* and enter some characters (which triggers
+    a keyboard event), `tckdll.dll` will be loaded into Notepad's address space, and
+    the `TRAINER` function will be invoked, forcing the `notepad.exe` process to execute
+    malicious code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4 DLL Injection Using The Application Compatibility Shim
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The Microsoft Windows *application compatibility infrastructure/framework (application
+    shim)* is a feature that allows programs created for older versions of the operating
+    system (such as Windows XP) to work with modern versions of the operating system
+    (such as Windows 7 or Windows 10). This is achieved through *application compatibility
+    fixes* (*shims*). The shims are provided by Microsoft to the developers so that
+    they can apply fixes to their programs without rewriting the code. When a shim
+    is applied to a program, and when the shimmed program is executed, the shim engine
+    redirects the API call made by the shimmed program to shim code; this is done
+    by replacing the pointer in the IAT with the address of the shim code. Details
+    on how applications use the IAT were covered in section *2.1** Windows API call
+    flow*. In other words, it hooks the Windows API to redirect calls to the shim
+    code instead of calling the API directly in the DLL. As a result of API redirection,
+    the shim code can modify the parameters passed to the API, redirect the API, or
+    modify the response from the Windows operating system. The following diagram should
+    help you to understand the differences in interactions between the normal and shimmed
+    applications in the Windows operating system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00249.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To help you understand the functionality of a shim, let's look at an example.
+    Suppose that a few years back (before the release of Windows 7), you wrote an
+    application (`xyz.exe`) that checked the OS version, before performing some useful
+    operation. Let's suppose that your application determined the OS version by calling
+    the `GetVersion()` API in `kernel32.dll`. In short, the application did something
+    useful only if the OS version was Windows XP. Now, if you take that application
+    (`xyz.exe`) and run it on Windows 7, it will not do anything useful, because the
+    OS version returned on Windows 7 by `GetVersion()` does not match with Windows
+    XP. To make that application work on Windows 7, you can either fix the code and
+    rebuild the program, or you can apply a shim called `WinXPVersionLie` to that
+    application (`xyz.exe`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: After applying the shim, when the shimmed application (`xyz.exe`) is executed
+    on Windows 7 and when it tries to determine the OS version by calling `GetVersion()`,
+    the shim engine intercepts and returns a different version of Windows (Windows
+    XP instead of Windows 7). To be more specific, when the shimmed application is
+    executed, the shim engine modifies the IAT and redirects the `GetVersion()` API
+    call to the shim code (instead of `kernel32.dll`). In other words, the `WinXPVersionLie` shim
+    is tricking the application into believing it is running on Windows XP, without
+    modifying the code in the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For detailed information on the workings of the shim engine, refer to Alex Ionescu's
+    blog post, *Secrets of the Application Compatibility Database (SDB)* at [http://www.alex-ionescu.com/?p=39](http://www.alex-ionescu.com/?p=39).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft provides *hundreds of shims* (like `WinXPVersionLie`) that can be
+    applied to an application to alter its behavior. Some of these shims are abused
+    by attackers to achieve persistence, to inject code, and for executing malicious
+    code with elevated privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4.1 Creating A Shim
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are many shims that can be abused by attackers for malicious purposes.
+    In this section, I will walk you through the process of creating a shim for injecting
+    a DLL into a target process; this will help you understand how easy it is for
+    an attacker to create a shim and abuse this feature. In this case, we will create
+    a shim for `notepad.exe` and make it load a DLL of our choice. Creating a shim
+    for an application can be broken down into four steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the application to shim.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating the shim database for the application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Saving the database (`.sdb` file).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Installing the database.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To create and install a shim, you need to have administrator rights. You can
+    perform all of the preceding steps by using a tool provided by Microsoft, called *Application
+    Compatibility Toolkit (ACT)*. For Windows 7, it can be downloaded from [https://www.microsoft.com/en-us/download/details.aspx?id=7352](https://www.microsoft.com/en-us/download/details.aspx?id=7352), and
+    for Windows 10, it is bundled with Windows ADK; depending on the version, it can
+    be downloaded from [https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit](https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit).
+    On a 64-bit version of Windows, ACT will install two versions of the *Compatibility
+    Administrator Tool *(32-bit and 64-bit). To shim a 32-bit program, you must use
+    the 32-bit version Compatibility Administrator Tool, and to shim a 64-bit program,
+    use the 64-bit version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To demonstrate this concept, I will be using a 32-bit version of Windows 7,
+    and the target process chosen is `notepad.exe`. We will create an `InjectDll` shim
+    to make `notepad.exe` load a DLL named `abcd.dll`. To create a shim, launch the
+    Compatibility Administrator Tool (32-bit) from the start menu, and right-click
+    on New Database | Application Fix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00250.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the following dialog, enter the details of the application that you want
+    to shim. The name of the program and vendor name can be anything, but the program
+    file location should be correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00251.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After you press the Next button, you will be presented with a**Compatibility
+    Modes** dialog; you can simply press the Next button. In the next window, you
+    will be presented with a Compatibility Fixes (Shims) dialog; this is where you
+    can choose various shims. In this case, we are interested in the `InjectDll` shim.
+    Select the `InjectDll` shim checkbox, then click on the Parameters button and
+    enter the path to the DLL (this is the DLL we want Notepad to load), as follows.
+    Click on OK and press the Next button. An important point to note is that the `InjectDll` shim
+    option is available only in the 32-bit Compatibility Administrator Tool, which
+    means that you can apply this shim only to a 32-bit process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00252.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, you will be presented with a screen that specifies which attributes will
+    be matched for the program (*Notepad*). The selected attributes will be matched
+    when `notepad.exe` is run, and after the matching condition is satisfied, the
+    shim will be applied. To make the matching criteria less restrictive, I have unchecked
+    all of the options, shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00253.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After you click on Finish, a complete summary of the application and the fixes
+    applied will be presented to you, as follows. At this point, the shim database
+    containing the shim information for `notepad.exe` is created:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00254.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The next step is to save the database; to do that, click on the Save button,
+    and, when prompted, give a name to your database and save the file. In this case,
+    the database file is saved as `notepad.sdb` (you are free to choose any filename).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After the database file has been saved, the next step is to install the database.
+    You can install it by right-clicking on the saved shim and clicking the Install button,
+    as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00255.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Another method for installing the database is to use a built-in, command-line
+    utility, `sdbinst.exe`; the database can be installed by using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you invoke `notepad.exe`, `abcd.dll` will be loaded from the `c:\test` directory
+    into Notepad''s process address space, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00256.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 3.4.2 Shim Artifacts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'At this point, you have an understanding of how a shim can be used to load
+    a DLL into the address space of a target process. Before we look at how attackers
+    use the shim, it is essential to understand what artifacts are created when you
+    install the shim database (either by right-clicking on the database and selecting
+    Install or using the `sdbinst.exe` utility). When you install the database, the
+    installer creates a GUID for the database and copies the `.sdb` file into `%SystemRoot%\AppPatch\Custom\<GUID>.sdb` (for
+    32-bit shims) or `%SystemRoot%\AppPatch\Custom\Custom64\<GUID>.sdb` (for 64-bit
+    shims). It also creates two registry entries in the following registry keys:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot shows the registry entry created in `HKLM\SOFTWARE\Microsoft\Windows
+    NT\CurrentVersion\AppCompatFlags\Custom\`. This registry entry contains the name
+    of the program for which the shim is applied, and the associated shim database
+    file (`<GUID>.sdb`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00257.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The second registry, `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\InstalledSDB\`, contains
+    the database information and the installation path of the shim database file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00258.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: These artifacts are created so that when the shimmed application is executed,
+    the loader determines whether the application needs to be shimmed by consulting
+    these registry entries, and invokes the shim engine that will use the configuration
+    from the `.sdb` file located in the `AppPatch\` directory to shim the application.
+    One more artifact that is created as a result of installing the shim database
+    is that an entry is added to the list of *installed programs* in the *control
+    panel*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4.3 How Attackers Use Shims
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following steps describe the manner in which an attacker may shim an application
+    and install it on a victim system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An attacker creates an *application compatibility database (shim database)*
+    for the target application (such as `notepad.exe`, or any legitimate third-party
+    application frequently used by the victim). An attacker can choose a single shim,
+    such as `InjectDll`, or multiple shims.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The attacker saves the shim database (`.sdb` file) created for the target application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `.sdb` file is delivered and dropped on the victim system (mostly via malware),
+    and it is installed, typically using the `sdbinst` utility.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The attacker invokes the target application or waits for the user to execute
+    the target application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An attacker may also delete the malware that installed the shim database. In
+    that case, you are only left with the `.sdb` file.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An attacker can install a shim database just by dropping the `.sdb` file in
+    some location on the filesystem and modifying the minimal set of registry entries.
+    This technique avoids using the `sdbinst` utility. The `shim_persist` object ([https://github.com/hasherezade/persistence_demos/tree/master/shim_persist](https://github.com/hasherezade/persistence_demos/tree/master/shim_persist))
+    is a POC, written by the security researcher Hasherezade (`@hasherezade`), that
+    drops a DLL in the `programdata` directory and installs a shim without using the
+    `sdbinst` utility to inject the dropped DLL into the `explorer.exe` process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Malware authors have abused shims for different purposes, such as achieving
+    persistence, code injection, disabling security features, executing code with
+    elevated privileges, and bypassing a *User Account Control (UAC)* prompt. The
+    following table outlines some of the interesting shims and their descriptions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Shim Name** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RedirectEXE` | Redirects execution |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `InjectDll` | Injects DLL into an application |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `DisableNXShowUI` | Disables *Data Execution Prevention* *(DEP)* |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `CorrectFilePaths` | Redirects filesystem paths |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `VirtualRegistry` | Registry redirection |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RelaunchElevated` | Launches application with elevated privileges |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `TerminateExe` | Terminates an executable upon launch |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `DisableWindowsDefender` | Disables Windows Defender service for application
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `RunAsAdmin` | Marks an application to run with admin privileges |'
+  prefs: []
+  type: TYPE_TB
+- en: For more information on how the shims are used in the attacks, refer to the
+    talks presented at various conferences by the security researchers, all of which
+    can be found at [https://sdb.tools/talks.html](https://sdb.tools/talks.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.4.4 Analyzing The Shim Database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To shim an application, an attacker installs the shim database (`.sdb`), which
+    resides somewhere on the victim's filesystem. Assuming that you have identified
+    the `.sdb` file used in the malicious activity, you can investigate the `.sdb`
+    file by using a tool such as `sdb-explorer` ([https://github.com/evil-e/sdb-explorer](https://github.com/evil-e/sdb-explorer))
+    or `python-sdb` ([https://github.com/williballenthin/python-sdb](https://github.com/williballenthin/python-sdb)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, `python-sdb` tool was used to investigate the shim
+    database (`.sdb`) file that we created earlier. Running `python-sdb` on the shim
+    database displays its elements as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In one of the attacks, the `RedirectEXE` shim was used by the *dridex* malware
+    to bypass UAC. It installed the shim database and deleted it immediately after
+    elevating the privilege. For more details, refer to the blog post at [http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html](http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.5 Remote Executable/Shellcode Injection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this technique, the malicious code is injected into the target process memory
+    directly, without dropping the component on the disk. The malicious code can be
+    a *shellcode* or an *executable* whose import address table is configured for
+    the target process. The injected malicious code is forced to execute by creating
+    a remote thread via `CreateRemoteThread()`, and the start of the thread is made
+    to point to the code/function within the injected block of code. The advantage
+    of this method is that the malware process does not have to drop the malicious
+    DLL on the disk; it can extract the code to inject from the *resource section*
+    of the binary, or get it over the network and perform code injection directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe how this technique is performed, with an example
+    of a malware sample named `nsasr.exe` (*W32/Fujack*), which injects the executable
+    into the Internet Explorer (`iexplorer.exe`) process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The malware process (`nsasr.exe`) opens a handle to the Internet Explorer process
+    (`iexplore.exe`) using the `OpenProcess()` API.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It allocates memory in the target process (`iexplore.exe`) at a specific address, `0x13150000`,
+    using `VirutualAllocEx()` with `PAGE_EXECUTE_READWRITE` protection, instead of
+    `PAGE_READWRITE` (as compared to the *remote DLL injection technique*, *covered
+    in section 3.1*). The protection `PAGE_EXECUTE_READWRITE` allows the malware process
+    (`nsasr.exe`) to write the code into the target process, and, after writing the
+    code, this protection allows the target process (`iexplore.exe`) to read and execute
+    code from this memory.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'It then writes the malicious executable content into the memory allocated in
+    the previous step using `WriteProcessMemory()`. In the following screenshot, the
+    1^(st) argument, `0xD4`, is the handle to `iexplore.exe`. The 2^(nd) argument,
+    `0x13150000`, is the address in the target process (`iexplore.exe`) memory, where
+    the content will be written to. The 3rd argument, `0x13150000`, is the buffer
+    in the malware (`nsasr.exe`) process memory; this buffer contains the executable
+    content, which will be written to the target process memory:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00259.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After the malicious executable content is written (at the address `0x13150000`)
+    in the `iexplore.exe` process memory, it calls the `CreateRemoteThread()` API
+    to create a remote thread, and the start address of the thread is made to point
+    to the *address of entrypoint* of the injected executable. In the following screenshot,
+    the 4^(th) argument, `0x13152500`, specifies the address in the target process
+    (`iexplore.exe`) memory where the thread will start executing; this is the *entry
+    point address* of the injected executable. At this point, the injection is complete,
+    and the thread in the `iexplore.exe` process starts executing malicious code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00260.jpeg)*Reflective DLL injection* is a technique similar
+    to remote executable/ShellCode injection. In this method, a DLL containing the
+    reflective loader component is directly injected, and the target process is made
+    to invoke the reflective loader component that takes care of resolving the imports,
+    relocating it into a suitable memory location, and calling the `DllMain()` function.
+    The advantage of this technique is that it does not rely on the `LoadLibrary()`
+    function to load the DLL. Since `LoadLibrary()` can only load the library from
+    the disk, the injected DLL need not reside on the disk. For more information on
+    this technique, refer to *Reflective DLL Injection* by Stephen Fewer at [https://github.com/stephenfewer/ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 3.6 Hollow Process Injection (Process Hollowing)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Process hollowing,* or *Hollow Process Injection,* is a code injection technique
+    in which the executable section of the legitimate process in the memory, is replaced
+    with a malicious executable. This technique allows an attacker to disguise his
+    malware as a legitimate process and execute malicious code. The advantage of this
+    technique is that the path of the process being hollowed out will still point
+    to the legitimate path, and, by executing within the context of a legitimate process,
+    the malware can bypass firewalls and host intrusion prevention systems. For example,
+    if the `svchost.exe` process is hollowed out, the path will still point to the
+    legitimate executable path (`C:\Windows\system32\svchost.exe`)**,** but, only
+    in the memory, the executable section of `svchost.exe` is replaced with the malicious
+    code; this allows an attacker to remain undetected from live forensic tools.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following steps describe the hollow process injection performed by the
+    malware sample (*Skeeyah*)*.* In the following description, the malware process
+    extracts the malicious executable to be injected from its *resource section* before
+    performing these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The malware process starts a legitimate process in the suspended mode. As a
+    result, the executable section of the legitimate process is loaded into the memory,
+    and the `process environment block (PEB)` structure in the memory identifies the
+    full path to the legitimate process. PEB''s `ImageBaseAddress`  (`Peb.ImageBaseAddress`)
+    field contains the address where the legitimate process executable is loaded.
+    In the following screenshot, the malware starts the legitimate `svchost.exe` process
+    in suspended mode, and the `svchost.exe`, in this case, is loaded into the address
+    `0x01000000`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00261.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware determines the address of the `PEB` structure so that it can read
+    the `PEB.ImageBaseAddress` field to determine the base address of the process
+    executable (`svchost.exe`). To determine the address of the `PEB` structure, it
+    calls `GetThreadContext()`. The `GetThreadContext()` retrieves the context of
+    a specified thread, and it takes two arguments: the 1^(st) argument is the handle
+    to the thread, and the 2^(nd) argument is a pointer to the structure, named `CONTEXT`**.**
+    In this case, the malware passes the handle to the suspended thread as the 1^(st)
+    argument to `GetThreadContext()`, and the pointer to the `CONTEXT` structure as
+    the 2^(nd) argument. After this API call, the `CONTEXT` structure is populated
+    with the context of the suspended thread. This structure contains the register
+    states of the suspended thread. The malware then reads the `CONTEXT._Ebx` field,
+    which contains the pointer to the `PEB` data structure. Once the address of the
+    `PEB` is determined, it then reads the `PEB.ImageBaseAddress` to determine the
+    base address of the process executable (in other words, `0x01000000`):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00262.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Another method to determine the pointer to PEB is using the `NtQueryInformationProcess()`
+    function; details are available at [https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the address of the target process executable in memory is determined,
+    it then deallocates the executable section of the legitimate process (`svchost.exe`)
+    using the `NtUnMapViewofSection()` API. In the following screenshot, the 1^(st)
+    argument is the handle (`0x34`) to the `svchost.exe` process, and the 2^(nd) argument
+    is the base address of the process executable (`0x01000000`) to deallocate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00263.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After the process executable section is hollowed out, it allocates a new memory
+    segment in the legitimate process (`svchost.exe`), with `read`, `write`, and `execute`
+    permission. The new memory segment can be allocated in the same address (where
+    the process executable resided before hollowing) or in a different region. In
+    the following screenshot, the malware uses `VirutalAllocEX()` to allocate memory
+    in a different region (in this case, at `0x00400000`):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00264.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It then copies the malicious executable and its sections, using `WriteProcessMemory()`,
+    into the newly allocated memory address at `0x00400000`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00265.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then overwrites the `PEB.ImageBaseAdress` of the legitimate process
+    with the newly allocated address. The following screenshot shows the malware overwriting
+    the `PEB.ImageBaseAdress` of `svchost.exe` with the new address (`0x00400000`);
+    this changes the base address of `svchost.exe` in `PEB` from `0x1000000` to `0x00400000`
+    (this address now contains the injected executable):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00266.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The malware then changes the *start address* of the suspended thread to point
+    to the *address of entry point* of the injected executable. This is done by setting
+    the `CONTEXT._Eax` value and calling `SetThreadContext()`. At this point, the
+    thread of the suspended process points to the injected code. It then resumes the
+    suspended thread using `ResumeThread()`. After this, the resumed thread starts
+    executing the injected code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](../images/00267.jpeg)A malware process may just use `NtMapViewSection()` 
+    to avoid using `VirtualAllocEX()` and `WriteProcessMemory()` to write the malicious
+    executable content into the target process; this allows the malware to map a section
+    of memory (containing a malicious executable) from its own address space to the
+    target process''s address space. In addition to the technique described previously,
+    attackers have been known to use different variations of hollow process injection
+    techniques. To get an idea of this, watch *author''s Black Hat presentation* at
+    [https://www.youtube.com/watch?v=9L9I1T5QDg4](https://www.youtube.com/watch?v=9L9I1T5QDg4)
+    or read the related blog post at [https://cysinfo.com/detecting-deceptive-hollowing-techniques/](https://cysinfo.com/detecting-deceptive-hollowing-techniques/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4\. Hooking Techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, we have looked at different code injection techniques to execute malicious
+    code. Another reason an attacker injects code (mostly DLL, but it can also be
+    an executable or shellcode) into the legitimate (target) process is to hook the
+    API calls made by the target process. Once a code is injected into the target
+    process, it has full access to the process memory and can modify its components.
+    The ability to alter the process memory components allows an attacker to replace
+    the entries in the IAT or modify the API function itself; this technique is referred
+    to as *hooking***.** By hooking an API, an attacker can control the execution
+    path of the program and re route it to the malicious code of his choice. The malicious
+    function can then:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Block calls made to the API by legitimate applications (such as security products).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitor and intercept input parameters passed to the API.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Filter the output parameters returned from the API.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this section, we will look at different types of hooking techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.1 IAT Hooking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, the IAT contains the addresses of functions that an application
+    imports from DLLs. In this technique, after a DLL is injected into the target
+    (legitimate) process, the code in the injected DLL (`Dllmain()` function) hooks
+    the IAT entries in the target process. The following gives a high-level overview
+    of the steps used to perform this type of hooking:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Locate the IAT by parsing the executable image in memory.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identify the entry of the function to hook.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Replace the address of the function with the address of the malicious function.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To help you understand, let''s look at an example of a legitimate program deleting
+    a file by calling the `DeleteFileA()` API. The `DeleteFileA()` object accepts
+    a single parameter, which is the name of the file to be deleted. The following
+    screenshot displays the legitimate process (before hooking), consulting the IAT
+    normally to determine the address of `DeleteFileA()`, and then calling `DeleteFileA()`
+    in the `kernel32.dll`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00268.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When the program''s IAT is hooked, the address of `DeleteFileA()` in the IAT
+    is replaced with the address of the malicious function, as follows. Now, when
+    the legitimate program calls `DeleteFileA()`, the call is redirected to the malicious
+    function in the malware module. The malicious function then invokes the original
+    `DeleteFileA()` function, to make it seem like everything is normal. The malicious
+    function sitting in between can either prevent the legitimate program from deleting
+    the file, or monitor the parameter (the file that is being deleted), and then
+    take some action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00269.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In addition to blocking and monitoring, which typically happens before invoking
+    the original function, the malicious function can also filter the output parameters,
+    which occurs after the re-invocation. This way, the malware can hook APIs that
+    display lists of processes, files, drivers, network ports, and so on, and filter
+    the output to hide from the tools that use these API functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The disadvantage for an attacker using this technique is that it does not work
+    if the program is using *run time linking,* or if the function the attacker wishes
+    to hook has been imported as an *ordinal*. Another disadvantage for the attacker
+    is that IAT hooking can be easily detected. Under normal circumstances, the entries
+    in the IAT should lie within the address range of its corresponding module. For
+    example, the address of `DeleteFile()` should be within the address range of `kernel32.dll`.
+    To detect this hooking technique, a security product can identify the entry in
+    the IAT that falls outside of its module's address range. On 64-bit Windows, a
+    technology named *PatchGuard* prevents patching the call tables, including IAT.
+    Due to these problems, malware authors use a slightly different hooking technique,
+    which is discussed next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 4.2 Inline Hooking (Inline Patching)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: IAT hooking relies on swapping the function pointers, whereas, in *inline hooking*,
+    the API function itself is modified (patched) to redirect the API to the malicious
+    code. As in IAT hooking, this technique allows the attacker to intercept, monitor,
+    and block calls made by a specific application, and filter output parameters.
+    In inline hooking, the target API function's first few bytes (instructions) are
+    usually overwritten with a *jump* statement that re routes the program control
+    to the malicious code. The malicious code can then intercept the input parameters,
+    filter output, and redirect the control back to the original function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To help you understand, let''s suppose that an attacker wants to hook the `DeleteFileA()`
+    function call made by a legitimate application. Normally, when the legitimate
+    application''s thread encounters the call to `DeleteFileA()`, the thread starts
+    executing from the start of the `DeleteFileA()` function, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00270.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To replace the first few instructions of a function with a jump, the malware
+    needs to choose which instructions to replace. The `jmp` instruction requires
+    at least 5 bytes, so the malware needs to choose instructions that occupy 5 bytes
+    or more. In the preceding diagram, it is safe to replace the first three instructions
+    (highlighted using a different color), because they take up exactly 5 bytes, and
+    also, these instructions do not do much, apart from setting up the stack frame.
+    The three instructions to be replaced in `DeleteFileA()` are copied, and then
+    replaced with a jump statement of some sort, which transfers control to the malicious
+    function. The malicious function does what it wants to do, and then executes the
+    original three instructions of `DeleteFileA()` and jumps back to the address that
+    lies below the *patch* (below the jump instruction), as shown in the following
+    diagram. The replaced instructions, along with the jump statement that returns
+    to the target function, are known as the *trampoline*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00271.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This technique can be detected by looking for unexpected jump instructions at
+    the start of the API function, but be aware that malware can make detection difficult
+    by inserting the jump deeper in the API function, rather than at the start of
+    the function. Instead of using a `jmp` instruction, malware may use a `call` instruction,
+    or a combination of `push` and `ret` instructions, to redirect control; this technique
+    bypasses the security tools, which only look for `jmp` instructions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With an understanding of inline hooking, let''s take a look at an example of
+    malware (*Zeus Bot*) using this technique. Zeus bot hooks various API functions;
+    one of them is the `HttpSendRequestA()` in Internet Explorer (`iexplore.exe`).
+    By hooking this function, the malware can extract credentials from the `POST`
+    payload. Before hooking, the malicious executable (containing various functions)
+    is injected into the address space of Internet Explorer. The following screenshot
+    shows the address `0x33D0000`, where the executable is injected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00272.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After injecting the executable, `HttpSendRequestA()` is hooked to redirect
+    the program control to one of the malicious functions within the injected executable.
+    Before we look at the hooked function, let''s look at the first few bytes of the
+    legitimate `HttpSendRequestA()` function (shown here):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00273.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The first three instructions (occupying 5 bytes, highlighted in the preceding
+    screenshot) are replaced to redirect control. The following screenshot shows the
+    `HttpSendRequestA()` after hooking. The first three instructions are replaced
+    with the `jmp` instruction (occupying 5 bytes); note how the *jump* instruction
+    redirects control to the malicious code at the address `0x33DEC48`, which falls
+    within the address range of the injected executable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00274.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 4.3 In-memory Patching Using Shim
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In inline hooking, we saw how the series of bytes in a function are patched
+    to redirect control to malicious code. It is possible to perform *in-memory patching*
+    using the *application compatibility shim* (the details of the shim were covered
+    previously). Microsoft uses the feature of in-memory patching to apply patches
+    to fix vulnerabilities in their products. *In-memory patching* is an undocumented
+    feature, and is not available in the Compatibility Administrator Tool (covered
+    earlier), but security researchers, through reverse engineering, have figured
+    out the functionality of in-memory patches, and have developed tools to analyze
+    them. The `sdb-explorer` by Jon Erickson ([https://github.com/evil-e/sdb-explorer](https://github.com/evil-e/sdb-explorer))
+    and `python-sdb` by William Ballenthin ([https://github.com/williballenthin/python-sdb](https://github.com/williballenthin/python-sdb))
+    allow you to inspect in-memory patching by parsing the shim database (`.sdb`)
+    files. The following presentations by these researchers contain detailed information
+    on in-memory patches, and the tools to analyze them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Persist It Using and Abusing Microsoft’s Fix It Patches:* [http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf](http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*The Real* Shim *Shady:* [http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf](http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Malware authors have used in-memory patching to inject code and hook the API
+    functions. One of the malware samples that use in-memory patching is *GootKit*;
+    this malware installs various shim database (files) using the `sdbinst` utility.
+    The following screenshot shows shims installed for multiple applications, and
+    the screenshot shows the `.sdb` file associated with `explorer.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00275.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The installed `.sdb` files contain the shellcode that will be patched directly
+    into the memory of the target process. You can examine the `.sdb` file using the `sdb_dump_database.py`
+    script (part of the `python-sdb` tool) by using the command shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the preceding command shows the malware targeting `explorer.exe`
+    and applying a shim named `patchdata0`. The `PATCH_BITS` below the shim name is
+    a raw binary data that contains the shellcode that will be patched into the memory
+    of `explorer.exe`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00276.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To know what the shellcode is doing, we need to be able to parse `PATCH_BITS`,
+    which is an undocumented structure. To parse this structure, you can use the `sdb_dump_patch.py`
+    script (part of `python-sdb`) by giving the patch name, `patchdata0`, as shown
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding command shows various patches applied in `kernel32.dll`,
+    within `explorer.exe`. The following screenshot displays the first patch, where
+    it matches two bytes, `8B FF (mov edi,edi)`, at the relative virtual address (RVA)
+    `0x0004f0f2`, and replaces them with `EB F9 (jmp 0x0004f0ed)`. In other words,
+    it redirects control to the RVA `0x0004f0ed`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00277.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following output shows another patch applied at the RVA `0x0004f0ed` in
+    `kernel32.dll`, where the malware replaced the series of `NOP` instructions with
+    `call 0x000c61a4`, thereby redirecting the program control to function at the
+    RVA `0x000c61a4`. This way, the malware patches multiple locations in `kernel32.dll` 
+    and performs various redirections, which finally leads it to the actual shellcode:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00278.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To understand what the malware is patching in `kernel32.dll`, you can attach
+    the debugger to the patched `explorer.exe` process and locate these patches in
+    `kernel32.dll`. For instance, to inspect the first patch at the RVA `0x0004f0f2`,
+    we need to determine the base address where `kernel32.dll` is loaded. In my case,
+    it is loaded at `0x76730000`, and then add the RVA `0x0004f0f2` (in other words, `0x76730000
+    + 0x0004f0f2 = 0x7677f0f2`). The following screenshot shows that this address `0x7677f0f2`
+    is associated with the API function `LoadLibraryW()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00279.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Inspecting the `LoadLibraryW()` function shows the jump instruction at the
+    start of the function, which will ultimately reroute the program control to the
+    shellcode:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](../images/00280.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This technique is interesting, because in this case, the malware does not allocate
+    memory or inject code directly, but relies on Microsoft's shim feature to inject
+    the shellcode and hook the `LoadLibraryW()` API. It also makes detection difficult
+    by jumping to various locations within `kernel32.dll`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5\. Additional Resources
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In addition to the code injection techniques covered in this chapter, security
+    researchers have discovered various other means of injecting code. The following
+    are some of the new code injection techniques, and resources for further reading:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*ATOMBOMBING: BRAND NEW CODE INJECTION FOR WINDOWS:* [https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows](https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*PROPagate:* [http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/](http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Process Doppelgänging, by Tal Liberman and Eugene Kogan:* [https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf](https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Gargoyle:* [https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html](https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*GHOSTHOOK:* [https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/](https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this chapter, we focused mainly on code injection techniques in the user
+    space; similar capabilities are possible in the kernel space (we will look at
+    kernel space hooking techniques in *Chapter 11*). The following books should help
+    you gain a deeper understanding of the rootkit techniques and Windows internal
+    concepts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*The Rootkit Arsenal: Escape and Evasion in the Dark Corners of the System
+    (2nd Edition),* by Bill Blunden'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Practical Reverse Engineering: x86, x64, ARM, Windows Kernel, Reversing Tools,
+    and Obfuscation,* by Bruce Dang, Alexandre Gazet, and Elias Bachaalany'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Windows Internals (7th Edition),* by Pavel Yosifovich, Alex Ionescu, Mark
+    E. Russinovich, and David A. Solomon'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at the different code injection techniques used by
+    malicious programs to inject and execute malicious code within the context of
+    a legitimate process. These techniques allow an attacker to perform malicious
+    actions and bypass various security products. Apart from executing malicious code,
+    an attacker can hijack the API functions called by a legitimate process (using
+    hooking) and redirect control to the malicious code to monitor, block, or even
+    filter an API's output, thereby altering a program's behavior. In the next chapter,
+    you will learn the various obfuscation techniques used by adversaries to remain
+    undetected from security monitoring solutions.
+  prefs: []
+  type: TYPE_NORMAL

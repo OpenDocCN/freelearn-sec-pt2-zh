@@ -1,0 +1,2682 @@
+- en: '2'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Access Management with IAM Policies and Roles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Secure access management is crucial for effectively managing who can access
+    our AWS resources and what actions they can perform. This knowledge ensures that
+    our AWS environment remains secure and compliant by allowing us to precisely control
+    permissions and minimize the risk of unauthorized access. It empowers us to implement
+    a robust security posture that safeguards our data and resources, while also enabling
+    a scalable and efficient way to manage access for users and services across our
+    AWS infrastructure. In this chapter, we will learn about secure access management
+    within the AWS cloud using **IAM policies** and **IAM roles** .
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS supports various policy types, such as **identity-based policies** , **resource-based
+    policies** , **session policies** , **permissions boundaries** , **service control
+    policies** ( **SCPs** ), and **access control lists** ( **ACLs** ). While we will
+    learn most of these policy types with detailed recipes. ACLs are only discussed
+    theoretically since ACLs are not recommended to be used anymore. We will then
+    learn about IAM roles and how to use them for implementing the cross-account access
+    needed to implement identity account architecture, and how to use roles for cross-service
+    access to allow one AWS service to access another service securely. We will continue
+    to explore IAM policies and roles in future chapters within this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a customer-managed IAM policy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using policy variables within IAM policies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating customer-managed policies in IAM Identity Center
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting IAM permission boundaries for IAM entities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Centralizing governance in AWS Organizations with SCPs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IAM cross-account role switching and identity account architecture
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cross-service access via IAM roles on EC2 instances
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving into the recipes of this chapter, we need to ensure we have the
+    following requirements in place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need an active AWS account to complete most of the recipes within this chapter.
+    We can use an account that is part of an AWS organization or a standalone account
+    for most of the recipes within this chapter. I will be using the **awsseccb-sandbox-1**
+    AWS organization **member account** that we created in the *Multi-account management
+    with AWS Organizations* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    . However, unless specified otherwise, I won’t be utilizing AWS Organizations
+    features, meaning you can follow these steps with a standalone account, too. Note
+    that certain recipes may have different AWS account requirements, which will be
+    specified in those recipes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For administrative actions, we need a user who has **AdministratorAccess** permission
+    to the AWS account we are working with. This can be an IAM Identity Center user
+    or an IAM user. I will be using the **awsseccbadmin1** IAM Identity Center user
+    we created in the *User management and SSO with IAM Identity Center* recipe from
+    [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . However, unless specified otherwise,
+    I won’t be utilizing any IAM Identity Center features, meaning you can follow
+    these steps with an IAM user, too, if the user has the required permissions in
+    the account we are working with. If you are using an IAM user, you can create
+    the user following the *Setting up IAM, account aliases, and billing alerts* recipe
+    from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . Note that certain recipes
+    may have specific user requirements, which will be specified in those recipes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To execute AWS **Command Line Interface** ( **CLI** ) commands on a local machine
+    or a virtual machine, we need AWS CLI v2 installed. Configure the AWS CLI using
+    IAM access keys for IAM users or utilize temporary credentials from the IAM Identity
+    Center for IAM Identity Center users. [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    details how to set up the CLI using both IAM and IAM Identity Center. Unless specified,
+    we can manage users with either IAM or IAM Identity Center, though AWS recommends
+    using IAM Identity Center. Additionally, **AWS CloudShell** , available through
+    the AWS Console, offers a convenient way to perform most CLI commands discussed
+    in this chapter. With both IAM and IAM Identity Center, we need to create a profile
+    per user per account. Therefore, it is good to include the account name as part
+    of the profile name. For instance, for the administrator user for the **awsseccb-sandbox-1**
+    sandbox account, we can set up a CLI **Sandbox1Admin1** profile: **awsseccbadmin1**
+    . For IAM Identity Center, we need to create a profile per user per account per
+    permission set assignment, and hence we could include details of the assignment
+    also in its name.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For certain recipes, we will need an Amazon **Simple Storage Service** ( **S3**
+    ) bucket to test the policies. Hence, a basic understanding of Amazon S3 service
+    is recommended. Unless otherwise specified, we can create S3 buckets with the
+    following configuration: For **Bucket name** , give a unique name as every bucket
+    needs to have a unique name across AWS accounts. For **Object Ownership** , select
+    **ACLs disabled (recommended)** . For **Block Public Access settings for this
+    bucket** , select **Block all public access** . For **Bucket Versioning** , select
+    **Disable** . For **Default encryption** , select **Server-side encryption with
+    Amazon S3 managed keys (SSE-S3)** . For **Object Lock under Advanced settings**
+    , select **Disable** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code files for this book are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition)
+    . The code files for this chapter are available at [https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter02](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter02)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a customer-managed IAM policy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a customer-managed identity-based IAM policy
+    to manage access to an S3 bucket. We will give permission to list all S3 buckets
+    and will further use the **Condition** policy element to restrict the permission
+    based on the requester’s IP address. We will use the AWS Management Console for
+    this recipe, but you may do it from the AWS CLI by making use of the provided
+    JSON code following the next recipe titled *Using policy variables within IAM
+    policies* from this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: IAM policies can work with both IAM and IAM Identity Center. Within this recipe,
+    we will use the IAM policies with IAM entities. In the recipe titled *Creating
+    customer-managed policies in IAM Identity Center* from this chapter, we will learn
+    how to use the same policy with IAM Identity Center entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user with **AdministratorAccess**
+    permission to that account, **awsseccbadmin1** , following the *Technical requirements*
+    section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For testing this recipe, we need an IAM user named **awsseccb_iam_user1** with
+    minimal or no permission and an S3 bucket, following the *Technical requirements*
+    section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will first create an IAM policy using the **awsseccbadmin1** administrator
+    user and then attach it to the **awsseccb_iam_user1** IAM user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a customer-managed IAM policy from the AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can create a policy using the IAM from the AWS Management Console as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the console of **awsseccb-sandbox-1** as the **awsseccbadmin1** user
+    with **AdministratorAccess** permission and go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Policies** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create Policy** . This will provide us with a visual editor as shown
+    in the following figure.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.1 – Specifying permissions for policy](image/B21384_02_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.1 – Specifying permissions for policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we have already created the policy in JSON format, we can click on the **JSON**
+    tab, enter it directly, and save it. In that case, we can skip *Steps 4* to *6*
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Under the **Select a service** section, click on **S3** . We should now see
+    a screen like the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.2 – Configuring permissions for S3 resource](image/B21384_02_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.2 – Configuring permissions for S3 resource
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Under the **Access level** heading, expand **List** and select **ListAllMyBuckets**
+    as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.3 – Selecting access level permission](image/B21384_02_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.3 – Selecting access level permission
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Resources section, the wildcard character ( ***** ) will be chosen to
+    signify all resources since the **ListAllMyBuckets** action isn’t specific to
+    any particular resource. If an action such as **ListBucket** , which is specific
+    to a particular bucket, is chosen and we desire to limit it to a single bucket,
+    we need to select **Specific** , click on **Add ARN** , and input the **Amazon
+    Resource Name** ( **ARN** ) of our targeted bucket, following the format **arn:aws:s3:::<bucket_name>**
+    . An ARN is a unique identifier that AWS uses to specify resources within its
+    cloud services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the **Request conditions** section, select **Requested from IP** , provide
+    our IP address, and click **Add Ip** . We can also specify the IP address range
+    in the **Classless Inter-Domain Routing** ( **CIDR** ) format as shown in the
+    following figure.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.4 – Configuring request conditions](image/B21384_02_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.4 – Configuring request conditions
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optionally, we can click **+ Add another condition** to add additional conditions
+    as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click **Next** to go to the **Review and** **create** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter **MyS3ListAllBucketsPolicy** in the **Policy name** field and **My S3
+    List All Buckets Policy** in the **Description – optional** field (or any name
+    and description we want).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to review the policy details and click **Create policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Go to the policy and verify the policy JSON that was generated from the **JSON**
+    tab:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.5 – Generated policy as JSON](image/B21384_02_5.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.5 – Generated policy as JSON
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please make sure the IP address is yours and not copied from the sample code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can follow the *Attaching IAM policies to IAM group via AWS Management Console*
+    subsection to assign the policy we created to an IAM group. If we are using IAM
+    Identity Center, we can associate the policy with an IAM Identity Center group
+    following the *Creating Customer-Managed Policies in IAM Identity Center* recipe
+    from this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attaching IAM policies to IAM group via AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'It is good practice to add permissions to a user through a group. Hence, create
+    a group called **awsseccbusers** and add our **awsseccb_iam_user1** user to that
+    group. We can assign permissions to the IAM group as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the console of **awsseccb-sandbox-1** as the **awsseccbadmin1** administrator
+    user and go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **User groups** from the left sidebar of the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on the **awsseccbusers** group to go to the group’s page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Permissions** tab, and from the **Add permissions** dropdown menu,
+    click **Attach policies** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.6 – Configuring permissions for group](image/B21384_02_6.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.6 – Configuring permissions for group
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Add permissions** page, select the **MyS3ListAllBucketsPolicy** policy,
+    scroll down, and click on **Add permissions** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We should now be able to see the new policy added to the group under the **Permissions**
+    tab.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also attach policies to groups or users from the **Policy** tab of the
+    **IAM** dashboard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now verify the changes as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console as the **awsseccb_iam_user1** user using
+    the sign-in URL for IAM users for our account as we learned in the *Setting up
+    IAM, account aliases, and billing alerts* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **S3** service.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Buckets** from the left sidebar.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We should be able to see all the buckets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.7 – Listing buckets in Amazon S3](image/B21384_02_7.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.7 – Listing buckets in Amazon S3
+  prefs: []
+  type: TYPE_NORMAL
+- en: We had given only the **ListAllMyBuckets** permission and hence we will see
+    **Insufficient permissions** under the **Access** column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we learned how to assign an IAM policy to an IAM group. However,
+    it is recommended to use IAM policies with IAM Identity Center, which we will
+    explore in the upcoming recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created a customer-managed IAM policy. There are different
+    IAM policy types, as we saw in the chapter introduction. We explored an identity-based
+    policy within this recipe. Identity-based policies define permissions for IAM
+    entities such as users, groups, or roles. Identity-based policies can be either
+    managed policies or inline policies. Managed policies are policies that can be
+    reused by associating them with multiple IAM entities and inline policies are
+    attached directly to an IAM entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managed policies can be further divided into AWS-managed and customer-managed
+    policies. AWS-managed policies are created and maintained by AWS. While we can
+    view and use them, we cannot edit them. Customer-managed policies are policies
+    that we create for our needs when the AWS-managed policies are not sufficient.
+    Even though we can directly assign the managed policies to a user, it is recommended
+    always to assign them to a group and then add users to that group. Inline policies
+    are attached directly to an IAM entity and cannot be reused.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the IAM policy structure
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**IAM policies** are JSON documents and follow a structure that is followed
+    by most policy types within AWS, except ACLs, which are XML-based, and **virtual
+    private cloud** ( **VPC** ) endpoints. The following is an example of an IAM policy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.8 – An IAM policy example](image/B21384_02_8.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.8 – An IAM policy example
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the main elements of the IAM policy document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **Version** element Indicates the policy language version. In *Figure 2*
+    *.8* , we are using the *2012-10-17* version of the policy language, which is
+    the most recent version.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The optional **Id** element specifies an identifier for the policy, primarily
+    used to distinguish between different versions or instances of a policy. Here
+    is an example: **"** **Id": "S3ReadOnlyPolicyID1"** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Statement** element contains the main policy information, including permissions,
+    resources, and conditions. Statements are added as arrays to the **Statement**
+    element.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A **Statement** element for an IAM policy may contain the following sub-elements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The optional **Sid** element represents the statement ID. This can be used to
+    provide a description of the policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Effect** element specifies whether we want to allow or deny access to
+    a resource. The supported values are **Allow** and **Deny** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Action** element specifies the permission or permissions ( **s3:ListAllMyBuckets**
+    ) for which this statement should be applied. We can also specify ***** to denote
+    any action.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The optional **NotAction** element is the opposite of the **Action** element
+    and specifies that the policy allows or denies all actions except those listed.
+    The **Action** and **NotAction** elements can be included in the same overall
+    IAM policy but not within the same individual statement of that policy. Each statement
+    in the policy should either specify **Action** or **NotAction** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **Resource** element specifies the ARN of the resource (for example, S3
+    bucket) that the statement is applied to. For S3 buckets, ARN should follow the
+    following format: **arn:aws:s3:::<bucket_name>/<key_name>** . To specify multiple
+    values, use a comma to separate them. We can specify ***** to denote any resources.
+    In this recipe, we used the **ListAllMyBuckets** policy with **Resource** as *****
+    as the **ListAllMyBuckets** policy is not a resource-specific policy. We want
+    to use a resource-specific policy such as **ListBucket** and restrict it to a
+    bucket, as shown in *Figure 2* *.8* .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The optional **NotResource** element is the opposite of **Resource** and specifies
+    all resources except the listed resources to which the actions apply. A single
+    statement will either contain **Resource** or **NotResource** but not both. However,
+    they can be included in the same overall IAM policy as part of two different statements.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **Principal** element identifies AWS users, accounts, services, or other
+    entities that are granted or denied access to a resource. It is predominantly
+    used in resource-based policies to specify which entities are allowed or denied
+    access to a specific AWS resource. Identity-based policies do not use the **Principal**
+    element, as these policies are directly attached to users, groups, or roles, thus
+    rendering the inclusion of a **Principal** element unnecessary. Permissions boundaries
+    also do not include the **Principal** element; instead, they serve as a ceiling
+    to the permissions that IAM entities (including users and roles but excluding
+    groups) can have. SCPs also do not include the **Principal** element. Following
+    is an example for a **Principal** element: **"Principal": {"** **AWS": "arn:aws:iam::Account-ID-without-hyphens:user/Rick"}**
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The optional **NotPrincipal** element is the opposite of the **Principal** element
+    and specifies all principals except the listed principals who are allowed or denied
+    by the policy. Similar to the **Principal** element, we cannot have it within
+    SCPs or permissions boundaries. We can use one or the other of **Principal** and
+    **NotPrincipal** within a single policy statement but not both. They can, however,
+    be used in separate statements within the same overall policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The optional **Condition** element allows us to conditionally execute policies
+    as we can see from *Figure 2* *.8* . We use Boolean operators to match the condition
+    against values in the request. For example, in this recipe, we used the **IpAddress**
+    condition along with the **aws:SourceIp** parameter to allow the actions only
+    if a request is made from the specified IP address. We can also specify a range
+    of IP addresses using the CIDR notation. CIDR is a method for allocating and routing
+    IP addresses without relying on traditional fixed class-based systems. The following
+    are some of the predefined condition keys that are supported by all AWS services
+    that support IAM access control: **aws:CurrentTime** , **aws:EpochTime** , **aws:MultiFactorAuthAge**
+    , **aws:MultiFactorAuthPresent** , **aws:PrincipalOrgID** , **aws:PrincipalArn**
+    , **aws:RequestedRegion** , **aws:SecureTransport** , and **aws:UserAgent** .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let’s go through some core concepts related to policies in AWS, including AWS
+    policy types and the policy evaluation logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS policy types
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The following is a list of important policy types in AWS along with examples
+    and use cases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Identity-based policies** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : IAM policies attached to users, groups, or roles.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They allow a developer read-only access to a specific S3 bucket.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Resource-based policies** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : S3 bucket policies and IAM role trust policies.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They grant a user in another AWS account read and write access
+    to a specified bucket.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Session policies** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : A policy limiting permissions when assuming a role temporarily.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They provide a developer with temporary enhanced permissions
+    for troubleshooting while limiting access to read-only to ensure security.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Permissions boundaries** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : They set a maximum permission limit for IAM users or roles.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They prevent an IAM user from escalating their own permissions
+    beyond a defined boundary to ensure security and compliance.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following elements are not supported in permissions boundaries: **Principal**
+    , **NotPrincipal** , and **NotResource** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Permissions boundaries operate as a mechanism for limiting the maximum permissions
+    that can be granted by any attached policies, ensuring a layer of security and
+    control over permissions allocation. The permissions boundary does not grant access.
+    In essence, if an identity-based policy allows certain actions, those actions
+    cannot be performed unless they are also within the confines of the permissions
+    boundary. If an identity-based policy attempts to grant permissions beyond what
+    is allowed by the permissions boundary, those excess permissions will be restricted.
+    In other words, effective permissions are the intersection of the identity-based
+    policy and the permissions boundary.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**SCPs** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : A policy that restricts the deletion of IAM roles across all
+    accounts in an AWS organization.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They enhance security by ensuring that certain IAM entities
+    and policies are not modified or deleted.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following elements are not supported in SCPs: **Principal** , **NotPrincipal**
+    , and **NotResource** .'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: SCPs in AWS Organizations function similarly to permission boundaries, serving
+    as guardrails that restrict the maximum permissions for IAM entities within AWS
+    accounts in the organization. SCPs don’t grant permissions but limit them, working
+    alongside IAM permission policies. Effective permissions are an intersection of
+    the allowances of IAM policies and SCPs, and any explicit **Deny** in either overrides
+    the allowed permissions. Thus, IAM entities can only perform actions allowed by
+    both IAM policies and SCPs.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '**ACLs** :'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example** : They specify which principals in another AWS account can access
+    a specific S3 bucket.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use case** : They enable secure data sharing between AWS accounts by granting
+    specific permissions to access data stored in an S3 bucket.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each policy type serves as an essential tool in the AWS environment, contributing
+    to the intricate ecosystem of access control and security, ensuring optimal operational
+    efficiency and security. We discussed identity-based policies in this chapter
+    and will be discussing more variations of them and other policy types within subsequent
+    recipes within this book. Next, we will look into an overview of the IAM policy
+    evaluation logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: IAM policy evaluation logic
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**AWS IAM policy evaluation logic** determines whether a request is allowed
+    or denied based on the policies attached to the IAM principal (user or role) making
+    the request, and any permissions boundaries or resource-based policies that apply.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When SCPs and permissions boundaries are not present, a union of all permissions
+    is considered for evaluation. Here’s a brief outline of the steps involved in
+    the evaluation process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The evaluation logic checks for any explicit **Deny** statements that apply
+    to the request. If there’s at least one explicit **Deny** , the request is denied
+    irrespective of any **Allow** statements.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If there are no explicit **Deny** statements, the logic checks for any explicit
+    **Allow** statements. If there’s at least one **Allow** , the request is allowed,
+    provided there isn’t an explicit **Deny** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If there are no explicit **Allow** or **Deny** statements that apply to the
+    request, the request is denied by default because IAM is a default **Deny** ,
+    explicit **Allow** system.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If we use SCPs or permissions boundaries, an intersection of other policies
+    with SCPs or permissions boundaries is considered for evaluation. This is because
+    SCPs and permissions boundaries set the maximum permissions you can have. Therefore,
+    if an SCP or permission boundary gives permission for S3 access and an identity
+    policy gives permission for EC2, our effective permission will be none. To understand
+    SCPs better, we can refer to the discussion about SCPs within the *Multi-account
+    management with AWS Organizations* recipe in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will look into some additional concepts related to IAM policies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional notes on IAM policies
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s quickly go through some additional concepts related to policies in AWS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**AWS managed - job function** type is a subset of **AWS managed** type and
+    is designed to align with common IT job functions. The current list of job functions
+    includes administrator, billing, database administrator, data scientist, developer
+    power user, network administrator, read-only access, security auditor, support
+    user, system administrator, and view-only user.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The **AWS Policy Generator** can generate the following policy types: **Simple
+    Queue Service** ( **SQS** ) queue policy, S3 bucket policy, VPC endpoint policy,
+    IAM policy, and **Simple Notification Service** ( **SNS** ) topic policy. It is
+    currently available at [https://awspolicygen.s3.amazonaws.com/policygen.html](https://awspolicygen.s3.amazonaws.com/policygen.html)
+    .'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If both **Allow** and **Deny** effects are set for the same action and resource
+    in a policy, **Deny** will always override **Allow** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An IAM policy cannot be used to grant permissions for anonymous users, unlike
+    **S3 ACL** and the **Bucket policy** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The IAM policy cannot be applied to a root user and can only be applied to IAM
+    users.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To truly master and make the most out of AWS IAM, it is essential to grasp the
+    finer details of AWS policies. With a comprehensive understanding of policy management
+    and policy evaluation logic, we can try to strike a balance between security and
+    operational efficiency. For the latest on policy types, evaluation rules, and
+    best practices, always refer to the official AWS documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can continue learning about AWS policies and permissions here: [https://www.cloudericks.com/blog/demystifying-aws-policies-and-permissions](https://www.cloudericks.com/blog/demystifying-aws-policies-and-permissions)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using policy variables within IAM policies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**IAM policy variables** are a set of predefined placeholders that we can use
+    in IAM policy documents, and they get replaced with the actual values at runtime.
+    They help in creating more dynamic and flexible policies. In this recipe, we will
+    create an S3 bucket with folders matching the usernames of IAM users. With the
+    help of the **${aws:username}** policy variable, we will allow the IAM user to
+    list the contents of only the folder with their names. We will use the AWS CLI
+    for this recipe, but you may do it from the AWS Management Console by making use
+    of the provided JSON code following the previous recipe.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working **awsseccb-sandbox-1** AWS account, a user with **AdministratorAccess**
+    permission to that account, **awsseccbadmin1** , and a corresponding **Sandbox1Admin1**
+    CLI profile, following the *Technical requirements* section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For testing this recipe, we need two IAM users, **awsseccb_iam_user1** and **awsseccb_iam_user2**
+    , with minimal or no permission in the sandbox account, and corresponding CLI
+    profiles named **Sandbox1User1** and **Sandbox1User2** . Following the best practices,
+    create a user group called **awsseccb_iam_users** and add these users to the group.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An S3 bucket following the *Technical requirements* section of this chapter.
+    Create folders in the S3 bucket with the names of the IAM users we created for
+    testing this recipe, namely **awsseccb_iam_user1** and **awsseccb_iam_user2**
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this section, we will use the AWS CLI to create an IAM policy and then attach
+    it to a group. We will also explore the use of policy variables within this recipe.
+    Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a file called **s3-list-user-folder-policy.json** with the following
+    JSON policy, but replace my bucket name with your bucket name:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The policy JSON file and all the CLI commands are included with the code files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the policy using the **create-policy** subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should return the policy’s details, along with its ARN:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.9 – The create-policy command response](image/B21384_02_9.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.9 – The create-policy command response
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Attach the policy to the group using the **attach-group-policy** subcommand
+    using the policy ARN from the previous command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Verify the changes by running the **aws s3 ls** command followed by the **awsseccb_iam_user1**
+    bucket name and folder name with the **AwsSecCbUser** profile for the **awsseccb_iam_user1**
+    IAM user from the **awsseccb_users** group:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This should yield a successful response, listing all the objects from the **awsseccb_iam_user1**
+    folder.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.10 – Listing the S3 folder](image/B21384_02_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.10 – Listing the S3 folder
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify the changes by running the **aws s3 ls** command followed by the **awsseccb_iam_user1**
+    bucket name and folder name with the **Sandbox1User2** profile for the **awsseccb_iam_user2**
+    IAM user:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This should yield an **AccessDenied** response as **awsseccb_iam_user2** cannot
+    list the **awsseccb_iam_user1** folder.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.11 – Listing other user’s S3 folders](image/B21384_02_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.11 – Listing other user’s S3 folders
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we try to list content of the **awsseccb_iam_user2** folder with the **Sandbox1User2**
+    profile for the **awsseccb_iam_user2** IAM user, we should get a successful response,
+    listing all the objects from the **awsseccb_iam_user1** folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we created an IAM policy with the **${aws:username}** policy
+    variable to restrict an IAM user to listing the contents of a folder within an
+    S3 bucket only if that user’s username matches the folder name. The policy variable
+    **${aws:username}** represents the IAM username of the user making the request.
+    This means that if we assign the policy to a user called **awsseccb_iam_user1**
+    , then, the **${aws:username}** policy within the IAM policy will be replaced
+    with **${aws:username}** at runtime during policy evaluation, and the user will
+    then get permission only to this folder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'AWS supports a set of predefined policy variables that can be used in IAM policies.
+    Here’s a list of commonly used IAM policy variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**${aws:username}** : This variable is replaced with the IAM username of the
+    user making the request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:userid}** : This variable represents the unique identifier of the IAM
+    user or role making the request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:CurrentTime}** : The current date and time in UTC, formatted as YYYY-MM-DDTHH:MM:SSZ.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:EpochTime}** : The current date and time in UTC, represented as the
+    number of seconds since January 1, 1970 (the Unix epoch).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:principaltype}** : The type of principal (user, account, role, federated
+    user, etc.) making the request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:SecureTransport}** : A Boolean value indicating whether the request
+    was sent using SSL.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:SourceIp}** : The IP address of the requester. This is useful for restricting
+    access to certain IP ranges.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:UserAgent}** : The user agent string of the requester’s client application.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:Requester}** : The AWS account ID of the requester. Useful in cross-account
+    scenarios.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:sourceVpc}** , **${aws:sourceVpce}** , and **${aws:sourceVpcIpv4CidrBlock}**
+    are variables used for controlling access based on the source VPC, VPC endpoint,
+    or the IPv4 CIDR block of the request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:TagKeys}** and **${aws:RequestTag/tag-key}** are used for matching
+    the tags on the request.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${aws:MultiFactorAuthPresent}** : A Boolean value indicating whether the
+    request was made with **multi-factor** **authentication** ( **MFA** ).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${s3:x-amz-acl}** , **${s3:x-amz-content-sha256}** , **${s3:x-amz-copy-source}**
+    , and so on, are service-specific variables for S3, allowing policies to match
+    various conditions specific to S3 requests.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**${s3:prefix}** and **${s3:max-keys}** are variables specifically for controlling
+    access based on S3 request parameters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This list isn’t exhaustive as AWS continually evolves and may introduce new
+    variables or specific variables for different services beyond IAM. For the most
+    current and comprehensive list, it’s best to refer to the official AWS documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can read more about AWS policy variables here: [https://www.cloudericks.com/blog/understanding-aws-policy-variables-with-practical-examples](https://www.cloudericks.com/blog/understanding-aws-policy-variables-with-practical-examples)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating customer-managed policies in IAM Identity Center
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To create customer-managed policies in IAM Identity Center, we need to first
+    create a **custom permission set** and then assign users or groups to one or more
+    AWS accounts with that permission set. In the *User management and SSO with IAM
+    Identity Center* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) ,
+    we created a permission set using an AWS-managed policy. In this recipe, we will
+    create a custom permission set based on the customer-managed IAM policy we created
+    in the *Creating a customer-managed IAM policy* recipe in this chapter, and then,
+    we will assign a user to an AWS account with this permission set making use of
+    groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An AWS account where an IAM Identity Center instance is setup. If we are using
+    AWS Organizations, as we saw in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    , this will be the **management account** . We could also do this using a **delegated
+    administrator** account in an AWS organization. We learned about the **delegated
+    administrator** account in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . We
+    can use the **aws-sec-cookbook-1** management account, which we set up in [*Chapter
+    1*](B21384_01.xhtml#_idTextAnchor020) . Alternatively, you may follow the steps
+    from a standalone AWS account without AWS Organizations where an IAM Identity
+    Center instance is set up, and in that case, just use that account when I refer
+    to **aws-sec-cookbook-1** in the recipe.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a good practice, we can limit access to the management account by making
+    administrative changes using a delegated administrator as we in the *There’s more…*
+    section of the *User management and SSO with IAM Identity Center* recipe from
+    [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . This is particularly advisable
+    for larger organizations to restrict the number of people with access to the management
+    account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need a user with **AdministratorAccess** permission for the account we plan
+    to use for this recipe, which is **aws-sec-cookbook-1** in our case. I will be
+    using the **awsseccbadmin1** user that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can test the recipe using an **awsseccbuser1** user with no assignments to
+    our account, **aws-sec-cookbook-1** . We may also assign the **awsseccbadmin1**
+    user to another AWS account, say **awsseccb-sandbox-1** , where the user does
+    not already have any assignments with this permission set, and test that assignment.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We need to create a customer-managed IAM policy called **MyS3ListAllBucketsPolicy**
+    following the *Creating a customer-managed IAM policy from the AWS Management
+    Console* section of the *Creating a customer-managed IAM policy* recipe in this
+    chapter, in all the accounts where we want to do the assignment. As we are planning
+    to make an assignment in the current **aws-sec-cookbook-1** account itself, we
+    need to create this policy within the **aws-sec-cookbook-1** account. To make
+    an assignment in the **awsseccb-sandbox2** account, we need to create this policy
+    within the **awsseccb-sandbox2** account. If you are following the recipes within
+    this book, we had already created this in the **awsseccb-sandbox-1** account,
+    and therefore, if we plan to assign the policy to that account, we do not have
+    to create it again in that account. The policy JSON is included with the code
+    files as **s3-list-all-my-buckets-policy.json** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An S3 bucket following the *Technical requirements* section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To execute the CLI commands, we need to configure a CLI profile using IAM Identity
+    Center called **AWSSecCBAdmin1** for the **awsseccbadmin1** user. After the customer-managed
+    policy is assigned to the **awsseccbuser1** user for the same account, we will
+    also need to configure a CLI profile called **AwsSecCbUser1** for that user. It
+    is important to note that CLI profiles must be configured for each user on a per-account,
+    per-assignment basis, and it is a good practice to include the account name as
+    part of the profile name. Therefore, if you want to assign permissions for **awsseccbadmin1**
+    to another account, say **awsseccb-sandbox-1** , we can create a **Sandbox1Admin1**
+    profile.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Initially, we will create a permission set from the Management Console and utilize
+    it for assignment. Following that, we will replicate the process using the AWS
+    CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customer-managed IAM policy via the AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will first create a permission set with an existing IAM policy and then
+    assign it to an AWS account using that permission set. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to **aws-sec-cookbook-1** as the **awsseccbadmin1** user and go to the
+    **IAM Identity** **Center** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Change the Region to **us-east-1** using the Region drop-down located in the
+    top-right corner of the screen as we had configured the Region for IAM Identity
+    Center as **us-east-1** in the *User management and SSO with IAM Identity Center*
+    recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . If you had selected
+    a different Region, select that Region instead.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The AWS Organizations service permits the use of IAM Identity Center in just
+    one AWS Region at any given time. If we wish to shift the IAM Identity Center
+    to a different Region after setting it up in one Region, we need to first delete
+    the existing configuration in the initially chosen Region and then set it up again
+    in the new Region.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Permission sets** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the **Permission sets** page, click on **Create** **permission set** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Permission set type** page, select **Custom permission set** and click
+    **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Specify policies and permissions boundary** page, expand **Customer
+    managed policies** , and click on **Attach policies** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter the policy name as **MyS3ListAllBucketsPolicy** . If you gave a different
+    name, provide that name here.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.12 – Selecting customer-managed IAM policy](image/B21384_02_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.12 – Selecting customer-managed IAM policy
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Specify permission set details** page, give the value of **Permission
+    set name** as **MyListAllBucketsPermission** , and **Description** as **My S3
+    List All Buckets Permission** , set **Session duration** as **1 hour** , leave
+    values for other fields in the page empty, and click **Next** , which is located
+    on the bottom-right of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Review and create** page, review everything and click on **Create**
+    . The new permission set should now appear on the **Permission** **sets** page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Assign the **awsseccbuser1** user (or a group that contains this user) to our
+    **aws-sec-cookbook-1** AWS account. Select the **MyListAllBucketsPermission**
+    permission set that we created earlier in this recipe. For detailed steps to assign
+    permission sets, we can refer to the *User management and SSO with IAM Identity
+    Center* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To verify the assignment, log into the AWS access portal as **awsseccbuser1**
+    using the AWS access portal URL of AWS Identity Center. We can get the URL from
+    our **Identity Center** dashboard. It is also present in the invitation email
+    sent to the user’s email when the user was created. We should now be able to see
+    the **aws-sec-cookbook-1** account (or any other accounts we assigned to) after
+    we log into the access portal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log into the **aws-sec-cookbook-1** account from the access portal and go to
+    the **Amazon** **S3** service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Buckets** from the left sidebar. We should be able to see all the
+    buckets available in the account.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We will now create a permission set and assign it to the AWS account using CLI.
+    However, before moving forward, we should remove the assignment we made in this
+    section as we will be doing the same assignment from the AWS CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customer-managed IAM policy via the AWS CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this section, we will first create a permission set and then assign a group
+    that contains our user to an AWS account using that permission set. Let us get
+    started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configure CLI for the **awsseccbadmin1** user for the **aws-sec-cookbook-1**
+    account with the **AwsSecCbAdmin** profile name, and log in using that profile
+    following the *User management and SSO with IAM Identity Center* recipe from [*Chapter
+    1*](B21384_01.xhtml#_idTextAnchor020) .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we learned in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) , we can use
+    the **aws configure sso** command, which is primarily used to set up a profile
+    initially using IAM Identity Center, which provides values for **sso_start_url**
+    and **sso_region** . This configuration is typically a one-time activity unless
+    we need to change or update the profile’s settings. After that, we can utilize
+    the **aws sso login** command each time we want to start a session and use the
+    **aws sso logout** command to log out from that session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a permission set using the **create-permission-set** command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can get the value of **<Your-SSO-Instance-ARN>** from the **Settings** page
+    within IAM Identity Center in the AWS Management Console.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'If the permission set is created successfully, we should get a response with
+    the new permission set ARN like the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.13 – Request and response for the create-permission-set subcommand](image/B21384_02_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.13 – Request and response for the create-permission-set subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Attach our customer-managed policy to the permission set using the **attach-customer-managed-policy-reference-to-permission-set**
+    subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For **<Your-permission-set-ARN>** , we need to use the permission set ARN we
+    received from the previous command. This command gives us no response.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Assign the permission set to our AWS account and group using the **create-account-assignment**
+    subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '**<Target-Account-ID>** is the account ID of the account to which we want to
+    make an assignment and **<Your-Group-ID>** is the ID of the group (not name),
+    and both can be found within IAM Identity Center in the AWS Management Console.
+    This command should immediately give a response with **Status** as **IN_PROGRESS**
+    :'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.14 – Response for the create-account-assignment subcommand](image/B21384_02_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.14 – Response for the create-account-assignment subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify the assignment using the **list-account-assignments** subcommand:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should give us a response with the assignment details:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.15 – Response of the list-account-assignments subcommand](image/B21384_02_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.15 – Response of the list-account-assignments subcommand
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configure a CLI profile called **AwsSecCbUser1** for the **awsseccbuser1** user
+    with a profile name of **AwsSecCbUser1** and log in using that profile following
+    the *User management and SSO with IAM Identity Center* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Next, verify access by running the **aws s3** **ls** command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This should list all the S3 buckets that **awsseccb_user1** has permissions
+    to view, in line with **MyS3ListAllBucketsPolicy** :'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 2.16 – List all buckets after successful login](image/B21384_02_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.16 – List all buckets after successful login
+  prefs: []
+  type: TYPE_NORMAL
+- en: We completed the recipe from the management account of our AWS organization.
+    We may also do this from a member account designated as a delegated administrator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we learned to create permission sets based on a customer-managed
+    policy that we had already created in the *Creating a customer-managed IAM policy*
+    recipe from this chapter. In [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) ,
+    we delved into the AWS IAM Identity Center service and explored creating permission
+    sets based on an AWS-managed policy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We set **Region** as **us-east-1** , the same Region we configured when IAM
+    Identity Center was created. The AWS Organizations service permits the use of
+    IAM Identity Center in just one AWS Region at any given time. If we wish to shift
+    IAM Identity Center to a different Region after setting it up in one, we need
+    to first delete its existing configuration in the initially chosen Region.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the AWS Management Console, we attached the customer-managed policy to the
+    permission set during the permission set creation by specifying the name of the
+    policy. In the command line, it was a two-step process. First, we created the
+    permission set and then attached the customer-managed policy to the permission
+    set. A policy with an identical name needs to be available in the member account
+    where this permission set is assigned. The permission set can be created from
+    the management account, or a member account designated as the IAM Identity Center
+    delegated administrator. The customer-managed policy must reside in the member
+    account receiving the permission set, not in the management or administrator account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the command line section of the recipe, we used two AWS CLI v2 command namespaces
+    related to IAM Identity Center: **sso-admin** and **sso** . We first used the
+    **aws configure sso** command to configure a CLI profile with values such as **sso_start_url**
+    and **sso_region** . This configuration is typically a one-time activity unless
+    you need to change or update the profile’s settings. After that, we used the **aws
+    sso login** command, which we can use every time we want to log in.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The commands in the **sso-admin** namespace help administrators manage the IAM
+    Identity Center settings, such as assigning user groups to AWS accounts with specific
+    permission sets or listing IAM Identity Center instances. On the other hand, the
+    commands in the **sso** namespace are designed for the end-user experience such
+    as logging in and out of IAM Identity Center-enabled AWS accounts. The **sso**
+    namespace commands authenticate through IAM Identity Center, making use of temporary
+    AWS credentials without the need to enter the username and password again, thus
+    making access to AWS services more secure by eliminating the need for managing
+    multiple credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Although the AWS SSO service has been rebranded as AWS IAM Identity Center in
+    the AWS Management Console, the CLI namespaces such as **sso-admin** and **aws
+    sso** remain unchanged to maintain backward compatibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can find more details about the **sso-admin** namespace and its commands
+    at [https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sso-admin/index.html](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sso-admin/index.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can find more details about the **sso** namespace and its commands at [https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sso/index.html](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sso/index.html)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting IAM permission boundaries for IAM entities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This recipe demonstrates how to use **permissions boundaries** to set a maximum
+    permission limit for an IAM entity such as an IAM user or an IAM role. Initially,
+    we will assign a user complete access to S3. Subsequently, we’ll apply a permission
+    boundary to confine the user’s S3 permissions exclusively to read-only access.
+    Similar to SCPs, permission boundaries do not grant permissions; they only define
+    constraints. In other words, without an identity-based, resource-based, or session
+    policy in place, actions permitted within the permission boundary or SCP cannot
+    be executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user with **AdministratorAccess**
+    permission to that account, **awsseccbadmin1** , following the *Technical requirements*
+    section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An IAM user, **awsseccb_iam_user1** , with **AmazonS3FullAccess** permission
+    to the account, **awsseccb-sandbox-1** .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand how to create an Amazon S3 bucket.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a permission set as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console of **awsseccb-sandbox-1** as **awsseccbadmin1**
+    and go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Users** in the left sidebar and click on the name of the user to
+    use for this recipe, which is **awsseccb_iam_user1** in our case.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scroll down to the **Permissions boundary** section and click on **Set** **permissions
+    boundary** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.17 – Set permission boundary](image/B21384_02_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.17 – Set permission boundary
+  prefs: []
+  type: TYPE_NORMAL
+- en: Search for **AmazonS3ReadOnlyAcesss** , select it, and click on **Set boundary**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console of our account as the **awsseccb_iam_user1**
+    user, go to the S3 service dashboard, and try to create a bucket with the default
+    configuration. We should get an error message such as the following even if the
+    user has **AmazonS3FullPermission** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.18 – Failed to create bucket](image/B21384_02_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.18 – Failed to create bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the account as **awsseccbadmin1** , go to the **awsseccb_iam_user1**
+    **Permissions boundary** section, and click on **Remove boundary** , as shown
+    in the following figure. In the confirmation dialog popup, click on **Remove boundary**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.19 – Remove permissions boundary](image/B21384_02_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.19 – Remove permissions boundary
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console of our account as the **awsseccb_iam_user1**
+    user, go to the S3 service dashboard, and try to create a bucket with the default
+    configuration. We should be able to successfully create the bucket now.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log in to the Management Console as **awsseccbadmin1** , go to the **IAM** dashboard,
+    and remove all existing permissions, directly assigned, or inherited. For inherited
+    permissions from groups, this can be done by removing the user from all groups
+    from the **User groups membership** section under the **Groups** tab. From the
+    **Users** pane, click on the name of our **awsseccb_iam_user1** user, and go to
+    the **Groups** tab. Directly assigned permissions can be removed from the **Permissions**
+    tab. Verify that no permissions policies are attached to the user in the **Permissions**
+    tab.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **Permissions boundary** section and click on **Set permissions boundary**
+    , search for **AmazonS3FullAccess** , select it, and click on **Set boundary**
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console of our account as the **awsseccb_iam_user1**
+    user, go to the S3 service dashboard, and try to create a bucket with the default
+    configuration. We should get an error message like the one we got in *Step 5*
+    . This demonstrates that even if we allow permissions within the permission set,
+    without an identity-based, resource-based, or session policy in place, actions
+    permitted within the permission boundary are not allowed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You may remove the permissions boundary before proceeding with further recipes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In AWS IAM, permission boundaries serve as a control mechanism to set the maximum
+    permissions a user or group can have, regardless of any policies directly attached
+    to them. By attaching a permission boundary to a user, we define the upper limit
+    of their permissions. In the scenario described, the demo user initially inherits
+    full S3 access permissions. However, when a permission boundary policy, such as
+    **AmazonS3ReadOnlyAccess** , is applied to the user, it restricts their S3 permissions
+    to read-only access. When permission boundaries, SCPs, and identity-based policies
+    are concurrently applied, an action is authorized only if it is explicitly allowed
+    by all three components. In situations where only SCPs and a permissions boundary
+    are in place without any identity-based or resource-based policies authorizing
+    an action, the default outcome is denial.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In situations where only SCPs and a permissions boundary are in place without
+    any identity-based or resource-based policies authorizing an action, the default
+    outcome is denial.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about permissions boundaries for IAM entities at [https://www.cloudericks.com/blog/getting-started-with-permissions-boundaries-in-aws](https://www.cloudericks.com/blog/getting-started-with-permissions-boundaries-in-aws)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Centralizing governance in AWS Organizations with SCPs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**SCPs** in AWS allow us to manage permissions across an entire AWS organization,
+    **organizational units** ( **OUs** ), or even individual accounts. SCPs fulfill
+    the crucial need for centralized governance by allowing administrators to implement
+    consistent compliance and security policies efficiently across multiple AWS accounts.
+    By utilizing SCPs, organizations can enhance their security posture, manage risks
+    more effectively, and ensure adherence to both internal policies and external
+    regulatory requirements through a centralized policy management framework. In
+    this recipe, we will use an SCP to restrict the creation of Amazon S3 buckets
+    within a specific Region.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need a working AWS account with AWS Organizations service enabled. I will
+    be using the **aws-sec-cookbook-1** account that we created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can explore SCPs as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console and navigate to the **AWS** **Organizations**
+    service.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Policies** in the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.20 – Policies dashboard](image/B21384_02_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.20 – Policies dashboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on the **Service control policies** . If we are using SCPs for the first
+    time, then click on **Enable service control policies** . In the **Service control
+    policies** pane, we can see that a policy called **FullAWSAccess** is already
+    present.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Service control policies** pane, click on **Create policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Enter **SandboxS3BucketCreate** for the **Policy name** field and optionally
+    enter **Sandbox S3 Bucket Create Policy** for the **Policy description -** **optional**
+    field.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Paste the given policy in the policy section and then scroll down and click
+    on **Create policy** . The policy allows S3 bucket creation in any Region except
+    **us-east-1** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In the **Service control policies** pane, select the policy we created, click
+    on the **Actions** dropdown, and then click on **Attach policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select the OU or account to which we want to attach the policy and then click
+    on **Attach policy** . I have selected the **awsseccb-sandbox-1** account that
+    I created in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . We can select multiple
+    OUs and accounts as needed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Log in to the account we attached the policy to, which is **awsseccb-sandbox-1**
+    in my case, as a user with **AdministratorAccess** permission, and try to create
+    an S3 bucket in the **us-east-1** Region. We should get an error message that
+    we do not have the required permission.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.21 – Insufficient permissions error](image/B21384_02_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.21 – Insufficient permissions error
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create an S3 bucket in another Region, for instance, **us-east-** 2, and it
+    should be successful.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To detach the policy, we can log in to the management account, navigate to the
+    service control policy we created, go to the **Targets** tab, select the account,
+    and click on **Detach** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.22 – The Targets tab to detach policy from the account](image/B21384_02_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.22 – The Targets tab to detach policy from the account
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you detach the policy, navigate back to our test account, **awsseccb-sandbox-1**
+    in my case, and try to create an S3 bucket in the **us-east-1** Region. This time
+    we should be able to create the bucket.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We used an SCP to restrict S3 bucket creation in a specific Region by defining
+    a **Deny** statement within the SCP targeting the action of creating S3 buckets
+    ( **s3:CreateBucket** ) and associating it with a condition that checks whether
+    the requested Region is the one to be restricted (e.g., **us-east-1** ). This
+    approach ensures centralized control and governance over S3 bucket deployments,
+    enabling organizations to enforce regional compliance standards, enhance security
+    posture, and optimize resource utilization within their AWS environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SCPs are disabled by default, but we can enable them. SCPs, if enabled, need
+    to explicitly allow services and actions that are allowed. When we enable SCPs,
+    AWS attaches an SCP called **FullAWSAccess** to all accounts and OUs within that
+    organization. This SCP allows every action and service. We can then create additional
+    SCPs to deny services or actions and **Deny** always takes precedence. This is
+    the default strategy. With this strategy, we do not have to do anything when new
+    services or actions are introduced by AWS as they are allowed by the **FullAWSAccess**
+    SCP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We may also replace the **FullAWSAccess** SCP with another SCP that allows only
+    a specific set of services and features. If we do this, we must explicitly add
+    any new services or actions that AWS introduces later to this SCP. However, if
+    we follow the strategy discussed in the previous point, which is having the **FullAWSAccess**
+    SCP and adding another SCP with the list of services and actions to deny, we do
+    not have to do anything when new services or actions are introduced by AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If SCPs are enabled, every account, root OU, and other OUs need to have at least
+    one SCP attached. Therefore, if we need to replace the **FullAWSAccess** SCP with
+    another, we need to first create and attach another SCP, and then detach the **FullAWSAccess**
+    SCP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SCPs, similar to permission boundaries in IAM, define the maximum permissions
+    an entity may hold but do not grant permissions on their own. Therefore, when
+    permission boundaries, SCPs, and identity-based policies are concurrently applied,
+    an action is authorized only if it’s explicitly allowed by all three components.
+    Additionally, in situations where only SCPs and a permissions boundary are in
+    place without any identity-based or resource-based policies authorizing an action,
+    the default outcome is denial. This underlines the principle that permissions
+    must be explicitly granted, and in the absence of such explicit permissions, access
+    is not permitted. We discussed policy types earlier in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can read more about service control policy examples here: [https://www.cloudericks.com/blog/understanding-aws-scps-and-the-deny-list-and-allow-list-strategies](https://www.cloudericks.com/blog/understanding-aws-scps-and-the-deny-list-and-allow-list-strategies)
+    .'
+  prefs: []
+  type: TYPE_NORMAL
+- en: IAM cross-account role switching and identity account architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many organizations use multiple AWS accounts to distinctly manage different
+    operational environments, such as development, testing, and production. Users
+    with varied job roles may need diverse access privileges across these environments.
+    However, the task of managing multiple IAM users, each having different access
+    credentials across various AWS accounts, can be complex and time consuming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A role in AWS IAM grants a specific set of permissions, much like a user account.
+    Unlike users, we do not directly log in to roles; instead, we can switch to a
+    role either in our own account or another AWS account. This replaces our original
+    permissions with the role’s permissions. Based on how the role switch happens,
+    two primary strategies are often utilized to streamline user access management
+    across multiple AWS accounts, negating the need for individual IAM users and access
+    credentials for each account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first approach for role switching involves SSO, where users authenticate
+    via a central access portal and are granted access to multiple accounts, each
+    with distinct roles and permissions. In this model, the role switching happens
+    automatically. The second approach for role switching leverages the identity account
+    architecture where users log in to an identity or central account and use the
+    AWS switch role feature to access resources across various accounts, each assigned
+    specific roles and permissions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After AWS rebranded AWS SSO as IAM Identity Center, AWS recommends using the
+    IAM Identity Center service as a best practice over using IAM directly. Therefore,
+    the first approach using SSO with IAM Identity Center is preferred today for managing
+    multiple accounts. However, many, especially smaller, organizations, who do not
+    want the overhead of maintaining the AWS Organizations service, still use the
+    switch role feature extensively. We can use the switch role feature in conjunction
+    with IAM Identity Center, and this compatibility facilitates a seamless shift
+    from the traditional approach of using IAM users with the identity account architecture
+    to employing IAM Identity Center.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will learn to implement the second approach that uses the
+    identity account architecture, making use of the switch role feature that will
+    allow the switching of roles from a source account to a destination account. The
+    first approach of using IAM Identity Center (previously known as AWS SSO) was
+    explored in the recipes in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) and
+    the earlier recipes in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Switching roles can be performed by an IAM user, a user in the IAM Identity
+    Center, a SAML-federated role, or even a web-identity federated role. However,
+    switching roles is not permissible for the AWS account root user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In AWS Organizations, an all-access role featuring a trust policy is automatically
+    established in member accounts. This role facilitates the management account in
+    switching roles to any member account created within AWS Organizations. Therefore,
+    administrators intending to switch roles between a management and a member account
+    in AWS Organizations can skip the setting up sections in this recipe. They can
+    directly proceed to the sections on switching roles, utilizing the role configured
+    during the AWS Organizations setup, as demonstrated in the *Multi-account management
+    with AWS Organizations* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need the following to successfully complete this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two AWS accounts, one as the source account and the other as the destination
+    account. These could be standalone accounts or ones that are part of an AWS organization.
+    We can use the two member accounts we created in the *Multi-account management
+    with AWS Organizations* recipe from [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    , namely, **awsseccb-sandbox-1** as the source account and **awsseccb-sandbox-2**
+    as the destination account.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A user with administrative permissions is required in both the source and destination
+    accounts to create roles and policies. Using IAM Identity Center, we can create
+    a single user, **awsseccbadmin1** , and grant it **AdministratorAccess** permission
+    to both accounts. If opting for traditional IAM, a separate user must be created
+    in each account with this permission.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An IAM user named **awsseccb_iam_user1** in the source account, **awsseccb-sandbox-1**
+    in our case, with no permission or with the **IAMUserChangePassword** permission
+    if you selected the **Users must create a new password at next sign-in - Recommended**
+    option. We could also use IAM Identity Center. However, using IAM Identity Center
+    may be considered redundant here as we can use the access portal with IAM Identity
+    Center to log into multiple AWS accounts without the need to use the account switching
+    functionality. Nevertheless, we can do that and to understand the concepts better,
+    you may try that option as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An S3 bucket following the *Technical requirements* section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To execute the steps in sections related to the AWS CLI, we need to set up two
+    AWS CLI profiles for the **awsseccbadmin1** admin user. First, **AWSSecCBAdmin1D**
+    for the destination account and second, **AWSSecCBAdmin1S** for the source account.
+    Additionally, we need a profile named **AWSSecCBUser1S** for the **awsseccbuser1**
+    user in the source account. With regular IAM, users need AWS CLI profiles per
+    user per account. With IAM Identity Center, users need AWS CLI profile per user
+    per role ( **PermissionSet** ) per account.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To switch roles, the destination account must have an assignable role with a
+    trust policy that enables the source account to assume this role. Additionally,
+    the source account needs a policy that authorizes this switch. We will first configure
+    the destination and the source account from the AWS Management Console. We will
+    also achieve this using the AWS CLI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a destination account via AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the destination account, we need a role along with a trust policy that allows
+    the source account to assume this role. We will create a role with an existing
+    permissions policy and specify the source account ID for the trust relationship.
+    Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console of the destination account, say **awsseccb-sandbox-2**
+    , as the **awsseccbadmin1** admin user.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Roles** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Select trusted entity** page, under **Trusted entity type** , select
+    **AWS account** as shown in the following figure.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.23 – Selecting trusted entity type for a role](image/B21384_02_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.23 – Selecting trusted entity type for a role
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scroll down, select **Another AWS Account** , enter the 12-digit **Account ID**
+    of the source account (in my case, it will be the ID of the **awsseccb-sandbox-1**
+    account), and click **Next** in the bottom-right corner of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.24 – Configuring Account ID of source account](image/B21384_02_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.24 – Configuring Account ID of source account
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the **Add permissions** page, search for **S3** , select **AmazonS3ReadOnlyAccess**
+    , and click **Next** in the bottom-right corner of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Name, review, and create** page, enter **SA-S3ReadOnly** in the **Role
+    name** field and **Amazon S3 Read Only Access Role** in the **Description** field.
+    I have given a prefix of **SA** to denote that this is a switch account role.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the role details and click **Create role** in the bottom-right corner
+    of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once we see a success message that says **Role SA-S3ReadOnly created** , click
+    on **View role** , make note of the role’s ARN, and select **Link to switch roles**
+    **in console** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will create an IAM policy in the source account to grant users in the
+    source account the ability to assume the newly created role.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up source account via the AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When administrators in the source account are switching roles, only the creation
+    of the role with a trust policy in the destination account is necessary. There
+    is no requirement for a policy creation or attachment in the source account, as
+    administrators already have the **sts:AssumeRole** permission. Therefore, if we
+    are an administrator in the source account, we can skip the setting up section
+    for the source account in this recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can create the required IAM policy in the source account as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log in to the AWS Management Console of the source account ( **awsseccb-sandbox-1**
+    in my case), as the **awsseccbadmin1** admin user and go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Policies** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create policy** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on the **JSON** tab and then paste the following policy JSON in the **policy
+    editor** . Remember to replace **arn:aws:iam::DESTINATION_ACCOUNT_ID:role/ROLE_NAME**
+    with the role’s ARN that we noted in the previous section. Alternatively, we can
+    just replace **DESTINATION_ACCOUNT_ID** with the destination account’s ID and
+    **ROLE_NAME** with the role name we created in the previous section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Click **Next** in the bottom-right corner of the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the **Review and create** page, enter **AR_Sandbox2_S3ReadOnly** in the **Policy
+    name** field, and enter **AssumeRole policy for S3ReadOnlyAccess in awsseccb-sandbox-2**
+    in the **Description** field.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Review the details and click **Create policy** in the bottom-right corner of
+    the page. We should get a **Policy AR_Sandbox2_S3ReadOnly** **created** message.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Attach this policy to the **awsseccbusers** group in the source account that
+    has the **awsseccbuser1** user. With IAM, we can directly attach the policy to
+    the group in the source account. With IAM Identity Center, we must first create
+    a permission set with this policy and assign it to the group during the assignment
+    of the source account as we saw in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will switch roles from the source account to the destination account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Switching roles via the AWS Management Console
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For switching roles from the source account to the destination account, follow
+    these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log into the AWS Management Console of the source account, say **awsseccb-sandbox-1**
+    , as the user who was assigned the permission to switch roles, say **awsseccb_iam_user1**
+    . If we are logging in via the AWS IAM Identity Center access portal, we need
+    to make sure we select the role for the source account with the **AssumeRole**
+    policy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Click on the drop-down menu next to the username and click on **Switch role**
+    as shown in the following figure:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.25 – User menu with the Switch role button](image/B21384_02_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.25 – User menu with the Switch role button
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, I am switching roles for the second time to show the **Role history**
+    details. On your first attempt, you will not see the **Role** **history** details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the **Switch Role** screen, for **Account** , enter the account number of
+    the destination account and for **IAM role name** , enter **SA-S3ReadOnly** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.26 – The Switch Role screen](image/B21384_02_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.26 – The Switch Role screen
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we are logged in as the required user (here, **awsseccb_iam_user1** ) or
+    the required source account (here, **awsseccb-sandbox-1** ), we can also switch
+    roles by pasting the link to switch roles in the console that we got in *Step
+    10* in the *Setting up destination account via AWS Management* *Console* section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on **Switch Role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This time, we should be logged in to the new account. We can verify this from
+    the drop-down menu next to our account name in the taskbar:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.27 – User menu after switching role](image/B21384_02_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.27 – User menu after switching role
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **S3** service and verify that we can see all buckets and their details.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We can switch back to the parent account by clicking on the **Switch back**
+    button, as we can see in *Figure 2* *.27* .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will see how we can create a role from the command line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a destination account via the AWS CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'With the AWS CLI, first, we need to create a role embedded with a trust policy
+    in the destination account and then associate the permissions policy with this
+    role. We will run the CLI commands using the **AWSSecCBAdmin1D** CLI profile for
+    the **awsseccbadmin1** user, which is configured for the destination account (
+    **awsseccb-sandbox-2** in my case) with **AdministratorAccess** permission. Let
+    us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to create a **trust policy** allowing the destination account
+    to trust the source account and save the file as **trust-policy.json** :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Replace **<SOURCE_ACCOUNT_ID>** with your source account’s 12-digit account
+    ID.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a role using the trust relationship file created in the previous step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: If successful, the command will return an output with the details of the newly
+    created role including **RoleId** , and role’s **ARN** .
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Attach the **AmazonS3ReadOnlyAccess** permission policy to the newly created
+    role:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: There is no output for this command.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Next, we need to create a policy in the source account that authorizes the role
+    switch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a source account via the AWS CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will run the CLI commands using the **AWSSecCBAdmin1S** CLI profile for
+    the **awsseccbadmin1** user, which is configured for the source account ( **awsseccb-sandbox-1**
+    in my case) with **AdministratorAccess** permission. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a policy to allow source account identities to assume the role in the
+    destination account and save the file as **assume-role-policy-cli.json** :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Replace **DESTINATION_ACCOUNT_ID** with the destination account’s 12-digit Account
+    ID.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a policy that allows assuming the **S3ReadOnlyRoleCLI** role in the
+    destination account using the **assume-role-policy-cli.json** file we created
+    in *Step 1* :'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Attach this policy to the **awsseccbusers** group in the source account, which
+    has the **awsseccbuser1** user. With IAM, we can directly attach the policy to
+    the group in the source account. With IAM Identity Center, we must first create
+    a permission set with this policy and assign it to the group during the assignment
+    to the source account as we saw in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we will switch roles from the source account to the destination account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Switching roles via the CLI
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We need to use the **AWSSecCBUser1S** CLI profile for the **awsseccbuser1**
+    user, configured for the source account for the role with the **sts:AssumeRole**
+    permission. Let us get started:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Establish a new profile for the role within the **.aws/config** file. On Unix
+    or Linux systems, this file is in the user’s home directory. For Windows users,
+    we can find the file at **C:\Users\USERNAME\.aws\config** . Make sure to replace
+    **USERNAME** with your actual Windows username:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We need to replace the role’s ARN with the ARN of the role we created in the
+    destination account. Whether we want to do a cross-account role assumption or
+    role assumption within the same account, we need to follow this step.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Run the **aws s3 ls** command with this new user profile as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This should give us a successful response with the names of the buckets in the
+    destination account.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Important note
+  prefs: []
+  type: TYPE_NORMAL
+- en: To obtain the role’s credentials, the AWS CLI internally uses **sts:AssumeRole**
+    for assuming the role utilizing the credentials associated with the **source_profile**
+    , which is **AWSSecCBUser1S** in our case. Therefore, the identity linked to **source_profile**
+    should possess the **sts:AssumeRole** permission for the role mentioned in **role_arn**
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also verify the switch role changes within this recipe by running the
+    **aws sts** **assume-role** command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The **aws sts assume-role** command, if successful, should give us **AccessKeyId**
+    , **SecretAccessKey** , and **SessionToken** . We can use the credentials returned
+    from the **sts assume-role** command through APIs, including from the CLI.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we configured two accounts, a source account and a destination
+    account, such that we can switch roles from the source account and log in to the
+    destination account, assuming there’s a role in the destination. This feature
+    is used in an identity account architecture where all IAM users are managed in
+    a single AWS account, often referred to as the *identity account* , and can switch
+    roles to access resources across multiple accounts, thus eliminating the need
+    for distinct login credentials for each account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To switch roles between accounts, the account we are switching to must have
+    a role set up for this purpose. The role in the destination account should include
+    a trust policy that permits the source account to assume this role, and the source
+    account must have a policy with the **sts:AssumeRole** permission, which allows
+    this role assumption. In summary, to switch roles between two AWS accounts – let
+    us call them the source and destination accounts – the following configurations
+    are needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, a role that can be assumed by an identity (user or service) in the source
+    account must exist in the destination account.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Second, the identity in the source account must be granted the **sts:AssumeRole**
+    permission. This permission should specify the ARN of the role to be assumed in
+    its policy. This step is needed for role-switching within a single account or
+    between two different accounts.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For **cross-account role switching** , as seen in this recipe, the destination
+    account must also have a trust policy attached to the role to allow the source
+    account to assume that role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The trust policy attached to the role in the destination account is an example
+    of a resource-based policy, while the policy within the source account authorizing
+    the role switch is an example of an identity-based policy. Implicitly, session
+    policies are used within the recipe. IAM policies attached to the role in the
+    destination account serve as session policies. When a role is assumed, whether
+    within the same account or across accounts, AWS **Security Token Service** ( **STS**
+    ) generates temporary security credentials for the session. These credentials
+    include session policies, defining the permissions available within the temporary
+    session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once a role is assumed, the permissions granted are determined solely by the
+    session policies. Additionally, any permissions associated with the IAM identity
+    assuming the role are temporarily relinquished, ensuring that the temporary session
+    operates strictly within the boundaries of the assumed role’s permissions, mitigating
+    the risk of unauthorized access. Furthermore, explicit use of the **aws sts assume-role**
+    command allows for the obtaining of temporary security credentials. Upon success,
+    this command provides **AccessKeyId** , **SecretAccessKey** , and **SessionToken**
+    . These credentials can be used through APIs, including the AWS CLI, enabling
+    controlled access to AWS resources based on the permissions defined by the assumed
+    role’s session policies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we set up a new account within AWS Organizations, AWS automatically creates
+    an IAM role in the new member account. This role is designed to allow administrators
+    in the management account to assume the role and access the member accounts. This
+    role is commonly named **OrganizationAccountAccessRole** but we can change it
+    to a different one while creating an account under an AWS organization, as we
+    saw in [*Chapter 1*](B21384_01.xhtml#_idTextAnchor020) . If we are using accounts
+    that are not part of AWS Organizations, we need to create these manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are using AWS IAM Identity Center with AWS Organizations, we can easily
+    log in to different AWS accounts from the access portal, and implementing the
+    identity account architecture that we discussed in this recipe to switch roles
+    and log in to different AWS accounts becomes redundant. Nevertheless, roles are
+    useful in a variety of use cases, including cross-service access, as we will see
+    in the next recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let us quickly explore how we can use the **external ID** feature while switching
+    roles for enhanced security.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **confused deputy** problem is a security vulnerability where a program
+    with restricted access unintentionally grants unauthorized access to its resources.
+    This issue arises when a trusted entity delegates authority to a less-trusted
+    one, which then acts on behalf of the trusted entity but in an unintended manner,
+    potentially leading to security breaches. In the context of our recipe, where
+    a source account tries to assume a role in a destination account, this vulnerability
+    is pertinent due to the potential risk of unauthorized access to sensitive resources
+    in the destination account by the less-trusted source account. This risk stems
+    from the delegation of authority through role assumption mechanisms, where proper
+    controls are necessary to prevent misuse and unauthorized access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let us see how we can solve the confused deputy problem with cross-account
+    role switching using external IDs. An external ID serves as a unique key to establish
+    a trust bond between two AWS accounts, commonly utilized when an AWS account intends
+    to authorize third-party account access to its resources. Specifically, in scenarios
+    involving cross-account IAM roles, such as the one we saw in this recipe, the
+    resource-owning account (trusting account) designates an external ID. The third
+    party (trusted account) must then use this external ID to assume the specified
+    role. By requiring a matching external ID for both the role assumption and the
+    requester, the system ensures that only authorized entities, verified through
+    their external ID and proper permissions, can access the resources, thereby safeguarding
+    against such vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While setting up the destination account in *Figure 2* *.24* , the **Require
+    external ID (Best practice when a third party will assume this role)** option
+    was not selected. To use an external ID, we can select this option and add an
+    external ID value of our choice. Once an external ID is configured, we need to
+    provide the external ID while switching roles as given in the following command,
+    otherwise, access will be denied:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Read more about using **external-id** at [https://www.cloudericks.com/blog/mitigating-confused-deputy-problem-external-ids-secure-cross-account-access-aws](https://www.cloudericks.com/blog/mitigating-confused-deputy-problem-external-ids-secure-cross-account-access-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Read more about identity account architecture within AWS at [https://www.cloudericks.com/blog/implementing-identity-account-architecture-within-aws](https://www.cloudericks.com/blog/implementing-identity-account-architecture-within-aws)
+    .
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cross-service access via IAM roles on EC2 instances
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we will create an IAM role that allows an EC2 instance to access
+    S3 APIs and then attach it to an EC2 instance. IAM roles provide temporary permissions
+    for an AWS service or user to access another AWS service. This avoids the need
+    for hard coding credentials such as access keys and secret access keys within
+    EC2 instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To complete the steps within this recipe, we need the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A working AWS account, **awsseccb-sandbox-1** , and a user with **AdministratorAccess**
+    permission to that account, **awsseccbadmin1** , following the *Technical requirements*
+    section of this chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working knowledge of IAM, EC2, and S3 services.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create an IAM role for an EC2 instance with access to S3 APIs as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Go to the **IAM** dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Roles** from the left sidebar.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Create role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Under **Trusted entity type** , select **AWS service** , and under the **Service
+    or use case** , select **EC2** as the service that will use this role, and click
+    **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.28 – Select trusted entity](image/B21384_02_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.28 – Select trusted entity
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select **AmazonS3FullAccess** and click **Next** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.29 – Permissions policies](image/B21384_02_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.29 – Permissions policies
+  prefs: []
+  type: TYPE_NORMAL
+- en: Give the role name (for example, **MyS3AccessRole** ).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally add tags and click on **Create Role** .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can associate the role with an EC2 instance as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Go to the **EC2** dashboard.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Click on **Instances** from the left sidebar.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Select our instance, click on **Actions** , click on **Security** , and click
+    on **Modify** **IAM role** :'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.30 – Attaching the IAM role to an instance](image/B21384_02_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.30 – Attaching the IAM role to an instance
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select our new IAM role and click **Update IAM role** . We should get a success
+    message.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Connect to our instance via SSH and run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will get the following output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 2.31 – Listing the S3 buckets](image/B21384_02_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.31 – Listing the S3 buckets
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should be able to see all the buckets in our account when we run this command
+    from the instance because of the role we updated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this recipe, we have granted S3 access permissions to our EC2 instance, enabling
+    the execution of supported S3 operations from within the instance, whether through
+    CLI or code, without embedding credentials directly. Embedding AWS credentials
+    within an EC2 machine poses a risk of exposure if the machine is compromised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When creating an IAM role for an EC2 instance, as demonstrated in this recipe,
+    AWS automatically generates an EC2 instance profile. This profile functions as
+    a digital badge, clearly delineating the permitted services for the instance’s
+    use. Essentially, it encompasses the IAM role, furnishing our EC2 instance with
+    the necessary permissions for secure and efficient interaction with specific AWS
+    services, such as S3. The EC2 instance “assumes” this role whenever it undertakes
+    tasks requiring these permissions, such as interacting with S3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There’s more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: IAM roles are useful for facilitating secure cross-service access within AWS
+    environments. These roles can be utilized across various AWS services to grant
+    temporary permissions to entities such as Lambda functions, ECS tasks, and even
+    users or groups within AWS organizations. By defining granular permissions through
+    IAM policies, roles enable seamless integration and collaboration between different
+    services while adhering to the principle of least privilege.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For instance, IAM roles can be assigned to Lambda functions to access specific
+    AWS resources such as S3 buckets or DynamoDB tables without requiring hard-coded
+    credentials. Similarly, ECS tasks can assume IAM roles to interact with other
+    AWS services during containerized application deployments. Moreover, IAM roles
+    can be leveraged by AWS organizations to delegate permissions across multiple
+    accounts securely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both IAM users and roles are IAM identities assigned specific permission policies.
+    While users are associated with static credentials such as access keys, which
+    pose a risk of exposure, IAM roles offer temporary security credentials for each
+    session, reducing the reliance on long-term static credentials. Roles can be assumed
+    by various entities including users, groups, applications, or AWS services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In essence, IAM roles serve as a foundational element for implementing secure
+    and efficient cross-service access controls within AWS ecosystems, promoting agility,
+    scalability, and robust security practices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important concepts related to IAM roles
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let us quickly go through some more important concepts about IAM roles:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The trust policy for a role allows a user in the trusted account to switch to
+    or assume that role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A wildcard ( ***** ) cannot be specified as a principal for a trust policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When a user assumes a role, it temporarily gives up its own permissions until
+    the user stops using the role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Some services allow attaching a policy directly to a resource without needing
+    to use a role as a proxy. These resources include S3 buckets, Glacier vaults,
+    Amazon SNS topics, and Amazon SQS queues.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Roles can be used by external users authenticated by an external identity provider
+    service to get access to AWS resources.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Roles allow mobile apps to use AWS resources without embedding AWS access keys
+    within the app.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Role chaining is the process where a role assumes a second role through the
+    AWS CLI or API.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To pass the role information to an EC2 instance when the instance starts, we
+    can add the role within an instance profile. An instance profile can be considered
+    a container for an IAM role. The **list-instance-profiles-for-role** CLI command
+    lists the instance profiles for a role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The permissions boundary is a feature we can use to set the maximum permissions
+    that an identity-based policy can grant to an IAM entity, such as a user or role.
+    The **put-role-permissions-boundary** CLI command can be used to create or update
+    the permissions boundary for a role, while **delete-role-permissions-boundary**
+    will delete the permissions boundary for the role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **attach-role-policy** CLI command attaches a policy to a role, while **detach-role-policy**
+    detaches a policy from a role.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **put-role-policy** CLI command creates or updates an inline policy, **get-role-policy**
+    retrieves the specified inline policy in a role, and **delete-role-policy** deletes
+    the specified inline policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can read more about EC2 instance profiles and IAM roles at [https://www.cloudericks.com/blog/secure-cross-service-access-ec2-instance-profiles-iam-roles](https://www.cloudericks.com/blog/secure-cross-service-access-ec2-instance-profiles-iam-roles)
+    .
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,2516 @@
+- en: '3'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Exploring PowerShell Remote Management Technologies and PowerShell Remoting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As one of the main purposes of PowerShell is automating administration tasks,
+    **PowerShell remoting** (**PSRemoting**) plays a big part in administrating multiple
+    computers at the same time: using only a single command, you can run the same
+    command line on hundreds of computers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But similar to when you work with individual computers, PSRemoting is only
+    as secure as your configuration: if you don’t lock the door of your house, burglars
+    can break into it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s the same case for computers, as well as for PSRemoting: if you don’t
+    harden your configuration and use insecure settings, attackers can leverage that
+    and use your computers against you.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will not only learn the basics of PSRemoting and how to
+    enable and configure it – you will also discover the best practices for maintaining
+    a secure PSRemoting configuration. While PSRemoting is inherently secure, there
+    are still measures you can take to ensure that your configuration remains secure.
+    We will explore these measures in detail to help you keep your PSRemoting setup
+    secure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will also see what PSRemoting network traffic looks like, depending on what
+    authentication protocol is used. Lastly, you will learn how to configure it, what
+    configurations to avoid, and how to use PSRemoting to execute commands.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will learn about the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working remotely with PowerShell
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enabling PowerShell remoting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PowerShell endpoints (session configurations)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PowerShell remoting authentication and security considerations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Executing commands using PowerShell remoting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with PowerShell remoting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PowerShell remoting best practices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The following are the technical requirements for this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell 7.3 and above
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visual Studio Code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Wireshark
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A test lab with a domain controller and one or more test machines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Access to the GitHub repository for **Chapter03**: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter03](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter03)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working remotely with PowerShell
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'PowerShell was designed to automate administration tasks and simplify the lives
+    of system administrators. Remote management was a part of this plan from the very
+    beginning, as outlined by Jeffrey Snover in the Monad Manifesto from 2002: [https://www.jsnover.com/blog/2011/10/01/monad-manifesto/](https://www.jsnover.com/blog/2011/10/01/monad-manifesto/).
+    However, to ship version 1.0 promptly, some features, including PSRemoting, were
+    not included until later versions. PSRemoting was officially introduced in version
+    2.0 and further improved in version 3.0.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It quickly became one of the most important core functionalities and nowadays
+    supports many other functions within PowerShell, such as workflows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While PSRemoting can work with a variety of authentication methods, the default
+    protocol for domain authentication is Kerberos. This is the most secure and commonly
+    used method of authentication in Active Directory environments, which is where
+    most people using PSRemoting are likely to be operating. So, when Kerberos is
+    not available, PSRemoting will fall back to NTLM to also support workgroup authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows PowerShell supports remoting over different technologies. By default,
+    PSRemoting uses **Windows Remote Management (WinRM)** as its transport protocol.
+    However, it’s important to note that WinRM is just one of several protocols that
+    can be used to support remote management in PowerShell. PSRemoting itself is a
+    specific protocol (**PSRP**) that governs the way that PowerShell manages input,
+    output, data streams, object serialization, and more. PSRP can be supported over
+    a variety of transports, including **WS-Management (WS-Man)**, **Secure Shell
+    (SSH)**, **Hyper-V VMBus**, and others. While **Windows Management Instrumentation
+    (WMI)** and **Remote Procedure Call (RPC)** are remote management technologies
+    that can be used with PowerShell, they are not considered part of the PSRemoting
+    protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This difference between those remote management technologies is also reflected
+    in the protocol that’s being used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Table 3.1 – Overview of connection methods and protocols used](image/B16679_03_Table_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Table 3.1 – Overview of connection methods and protocols used
+  prefs: []
+  type: TYPE_NORMAL
+- en: PSRemoting is only enabled in Windows Server 2012 R2 and above and only connections
+    from members of the Administrators group are allowed by default. However, PowerShell
+    Core provides support for several remote management protocols, including WMI,
+    Web-Services Management (WS-Management), and SSH remoting. It’s important to note
+    that PowerShell Core doesn’t support RPC connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting using WinRM
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**DMTF** (formerly known as the **Distributed Management Task Force**) is a
+    non-profit organization that defines open manageability standards, such as the
+    Common Information Model (CIM), and also WS-Management.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WS-Management defines a **Simple Object Access Protocol** (**SOAP**)-based protocol
+    that can be used to manage servers and web services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft’s implementation of WS-Management is **WinRM**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As soon as you attempt to establish a PSRemoting connection, the WinRM client
+    sends SOAP messages within the WS-Management protocol over **HTTP** or **HTTPS**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PSRemoting, when using WinRM, listens on the following ports:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**HTTP**: **5985**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**HTTPS**: **5986**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Regardless of whether HTTP or HTTPS is used, PSRemoting traffic is always encrypted
+    after the authentication process – depending on which protocol is used for authentication.
+    You can read more about the different authentication protocols in the *Authentication*
+    section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the remote host, the WinRM service runs and is configured to have one or
+    more listeners (HTTP or HTTPS). Each listener waits for incoming HTTP/HTTPS traffic
+    sent through the WS-Management protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once traffic is received, the WinRM service determines which PowerShell endpoint
+    or application the traffic is meant for and forwards it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.1 – How WinRM and WS-Management are used to connect via PSRemoting](image/B16679_03_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.1 – How WinRM and WS-Management are used to connect via PSRemoting
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, this diagram has been abstracted to simplify your understanding
+    of how WinRM works. **PowerShell.exe** is not called; instead, the **Wsmprovhost.exe**
+    process is, which runs PSRemoting connections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As WinRM and WS-Management are the default when establishing remote connections,
+    this chapter will mostly focus on those technologies. But for completeness, I
+    will shortly introduce all other possible remoting technologies in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you would like to learn about WinRM and WS-Management in more depth, I recommend
+    visiting the following sources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.microsoft.com/en-us/windows/win32/winrm/windows-remote-management-architecture](https://docs.microsoft.com/en-us/windows/win32/winrm/windows-remote-management-architecture)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/devops-collective-inc/secrets-of-powershell-remoting](https://github.com/devops-collective-inc/secrets-of-powershell-remoting)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows Management Instrumentation (WMI) and Common Information Model (CIM)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**WMI** is Microsoft’s implementation of CIM, an open standard designed by
+    DMTF.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WMI was introduced with Windows NT 4.0 and was included in the Windows operating
+    system starting with Windows 2000\. It is still present in all modern systems,
+    including Windows 10 and Windows Server 2019.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CIM defines how IT system elements are represented as objects and how they relate
+    to each other. This should offer a good way to manage IT systems, regardless of
+    the manufacturer or platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: WMI relies on the **Distributed Component Object Model** (**DCOM**) and RPC,
+    which is the underlying mechanism behind DCOM, to communicate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DCOM was created to let the **Component Object Model** (**COM**) communicate
+    over the network and is the predecessor of .NET Remoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section will give you only a basic overview of the WMI and CIM cmdlets
+    to fulfill your understanding of the remote management technologies in this chapter.
+    You will learn more about COM, WMI, and CIM in [*Chapter 5*](B16679_05_Final_PD.xhtml#_idTextAnchor110),
+    *PowerShell Is Powerful – System and* *API Access*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: WMI cmdlets
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: WMI cmdlets were deprecated starting with PowerShell Core 6 and should not be
+    used in newer versions of PowerShell. However, it’s important to note that they
+    are still supported in certain older versions of PowerShell, such as PowerShell
+    5.1 on Windows 10, and will continue to be supported for the support life of those
+    operating systems. If possible, use the newer CIM cmdlets instead, since they
+    can be used on Windows and non-Windows operating systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let’s have a look at how to work with the deprecated, but still present,
+    WMI cmdlets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find all the cmdlets and functions that have the **wmi** string included
+    in their name, leverage the **Get-Command** cmdlet. With the **-CommandType**
+    parameter, you can specify what kind of commands you want to look for. In this
+    example, I am searching for cmdlets and functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: An example of how to work with WMI is via the **Get-WmiObject** cmdlet. Using
+    this cmdlet, you can query local and remote computers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can use the **-List** parameter to retrieve all available WMI classes on
+    your computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here’s an example of how to use **Get-WmiObject** to retrieve information about
+    Windows services on your local computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Not only can you query your local computer, but you can also query a remote
+    computer by using the **-ComputerName** parameter, followed by the name of the
+    remote computer. The following example shows how to retrieve the same information
+    from the **PSSec-PC02** remote computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code returns a list of all services that are available on the
+    remote computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By using the **-Query** parameter, you can even specify the query that should
+    be run against the CIM database of the specified computer. The following command
+    only retrieves all services with the name **WinRM**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we run the specified **select * from win32_service where name='WinRM'**
+    query remotely on **PSSec-PC02**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using PowerShell WMI cmdlets, you can also call WMI methods, delete objects,
+    and much more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Did you know?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'RPC, on which WMI relies, is no longer supported in PowerShell Core 6\. This
+    is due in part to PowerShell’s goal of cross-platform compatibility: from PowerShell
+    version 7 and above, RPC is only supported on machines running the Windows operating
+    system.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: CIM cmdlets
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: With PowerShell 3.0, which came with Windows Server 2012 and Windows 8, a new
+    set of cmdlets were introduced to manage objects that were compliant with the
+    CIM and WS-Man standards.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At some point, the WMI cmdlets drifted away from the DMTF standards, which prevented
+    cross-platform management. So, Microsoft moved back to being compliant with the
+    DMTF CIM standards by publishing the new CIM cmdlets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find out all CIM-related cmdlets, you can leverage the **Get-Command** cmdlet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we are looking for all cmdlets and functions that have **cim**
+    in their name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find an overview of all the currently available CIM cmdlets to interact
+    with the CIM servers at [https://docs.microsoft.com/de-de/powershell/module/cimcmdlets/](https://docs.microsoft.com/de-de/powershell/module/cimcmdlets/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open Management Infrastructure (OMI)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To help with a cross-platform managing approach, Microsoft created the **Open
+    Management Infrastructure** (**OMI**) in 2012 (https://github.com/Microsoft/omi),
+    but it never really became that popular and isn’t used broadly anymore. Therefore,
+    Microsoft decided to add support for SSH remoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting using SSH
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To enable PSRemoting between Windows and Linux hosts, Microsoft added support
+    for PSRemoting over **SSH** with PowerShell 6.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PSRemoting via SSH requirements
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use PSRemoting via SSH, *PowerShell version 6 or above* and *SSH* need to
+    be installed on all computers. Starting from Windows 10 version 1809 and Windows
+    Server 2019, OpenSSH for Windows was integrated into the Windows operating system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting on Linux
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As a first step, to use PowerShell on Linux, install PowerShell Core by following
+    the steps for your operating system, which you can find in the official PowerShell
+    Core documentation: [https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-linux).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In my demo lab, I have a Debian 10 server installed. So, the steps may vary,
+    depending on the operating system that is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Configure **/etc/ssh/sshd_config** with the editor of your choice. In my example,
+    I am using **vi**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First, add a PowerShell subsystem entry to your configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: In Linux systems, the PowerShell executable is typically located at **/usr/bin/pwsh**
+    by default. Please make sure you adjust this part if you installed PowerShell
+    in a different location.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To allow users to log on remotely using SSH, configure **PasswordAuthentication**
+    and/or **PubkeyAuthentication**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to allow authentication using a username and a password, set **PasswordAuthentication**
+    to **yes**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If you want to enable a more secure method, set **PubkeyAuthentication** to
+    **yes**:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '**PubkeyAuthentication**, which stands for **public key authentication**, is
+    a method of authentication that relies on a generated key pair: a private and
+    a public key is generated. While the **private key** is kept safe on the user’s
+    computer, the **public key** is entered on a remote server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the user authenticates using this private key, the server can verify the
+    user’s identity using their public key. A public key can only be used to verify
+    the authenticity of the private key or to encrypt data that only the private key
+    can encrypt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using public key authentication for remote access not only protects against
+    the risk of password attacks such as brute-force and dictionary attacks but also
+    offers an additional layer of security in case the server gets compromised. In
+    such cases, only the public key can be extracted while the private key remains
+    safe. As the public key alone is not enough to authenticate, this method provides
+    better security than using a username and password, as passwords can be extracted
+    and reused if the server is compromised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can learn how to generate a key pair using the **ssh-keygen** tool at https://www.ssh.com/ssh/keygen/.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are interested in how public key authentication works, you can read
+    more about it on the official SSH website: [https://www.ssh.com/ssh/public-key-authentication](https://www.ssh.com/ssh/public-key-authentication).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, both authentication mechanisms can be configured at the same time,
+    but if you use **PubkeyAuthentication** and no other user connects using their
+    username and password, you should use **PubkeyAuthentication** only:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you want to learn more about the different options of the **sshd** configuration
+    file, I highly recommend that you look at the **man** **pages**: https://manpages.debian.org/jessie/openssh-server/sshd_config.5.en.html.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Man pages
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Man** stands for **manual**. Man pages are used to get more information about
+    a Linux/UNIX command or configuration file and can be compared to the Help system
+    in PowerShell.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Restart the **ssh** service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The updated configuration is loaded into memory to activate the changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting on macOS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To enable PSRemoting over SSH to manage macOS systems, the steps are quite
+    similar to those when enabling PSRemoting on a Linux system: the biggest difference
+    is that the configuration files are in a different location.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, you need to install PowerShell Core on the macOS systems that you want
+    to manage remotely: [https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Edit the **ssh** configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create a subsystem entry for PowerShell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, define what kind of authentication you want to configure for this machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Username and password:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Public key authentication:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: To learn more about the options that can be configured in the **sshd** configuration,
+    have a look at the *PowerShell remoting on Linux* section that we covered previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Restart the **ssh** service to load the new configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The service will restart and the new configuration will be active.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting via SSH on Windows
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Of course, it is also possible to manage Windows systems via SSH, but in this
+    book, I will use PSRemoting via WinRM in all of my examples as this is the default
+    setting on Windows systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, if you want to enable PSRemoting via SSH on your Windows systems,
+    make sure you install OpenSSH and follow the instructions on how to set up PSRemoting
+    over SSH on Windows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.microsoft.com/en-us/windows-server/administration/openssh/openssh_overview](https://docs.microsoft.com/en-us/windows-server/administration/openssh/openssh_overview)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/ssh-remoting-in-powershell-core?view=powershell-7.1#set-up-on-a-windows-computer](https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/ssh-remoting-in-powershell-core?view=powershell-7.1#set-up-on-a-windows-computer)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Did you know?
+  prefs: []
+  type: TYPE_NORMAL
+- en: PSRemoting via SSH does not support remote endpoint configuration, nor **Just
+    Enough** **Administration** (**JEA**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling PowerShell remoting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are different ways to enable PSRemoting for your system(s). If you only
+    work with a few machines in your lab, you might want to enable it manually. But
+    as soon as you want to enable PSRemoting in a big environment, you might want
+    to enable and configure PSRemoting centrally. In this section, we will have a
+    look at both methods. The following table provides an overview of which method
+    takes which configuration actions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Table 3.2 – Enabling PSRemoting – different methods](image/B16679_03_Table_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Table 3.2 – Enabling PSRemoting – different methods
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please note that the **Enable-PSRemoting** method is a subpart of the manual
+    configuration; to configure HTTP and HTTPS listeners, additional steps must be
+    taken. Let’s explore what is needed to manually configure PSRemoting, which could
+    be useful in a test scenario, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling PowerShell remoting manually
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you want to enable PSRemoting on a single machine, this can be done manually
+    by using the **Enable-PSRemoting** command on an elevated shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, the command ran successfully, so PSRemoting was enabled on
+    this machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you’re wondering about the difference between **Enable-PSRemoting** and **winrm
+    quickconfig**, the truth is that there is not much difference technically. **Enable-PSRemoting**
+    already incorporates all the actions performed by **winrm quickconfig**, but with
+    additional environment changes specific to Windows PowerShell. So, to put it simply,
+    running **Enable-PSRemoting** is sufficient, and you can skip running **winrm
+    quickconfig**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Set-WSManQuickConfig error message
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Depending on your network configuration, an error message may be shown if you
+    try to enable PSRemoting manually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This error message was generated by the **Set-WSManQuickConfig** command, which
+    is called during the process of enabling PSRemoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This message is shown if one network connection is set to public because, by
+    default, PSRemoting is not allowed on networks that were defined as public networks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To avoid this error, there are two options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configure the network profile as a private network.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enforce **Enable-PSRemoting** so that the network profile check is skipped.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you are certain that the network profile is not a public one and instead
+    a network that you trust, you can configure it as a private network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you don’t want to configure the network as a trusted, private network, you
+    can enforce skipping the network profile check by adding the **-****SkipNetworkProfileCheck**
+    parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Having PSRemoting enabled on public network-connected computers puts your computer
+    at significant risk, so be careful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Checking your WinRM configuration
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'After enabling PSRemoting and WinRM, you might want to check the current WinRM
+    configuration. You can achieve this using **winrm** **get winrm/config**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.2 – Verifying your local WinRM configuration](image/B16679_03_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.2 – Verifying your local WinRM configuration
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find all the configured options in the displayed output. The **winrm
+    get winrm/config** command provides a summary of the WinRM configuration settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To change your local WinRM configuration, you can use the **set** option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alternatively, you can use the **wsman:\** PowerShell drive to access and modify
+    specific items in the configuration. Using the **wsman:\** provider allows you
+    to access and modify specific items of the WinRM configuration in a more intuitive
+    and cmdlet-like way, with the added benefit of built-in help and documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To change your local WinRM configuration, you can use the **Set-Item** cmdlet
+    with the **wsman:\** provider to access and modify the WinRM configuration items.
+    For example, to disable the use of unencrypted traffic, you can run the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we are configuring the WinRM service to *not* allow unencrypted
+    connections. You can use a similar syntax to also configure other WinRM options
+    – just make sure you provide the entire path to the setting in the tree, as well
+    as the option and the value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trusted hosts
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you are connecting to a machine that is not domain-joined, which might be
+    the reason why you configure it manually, Kerberos authentication is not an option
+    and the NTLM protocol should be used for authentication instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, you need to configure the remote machine to be considered a trusted
+    host in **WS-Man** on your local device; otherwise, the connection will fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To configure **TrustedHosts** for a remote host, you can use the **Set-Item**
+    cmdlet, along with the **wsman:\localhost\client\TrustedHosts** path. By default,
+    this value is empty, so you need to add the IP address or domain name of the remote
+    host. To add a new value without replacing the existing ones, use the **-Concatenate**
+    switch, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will append the specified IP address to the existing list of **TrustedHosts**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To verify that your changes were applied, you can use the **Get-Item** cmdlet
+    to display the current **TrustedHosts** configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding example shows that the host with an IP address of **172.29.0.12**
+    has been configured as a trusted host on the local machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also a good practice to audit the **TrustedHosts** list to detect any
+    unauthorized changes. This can help in detecting tampering attempts on your system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting via HTTPS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Optionally, you can also configure a certificate to encrypt the traffic over
+    **HTTPS**. To ensure secure PSRemoting, it is recommended that you configure a
+    certificate to encrypt the traffic over HTTPS, especially in scenarios where Kerberos
+    is not available for server identity verification. Although PSRemoting traffic
+    is encrypted by default, encryption can be removed, and basic authentication can
+    be enforced easily (see the *PowerShell remoting authentication and security considerations*
+    section). Configuring a certificate adds another layer of security to your environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, to provide an extra layer of security, it can make sense to issue
+    a certificate and enable **WinRM** **via SSL**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you haven’t purchased a publicly signed SSL certificate from a valid **certificate
+    authority** (**CA**), you can create a **self-signed certificate** to get started.
+    However, if you’re using this for workgroup remoting, you can also use an **internal
+    CA**. This can provide additional security and trust since you have a trusted
+    source within the organization sign the certificate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section only covers how to issue and configure a self-signed certificate.
+    So, make sure you adjust the steps if you are using a publicly signed certificate
+    or an internal CA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let’s get a self-signed certificate! This step is very easy if you are
+    working on Windows Server 2012 and above – you can leverage the **New-SelfSignedCertificate**
+    cmdlet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Make sure that the value provided via the **-DnsName** parameter matches the
+    hostname and that a matching DNS record exists in your DNS server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Add an HTTPS listener:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, make sure you add an exception for the firewall. The default port
+    for WinRM over HTTPS is **5986**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: To clarify, it’s important to note that using the **-Profile Any** option opens
+    WinRM to public or unidentified networks. If you’re not in a test environment,
+    make sure you use the appropriate profile options, such as **Domain**, **Private**,
+    or **Public**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to ensure that only HTTPS is used, remove WinRM’s HTTP listener:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Additionally, you may want to check and remove any existing firewall exceptions
+    for HTTP traffic that were configured. This step is not necessary if you did not
+    configure any exceptions previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In some cases, you may want to move the WinRM listener to a different port.
+    This can be useful if your firewall setup does not allow port **5986** or if you
+    want to use a non-standard port for security reasons. To move the WinRM listener
+    to a different port, use the **Set-Item** cmdlet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replace **<ListenerName>** with the name of the listener that you want to edit
+    and replace **<PortNumber>** with the port number that you want to configure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we’ll import our certificate. However, before doing so, it’s important
+    to understand that certificates generated through tools such as **New-SelfSignedCertificate**
+    already have usage restrictions built into them to ensure they are only valid
+    for client and server authentication. If you’re using a certificate generated
+    through another tool (for example, an internal PKI), it’s important to make sure
+    that it also has these usage restrictions. Additionally, ensure that the root
+    certificate is protected properly since attackers can use it to forge SSL certificates
+    for trusted websites.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have the appropriate certificate, copy it to a secure location on
+    the computer from where you want to connect to the remote machine (such as **C:\tmp\cert**
+    in our example), and then import it into the local certificate store:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Specify the credentials that you want to use to log in and enter your session.
+    The **-UseSSL** parameter indicates that your connection will be encrypted using
+    SSL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Of course, you still have to enter credentials to sign in to the machine remotely.
+    The certificate only guarantees the authenticity of the remote computer and helps
+    establish the encrypted connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring PowerShell Remoting via Group Policy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When working with multiple servers, you may not want to enable PSRemoting manually
+    on each machine, so Group Policy is the tool of your choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Group Policy, you can configure multiple machines using a single **Group
+    Policy** **Object** (**GPO**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get started, create a new GPO: open **Group Policy Management**, right-click
+    on the **Organizational Unit** (**OU**) in which you want to create the new GPO,
+    and select **Create a GPO in this domain, and Link** **it here…**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: GPO is only a tool to configure your machines – it doesn’t start services. Therefore,
+    you still need to find a solution to reboot all configured servers or start the
+    WinRM service on all servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to enable PSRemoting remotely, Lee Holmes has written a great script
+    that leverages WMI connections (which most systems support): [http://www.powershellcookbook.com/recipe/SQOK/program-remotely-enable-powershell-remoting](http://www.powershellcookbook.com/recipe/SQOK/program-remotely-enable-powershell-remoting).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Allowing WinRM
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the newly created GPO, navigate to **Computer Configuration** | **Policies**
+    | **Administrative Templates** | **Windows Components** | **Windows Remote Management**
+    | **WinRM Service** and set the **Allow remote server management through WinRM**
+    policy to **Enabled**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this policy, you can define the IPv4 and IPv6 filters. If you don’t use a
+    protocol (for example, IPv6), then leave it empty so that users can’t connect
+    to WinRM using this particular protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To allow connections, you can use the wildcard character, *****, an IP, or an
+    IP range.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with customers or in my demo labs, I learned that the most common
+    reason for errors occurring regarding why WinRM did not work was using an IP or
+    an IP range when configuring this setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, nowadays, I use the wildcard character, *****, *but only* in combination
+    with a **firewall IP restriction**, to secure my setup. We will configure the
+    firewall IP restriction later in this section (see *Creating a* *firewall rule*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.3 – Configuring Allow remote server management through WinRM](image/B16679_03_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.3 – Configuring Allow remote server management through WinRM
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caution!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Only use the wildcard (*****) configuration if you wish to restrict via a firewall
+    rule that remote IPs are allowed to connect to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the WinRM service to start automatically
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To configure the WinRM service so that it starts automatically, follow these
+    steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use the same GPO and navigate to **Computer Configuration** | **Policies** |
+    **Windows Settings** | **Security Settings** | **System Services**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select and configure the **Windows Remote Management (WS** **Management)** setting.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: A new window will open. Check the **Define this policy setting** option and
+    set the service startup mode to **Automatic**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Confirm your configuration by clicking **OK**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.4 – Configuring the Windows Remote Management service so that it
+    starts automatically](image/B16679_03_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.4 – Configuring the Windows Remote Management service so that it starts
+    automatically
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: This setting only configures the service to start automatically, which usually
+    happens when your computer starts. It does not start the service for you, so make
+    sure that you reboot your computer (or start the service manually) so that the
+    WinRM service starts automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a firewall rule
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To configure the settings of the firewall, follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Navigate to **Computer Configuration** | **Policies** | **Windows Settings**
+    | **Security Settings** | **Windows Defender Firewall with Advanced Security**
+    | **Windows Defender Firewall with Advanced Security** | **Inbound Rules**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a new inbound rule using the wizard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Check the **Predefined** option and select **Windows** **Remote Management**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.5 – Creating a predefined Windows Remote Management firewall rule](image/B16679_03_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.5 – Creating a predefined Windows Remote Management firewall rule
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click **Next** and remove the **Public** firewall profile by deselecting the
+    option shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.6 – Deselecting the public network profile](image/B16679_03_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.6 – Deselecting the public network profile
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, select **Allow the connection** before confirming your configuration
+    by clicking the **Finish** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.7 – Allow the connection](image/B16679_03_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.7 – Allow the connection
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The new rule will be created, and shown in your GPO:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.8 – Displaying the new inbound firewall rule](image/B16679_03_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.8 – Displaying the new inbound firewall rule
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before exiting the GPO configuration, make sure you open your newly created
+    firewall rule once again by double-clicking it. The **Windows Remote Management
+    (HTTP-In) Properties** window will open.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Optional: if your machines reside in the same domain, navigate to the **Advanced**
+    tab and deselect the **Private** profile to make sure that a remote connection
+    using WinRM is only allowed within the **Domain** network profile:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.9 – Only allowing WinRM within the Domain network profile](image/B16679_03_009.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.9 – Only allowing WinRM within the Domain network profile
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, navigate to the **Scope** tab and add all remote IP addresses from which
+    it should be allowed to access the computer remotely. For instance, if you have
+    a management subnet on your network, you can add the IP addresses within that
+    subnet to the list:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.10 – Configuring which remote IP addresses are allowed to connect](image/B16679_03_010.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.10 – Configuring which remote IP addresses are allowed to connect
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the best case, allow only a hardened, secure management system to manage
+    systems via PSRemoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the clean source principle to build the management system and use the recommended
+    privileged access model to access it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-success-criteria#clean-source-principle](https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-success-criteria#clean-source-principle)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model](https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PowerShell endpoints (session configurations)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you might have read the term **endpoint** several times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we are talking about endpoints, we are not talking about one computer: PSRemoting
+    is designed to work with multiple endpoints on a computer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what exactly is an endpoint?
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we are talking about PowerShell endpoints, *each endpoint is a session
+    configuration*, which you can configure to offer certain services or which you
+    can also restrict.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, every time we run **Invoke-Command** or enter a PowerShell session, we are
+    connecting to an endpoint (also known as a remote session configuration).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sessions that offer fewer cmdlets, functions, and features, as those that are
+    usually available if no restrictions are in place, are called **constrained endpoints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we enable PSRemoting, no endpoint will have been configured on the computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see all the available session configurations by running the **Get-PSSessionConfiguration**
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.11 – No endpoint is shown when PSRemoting is not enabled](image/B16679_03_011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.11 – No endpoint is shown when PSRemoting is not enabled
+  prefs: []
+  type: TYPE_NORMAL
+- en: When PSRemoting is not enabled on a computer, no endpoint will be shown. This
+    is because the WinRM service, which is responsible for PSRemoting, is not started
+    by default. However, once the WinRM service is started, the endpoints are already
+    configured and ready to use, but not exposed and cannot be connected to until
+    PSRemoting is enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enabling PSRemoting using **Enable-PSRemoting**, as we did in the previous
+    section, creates all default session configurations, which are necessary to connect
+    to this endpoint via PSRemoting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.12 – After enabling PSRemoting, we can see all the prepopulated
+    endpoints](image/B16679_03_012.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.12 – After enabling PSRemoting, we can see all the prepopulated endpoints
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Typically, in Windows PowerShell 3.0 and above, there are three default preconfigured
+    endpoints on client systems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**microsoft.powershell**: This is the standard endpoint and is used for PSRemoting
+    connections if not specified otherwise'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**microsoft.powershell32**: This is a 32-bit endpoint that’s optional if you’re
+    running a 64-bit operating system'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**microsoft.powershell.workflow**: This endpoint is for PowerShell workflows
+    – h[ttps://docs.microsoft.com/en-us/system-center/sma/overview-powershell-workflows?view=sc-sma-2019](https://docs.microsoft.com/en-us/system-center/sma/overview-powershell-workflows?view=sc-sma-2019'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On *server systems*, there’s typically a fourth session configuration that’s
+    predefined:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**microsoft.windows.servermanagerworkflows**: This endpoint is for Server Manager
+    workflows – https://docs.microsoft.com/en-us/windows-server/administration/server-manager/server-manager'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Every computer will show different default endpoints. In the preceding example,
+    I ran the command on a Windows 10 client, which will show fewer endpoints than,
+    for example, Windows Server 2019.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting to a specified endpoint
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'By default, the **microsoft.powershell** endpoint is used for all PSRemoting
+    connections. But if you want to connect to another specified endpoint, you can
+    do this by using the **-****ConfigurationName** parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: The specified configuration can be either the name of another default or a custom
+    endpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a custom endpoint – a peek into JEA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Creating a custom endpoint (also known as **Just Enough Administration** or
+    **JEA**) allows you to define a restricted administrative environment for delegated
+    administration. With JEA, you can define a set of approved commands and parameters
+    that are allowed to be executed on specific machines by specific users. This enables
+    you to give users just enough permissions to perform their job duties, without
+    granting them full administrative access. It is a great way to secure your remote
+    connections:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can restrict the session so that only predefined commands will be run.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can enable transcription so that every command that is executed in this
+    session is logged.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can specify a security descriptor (SDDL) to determine who is allowed to
+    connect and who isn’t.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can configure scripts and modules that will be automatically loaded as soon
+    as the connection to this endpoint is established.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can even specify that another account is used to run your commands in this
+    session on the endpoint.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To create and activate an endpoint, two steps need to be followed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a session configuration file
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Registering the session as a new endpoint
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Creating a session configuration file
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Using **New-PSSessionConfigurationFile**, you can create an empty skeleton
+    session configuration file. You need to specify the path where the configuration
+    file will be saved, so the **-Path** parameter is mandatory. A session configuration
+    file ends with the **.pssc** filename extension, so make sure you name the file
+    accordingly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Have a look at the official documentation for more information: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/new-pssessionconfigurationfile](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/new-pssessionconfigurationfile).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can either generate an empty session configuration file and populate it
+    later using an editor or you can use the **New-PSSessionConfigurationFile** parameters
+    to directly generate the file with all its defined configuration options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.13 – New-PSSessionConfigurationFile parameters](image/B16679_03_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.13 – New-PSSessionConfigurationFile parameters
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this example, we will create a session configuration file for a **RestrictedRemoteServer**
+    session:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: By using **-SessionType RestrictedRemoteServer**, only the most important commands
+    are being imported into this session, such as **Exit-PSSession**, **Get-Command**,
+    **Get-FormatData**, **Get-Help**, **Measure-Object**, **Out-Default**, and **Select-Object**.
+    If you want to allow other commands in this session, they need to be configured
+    in the role capability file, which we will discuss in detail in [*Chapter 10*](B16679_10_Final_PD.xhtml#_idTextAnchor278),
+    *Language Modes and Just Enough* *Administration (JEA)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Registering the session as a new endpoint
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: After creating the session configuration file, you must register it as an endpoint
+    by utilizing the **Register-PSSessionConfiguration** command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When utilizing the mandatory **-Name** parameter, make sure you only specify
+    the name of the session configuration file, without including the filename extension:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The session configuration will be registered, and a new endpoint will be created.
+    Sometimes, it might be necessary to restart the WinRM service after registering
+    an endpoint:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using **Get-PSSessionConfiguration**, you can verify that the endpoint was created.
+    If you specify the endpoint name using the **-Name** parameter, as in the preceding
+    example, you will only get the information relevant to the specified endpoint.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will have a deeper look into the possible session configuration and registering
+    parameters in [*Chapter 10*](B16679_10_Final_PD.xhtml#_idTextAnchor278), *Language
+    Modes and Just Enough* *Administration (JEA)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting authentication and security considerations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: PSRemoting traffic is encrypted by default – regardless of whether a connection
+    was initiated via HTTP or HTTPS. The underlying protocol that’s used is WS-Man,
+    which is decoupled to allow it to be used more broadly. PSRemoting uses an authentication
+    protocol, such as Kerberos or NTLM, to authenticate the session traffic, and SSL/TLS
+    is used to encrypt the session traffic, regardless of whether the connection was
+    initiated via HTTP or HTTPS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But similar to every other computer, PSRemoting is only as secure as the computer
+    that’s been configured. And if you don’t secure your administrator’s credentials,
+    an attacker can extract and use them against you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, you should also put effort into hardening your infrastructure and
+    securing your most valuable identities. You will learn more about Active Directory
+    security and credential hygiene in [*Chapter 6*](B16679_06_Final_PD.xhtml#_idTextAnchor150),
+    *Active Directory – Attacks and Mitigations*, and learn more about what mitigations
+    you can put in place in *Part 3*, *Securing PowerShell – Effective Mitigations*
+    *in Detail*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s important to understand that enabling PSRemoting does not automatically
+    ensure a secure environment. As with any remote management technology, it’s critical
+    to harden your systems and take appropriate security measures to protect against
+    potential threats. This applies not only to PSRemoting but also to other remote
+    management technologies, such as RDP. By investing time and effort into securing
+    your systems and environment, you can mitigate potential risks and better protect
+    your organization’s assets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let’s have a look at how authentication is used within PSRemoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By default, WinRM uses **Kerberos** for authentication and falls back to **NTLM**
+    in case Kerberos authentication is not possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When used within a domain, Kerberos is the standard to authenticate. To use
+    Kerberos for authentication in PSRemoting, ensure that both the client and server
+    computers are connected to the same domain and that the DNS names have been properly
+    configured and are reachable. It’s also important to note that from a Kerberos
+    perspective, the server must be registered in Active Directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In general, you can specify which protocol should be used when connecting to
+    a remote computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: When establishing a PSRemoting session, if the **-Authentication** parameter
+    is not specified, the default value of **Default** is used, which is equal to
+    the **Negotiate** value. This means that the client and server negotiate the best
+    authentication protocol to use based on what is supported by both systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Typically, *Kerberos* is the preferred protocol, but if it’s not available
+    or supported, the system will fall back to using *NTLM*. More information about
+    **Negotiate** can be found in the Microsoft documentation for Negotiate in Win32
+    applications: [https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-negotiate](https://learn.microsoft.com/en-us/windows/win32/secauthn/microsoft-negotiate).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What are the circumstances for an NTLM fallback?
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: PSRemoting was designed to work with Active Directory, so Kerberos is the preferred
+    authentication protocol. But in some cases, Kerberos authentication is not possible
+    and NTLM is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Kerberos**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Computers are joined to the same domain or are both within domains that trust
+    each other.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The client can resolve the server’s hostname or IP address.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The server has a valid **Service Principal Name** (**SPN**) registered in Active
+    Directory. The SPN matches the target you are connecting to.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**NTLM**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Commonly used to connect to non-domain-joined workstations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If IP addresses are used instead of DNS names
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To connect to the **PSSec-PC01** computer via Kerberos, we can use the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: If no credentials were explicitly specified, if the current user has permission
+    to access the remote computer, and if the remote computer is configured to accept
+    Kerberos authentication, the connection will be established automatically without
+    the need to provide any explicit credentials. This is one of the benefits of using
+    Kerberos authentication, as the authentication process is implicit and seamless
+    for the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the current user does not have permission to access the remote computer,
+    we can also specify explicitly which credentials should be used with the **-Credential**
+    parameter. To simplify testing, we use **Get-Credential** to prompt for the credentials
+    and store them in the **$cred** secure string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we connect via Kerberos:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you capture the traffic using Wireshark, you will see that WinRM includes
+    Kerberos as its **content-type** as part of its protocol, indicating that Kerberos
+    was used for authentication. While the actual Kerberos traffic itself may not
+    be visible in the HTTP packet, the use of Kerberos for authentication can still
+    be confirmed by examining the headers in the WinRM traffic. Additionally, you
+    can see that the entire HTTP session is encrypted, providing an added layer of
+    security:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.14 – WinRM HTTP traffic captured with Wireshark](image/B16679_03_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.14 – WinRM HTTP traffic captured with Wireshark
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, a session to **PSSec-PC01** has been established over port **5985**
+    (WinRM over HTTP), using PowerShell version 5.1.17763.1490\. The request was sent
+    via WS-Man.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the initial authentication process is complete, WinRM proceeds to encrypt
+    all ongoing communication to maintain the security of the data being exchanged
+    between the client and server. When establishing a connection over HTTPS, the
+    TLS protocol is utilized to negotiate the encryption method used for data transportation.
+    In the case of an HTTP connection, the encryption that’s utilized for message-level
+    encryption is determined by the initial authentication protocol used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The level of encryption provided by each authentication protocol is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Basic authentication**: No encryption.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**NTLM authentication**: RC4 cipher with a 128-bit key.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Kerberos authentication**: **etype** in the TGS ticket determines the encryption.
+    On modern systems, this is typically AES-256.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CredSSP authentication**: The TLS cipher suite that was negotiated in the
+    handshake will be used.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Note that while the HTTP protocol is used as the connection protocol, the content
+    is encrypted using the appropriate encryption mechanism based on the initial authentication
+    protocol used. A common misconception about PSRemoting is that a connection using
+    WinRM over HTTP is not encrypted. However, as you can see in the following screenshot,
+    this is not the case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.15 – Kerberos TCP stream captured with Wireshark](image/B16679_03_015.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.15 – Kerberos TCP stream captured with Wireshark
+  prefs: []
+  type: TYPE_NORMAL
+- en: If DNS names are not working and if both hosts are not joined to the same domain,
+    NTLM will be used as a fallback option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are connecting to a remote computer in the same domain, with working
+    DNS names, NTLM is still used to connect if the host IP address is specified instead
+    of the hostname:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Capturing the traffic with Wireshark once more reveals that NTLM was used to
+    authenticate and that the traffic is encrypted as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.16 – NTLM traffic captured with Wireshark](image/B16679_03_016.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.16 – NTLM traffic captured with Wireshark
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to connecting with Kerberos, you can see that a connection is established
+    to the host, **172.29.0.12**, using WinRM over HTTP (port **5985**). But this
+    time, NTLM is used instead of Kerberos to negotiate the session. Using NTLM, you
+    can even capture the hostname, the username, the domain name, and the challenge,
+    which is used for authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Going deeper into the TCP stream, it becomes evident that the communication
+    is once again encrypted, even when NTLM is used, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.17 – NTLM TCP stream captured with Wireshark](image/B16679_03_017.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.17 – NTLM TCP stream captured with Wireshark
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using NTLM authentication, please note that PSRemoting only works if the
+    remote host was added to the **TrustedHosts** list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using NTLM authentication, it’s important to understand the limitations
+    of the **TrustedHosts** list. While adding a remote host to the **TrustedHosts**
+    list can help you catch your mistakes, it’s not a reliable way to ensure secure
+    communication. This is because NTLM can’t guarantee that you are connecting to
+    the intended remote host, which makes using **TrustedHosts** misleading. It’s
+    important to note that the main weakness of NTLM is its inability to verify the
+    identity of the remote host. Therefore, even with **TrustedHosts**, NTLM connections
+    shouldn’t be considered more trustworthy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If the host is not specified as a trusted host and if the credentials are not
+    explicitly provided (like we did when using **-Credential $cred**), establishing
+    a remote session or running commands remotely will fail and show an error message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Kerberos and NTLM are not the only authentication protocols, but they are the
+    most secure compared with others. Let’s have a look at what other methods exist
+    and how you can enforce them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication protocols
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Of course, it is also possible to configure which authentication method should
+    be used by specifying the **-****Authentication** parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication protocols
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it is possible to use Kerberos authentication, you should always use Kerberos,
+    as this protocol provides most security features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proceed to [*Chapter 6*](B16679_06_Final_PD.xhtml#_idTextAnchor150), *Active
+    Directory – Attacks and Mitigation*, to learn more about authentication and how
+    Kerberos and NTLM work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are all accepted values for the **-****Authentication** parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Default**: This is the default value. Here, **Negotiate** will be used.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Basic**: Basic authentication is used to authenticate, using the HTTP protocol,
+    but does not provide security by itself – neither for the data, which is transported
+    in cleartext over the network, nor for the credentials. However, when paired with
+    TLS, this can still be a reasonably secure mechanism and is commonly used by many
+    websites.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As the credentials are only encoded using Base64 encoding, the encryption can
+    easily be reversed and the credentials can be extracted in cleartext.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This authentication does not provide confidentially for the provided credentials
+    if they’re not encrypted with **SSL**/**TLS**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Credssp**: Using the **CredSSP** authentication, the user’s credentials will
+    be provided by PowerShell from the client to the remote server to authenticate
+    the user. This mode is particularly useful in situations where you need the remote
+    session to be able to authenticate as you for further network hops. After this
+    authentication, the credentials are passed between the client and server in an
+    encrypted format to maintain security.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When using the CredSSP authentication mechanism, PowerShell passes the user’s
+    full credentials to the remote server for authentication. This means that if you
+    connect to a compromised machine, an adversary can extract your credentials directly
+    from memory. It’s important to note that this is the default authentication mechanism
+    of RDP, making PSRemoting a more secure alternative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Digest**: Digest authentication is one of the methods a web server can use
+    for authentication. The username and password are hashed using **MD5** cryptography
+    algorithms before they’re sent over the network using the **HTTP** protocol. Before
+    hashing, a nonce is added to avoid replay attacks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It does not provide strong authentication compared to other authentication protocols
+    (for example, key-based ones), but it is still stronger than weaker authentication
+    mechanisms and should be considered as a replacement for weak basic authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Kerberos**: This form of authentication uses the Kerberos protocol. Kerberos
+    is the standard to authenticate in a domain and provides the highest security.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Negotiate**: This option allows the client to negotiate the authentication.
+    When a domain account is used, the authentication will be via Kerberos; with a
+    local account, it falls back to NTLM.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**NegotiateWithImplicitCredential**: This option uses the current user’s credentials
+    to authenticate (run as).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These authentication mechanisms can be used within all PSRemoting cmdlets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'They are also specified in the **AuthenticationMechanism** **enum**, which
+    is defined in Microsoft docs: https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.runspaces.authenticationmechanism.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It’s important to note that PowerShell considers some authentication mechanisms
+    as potentially dangerous and may show error messages if you try to use them. In
+    such cases, you would need to explicitly override these errors to proceed with
+    the dangerous authentication mechanism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic authentication security considerations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If used without any additional encryption layers, basic authentication is not
+    secure. In this section we are going to explore a very good example of why you
+    should not use basic authentication or why you should always encrypt your communication
+    using **Transport Layer Security** (**TLS**) if you have to use basic authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caution!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not configure this in your production environment as this configuration is
+    highly insecure and is only shown for testing purposes. You will compromise yourself
+    if you use this configuration!
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to configure your **test environment** to use basic authentication
+    and allow unencrypted traffic, you need to configure your WinRM configuration
+    to allow basic authentication, as well as unencrypted traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, **PSSec-PC01** is the remote host to which we want to connect
+    using unencrypted traffic and basic authentication. We will connect from a management
+    machine, which will be **PSSec-PC02**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we try to authenticate from **PSSec-PC02** to **PSSec-PC01** (the IP address
+    is **172.29.0.12**) using the **-Authentication Basic** parameter, we get a message
+    stating that we need to provide a username and a password to authenticate using
+    basic authentication:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.18 – Error messages are shown if an insecure authentication mechanism
+    is used](image/B16679_03_018.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.18 – Error messages are shown if an insecure authentication mechanism
+    is used
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we provide these credentials, we are still not able to authenticate and
+    get another error message stating that access has been denied. The reason for
+    this is that **basic** authentication is an insecure authentication mechanism
+    if it’s not protected by TLS. Therefore, PSRemoting does not allow you to connect
+    using this insecure authentication mechanism if you don’t configure it explicitly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let’s configure basic authentication explicitly in our demo setup, knowing
+    that we will weaken our configuration on purpose. First, allow unencrypted traffic
+    on **PSSec-PC01**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Remember to differentiate between **service** and **client** configuration.
+    As we want to connect to **PSSec-PC01**, we will connect to the WinRM service,
+    so we are configuring **service**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, configure basic authentication to be allowed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After making changes to the WinRM configuration, it is important to restart
+    the WinRM service for the new configuration to take effect:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let’s configure **PSSec-PC02** to establish unencrypted connections to
+    other devices using basic authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we must configure the client so that unencrypted connections can be
+    initialized:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we must make sure that the client is allowed to establish connections
+    using basic authentication:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, restart the WinRM service to load the new configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, this configuration exposes your devices and makes them vulnerable. Specifically,
+    it exposes your credentials to potential attackers who could intercept network
+    traffic while you connect to your machines. This could allow an attacker to gain
+    unauthorized access to your systems and potentially compromise sensitive data
+    or perform malicious actions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, we apply this configuration only in a test environment. In productive
+    environments, it’s important to take appropriate security measures, such as enabling
+    encryption and using secure authentication protocols, to protect your devices
+    and data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As soon as we have our vulnerable configuration in place, it’s time to connect
+    using basic authentication. I have added a local user called **PSSec** on **PSSec-PC01**,
+    which I will use in this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s connect from **PSSec-PC02** to **PSSec-PC01** (the IP address is **172.29.0.12**)
+    by using the **-Authentication** parameter while specifying **Basic**, as well
+    as the credentials for the **PSSec** user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The session is being established. If I track the traffic using Wireshark, I
+    will see the SOAP requests that are being made. Even worse, I can see the **Authorization**
+    header, which exposes the Base64-encrypted username and password:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.19 – Wireshark capture of authenticating using unencrypted basic
+    authentication](image/B16679_03_019.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.19 – Wireshark capture of authenticating using unencrypted basic authentication
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Base64 can be easily decrypted, for example, with PowerShell itself:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 3.20 – Decrypting Base6\uFEFF4-encrypted credentials](image/B16679_03_020.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.20 – Decrypting Base64-encrypted credentials
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, an attacker can easily find out that the password of the **PSSec** user
+    is **PS-SecRockz1234!** and can either inject the session as a man in the middle
+    or use the password to impersonate the **PSSec** user – a great start when they’re
+    attacking the entire environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I hope I made the risks of basic authentication and unencrypted sessions more
+    transparent so that you will try this configuration in test environments only
+    – and avoid it in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PowerShell remoting and credential theft
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Depending on the authentication method that is used, credentials can be entered
+    into the remote system, which can be stolen by an adversary. If you are interested
+    in learning more about **credential theft** and mitigations, the *Mitigating Pass-the-Hash
+    (PtH) Attacks and Other Credential Theft* white papers are a valuable resource:
+    [https://www.microsoft.com/en-us/download/details.aspx?id=36036](https://www.microsoft.com/en-us/download/details.aspx?id=36036).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, PSRemoting does not leave credentials on the target system, which
+    makes PowerShell an awesome administration tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But if, for example, PSRemoting with CredSSP is used, the credentials enter
+    the remote system, where they can be extracted and used to impersonate identities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that when using CredSSP as an authentication mechanism, the credentials
+    used to authenticate to the remote system are cached on that system. While this
+    is convenient for single sign-on purposes, it also makes those cached credentials
+    vulnerable to theft. If you can avoid it, do not use CredSSP as an authentication
+    mechanism. But if you choose to use CredSSP, it is recommended that you enable
+    Credential Guard to help mitigate this risk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will have a closer look at authentication and how the infamous pass-the-hash
+    attack works in [*Chapter 6*](B16679_06_Final_PD.xhtml#_idTextAnchor150), *Active
+    Directory – Attacks* *and Mitigation*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Executing commands using PowerShell remoting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes, you may want to run a command remotely but have not configured PSRemoting.
+    Some cmdlets provide built-in remoting technologies that can be leveraged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All commands that offer a built-in remoting technology have one thing in common:
+    typically, they all have a parameter called **-ComputerName** to specify the remote
+    endpoint.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get a list of locally available commands that have the option to run tasks
+    remotely, use the **Get-Command -CommandType Cmdlet -ParameterName** **ComputerName**
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: Please note that this list is not complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cmdlets with a **-ComputerName** parameter do not necessarily use WinRM. Some
+    use WMI, many others use RPC – it depends on the underlying technology of the
+    cmdlet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As every cmdlet has an underlying protocol, its firewall configuration and
+    services need to be configured accordingly. This could mean a big management overhead.
+    So, when managing environments remotely, it makes sense to configure PSRemoting
+    accordingly: using WinRM is firewall-friendly and easier to configure and maintain.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not be confused!
+  prefs: []
+  type: TYPE_NORMAL
+- en: PSRemoting should not be confused with using the **-ComputerName** parameter
+    of a cmdlet to execute it on a remote computer. They are distinct approaches with
+    different capabilities and usage scenarios. Those cmdlets that utilize the **-ComputerName**
+    parameter rely on their underlying protocols, which often need a separate firewall
+    exception rule to run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Executing single commands and script blocks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You can *execute a single command* or *entire script blocks* on a remote or
+    local computer using the **Invoke-Command** cmdlet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following example shows how to restart the printer spooler on the **PSSec-PC01**
+    remote computer, which is displaying verbose output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Invoke-Command** is a great option for running local scripts and commands
+    on a remote computer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you don’t want to copy the same scripts to your remote machine(s), you can
+    use **Invoke-Command** with the **-FilePath** parameter to *run the local script
+    on the* *remote system*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: When using the **-FilePath** parameter with **Invoke-Command**, it is important
+    to keep in mind that any dependencies required by the script (such as other scripts
+    or commands) must also be present on the remote system. Otherwise, the script
+    will not run as expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can also *execute commands on multiple systems* – just specify all the
+    remote systems that you want to execute your command or script on in the **-ComputerName**
+    parameter. The following command restarts the print spooler on **PSSec-PC01**
+    and **PSSec-PC02**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Please have a look at the official PowerShell documentation to learn all options
+    that **Invoke-Command** has to offer: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/invoke-command](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/invoke-command).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with PowerShell sessions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **-Session** parameter indicates that a cmdlet or function supports sessions
+    within PSRemoting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find all locally available commands that support the **-Session** parameter,
+    you can use the **Get-Command -ParameterName** **session** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.21 – All commands that provide a session parameter](image/B16679_03_021.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.21 – All commands that provide a session parameter
+  prefs: []
+  type: TYPE_NORMAL
+- en: All local commands that provide a **-Session** parameter will be shown.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interactive sessions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'By leveraging the **Enter-PSSession** command, you can initiate an interactive
+    session. Once the session has been established, you can work on the remote system’s
+    shell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.22 – Entering a PowerShell session, executing a command, and exiting
+    the session](image/B16679_03_022.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.22 – Entering a PowerShell session, executing a command, and exiting
+    the session
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once your work is finished, use **Exit-PSSession** to close the session and
+    the remote connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Persistent sessions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **New-PSSession** cmdlet can be utilized to establish a persistent session.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As in a former example, we use **Get-Credential** once more to store our credentials
+    as a secure string in the **$****cred** variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the following command, we create two sessions for the **PSSec-PC01**
+    and **PSSec-PC01** remote computers to execute commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To display all active sessions, you can use the **Get-PSSession** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.23 – Creating persistent sessions and displaying them](image/B16679_03_023.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.23 – Creating persistent sessions and displaying them
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, you can use the **$sessions** variable to run commands in all remote computer
+    sessions that you’ve specified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A common use case is to check whether all security updates were applied to
+    your remote computers. In this case, we want to check whether the **KB5023773**
+    hotfix is installed on all remote computers. We also don’t want any error messages
+    to be displayed if the hotfix was not found, so we will use the **-ErrorAction
+    SilentlyContinue** parameter in our code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output we get after running this command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.24 – Running a command in all specified sessions](image/B16679_03_024.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.24 – Running a command in all specified sessions
+  prefs: []
+  type: TYPE_NORMAL
+- en: As it turns out, the hotfix is only installed on **PSSec-PC01** but is missing
+    on the second computer, **PSSec-02**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To act on this and install the missing update, we can either send more commands
+    directly into the session or we can enter the session interactively by specifying
+    the session ID – that is, **Enter-PSSession -****Id 2**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.25 – Entering a persistent session, running a command, and exiting
+    it again](image/B16679_03_025.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.25 – Entering a persistent session, running a command, and exiting
+    it again
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have entered the session, we can run the **Get-WindowsUpdate**
+    command to install the missing update. Please note that this command is not available
+    by default and requires you to install the **PSWindowsUpdate** module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: After our command has run, we can exit the session using **Exit-PSSession**,
+    which only disconnects us from the session but leaves the session open.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are using an interactive session, all executed modules, such as **PSWindowsUpdate**,
+    need to be installed on the remote system. If you use **Invoke-Command** to run
+    commands in a persistent session, the module only needs to be installed on the
+    computer that you use to run the commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Invoke-Command – Session $sessions -ScriptBlock { Get-WindowsUpdate -Install
+    -****KBArticleID ‘KB5023773’}**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we check for **KB5023773** after some time, we will see that the update
+    was installed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.26 – The update was installed successfully](image/B16679_03_026.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.26 – The update was installed successfully
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As soon as we are finished with our work and if we don’t need our sessions
+    anymore, we can remove them using the **Remove-PSSession** command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we can use the **$sessions** variable, which we specified earlier:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Alternatively, we can remove a single session by using the **-****id** parameter:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After removing one or all session(s), you can use **Get-PSSession** to verify
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.27 – Removing all persistent sessions](image/B16679_03_027.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 3.27 – Removing all persistent sessions
+  prefs: []
+  type: TYPE_NORMAL
+- en: Executing commands using PSRemoting can simplify your daily administration workload
+    immensely. Now that you have learned the basics, you can combine it with your
+    PowerShell scripting knowledge. What problems will you solve and what tasks will
+    you automate?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Best practices
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To ensure optimal security and performance when using PSRemoting, it’s important
+    to follow the best practices enforced by the product. These practices are designed
+    to minimize the risk of security breaches and ensure that your remote management
+    tasks run smoothly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Authentication**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If possible, use only Kerberos or NTLM authentication.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Avoid CredSSP and basic authentication whenever possible.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the best case, restrict the usage of all other authentication mechanisms
+    besides Kerberos/NTLM.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SSH remoting – configure public key authentication and keep the private key
+    protected.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Limit connections**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Limit connections via firewall from a management subnet (hardware and software
+    if possible/available).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PSRemoting’s default firewall policies differ based on the network profile.
+    In a **Domain**, **Workgroup**, or **Private** network profile, PSRemoting is
+    available to all by default (assuming they have valid credentials). In a **Public**
+    profile, PSRemoting refuses to listen to that adapter by default. If you force
+    it to, the network rule will limit access to only systems on the same network
+    subnet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use a secure management system to manage systems via PSRemoting. Consider limiting
+    connections from a management **virtual network** (**VNet**) if you have one,
+    which also applies to other management protocols such as RDP, WMI, CIM, and others.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Use a secure management system to manage systems via PSRemoting. Use the clean
+    source principle to build the management system and use the recommended privileged
+    access model:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-success-criteria#clean-source-principle](https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-success-criteria#clean-source-principle)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model](https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Restrict sessions**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use constrained language and JEA.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You will learn more about JEA, constrained language, session security, and SDDLs
+    in [*Chapter 10*](B16679_10_Final_PD.xhtml#_idTextAnchor278), *Language Modes
+    and Just Enough* *Administration (JEA).*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Audit** **insecure settings**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use the WinRM group policy to enforce secure PSRemoting settings on all managed
+    systems, including encryption and authentication requirements.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Get-Item WSMan:\localhost\Client\AllowUnencrypted**: This setting should
+    *not* be set to **$true**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Audit insecure WinRM settings regularly to ensure compliance with security
+    policies:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Eventually, use **Desired State Configuration** (**DSC**) to audit and apply
+    your settings.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**And all other mitigation methods mentioned in the previous chapter, especially**
+    **the following**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enable logging and transcription and monitor event logs. You can read more about
+    this in [*Chapter 4*](B16679_04_Final_PD.xhtml#_idTextAnchor090), *Detection –
+    Auditing* *and Monitoring*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Eliminate unnecessary local and domain administrators
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enable and enforce script signing. You will learn more about script signing
+    in [*Chapter 11*](B16679_11_Final_PD.xhtml#_idTextAnchor306), *AppLocker, Application
+    Control, and* *Code Signing*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configure **DSC** to harden your systems and control your system configuration.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PSRemoting is a great way to administrate your systems efficiently. Of course,
+    it is only as secure as you configure it to be. If the right configuration is
+    in place, administration via PSRemoting is even more secure than logging in interactively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After reading this chapter, you should be familiar with how to use PowerShell
+    remotely, using PSRemoting. You learned what options exist in PowerShell to establish
+    remote connections, which enables you to not only manage Windows machines but
+    also other operating systems, such as macOS and Linux.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You also learned what endpoints are and can create basic custom endpoints. You
+    will strengthen this ability later in [*Chapter 10*](B16679_10_Final_PD.xhtml#_idTextAnchor278),
+    *Language Modes and Just Enough Administration (JEA)*, but you already know the
+    basics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, you learned a lot about authentication protocols that can be used and
+    even more about security considerations when working with those protocols. You
+    should also be aware of how easily an adversary can obtain decrypted credentials
+    if a weak authentication protocol is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should now be able to configure PSRemoting manually and centrally, which
+    helps you set up your initial PSRemoting configuration in your production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Last but not least, you learned how to execute commands using PSRemoting, which
+    enables you to not only run one command on one device – you can also automate
+    your tedious administration tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with PowerShell – either remotely or locally – auditing and monitoring
+    are very important topics. Using transcriptions and event logging helps the Blue
+    Team detect adversaries and protect their environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, now that you are familiar with PSRemoting, we’ll look at detection
+    and logging within PowerShell in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you want to explore some of the topics that were mentioned in this chapter,
+    take a look at these resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Authentication**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'RFC 2617 – HTTP authentication (basic and digest authentication): [https://tools.ietf.org/html/rfc2617](https://tools.ietf.org/html/rfc2617)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Credential Security Support Provider** (**CredSSP**) protocol:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cssp/85f57821-40bb-46aa-bfcb-ba9590b8fc30](https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cssp/85f57821-40bb-46aa-bfcb-ba9590b8fc30)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://ldapwiki.com/wiki/Wiki.jsp?page=CredSSP](https://ldapwiki.com/wiki/Wiki.jsp?page=CredSSP)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Public key authentication:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://en.wikipedia.org/wiki/Public-key_cryptography](https://en.wikipedia.org/wiki/Public-key_cryptography)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://www.ssh.com/ssh/public-key-authentication](https://www.ssh.com/ssh/public-key-authentication)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**CIM**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'CIM cmdlets: [https://devblogs.microsoft.com/powershell/introduction-to-cim-cmdlets/](https://devblogs.microsoft.com/powershell/introduction-to-cim-cmdlets/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'CIM standard by DMTF: [https://www.dmtf.org/standards/cim](https://www.dmtf.org/standards/cim)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**DCOM**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**DCOM** remote protocol: [https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dcom/4a893f3d-bd29-48cd-9f43-d9777a4415b0](https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dcom/4a893f3d-bd29-48cd-9f43-d9777a4415b0)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**OMI**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open Management Infrastructure (OMI): [https://cloudblogs.microsoft.com/windowsserver/2012/06/28/open-management-infrastructure/](https://cloudblogs.microsoft.com/windowsserver/2012/06/28/open-management-infrastructure/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Other** **useful resources**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'New-NetFirewallRule: [https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule](https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**PowerShell remoting**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[MS-PSRP]: PowerShell remoting protocol: [https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-psrp/602ee78e-9a19-45ad-90fa-bb132b7cecec](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-psrp/602ee78e-9a19-45ad-90fa-bb132b7cecec)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Running Remote Commands: [https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/running-remote-commands](https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/running-remote-commands)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'WS-Man Remoting in PowerShell Core: [https://learn.microsoft.com/en-us/powershell/scripting/learn/remoting/wsman-remoting-in-powershell-core?view=powershell-7.3](https://learn.microsoft.com/en-us/powershell/scripting/learn/remoting/wsman-remoting-in-powershell-core?view=powershell-7.3)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'WS-Man specifications by DMTF: [https://www.dmtf.org/standards/ws-man](https://www.dmtf.org/standards/ws-man)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'WinRM security: [https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/winrmsecurity](https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/winrmsecurity)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'PowerShell endpoints: [https://devblogs.microsoft.com/scripting/introduction-to-powershell-endpoints/](https://devblogs.microsoft.com/scripting/introduction-to-powershell-endpoints/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'PSRemoting over SSH: https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/ssh-remoting-in-powershell-core'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The second hop: [https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/ps-remoting-second-hop](https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/ps-remoting-second-hop)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**WMI**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get-WmiObject: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-wmiobject](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-wmiobject)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Invoke-WmiMethod: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/invoke-wmimethod](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/invoke-wmimethod)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Register-WmiEvent: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/register-wmievent](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/register-wmievent'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Remove-WmiObject: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/remove-wmiobject](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/remove-wmiobject'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Set-WmiInstance: [https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-wmiinstance](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-wmiinstance'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**WS-Man**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'WS-Man standard by DMTF: [https://www.dmtf.org/standards/ws-man](https://www.dmtf.org/standards/ws-man'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: )
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'WS-Management Remoting in PowerShell Core: https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/wsman-remoting-in-powershell-core'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can also find all the links mentioned in this chapter in the GitHub repository
+    for [*Chapter 3*](B16679_03_Final_PD.xhtml#_idTextAnchor064) – there’s no need
+    to manually type in every link: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter03/Links.md](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter03/Links.md).'
+  prefs: []
+  type: TYPE_NORMAL

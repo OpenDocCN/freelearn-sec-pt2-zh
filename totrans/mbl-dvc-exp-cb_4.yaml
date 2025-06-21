@@ -1,0 +1,1230 @@
+- en: Chapter 4. Attacking Mobile Application Traffic
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up the wireless pentesting lab for mobile devices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring traffic interception with Android
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Intercepting traffic using Burp Suite and Wireshark
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using MITM proxy to modify and attack
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring traffic interception with iOS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing traffic and extracting sensitive information from iOS App traffic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WebKit attacks on mobile applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performing SSL traffic interception by certificate manipulation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a mobile configuration profile to set up a VPN and intercept traffic in
+    iOS devices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bypassing SSL certificate validation in Android and iOS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Mobile application architecture involves communication between an application
+    running on mobile devices (`.apk`, `.ipa`, and so on) and the server-side application
+    component, where the business logic resides. This communication is over various
+    channels like HTTP, GPRS, USSD, SMS, and so on. Communication channels are open
+    for attackers, and so, the communication security or the security for data in
+    transit becomes important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter focuses on attacking the mobile application traffic. For the sake
+    of simplicity, we selected the HTTP communication layer in the recipes that follow.
+    Sensitive mobile applications have implemented SSL for implementing confidentiality,
+    but we will learn in the recipes that follow that the SSL traffic can be attacked
+    too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up the wireless pentesting lab for mobile devices
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let us start with setting up a lab for wireless pentesting of mobile devices.
+    To be able to sniff traffic originating from mobile devices, we need to see how
+    mobile applications communicate, that is, what is the communication channel? How
+    do HTTP or HTTPS requests flow out of mobile?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mobile application HTTP/HTTPS traffic flows via GPRS or a Wi-Fi channel. With
+    either channel we need to set up a lab to sniff over the air. GPRS sniffing requires
+    a specific set of hardware and various black hat techniques around it are available
+    to do the rest. Be careful with it, GPRS (telecom) traffic interception is illegal
+    in some countries. We will focus on lab setup for a Wi-Fi channel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We need a Wi-Fi network (wireless access point connected to the Internet). We
+    need mobile device(s) running the target applications, whose traffic will be sniffed.
+    We also need a laptop (or computer), with any proxy tool installed on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that both the mobile device and laptop should have wireless cards; they
+    should be able to connect to the Wi-Fi network and participate in the HTTP communication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Perform the following steps to set up the wireless pentesting lab:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Set up the wireless network and check to make sure that the Wi-Fi network is
+    broadcasting and the SSID is available to connect various Wi-Fi enabled devices
+    to it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Connect your mobile device to the Wi-Fi network.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Browse certain applications to verify that the application communication works.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now, install a web proxy tool like Burp Suite or Fiddler in a laptop. Connect
+    this laptop also to the same Wi-Fi network. This setup should look like as shown
+    in the following diagram:![How to do it...](graphics/image_04_001.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Usual communication from mobile applications would traverse the path: **Mobile**
+    | **Wireless Access Point** | **Server** on the **Internet**. In the following
+    diagram, this is the path `1` | `4`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How it works...](graphics/image_04_002.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The wireless   pentest lab is designed to insert steps **2** and **3**, in between
+    the usual communication path of **1** to **4** (please refer to the preceding
+    diagram for steps).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mobile devices are configured to set a network proxy for the Wi-Fi network,
+    so we forced the traffic to take the step **2** route. Now we are running a proxy
+    tool on the proxy machine; this proxy tool is capable of viewing and editing the
+    mobile application traffic before forwarding it via step **3** to the wireless
+    access point. Thereafter, routine step **4** of communication to the server happens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This way, the wireless lab is set up for a pentest environment. Here, the mobile
+    application traffic can be tampered to bypass business logic. Even an SSL application's
+    traffic can be modified this way. We will see this in the recipes that follow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An alternative to using mobile phones is to use emulators. When using emulators,
+    lab requirements are further simplified. The same machine can run emulators and
+    proxy tools and edit the traffic before it reaches the server. So, having emulators,
+    ADB, and proxy tools in the same laptop is also an essential requirement of the
+    mobile wireless pentest lab. However, please note that for some production applications,
+    it is not possible to test in emulators. We have seen the SMS activation step
+    as a reason in banking apps for not being able to work the mobile app in emulators.
+    The same can be worked around with cooperation from application developers to
+    bypass such steps. When doing a black-box pentest, such an option is not available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a specific case, we came across a mobile application which was tied to a
+    specific telecom 3G network and did not work on Wi-Fi or another operator's 3G
+    network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This requires a slightly different laboratory. In the preceding diagram, we
+    replaced the wireless access point with a 3G and Wi-Fi-enabled tab. This tab was
+    used to create a hotspot, thereby providing the wireless network, and final communication
+    via this tab is over 3G to the server. So steps **1**, **2**, and **3** of the
+    interception setup remain the same. In step **4**, instead of a wired network,
+    we followed a 3G channel to connect to the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Configuring traffic interception with iOS*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://www.blackhat.com/presentations/bh-dc-08/Steve-DHulton/Whitepaper/bh-dc-08-steve-dhulton-WP.pdf](https://www.blackhat.com/presentations/bh-dc-08/Steve-DHulton/Whitepaper/bh-dc-08-steve-dhulton-WP.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring traffic interception with Android
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous recipe, we learned how to create a penetration testing lab for
+    mobile device interception, where we said we need to configure a mobile device
+    to force step **2** to follow a network proxy. Let us learn in this recipe how
+    to do this in Android phones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An Android phone. A rooted phone is required for mobile applications. (We learned
+    rooting in the *Introduction to rooting and jailbreaking* recipe of [Chapter 1](ch01.html
+    "Chapter 1.  Introduction to Mobile Security") , *Introduction to Mobile Security*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Android proxy tools like ProxyDroid are available for download from Play Store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It is very easy to set up traffic interception for WAP-based applications (that
+    is, applications that run on a browser in Android). For this, go to Wi-Fi settings
+    and select the **Wi-Fi** you wish to connect to; there you can see **Proxy settings**
+    under **Advanced Options**. Select **Proxy settings** as **Manual** to configure
+    the **Proxy hostname**/**IP address**, **Proxy port** number, and so on. This
+    is also shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How to do it...](graphics/image_04_003.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'While the preceding approach is good for WAP applications, it does not work
+    for downloaded and installed applications (that is, native and hybrid apps). For
+    these applications, we need to install Android proxy tools on the phone. ProxyDroid
+    is one such tool and can be downloaded free from Google Play Store. The proxy
+    settings using these tools work only on rooted phones. So the sequence for proxying
+    using third-party proxy tools is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Root your Android device.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Install proxy tools such as **ProxyDroid** or **Autoproxy lite**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure the proxy tools.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The first two steps are already known to you by now. The third step is pictorially
+    represented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How to do it...](graphics/image_04_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: ProxyDroid requires superuser permission to allow it to be able to set a proxy.
+    Move to the next step and enable **Proxy Switch** to configure the name of the
+    **Host**, **Port**, and so on. A final, optional step is, if the proxy requires
+    authentication, to provide the authentication credentials. Since the proxy is
+    in our control, we would like to keep it simple by not configuring authentication
+    for seamless testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Android OS is built on a Linux base. Linux uses a routing table for routing
+    packets over the network. So, we need to modify the routing table entries in Android
+    to be able to route packets to the network proxy we are willing to intercept at.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access to the underlying components (like routing tables) is not allowed, and
+    hence we need to root the phone so that the proxy tools are able to obtain superuser
+    permission on OS. This way, the proxy tools on a rooted phone overwrite the routing
+    tables based on the proxy settings provided by the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When using Android emulators, a proxy can be set using the ADB tool. Both the
+    emulator and web proxy tool can be run on the same machine. Use the following
+    command for starting the emulator with a local proxy on port `7000`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Intercepting traffic using Burp Suite and Wireshark*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: https://play.google.com/store/apps/details?id=org.proxydroid&hl=en
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: https://play.google.com/store/apps/details?id=com.mgranja.autoproxy_lite&hl=en
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Intercepting traffic using Burp Suite and Wireshark
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Traffic interception is the next thing to target after setting the proxy on
+    the phone. Traffic interception opens up another layer to attack in the applications.
+    In this recipe, we will learn to set up traffic interception while the next recipe
+    discusses attacking the application using proxy interception of traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two primary tools for intercepting or sniffing the traffic are web proxy tools
+    such as Burp Suite or Charles Proxy, and network sniffers such as Wireshark or
+    Shark for Root on Android. While Burp Suite inserts itself in the middle of the
+    communication (stop, modify, and forward), Shark for Root sniffs the network packets
+    (on Wi-Fi or 3G both).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For intercepting the mobile traffic, set up the lab and tools as described in
+    the previous two recipes. Additionally, download and install **Shark** from Play
+    Store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The following, are the steps that need to be followed to set up using Burp
+    Suite and Shark for Root respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Burp Suite**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Set up the wireless pentest lab as described in the *Setting up the Wireless
+    Pentesting Lab for mobile devices* recipe. Burp Suite (Burp Proxy) should now
+    be running on your laptop, and it must be listening on default port `8080`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now configure the Android phone to route traffic to the Burp Proxy running on
+    your laptop (use the previous recipe for this configuration). Make sure that the
+    IP address, Port, and so on are configured correctly. Now you can see the intercepted
+    traffic and tamper it as well. Let us park the malicious activities for the next
+    recipe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Shark for Root**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like the proxy tools on Android, Shark for Root also requires superuser permission.
+    This needs to be on a rooted phone and needs to be allowed for the creation of
+    packet dump. This step is shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How to do it...](graphics/image_04_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, set the parameters for capturing the traffic. Shark for Root dumps
+    all the packets in the `.pcap` file, as you can also see in the following screenshot,
+    indicating that `pcap` dumping has started. The same screenshot on the right-hand
+    side shows the path in the phone where the `.pcap` file is created and stored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How to do it...](graphics/image_04_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `.pcap` file can be transferred to the computer and can be interpreted better
+    by Wireshark.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The working of a network proxy (or Burp Suite) is simple. It inserts itself
+    in the network path like a man-in-the-middle and listens or modifies the traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shark for Root works by obtaining superuser permission on the underlying OS
+    and gets access to networking files; thereby, it is able to sniff packets and
+    create a packet dump.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The packet dump (`.pcap`) file created by Shark for Root is very useful in analyzing
+    the kind of packets being transmitted over the network. Sometimes the web proxies
+    are not able to capture the traffic. Reasons for this could be specific SSL certificates
+    bundled into the mobile applications, or specific TCP packets or protocols used
+    (not necessarily HTTP). In such cases when proxy tools fail, Shark for Root can
+    be useful to understand the failure reasons, which give further direction to interception
+      troubleshooting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Using MITM Proxy to modify and attack*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://portswigger.net/burp/](https://portswigger.net/burp/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://play.google.com/store/apps/details?id=lv.n3o.shark&hl=en](https://play.google.com/store/apps/details?id=lv.n3o.shark&hl=en)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using MITM proxy to modify and attack
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Burp Suite is set as a **Man-in-the-middle** (**MITM**) proxy. A man-in-the-middle
+    has control over every transaction (request and response) being exchanged by the
+    two parties, that is, the mobile application on the phone and the mobile server
+    where business logic resides.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A MITM proxy is used to attack the application business logic, like the transfer
+    limit of 1000 Dollars can be attempted to bypass by making higher amount transactions;
+    specific workflows such as OTP bypass can also be attempted. MITM proxies can
+    also be used to obtain privileged access in the application by accessing an object
+    or modifying a parameter value to serve privileged content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For intercepting the mobile traffic, set up the lab and tools as described in
+    the previous recipes in this chapter. Once you are done, your Burp Suite is already
+    ready to modify and attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let us take a business case and employ the *modify and attack* method. All
+    mobile banking applications allow a basic feature to view balance for self-owned
+    bank accounts. Let us attack this feature to view the balance of other user accounts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Firstly, select a mobile banking application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Log in and go to the view balance feature; the application allows you to select
+    one of the self-owned accounts and subsequently sends a request to the server
+    requesting user balance. This request is intercepted in the Burp Proxy as shown:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![How to do it...](graphics/image_04_007.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice the `Payment Instrument Id` highlighted in the screenshot. This parameter
+    value was tampered to another value like `10001856` and it resulted in revealing
+    the account balance of an account which does not belong to the logged-in user.
+    Unfortunately, this being a live mobile banking application, we are unable to
+    show you further application screenshots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This way, a MITM proxy is used to modify and attack the parameters in the applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: MITM proxy medication attacks are to target server-side application logic. Since
+    the proxy is acting as a man-in-the-middle, it can fully control the data being
+    transferred. The parameters that could be responsible for resulting in data in
+    response are selected and modified to achieve something that is not functionally
+    allowed in the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this particular case, there is a unique session token allocated for each
+    user but the application fails to validate that the parameter value (`Payment
+    Instrument Id`) being requested does not belong to the logged-in user. So it displays
+    the account balance of other customers, allowing business logic validation to
+    be bypassed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This MITM proxy is responsible for various notorious attacks on the application
+    logic. The key is to select the right variable to manipulate, which may sometimes
+    be time consuming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can only discuss one case. A lot more can be achieved via this MITM modify
+    and attack method. Think about the application functions and validations which
+    are built and then decide which one should be attacked using this method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a mobile banking application, here is an indicative list of possible attacks
+    you can attempt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: View account balance of others
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: View transaction history of others
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transfer funds from other users' accounts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transfer funds to a non-added beneficiary
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Register or de-register credit cards in other users' accounts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Register or de-register billers in other users' accounts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Similarly, in an application involving multiple roles like user, manager, and
+    admin, you would like to play around with the request variable responsible for
+    serving privileged content. If successful, a user can obtain manager's or admin's
+    access, thereby successfully conducting a privilege escalation attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Analyzing traffic and extracting sensitive information from iOS App traffic*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configuring traffic interception with iOS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A penetration testing lab for mobile device interception is conceptualized in
+    the, *Setting up the wireless pentesting lab for mobile devices*, recipe of this
+    chapter. We have to configure an iOS device to force step 2 (described in the
+    first recipe) to follow a network proxy. Let us learn in this recipe how to do
+    this in iOS devices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An iOS device, along with other necessities of lab setup like Wi-Fi network
+    and a laptop with web proxy tools (as discussed in the first recipe of this chapter)
+    are required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: iOS provides a proxy as a feature to iDevice users. This makes it very easy
+    for users or attackers to set up traffic interception for iOS applications. The
+    device proxy settings are global and apply for applications too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The settings can be configured by navigating to settings in an iPhone or iPad.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this, go to Wi-Fi settings and select the Wi-Fi you wish to connect to;
+    there you can see **Proxy Settings** under Advanced Options. Select **Manual**
+    under **HTTP PROXY** to configure the Proxy Hostname/IP address, Proxy Port number,
+    and so on. This is also shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: iOS has provided a feature to set proxy using which users set a network proxy
+    and capture the traffic. This is complicated in the case of Android, as the proxy
+    feature itself was not present by default. In the case of iOS, the presence of
+    a proxy as a feature has made it direct.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For iOS applications and Xcode projects, which can be run on iOS Simulator,
+    a proxy can be set. Xcode and iOS Simulator run on Mac OS X. We can set global
+    proxy settings in MacBook. Under Wi-Fi settings, for the connected Wi-Fi network,
+    navigate to **Proxies** and to **Web Proxy (HTTP)**. There, set a local proxy
+    (`127.0.0.1`) and provide the proxy port (`8080` for Burp Proxy). This is shown
+    in the following screenshot and it will ensure that the traffic from iOS Simulator
+    goes to the server via the proxy tool running on the same machine (MacBook):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![There''s more...](graphics/image_04_008.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[http://www.charlesproxy.com/documentation/faqs/using-charles-from-an-iphone/](http://www.charlesproxy.com/documentation/faqs/using-charles-from-an-iphone/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing traffic and extracting sensitive information from iOS App traffic
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When the interception setup is ready, traffic analysis has started. The most
+    difficult task from traffic is to extract sensitive information, or rather, to
+    find the HTTP requests and variables which can help further extract sensitive
+    information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let us take the case of an iOS application we came across. Let us first analyze
+    the traffic and later see how to extract sensitive information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For intercepting the iOS application traffic, set up the lab and tools as discussed
+    in the previous recipe. Once you are done, the proxy tool (Charles Proxy) is ready
+    to intercept the traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Log in to the mobile app, as shown in the following screenshot. Enter the wrong
+    password for the correct username:![How to do it...](graphics/image_04_009.jpg)Note
+    that a login request goes and a response is received.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Closely monitor the response traffic. For the incorrect password, there is a
+    `ERR_PWD` text in the response, as shown in the following screenshot:![How to
+    do it...](graphics/image_04_010.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This results in an error response on the iPhone screen, as shown in the following
+    screenshot:![How to do it...](graphics/image_04_011.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now try logging in to the application with the correct username and password.
+    Notice the response to the login request. It contains a text `SUCCESS_LOGIN` in
+    the response, as shown in the following screenshot. This action displays the internal
+    screen of the mobile application:![How to do it...](graphics/image_04_012.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This analysis of iOS application traffic shows the difference in the responses
+    of two cases. Let us now try pasting the response of one case to another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we log in with an incorrect password, we get `ERR_PWD` in the response.
+    Now, from the Charles Proxy tool, manipulate the response `ERR_PWD` to `SUCCESS_LOGIN`
+    and forward the response from Charles. This action logs the user in to the application
+    and the internal application screen is shown in the iPhone. This way, we obtained
+    sensitive information from an iOS application, with a wrong password.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The possibilities are numerous with application traffic to reveal sensitive
+    information. Another case worth mentioning is when we found an iPad application
+    to be sending a request containing username, password, and **Unique Device Identifier**
+    (**UDID**) number. The application tried to implement user locking to a particular
+    iPad only, so that the same user is not able to log in from other iPads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could bypass this and log in the same user from another iPad by tampering
+    the UDID number of the other iPad to the previous iPad in the outgoing request.
+    This way, the iPad binding of the application was proved useless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on the application functionalities and the traffic analysis, many
+    things can be attempted and bypassed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Using MITM Proxy to modify and attack*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: WebKit attacks on mobile applications
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Safari and other mobile applications use **WebKit**. It is a web browser engine.
+    It provides browser capabilities to the applications wherever it is implemented.
+    Most Hybrid Mobile Applications use WebKit for the applications feature to be
+    able to invoke browser components and make it a seamless integration for application
+    users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: WebKit-based attacks for mobile applications are similar to the web applications
+    browser-based attacks. The **cross-site scripting** (**XSS**) or HTML injection
+    are the most common attacks on the WebKit components of mobile applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-site scripting takes advantage of the application feature of reflecting
+    user inputs back to the user without sanitizing the outputs. So, if the application
+    reflects a malicious JavaScript posted by the attacker to the user, then the script
+    is executed at the user's browser. These scripts could steal a user session token
+    or could download and install malwares and backdoors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The HTML injection slightly varies from XSS. Here, the HTML tags or code is
+    sent, which upon reflection back to the user, modifies the HTML view. This could
+    eventually bypass certain client side restrictions or completely change the presentation,
+    including loading of a new HTML file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For this, we need applications that use WebKit components. Testing tools are
+    the same as described in previous recipes in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let us take an iOS application that uses UIWebView to embed the web content
+    in the mobile application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this application, a web page is loaded inside the application by simply passing
+    the URL to the `UIWebView` class object. This object renders the HTML as the iOS
+    Safari browser (WebKit) would do it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us look at the WebKit attack possibility in this scenario:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tamper the path variable to load another stored or compromised HTML file (HTML
+    injection variant).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Load some other page with embedded malicious JavaScript, resulting in execution
+    of JavaScript at the user's context (XSS variant).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To understand how the WebKit attack works in this case, let us have a look
+    at how the iOS application code associated with view generation looks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How it works...](graphics/image_04_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: From the code, note that the HTML file present at index location is going to
+    be loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If this index file can be compromised or modified to contain JavaScript, it
+    can result in cross-site scripting attacks. This requires the attacker to hold
+    control over the user's mobile device.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For demonstration purposes, an HTML code was inserted into the `index.html`
+    file and loaded to show that the HTML injection attack is also possible. The result
+    of this is shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![How it works...](graphics/image_04_014.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For similar categories of WebKit attacks, you need mobile applications that
+    use the WebKit component and reflect user input. You need proxy tools like Burp
+    Proxy to attack network traffic, tampering and inserting specific payloads. These
+    payloads are reflected under the WebKit instantly to execute the attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Look at the applications with WebView, WebKit, and so on in the mobile side
+    code. Employ web application proxy techniques to figure out the parameters that
+    reflect in response. Create a payload and work out your custom attack.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Finding vulnerabilities in WAP-based mobile apps*, [Chapter 3](ch03.html "Chapter 3. Auditing
+    Mobile Applications"), *Auditing Mobile Applications*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://cansecwest.com/slides/2015/Liang_CanSecWest2015.pdf](https://cansecwest.com/slides/2015/Liang_CanSecWest2015.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performing SSL traffic interception by certificate manipulation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In *Intercepting traffic using Burp Suite and Wireshark* and *Using MITM proxy
+    to modify and attack* recipes, we intercepted traffic of mobile applications.
+    Today, most organizations are using SSL to protect data over the network. So,
+    expect most real-world mobile applications to be under SSL. The next challenge
+    we need to address is the interception of SSL traffic of mobile applications.
+    This requires certification manipulation at the user or victim end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Primary requirements for this recipe are mobile applications that use SSL. Additionally,
+    you need all the tools we have used in the *Intercepting traffic using Burp Suite
+    and Shark* and *Using MITM proxy to modify and attack* recipes in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Try to set up a proxy tool and intercept the traffic of an Android or iOS application
+    as per the previously described methods in this chapter. You will notice for WAP-based
+    applications, the SSL error occurs on the mobile browser. In the case of installed
+    or hybrid applications, you might not see any error and the traffic will not be
+    captured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of WAP applications, if it provides an option of certificate acceptance,
+    you can proceed and still capture the traffic in a proxy tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of non-WAP applications, you need to forcefully make the application
+    accept the proxy certificate. This can be achieved by adding the proxy certificate
+    to the trusted credentials store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us use Charles Proxy for this recipe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Install Charles Proxy in our Android phone to be able to intercept Android applications
+    traffic.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The SSL Certificate for Charles Proxy prior to v3.10 can be downloaded from
+    [http://www.charlesproxy.com/assets/legacy-ssl/charles.crt](http://www.charlesproxy.com/assets/legacy-ssl/charles.crt)
+    .
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: To install the Charles Proxy certificate, open the preceding URL from the Android
+    phone.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The proxy installation screen asks you to provide a name; we will write `charles`
+    here, as shown in the following screenshot:![How to do it...](graphics/image_04_015.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The next steps prompt us to provide a lock screen PIN or password. Once we do
+    so, we get a message that `Charles is installed`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let us go to the **Trusted credentials** store to verify that the certificate
+    is installed. Navigation to this is: **Settings** | **Security** | **Trusted credentials**
+    | **User**:![How to do it...](graphics/image_04_016.jpg)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Notice from the preceding screenshot that the `Charles Proxy SSL Certificate`
+    is present and installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next steps are smooth and are similar to the fourth recipe of this chapter.
+    This way, SSL Proxy can be set for mobile applications and traffic can be tampered
+    to attack the application business logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SSL proxy interception works because SSL protocol is inherently vulnerable to
+    MITM attacks. If two people (`A` and `B`) communicate using SSL, each of them
+    has their public and private keys. Consider the MITM scenario where an attacker
+    comes in between the communication path of `A` and `B`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This attacker (or MITM) intercepts and exchanges the key with `A` and `B`. With
+    this changed key, the attacker is able to encrypt and decrypt the communication
+    initiated by either `A` or `B` and send it seamlessly to the other party.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This attack does pop up a SSL certificate error, and only when the user accepts
+    the fake (or attacker's) certificate, is the communication initiated. In this
+    recipe, we forced the acceptance of Charles Proxy on an Android phone by manual
+    installation of the same. Real world MITM attacks rely either on the user somehow
+    accepting the certificate or to figure out an alternate attack channel to install
+    the fake certificate in the trusted store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Similar to how a proxy certificate was installed for Charles Proxy, SSL certificates
+    for other proxy tools such as Burp Suite, Fiddler, and so on, can be installed
+    in various mobile devices. The same steps can be followed to install the SSL certificates
+    in emulators or simulators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[https://en.wikipedia.org/wiki/Man-in-the-middle_attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.symantec.com/connect/blogs/android-mobile-app-pen-test-tricks-part-i-installing-ca-certificates](http://www.symantec.com/connect/blogs/android-mobile-app-pen-test-tricks-part-i-installing-ca-certificates)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://resources.infosecinstitute.com/android-application-penetration-testing-setting-certificate-installation-goatdroid-installation/](http://resources.infosecinstitute.com/android-application-penetration-testing-setting-certificate-installation-goatdroid-installation/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a mobile configuration profile to set up a VPN and intercept traffic in
+    iOS devices
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: iOS allows iDevices to configure and participate in VPN. This VPN channel opens
+    up another communication channel and so we can use this channel also for setting
+    a proxy to intercept traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We require proxy tools, an iDevice, and other requirements of a wireless pentesting
+    lab.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, you need to configure a VPN server on a machine. Open VPN or PPTP
+    Server can be used for the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once you are ready, perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Download **PPTP Server** from http://poptop.sourceforge.net/dox/ and install
+    it on a Linux machine.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Edit the `pptpd.conf` files to allocate **IP ranges** for the VPN clients and
+    provide a static IP to the VPN server, which will also act as a gateway.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Further configure **DNS****servers** for the **VPN** clients.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Lastly, configure the **VPN** password and adjust network settings if required.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once the configuration edits are done, save the `pptpd.conf` file and restart
+    the VPN service. This makes sure that the VPN server is up and working.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now the mobile VPN client needs to be configured in the iDevice. Locate the
+    **VPN settings** on your iDevice and edit the **PPTP** settings.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure the server **IP address**, **VPN authentication credentials**, and
+    so on. These settings are shown in the following screenshot:![How to do it...](graphics/image_04_017.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The preceding step makes sure that the iDevice is now part of the VPN, where
+    the default gateway is under our control.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now let us set a proxy to this VPN client, that is, our iDevice. Under the **VPN
+    settings**, scroll down to locate the **Proxy settings**, where you can configure
+    **Proxy server IP address** and **Port** and provide proxy authentication details
+    if required. This is shown in the following screenshot:![How to do it...](graphics/image_04_018.jpg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now the Burp or Charles Proxy running at the proxy IP address starts capturing
+    the traffic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This recipe may sound complicated, with VPN server, client configuration, and
+    proxy. In reality, it works very simply. Once a VPN network is set, all the components
+    such as iDevice, VPN server, and Proxy tool are part of the same network. Now
+    a network proxy is in this VPN network. So nothing has changed, just that it is
+    a VPN proxy rather than a Wi-Fi proxy, as we have seen earlier. The fact that
+    iOS provides VPN configuration as a feature on iDevices makes it fairly easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The importance of this recipe can be realized more on cellular network traffic
+    interception, which can be very difficult otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'OpenVPN server and clients can be looked at as an alternative to PPTP Server.
+    The steps are quite similar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Install the OpenVPN server on a machine.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Install the OpenVPN client on an iDevice.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run a proxy tool like Burp or Charles proxy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once all the preceding three components are on the same VPN network, configure
+    proxy settings in the iDevice to initiate the traffic interception.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '[https://thesprawl.org/research/ios-data-interception/](https://thesprawl.org/research/ios-data-interception/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://poptop.sourceforge.net/dox/](http://poptop.sourceforge.net/dox/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://itunes.apple.com/in/app/openvpn-connect/id590379981?mt=8](https://itunes.apple.com/in/app/openvpn-connect/id590379981?mt=8)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bypassing SSL certificate validation in Android and iOS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SSL certificate validation is implemented in mobile applications for forceful
+    usage of SSL with trusted certificates. A server certificate is pinned to the
+    mobile application. SSL certificates get stored in the mobile device's trusted
+    store and the mobile application is coded to use the same, while initiating connection
+    to the server. This is also known as **certificate pinning**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Certificate pinning can be bypassed, which results in overall SSL certificate
+    validation bypass. Let us learn certificate pinning bypass for both Android and
+    iOS devices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will need the SSL interception tools and other tools as mentioned across
+    various recipes in this chapter, application reverse engineering or decompiler
+    tools, and the applications that use SSL pinning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Follow these steps to bypass pinning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Install a mobile application that uses SSL pinning.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Try to set Burp proxy and notice that there is an error, and a successful connection
+    is not established. This happens because the mobile application is coded to use
+    a pinned certificate only. Since the Burp proxy certificate is not pinned, the
+    application does not initiate the SSL communication. So, this makes it obvious
+    that we are required to pin the Burp proxy certificate to the mobile application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let us first install the Burp proxy certificate to the mobile device trusted
+    certificate store. For this, please follow the *Performing SSL Traffic Interception
+    by Certificate Manipulation* recipe, previously explained in this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The application now needs to be configured to remove pinning and/or use the
+    new certificate stored on the mobile device. For this, you need to locate the
+    application code that is responsible for using the pinned certificate, remove
+    this code, and repack the application. The newly-packed application does not use
+    the pinned certificate now and uses the trusted certificate of the Burp proxy.
+    This way, the SSL proxy is set and the certificate validation is bypassed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The SSL pinning bypass works because it relies on checking that the user-supplied
+    certificates are not allowed and only pinned certificates are used. It does not
+    try to match the pinned certificate to the parameters belonging to the server
+    certificate. In the whole process, it forgets that the mobile device is in user
+    control and that they can conduct hacks to disable pinning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proxy certificates (or fake certificates) can be pushed into the mobile device's
+    trusted store via different hacks. Also, the application is modified to drop the
+    use of pinned certificates. Mobile applications fall for it and start communicating
+    using fake or proxy certificates, which are already trusted by the mobile device.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The preceding method relied on application code being manipulated to drop the
+    pinned certificate. There is another method where code need not be manipulated
+    but the keystore is manipulated to add proxy (or fake) certificates to the keystore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This requires a keystore password, which is hardcoded into the mobile application
+    code. Keystore passwords can be obtained from decompiled code. Tools like **smali**/baksmali
+    can be used for the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, locate the keystore. The most probable location in Android is under
+    the `res` folder. Now use the `keytool` command to add the proxy certificate to
+    the keystore. Repack and sign the application. Now, it uses the proxy certificate
+    and traffic interception works, thus bypassing the SSL certificate validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Make a point to check that the mobile application source code does not have
+    any type of code to bypass SSL validation. A few developers prefer to write SSL
+    validation bypass code for testing and debugging purposes. This code, when moved
+    to production, should be sanitized to remove such bypass code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '*Examining iOS App Data storage* and *Keychain security vulnerabilities*, [Chapter
+    3](ch03.html "Chapter 3. Auditing Mobile Applications"), *Auditing Mobile Applications*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://media.blackhat.com/bh-us-12/Turbo/Diquet/BH_US_12_Diqut_Osborne_Mobile_Certificate_Pinning_Slides.pdf](https://media.blackhat.com/bh-us-12/Turbo/Diquet/BH_US_12_Diqut_Osborne_Mobile_Certificate_Pinning_Slides.pdf)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
