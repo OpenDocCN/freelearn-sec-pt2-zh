@@ -1,14 +1,18 @@
 - en: Chapter 4. Advanced Brute-forcing
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第四章 高级暴力破解
 - en: Certain engagements require a bit more stealth and the noisiest part of the
     engagement is usually the brute-force scans. Whether we are looking for valid credentials
     on a particular login form or scanning for interesting URLs, lots of connections
     to the target in a short period of time can alert defenders to our activities,
     and the test could be over before it really begins.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 某些任务需要更多的隐蔽性，而这些任务中最嘈杂的部分通常是暴力破解扫描。无论我们是在特定的登录表单上寻找有效的凭证，还是扫描有趣的 URL，大量的目标连接在短时间内都可能会引起防御者的警觉，测试可能在真正开始之前就已经结束了。
 - en: Most penetration testing engagements are "smash and grab" operations. These
     types of assessments are usually more time-restricted, and throttling our connections
     for the sake of stealth during a brute-force attack can hinder progress. For engagements
@@ -17,31 +21,46 @@
     the alarm for the blue team. If the goal is to stay under the radar for the duration
     of the engagement, it may be best to employ more subtle ways to guess passwords
     or to look for unprotected web content using SecLists dictionaries.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数渗透测试任务都是“砸窗抢劫”型的操作。这类评估通常时间比较紧迫，而在暴力破解攻击中为了隐蔽性限制我们的连接速度可能会妨碍进展。对于那些可能需要更多技巧的任务，传统的暴力破解和字典攻击方法可能过于激进，并可能引发蓝队的警报。如果目标是在整个测试期间保持低调，那么使用更细腻的方式猜测密码或使用
+    SecLists 字典查找未保护的网页内容可能是更好的选择。
 - en: 'In this chapter, we will look at the following:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论以下内容：
 - en: '**Password spraying** attacks'
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**密码喷射**攻击'
 - en: '**Metadata harvesting** and **public site scraping**'
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**元数据收集**和**公共网站抓取**'
 - en: Using **Tor** to evade **intrusion detection systems** (**IDS**)
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用**Tor**规避**入侵检测系统**（**IDS**）
 - en: Using **Amazon Web Services** (**AWS**) to evade IDS
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用**Amazon Web Services**（**AWS**）规避 IDS
 - en: Password spraying
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 密码喷射
 - en: A common issue that comes up with brute-forcing for account credentials is that
     the backend authentication system may simply lockout the target account after
     too many invalid attempts are made in a short period of time. Microsoft's **Active
@@ -52,8 +71,11 @@
     AD will be subject to these policies and traditional brute-force attacks may cause
     account lockouts, potentially firing alerts on the defender side, and certainly
     raising some red flags with the locked-out user.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 在暴力破解账户凭证时，一个常见的问题是后端认证系统可能会在短时间内多次输入无效信息后锁定目标账户。微软的**Active Directory**（**AD**）对所有用户设置了默认的策略，正是为了实现这一点。典型的策略足够严格，对于大多数攻击者来说，使用大密码列表攻击单一账户会非常耗时，且几乎没有投资回报的希望。与
+    AD 集成认证的应用将会受到这些策略的影响，传统的暴力破解攻击可能会导致账户锁定，进而触发防御方的警报，并且显然会引起被锁定用户的警觉。
 - en: A clever way to get around some of these lockout controls, while also increasing
     your chances of success, is referred to as a reverse brute-force attack or password
     spraying. The idea is simple and it is based on the fact that as attackers, we
@@ -67,8 +89,11 @@
     any other application login system. Although lockout policies are almost certainly
     in effect for applications integrating with AD, they may also be present in other
     applications with standalone authentication mechanisms.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种巧妙的方式，既能绕过一些账户锁定控制，又能增加成功几率，称为反向暴力破解攻击或密码喷射攻击。其原理很简单，基于一个事实：作为攻击者，我们通常只需要一组凭据就能攻破应用程序或托管它的环境。与其将暴力破解攻击集中在一个用户上，并冒着将其锁定的风险，我们不如针对多个已知有效用户，使用较小的、更有针对性的密码列表进行攻击。只要我们将每个账户的尝试次数保持在锁定政策以下，就能避免触发警报。密码喷射不仅在试图获取对组织VPN
+    web应用程序或**Outlook Web Access**（**OWA**）的访问时有用，还可以用于任何其他应用程序的登录系统。虽然几乎可以确定与AD集成的应用程序实施了锁定策略，但其他具有独立身份验证机制的应用程序中也可能存在类似的策略。
 - en: In order to properly spray for credentials, we need a large list of legitimate
     usernames, in the form of email addresses or the familiar `DOMAIN\ID` format.
     Farming legitimate users or account names is easier than it may sound. Without
@@ -79,104 +104,148 @@
     in the `ldap@company.com` format and can be mined from their **Contact Us**, **About**,
     or **Team** pages. Some account information can also be found in the source code,
     usually in JavaScript libraries, HTML, or CSS for publicly facing web applications.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了正确地进行凭据喷射攻击，我们需要一个包含大量有效用户名的列表，形式可以是邮箱地址或熟悉的`DOMAIN\ID`格式。收集有效的用户或账户名比看起来要容易。即便没有SQL或**轻量目录访问协议**（**LDAP**）注入转储，首先要查看的地方应该是目标公司公开的网站。通常会有很多线索，帮助我们了解公司如何构建账户名或用户ID。在与AD集成的应用程序中，常见的邮箱格式为`ldap@company.com`，可以从他们的**联系我们**、**关于我们**或**团队**页面中提取。有些账户信息也可以在源代码中找到，通常是JavaScript库、HTML或CSS文件，尤其是针对公开面向用户的Web应用程序。
 - en: 'The following is a sample JavaScript library containing useful information
     when constructing a list of accounts to use when performing a password spraying
     attack:'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是一个示例JavaScript库，其中包含在执行密码喷射攻击时构建账户列表时的有用信息：
 - en: '[PRE0]'
+  id: totrans-13
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: The preceding code not only gives us at least two accounts to target in our
     spray, but also hints at how user account names are structured. If we look through
     the contact information on the **Meet the Executive Team** page, we can make educated
     guesses as to what these employees' account names could be.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面的代码不仅给我们提供了至少两个账户作为喷射攻击的目标，还暗示了用户账户名称的结构。如果我们查看**高层团队介绍**页面上的联系信息，我们可以合理推测这些员工的账户名可能是什么。
 - en: 'Common formats for usernames, especially for LDAP-based authentication, are as follows:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户名的常见格式，特别是在基于LDAP身份验证的情况下，通常如下：
 - en: '`FirstName.LastName`'
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`FirstName.LastName`'
 - en: '`[First Initial]LastName`'
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`[First Initial]LastName`'
 - en: '`LastName[First Initial]`'
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`LastName[First Initial]`'
 - en: '`FirstNameLastName`'
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`FirstNameLastName`'
 - en: 'Any contact emails listed on the public site we can add to our list of potential
     users to target for a spraying attack. Chances are good that these also correspond
     to their login credentials. If, for example, we farm a ton of company emails in
     the `david.lightman@antihacker.com` format and we know nothing else, we could
     build a user list containing the following entries:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 任何在公开网站上列出的联系邮箱，都可以添加到我们潜在用户的目标列表中进行喷射攻击。很有可能这些邮箱也对应着他们的登录凭据。例如，如果我们收集了大量格式为`david.lightman@antihacker.com`的公司邮箱，而我们一无所知，我们可以建立一个包含以下条目的用户列表：
 - en: '`david.lightman`'
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`david.lightman`'
 - en: '`dlightman`'
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`dlightman`'
 - en: '`lightmand`'
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`lightmand`'
 - en: '`davidl`'
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`davidl`'
 - en: '`davidlightman`'
+  id: totrans-25
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`davidlightman`'
 - en: Some organizations have also made the decision to limit their employees' account
     names to eight characters or less as a general company-wide policy. This simplifies
     account provisioning for those legacy systems that do not support long account
     names. Common employee names, such as John Smith, in larger organizations can
     also cause conflicts, and this is usually resolved by appending a number to the
     account name.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 一些组织已经决定将员工的账户名限制为8个字符或更少，作为公司范围内的一项通用政策。这简化了对于那些不支持长账户名的遗留系统的账户配置。像John Smith这样的常见员工姓名，在大型组织中也可能导致冲突，通常通过在账户名后添加数字来解决这个问题。
 - en: 'For these reasons, we should also add a few variations of the following to
     the list:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 基于这些原因，我们还应该在列表中添加以下几种变体：
 - en: '`dlightma`'
+  id: totrans-28
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`dlightma`'
 - en: '`dlightm2`'
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`dlightm2`'
 - en: '`dlightm3`'
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`dlightm3`'
 - en: We should also be cognizant of how many failed attempts at authentication we
     are willing to make. While we will avoid account lockout by password spraying
     10 username variations with one password, we will also generate at least nine
     failed authentication attempts, if only one of those names is valid. If we are
     targeting 300 employees with 10 variations each, that's a fairly high authentication
     failure rate, which may trigger IDS and alert defenders to our activities.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还应考虑愿意进行多少次身份验证失败尝试。虽然我们通过密码喷射技术使用一个密码尝试10个不同的用户名变体，从而避免账户锁定，但如果其中一个名字有效，我们仍然会产生至少9次失败的身份验证尝试。如果我们针对300名员工，每人有10个变体，这将导致一个相当高的身份验证失败率，可能会触发IDS并提醒防御者我们的活动。
 - en: LinkedIn scraping
+  id: totrans-32
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: LinkedIn抓取
 - en: 'LinkedIn is also a great source for employee names that we can use to build
     an effective list of account names. A little **Google hacking** can list all the
     public LinkedIn profiles for people who have indicated publicly that they work
@@ -185,11 +254,15 @@
     over the years. For example, if we wish to target Yahoo!, we can focus our Google
     search query to return a filtered list of employee names using the `site` and
     `inurl` query modifiers:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: LinkedIn也是获取员工姓名的一个重要来源，我们可以利用这些信息来构建有效的账户名称列表。一点点**Google黑客技巧**可以列出所有公开的LinkedIn个人资料，这些个人资料来自那些公开表示在我们目标公司工作的人。Google黑客技巧指的是通过使用特定的查询词，利用搜索引擎返回多年索引的有趣信息。例如，如果我们想要瞄准Yahoo!，我们可以通过使用`site`和`inurl`查询修饰符来过滤出包含员工姓名的Google搜索结果：
 - en: '[PRE1]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Modifiers and their parameters are separated by a colon (`:`) and can also be
     prefixed with a minus (`-`) sign to indicate whether the value should be included
     or excluded from the results. The `inurl` modifier can instruct Google to return
@@ -197,100 +270,150 @@
     Conversely, the `-inurl` modifier will exclude results that contain the specific
     string in their URL. We can also wrap search terms in quotations to indicate that
     we want results that match the exact string.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 修饰符及其参数通过冒号（`:`）分隔，也可以在前面加上负号（`-`）来表示是否应包括或排除某个值。`inurl`修饰符可以指示Google仅返回包含特定字符串的URL结果。相反，`-inurl`修饰符会排除URL中包含该字符串的结果。我们还可以将搜索词用引号括起来，以表示我们希望结果精确匹配该字符串。
 - en: In our example, we are looking for indexed LinkedIn profiles that contain `/pub/`
     in the URL and `"at Yahoo"` somewhere in the body. Using the inverse (`-`) `inurl`
     modifier, we are also excluding URLs that contain `/dir/` to ensure results contain
     employee profiles and not directories. The search is also limited to the `linkedin.com`
     domain using the site modifier. The results should contain text that suggests
     the user is working "at company."
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的示例中，我们寻找的是包含`/pub/`的LinkedIn个人资料页面，并且其页面内容中包含`"at Yahoo"`。通过使用反向（`-`）`inurl`修饰符，我们还排除了包含`/dir/`的URL，以确保结果仅包含员工资料而非目录页。该搜索还通过`site`修饰符限制在`linkedin.com`域名内。结果应该包含表明用户在“公司”工作的文字。
 - en: '![LinkedIn scraping](graphics/B09238_04_01.jpg)'
+  id: totrans-37
   prefs: []
   type: TYPE_IMG
+  zh: '![LinkedIn scraping](graphics/B09238_04_01.jpg)'
 - en: 'Figure 4.1: Google hacking example'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.1：Google黑客示例
 - en: The employee names returned by the search query can be scraped and stored in
     a text file, `linkedin.txt`, for processing in the `First[space]Last` format.
     For our password spraying attack, we will need to convert the `First Last` entries
     in the text file to potential account names. We can accomplish this quickly with
     a little bit of Python code.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 搜索查询返回的员工姓名可以被爬取并存储在一个文本文件 `linkedin.txt` 中，按 `First[空格]Last` 格式进行处理。对于我们的密码喷洒攻击，我们需要将文本文件中的
+    `First Last` 条目转换为潜在的账户名。我们可以通过一些简单的 Python 代码快速实现这一点。
 - en: 'First, we will need to open the `linkedin.txt` file in read mode (`r`) and
     store a pointer to it in the `fp` variable, as shown:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要以读取模式（`r`）打开 `linkedin.txt` 文件，并将指针存储在 `fp` 变量中，如下所示：
 - en: '[PRE2]'
+  id: totrans-41
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'We can use a `for` loop to iterate the contents of `fp` using the `iter` function.
     This will allow us to iterate over each line in the text file, storing the respective
     value in the `name` variable for every loop:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `for` 循环，配合 `iter` 函数，遍历 `fp` 的内容。这将允许我们遍历文本文件中的每一行，并在每次循环中将相应的值存储在 `name`
+    变量中：
 - en: '[PRE3]'
+  id: totrans-43
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'Next, for each line, presumably containing a space delimited first and last
     name entry, we can `split()` the two by a whitespace (`'' ''`) using the following
     one-liner:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，对于每一行，假设包含一个由空格分隔的名字和姓氏条目，我们可以使用以下单行代码通过空格（`' '`）来 `split()` 分隔这两个部分：
 - en: '[PRE4]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: The variables `first` and `last` will contain the values you'd expect, in lowercase
     and cleaned up of any extra spaces after chaining `strip()` and `lower()` function
     calls.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 变量 `first` 和 `last` 将包含你期望的值，这些值会经过 `strip()` 和 `lower()` 函数调用后被清理为小写且去除多余空格。
 - en: 'Next, we can output a potential username using the formatting rules we established
     earlier. Using the `print` statement and a combination of `first` and `last` variables,
     we can easily display these to the screen:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们可以使用之前建立的格式化规则输出潜在的用户名。通过 `print` 语句以及 `first` 和 `last` 变量的组合，我们可以轻松地将它们显示在屏幕上：
 - en: '[PRE5]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Finally, we will also print a combination of the first initial and last name,
     as well as less than the maximum eight-character versions of each employee name:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们还将打印出名字首字母和姓氏的组合，以及每个员工姓名的八个字符以内的版本：
 - en: '[PRE6]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'We will save the resulting script in a file called `name2account.py`, which
     should look like this:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将把生成的脚本保存在一个名为 `name2account.py` 的文件中，文件内容如下所示：
 - en: '[PRE7]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'All that''s left to do is run the script and observe the output, as the following
     figure shows:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 剩下的就是运行脚本并观察输出，如下图所示：
 - en: '![LinkedIn scraping](graphics/B09238_04_02.jpg)'
+  id: totrans-54
   prefs: []
   type: TYPE_IMG
+  zh: '![LinkedIn 爬取](graphics/B09238_04_02.jpg)'
 - en: 'Figure 4.2: Running the account name generator'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.2：运行账户名生成器
 - en: 'To use this output in an attack, we can redirect it to another text file, to
     be later imported in Burp or ZAP, by using the following command:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在攻击中使用这些输出，我们可以将其重定向到另一个文本文件中，稍后可以通过以下命令在 Burp 或 ZAP 中导入：
 - en: '[PRE8]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Metadata
+  id: totrans-58
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 元数据
 - en: It's also possible to gather valid usernames by analyzing our list of users,
     by looking at what is already available on the internet. Publicly indexed documents
     are a good source for user IDs, as they often contain valuable metadata information,
@@ -301,74 +424,110 @@
     secret; they can be flyers and marketing material. It could be public data meant
     to be shared with the world and we can make use of the automatically populated
     metadata for our password spraying attacks.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过分析我们的用户列表，也可以收集有效的用户名，方法是查看互联网上已经公开的信息。公开索引的文档是获取用户ID的一个好来源，因为它们通常在内容中或文件头中包含有价值的元数据。当文档是由公司员工创建时，Microsoft
+    Office、Adobe PDF 以及许多其他类型的文档编写软件默认会将当前登录用户的姓名作为文件的作者保存在元数据中。这些文档不一定是绝密的；它们可以是传单和营销材料。它们可能是旨在与公众共享的公开数据，我们可以利用自动填充的元数据来进行密码喷洒攻击。
 - en: '**Fingerprinting Organizations with Collected Archives** (**FOCA**) is a great
     tool from **ElevenPaths** that scrapes search engine results for indexed documents,
     such as PDF, Excel, or Word files. These files typically store valuable information
     in their metadata; usually the AD ID responsible for authoring the file.'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: '**指纹识别组织及收集的档案**（**FOCA**）是 **ElevenPaths** 提供的一个非常棒的工具，它可以爬取搜索引擎结果中的索引文档，例如
+    PDF、Excel 或 Word 文件。这些文件通常在元数据中存储有价值的信息；通常是负责编写文件的 AD ID。'
 - en: It may not always be the domain username (it could be an email address), but
     this is still valuable information to us when we build our target account list.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可能不总是域名用户名（它可能是电子邮件地址），但在我们构建目标账户列表时，这仍然是非常有价值的信息。
 - en: With FOCA, we can quickly launch a search for all publicly available documents
     for our target and one-click analyze their metadata.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 FOCA，我们可以快速搜索我们目标的所有公开可用文档，并一键分析它们的元数据。
 - en: You'll notice that the query is similar to the LinkedIn scraping we used earlier.
     This is because FOCA will use search engine hacking under the hood and leverage
     not only Google, but also Bing and other information directories.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会注意到查询与我们之前使用的 LinkedIn 数据抓取非常相似。这是因为 FOCA 在后台使用了搜索引擎黑客技术，不仅利用 Google，还利用 Bing
+    和其他信息目录。
 - en: In the following example, we are looking for publicly available documents from
     `vancouver.ca` and analyzing their metadata. FOCA will download each PDF, parse
     the header, and store any users it finds in the left column under Metadata Summary.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，我们正在寻找来自 `vancouver.ca` 的公开可用文档，并分析它们的元数据。FOCA 将下载每个 PDF，解析头部，并将其找到的任何用户信息存储在元数据摘要的左侧栏中。
 - en: '![Metadata](graphics/B09238_04_03.jpg)'
+  id: totrans-65
   prefs: []
   type: TYPE_IMG
+  zh: '![元数据](graphics/B09238_04_03.jpg)'
 - en: 'Figure 4.3: FOCA displaying publicly indexed documents'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.3：FOCA 显示公开索引的文档
 - en: This valuable username data can be exported to a file to be used in a password
     spraying attack. Not only do we have valid accounts in these public documents,
     but they also hint at how the company structures its usernames. We can combine
     this knowledge with a LinkedIn scrape and build better target account lists, while
     minimizing authentication failures.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些有价值的用户名数据可以导出到文件中，用于密码喷洒攻击。我们不仅能在这些公开文档中找到有效的账户，而且它们还暗示了公司如何结构化其用户名。我们可以将这些知识与
+    LinkedIn 数据抓取结合，构建更好的目标账户列表，同时最小化身份验证失败的可能性。
 - en: Note
+  id: totrans-68
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: FOCA is available from ElevenPaths on [https://www.elevenpaths.com/labstools/foca/index.html](https://www.elevenpaths.com/labstools/foca/index.html)
     or on GitHub at [https://github.com/ElevenPaths/FOCA](https://github.com/ElevenPaths/FOCA).
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: FOCA 可以从 ElevenPaths 官网下载：[https://www.elevenpaths.com/labstools/foca/index.html](https://www.elevenpaths.com/labstools/foca/index.html)，或者在
+    GitHub 上找到：[https://github.com/ElevenPaths/FOCA](https://github.com/ElevenPaths/FOCA)。
 - en: The cluster bomb
+  id: totrans-70
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 集群炸弹
 - en: In order to conduct a password spraying attack, we need an easy way to feed
     our target the user list, as well as a small, but specific, password list. We
     also want the option to throttle each attempt, if needed, to avoid detection.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了进行密码喷洒攻击，我们需要一种简单的方式来将目标用户列表和一个小而具体的密码列表提供给目标。我们还希望能够在必要时限制每次尝试的速度，以避免被发现。
 - en: Burp Suite's Intruder module has several payload delivery options, and among
     them is the cluster bomb attack type, allowing us to specify multiple positions
     in our HTTP request in which we can insert our payloads. Intruder will submit
     a request for each possible combination, which is ideal for password spraying
     attacks.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: Burp Suite 的 Intruder 模块有多种有效载荷投递选项，其中包括集群炸弹攻击类型，允许我们指定 HTTP 请求中的多个位置，在这些位置插入有效载荷。Intruder
+    将针对每个可能的组合提交请求，这非常适合进行密码喷洒攻击。
 - en: The password list will be much more focused, and instead of throwing the massive
     `rockyou.txt` dictionary at each of the usernames, we will compose a shorter list
     of a more commonly used set of values.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 密码列表会更加专注，我们不会将庞大的 `rockyou.txt` 字典一次性应用到所有用户名，而是会组合出一个较短的、使用频率更高的密码列表。
 - en: 'When users forget their passwords, they call in tech support and request a
     password reset. Usually, instead of an elaborate reset procedure, support will
     reset the password to something simple to read over the phone, so the employee
@@ -376,8 +535,12 @@
     Year]`. Something like `Fall2017` is easy to communicate over the phone and will
     satisfy most password complexity policies. At times, a special character may be
     sprinkled in there as well: `Fall@2017` or `Fall2017!`.'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 当用户忘记密码时，他们会联系技术支持并请求重置密码。通常，技术支持不会进行复杂的重置程序，而是将密码重置为一个简单易记的密码，以便员工能够快速登录并恢复工作。一个常见的密码方案是
+    `[当前季节][当前年份]`。像 `Fall2017` 这样的密码易于通过电话传达，并且能够满足大多数密码复杂性政策。有时，可能还会加入一些特殊字符：`Fall@2017`
+    或 `Fall2017!`。
 - en: This isn't really an issue if the user logs in and resets their password immediately.
     AD has an option for tech support that requires the user to change their password
     after the first successful login. Unfortunately, legacy systems and complex authentication
@@ -385,65 +548,95 @@
     to require users to do this manually. While the majority of users will reset their
     password immediately, some won't and we usually only need just one user to slip
     up.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果用户在登录后立即重置密码，这其实不是问题。AD有一个技术支持选项，要求用户在第一次成功登录后更改密码。不幸的是，旧系统和复杂的认证方案并不总是支持首次登录时重置密码，这迫使组织要求用户手动操作。虽然大多数用户会立即重置密码，但也有一些用户不会，而我们通常只需要一个用户犯错。
 - en: 'A sample set of passwords to try could look like this:'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个可能的密码尝试列表如下所示：
 - en: '`Fall2017`'
+  id: totrans-77
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Fall2017`'
 - en: '`Fall17`'
+  id: totrans-78
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Fall17`'
 - en: '`Fall2017!`'
+  id: totrans-79
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Fall2017!`'
 - en: '`Fall@2017`'
+  id: totrans-80
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Fall@2017`'
 - en: '`Summer2017`'
+  id: totrans-81
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Summer2017`'
 - en: '`Summer17`'
+  id: totrans-82
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Summer17`'
 - en: '`Summer2017!`'
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Summer2017!`'
 - en: '`Summer@2017`'
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Summer@2017`'
 - en: '`Spring2017`'
+  id: totrans-85
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Spring2017`'
 - en: '`Spring17`'
+  id: totrans-86
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Spring17`'
 - en: '`Spring2017!`'
+  id: totrans-87
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Spring2017!`'
 - en: '`Spring@2017`'
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Spring@2017`'
 - en: We can also be smart about how we construct this list. If we know anything about
     the password requirements of the application, we may choose to eliminate passwords
     that don't fit. Perhaps the target company is headquartered in a region where
     use of the word `autumn` is more common than `fall`, in which case we adjust accordingly.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在构建这个列表时也可以更加智能。如果我们知道应用程序的密码要求，我们可以选择排除那些不符合要求的密码。也许目标公司总部位于一个“秋季”一词使用频率高于“fall”的地区，那么我们就可以相应地进行调整。
 - en: It's important to consider the account lockout as well. Our Intruder attack
     will generate as many authentication requests per user as there are passwords
     in the list, meaning there is a possibility we could lockout accounts. The cluster
@@ -452,89 +645,133 @@
     the second password for each username, then the third, and so on until it exhausts
     the password list. If we don't throttle the requests per username, we can risk
     locking out the account and alerting defenders.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑账户锁定也是很重要的。我们的入侵者攻击会根据密码列表中的密码数量为每个用户生成相同数量的身份验证请求，这意味着我们可能会锁定账户。集群炸弹入侵者攻击类型会尝试列表中的第一个密码针对每个用户名，直到到达末尾，然后重新从顶部开始。接着，它会尝试列表中的第二个密码，再是第三个，以此类推，直到密码列表用完。如果我们不限制每个用户名的请求次数，可能会导致账户被锁定，并且会引起防御者的警觉。
 - en: 'Once we have a password and username list, we can start the password spraying
     attack by leveraging the Intruder module. For the sake of this scenario, we will
     be targeting an application available on `target.org.local` on port `80`, as shown
     in the following figure:'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我们有了密码和用户名列表，我们就可以通过利用入侵者模块开始密码喷洒攻击。为了这个场景，我们将攻击目标定为`target.org.local`上的应用程序，端口为`80`，如下图所示：
 - en: '![The cluster bomb](graphics/B09238_04_04.jpg)'
+  id: totrans-92
   prefs: []
   type: TYPE_IMG
+  zh: '![集群炸弹](graphics/B09238_04_04.jpg)'
 - en: 'Figure 4.4: Specifying the attack target in Intruder'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.4：在入侵者中指定攻击目标
 - en: 'The request we will send will be a `POST` to the `/login` page. We can specify
     the request body and payload positions under the Intruder **Positions** tab. Highlighting
     the dummy values for `username` and `password`, we can click the **Add** button
     on the right side to denote a payload position, as shown in the following screenshot:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们发送的请求将是一个`POST`请求，目标为`/login`页面。我们可以在入侵者的**Positions**选项卡下指定请求体和负载位置。高亮显示`username`和`password`的虚拟值后，我们可以点击右侧的**Add**按钮以表示负载位置，如下图所示：
 - en: '![The cluster bomb](graphics/B09238_04_05.jpg)'
+  id: totrans-95
   prefs: []
   type: TYPE_IMG
+  zh: '![集群炸弹](graphics/B09238_04_05.jpg)'
 - en: 'Figure 4.5: Defining the payload positions'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.5：定义负载位置
 - en: We've also selected the **Cluster bomb** attack type, as mentioned previously.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还选择了前面提到的**集群炸弹**攻击类型。
 - en: 'Next up, we have to load our payloads, more specifically, the username and
     password lists we compiled earlier. Payload set 1 will be our username list, as shown in
     the following screenshot:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要加载我们的负载，具体来说，就是之前编制的用户名和密码列表。负载集1将是我们的用户名列表，如下图所示：
 - en: '![The cluster bomb](graphics/B09238_04_06.jpg)'
+  id: totrans-99
   prefs: []
   type: TYPE_IMG
+  zh: '![集群炸弹](graphics/B09238_04_06.jpg)'
 - en: 'Figure 4.6: Loading the usernames into payload set 1'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.6：将用户名加载到负载集1中
 - en: Our second payload set will be the passwords to be tested for each username.
     Once again, this is not where we'd load `rockyou.txt` and let it rip. In a password
     spraying attack, we target a large list of known-good user IDs, with only a few
     very common passwords. We want to avoid locking out and triggering alerts.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的第二组有效载荷将是每个用户名要测试的密码。再次强调，这不是我们加载 `rockyou.txt` 并让它全力攻击的地方。在密码喷洒攻击中，我们针对一大批已知的有效用户
+    ID，并只使用少数几个非常常见的密码。我们希望避免被锁定并触发警报。
 - en: 'The following figure shows a sample small payload set 2:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了一个小型有效载荷集 2 的示例：
 - en: '![The cluster bomb](graphics/B09238_04_07.jpg)'
+  id: totrans-103
   prefs: []
   type: TYPE_IMG
+  zh: '![集束炸弹](graphics/B09238_04_07.jpg)'
 - en: 'Figure 4.7: Loading the passwords into payload set 2'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.7：将密码加载到有效载荷集 2 中
 - en: The preceding configuration will make four password guess attempts per user,
     hopefully keeping our attack under the radar and avoiding any lockouts. The more
     users we can feed this attack to, the better the chance we will find a user who
     has forgotten to change their password.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述配置将对每个用户进行四次密码猜测尝试，希望能够将攻击保持在雷达下，避免任何账户锁定。我们能对更多用户进行攻击，就越有可能找到一个忘记更改密码的用户。
 - en: Burp Suite Professional provides some options for performing a low and slow
     attack, and they can be set in the **Options** tab. While the free edition of
     Burp Suite does not allow multiple threads or throttling, OWASP ZAP offers similar
     attack types, with the ability to throttle and increase thread count.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: Burp Suite Professional 提供了一些选项，可以执行低速攻击，这些选项可以在**选项**标签中设置。虽然 Burp Suite 的免费版不允许多线程或限速，但
+    OWASP ZAP 提供了类似的攻击类型，并且能够限速和增加线程数。
 - en: 'After loading our target users list and specifying a few passwords, we can
     spray the application by clicking **Start attack**. The following figure shows
     the Intruder attack window and all of the requests made during the password spraying
     attack:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 在加载了我们的目标用户列表并指定了几个密码后，我们可以通过点击**开始攻击**来对应用程序进行喷洒攻击。下图展示了入侵者攻击窗口及密码喷洒攻击过程中所发出的所有请求：
 - en: '![The cluster bomb](graphics/B09238_04_08.jpg)'
+  id: totrans-108
   prefs: []
   type: TYPE_IMG
+  zh: '![集束炸弹](graphics/B09238_04_08.jpg)'
 - en: 'Figure 4.8: Password spraying attack running'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.8：密码喷洒攻击正在进行
 - en: Behind seven proxies
+  id: totrans-110
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 经过七个代理
 - en: 'These days, it is fairly common for more mature companies to implement IDS,
     **intrusion prevention systems** (**IPS**), and **security information and event
     management** (**SIEM**) with alerting for when they detect abuse against a particular
@@ -542,36 +779,52 @@
     on a protected application, IDS or IPS may take action against the source. If
     we are conducting a password spraying attack, we may avoid lockouts but we''re
     still hammering the server from one source: our machine.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，越来越多的成熟公司开始实施 IDS（入侵检测系统）、**IPS（入侵防御系统）**和**SIEM（安全信息与事件管理）**，并设置警报，以便在检测到某个应用程序受到滥用时进行响应。当一个未知
+    IP 在短时间内对受保护的应用程序进行过多操作时，IDS 或 IPS 可能会对源头采取行动。如果我们正在进行密码喷洒攻击，我们可能避免了账户锁定，但我们仍然从一个来源——我们的机器——对服务器进行大量攻击。
 - en: A good way to evade these types of detection systems is to distribute the connection
     requests from the attacker machine over many IPs, which is commonly done by malicious
     actors through networks of compromised hosts. With the advent of cloud computing
     and computing time becoming increasingly cheap, even free in some cases, we don't
     have to stray outside of the law and build a botnet. The **Tor network** is also
     a free and effective way to change the public IP during an attack.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免这些类型检测系统的一种有效方法是通过许多 IP 分发攻击者机器的连接请求，这通常是恶意行为者通过受损主机的网络完成的。随着云计算的兴起，计算时间变得越来越便宜，甚至在某些情况下是免费的，我们不必违反法律去建立一个僵尸网络。**Tor
+    网络**也是在攻击过程中改变公共 IP 的一种免费且有效的方式。
 - en: Torify
+  id: totrans-113
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Torify
 - en: The **Tor Project** was started to provide a way for users to browse the internet
     anonymously. It is by far the best way to anonymize traffic and best of all, it's
     free. Tor is a network of independently operated nodes interconnected to form
     a network through which packets can be routed.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Tor 项目**的创建目的是为用户提供匿名浏览互联网的方式。它至今仍是匿名化流量的最佳方式，最棒的是，它是免费的。Tor 是一个由独立操作的节点组成的网络，这些节点互相连接形成一个网络，通过该网络可以路由数据包。'
 - en: 'The following graphic shows how a user, Alice, can connect to Bob through a randomly
     generated path or circuit, through the Tor network:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了一个用户 Alice 如何通过 Tor 网络连接到 Bob，并通过随机生成的路径或电路进行连接：
 - en: '![Torify](graphics/B09238_04_09.jpg)'
+  id: totrans-116
   prefs: []
   type: TYPE_IMG
+  zh: '![Torify](graphics/B09238_04_09.jpg)'
 - en: 'Figure 4.9: The Tor network traffic flow (source: https://www.torproject.org/)'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.9：Tor 网络流量流向（来源： https://www.torproject.org/）
 - en: Instead of connecting directly to the destination, the client connection from
     Alice to Bob will be routed through a randomly chosen set of nodes in the Tor
     network. Each packet is encrypted and every node can only decrypt enough information
@@ -579,127 +832,180 @@
     the chain, which will make the connection to the intended destination on behalf
     of the client. When the packet arrives at Bob's machine, the request will look
     like it's coming from the exit node and not Alice's public IP.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 客户端连接从Alice到Bob的方式不是直接连接目标，而是通过Tor网络中随机选择的一组节点进行路由。每个数据包都会被加密，每个节点只能解密足够的信息以将数据包路由到路径中的下一个节点。出口节点是链条中的最后一个节点，它将代表客户端与目标建立连接。当数据包到达Bob的机器时，请求将看起来像是来自出口节点，而不是Alice的公共IP。
 - en: Note
+  id: totrans-119
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'More information on Tor can be found on the official site: [https://www.torproject.org](https://www.torproject.org).'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 更多关于Tor的信息可以在官方网站找到：[https://www.torproject.org](https://www.torproject.org)。
 - en: While Tor is important for anonymity, we're not really concerned with staying
     completely anonymous. We can, however, leverage the randomly chosen exit nodes
     to mask our public IP when attacking an application.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然Tor对于匿名性非常重要，但我们并不特别关心保持完全的匿名性。然而，我们可以利用随机选择的出口节点在攻击应用程序时掩盖我们的公共IP。
 - en: 'Tor packages are available on most Linux distributions. On Kali, it can be
     installed using the package manager. The `apt-get` command shown in the following
     code will install Tor, as well as a useful application called **torsocks**:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: Tor软件包可以在大多数Linux发行版上找到。在Kali上，可以通过包管理器安装。下面代码中显示的`apt-get`命令将安装Tor以及一个有用的应用程序**torsocks**：
 - en: '[PRE9]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Torsocks is a nice tool that can "torify" applications and even provide an interactive
     shell that automatically routes all traffic through an active Tor tunnel. This
     will allow us to force applications that don't natively support routing through
     Tor to use the anonymous network.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: Torsocks是一个很好的工具，可以“torify”应用程序，甚至提供一个交互式Shell，自动将所有流量通过一个活动的Tor隧道路由。这将允许我们强制那些原生不支持通过Tor路由的应用程序使用匿名网络。
 - en: Note
+  id: totrans-125
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'Torsocks can be found on the Tor Project Git repository: [https://gitweb.torproject.org/torsocks.git](https://gitweb.torproject.org/torsocks.git).'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: Torsocks可以在Tor项目的Git仓库中找到：[https://gitweb.torproject.org/torsocks.git](https://gitweb.torproject.org/torsocks.git)。
 - en: 'There isn''t much that we need to change in the Tor default configuration;
     we can just go ahead and launch it from the Kali prompt, using the `tor` binary,
     as show in the following code block:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不需要更改Tor的默认配置；只需要从Kali提示符下启动它，使用`tor`二进制文件，如下代码块所示：
 - en: '[PRE10]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: Once the Tor client has initialized and a tunnel (circuit) has been selected,
     a SOCKS proxy server is launched on the localhost, listening on port `9050`. To
     force our attack traffic through the Tor network and mask our external IP, we
     can configure Burp Suite to use the newly spawned proxy for all outgoing connections.
     Any other programs that do not support SOCKS can be "torified" using either ProxyChains
     or the previously installed torsocks utility.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦Tor客户端初始化并选择了一个隧道（电路），一个SOCKS代理服务器将在本地主机上启动，监听端口`9050`。为了强制将我们的攻击流量通过Tor网络，并掩盖我们的外部IP，我们可以配置Burp
+    Suite，使用新启动的代理来处理所有的外向连接。任何不支持SOCKS的程序都可以使用ProxyChains或之前安装的torsocks工具进行“torify”。
 - en: Note
+  id: totrans-130
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: ProxyChains is available on all penetration testing distros and on [http://proxychains.sourceforge.net/](http://proxychains.sourceforge.net/).
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyChains在所有渗透测试发行版中都可以使用，也可以在[http://proxychains.sourceforge.net/](http://proxychains.sourceforge.net/)下载。
 - en: In Burp Suite, under the **Project options** tab, we can select the **Override
     user options** check to enable the SOCKS configuration fields. The values for
     SOCKS proxy and port will be `localhost` and `9050` respectively, and it's a good
     idea to make DNS lookups through the proxy as well.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Burp Suite中，在**项目选项**标签下，我们可以选择**覆盖用户选项**，以启用SOCKS配置字段。SOCKS代理和端口的值分别为`localhost`和`9050`，并且最好通过代理进行DNS查询。
 - en: '![Torify](graphics/B09238_04_10.jpg)'
+  id: totrans-133
   prefs: []
   type: TYPE_IMG
+  zh: '![Torify](graphics/B09238_04_10.jpg)'
 - en: 'Figure 4.10: Configuring the upstream SOCKS proxy in Burp'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 图4.10：在Burp中配置上游SOCKS代理
 - en: We can perform a test request, using the Repeater module, to `ipinfo.io` and it should
     show a randomly selected Tor exit node as our external IP.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过使用Repeater模块对`ipinfo.io`执行一个测试请求，它应该会显示一个随机选择的Tor出口节点作为我们的外部IP。
 - en: 'The following figure shows the response to our torified request to `ipinfo.io`:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图显示了我们对`ipinfo.io`进行torify请求的响应：
 - en: '![Torify](graphics/B09238_04_11.jpg)'
+  id: totrans-137
   prefs: []
   type: TYPE_IMG
+  zh: '![Torify](graphics/B09238_04_11.jpg)'
 - en: 'Figure 4.11: Repeater response showing a Tor exit node as our effective IP'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
 - en: While the Tor client does refresh the circuit periodically, it may not be quick
     enough for a brute-force attack, where rotating IPs is needed for evasion. We
     don't want to throttle our connection so much that the scan does not finish before
     the engagement is over.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
 - en: The Tor proxy can be forced to update the current circuit with a **process hang
     up signal** (**SIGHUP**). Using the `killall` or `kill` Linux commands, we can
     issue a `HUP` signal to the Tor application and force the process to rotate our
     exit node.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
 - en: 'First, we can drop into a torsocks shell to hook all `curl` requests and forward
     them through the Tor network. The `torsocks` command can be called using the `--shell`
     parameter, as shown:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE11]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Subsequent network requests from applications spawned from the torsocks shell
     should be forwarded through Tor. To see the SIGHUP in action, we can use `curl`
     requests to an online service, which returns our current public IP, `ipinfo.io`:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE12]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'Each request to the IP service returned a new Tor exit node. We can also crudely
     automate sending the HUP signal using the `watch` command in a separate terminal.
     The `-n` option specifies how often to execute the `killall` command. In this
     case, Tor will be issued a SIGHUP every `10` seconds, effectively rotating our
     external IP at the same time:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE13]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: If our plan is to attempt a password spraying attack against the `c2.spider.ml`
     application, for example, we can configure Burp Suite to use a cluster bomb Intruder
     configuration along with a list of common usernames and passwords. Meanwhile,
@@ -709,36 +1015,45 @@
     our stealth. It should be noted that Burp's free edition does not support throttling.
     The same functionality can be accomplished using OWASP ZAP, with `watch` running
     in the background cycling the Tor circuit.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following figure shows the `watch` command running the `killall` command
     on the Tor application every 10 seconds, while Burp''s Intruder module performs
     a password guessing attack:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
 - en: '![Torify](graphics/B09238_04_12.jpg)'
+  id: totrans-149
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 4.12: Running a password guessing attack with a constantly changing
     exit IP'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
 - en: As expected, the `c2.spider.ml` application server log shows the attack coming
     in every 10 seconds from a new exit node IP.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following shows a sample PHP webserver listing each HTTP request, the time,
     and the originating IP:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE14]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: The low and slow nature of the attack, coupled with an ever-changing source
     IP, makes it more difficult for defenders to differentiate our attack traffic
     from legitimate traffic. It's not impossible to design effective rules that find
     brute-force attacks coming from many IPs in many regions, but it is fairly difficult
     to do without generating false positives.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
 - en: There are a couple of issues with conducting attacks through the Tor network.
@@ -749,9 +1064,11 @@
     increases communication delay significantly. The lag is noticeable for normal
     web browsing, but this is a tolerable trade-off. For large volume scans, it may
     not be the ideal transport.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-156
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
@@ -762,6 +1079,7 @@
     may even require testing from the Tor network to verify related IDS/IPS rules
     are working as intended, but caution should be taken when launching attacks through
     a limited-resource public medium.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
 - en: The other problem with Tor is that the exit nodes are public. Firewalls, IDS,
@@ -770,16 +1088,20 @@
     history of being used for illegal activity; the risk of annoying a small number
     of potential customers by disallowing Tor connections is generally acceptable
     by organizations.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-159
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: 'A list of active Tor exit nodes can be found here: [https://check.torproject.org/cgi-bin/TorBulkExitList.py](https://check.torproject.org/cgi-bin/TorBulkExitList.py).'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
 - en: Proxy cannon
+  id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -788,6 +1110,7 @@
     each with a large IP space available for free to VM instances. VMs are cheap and
     sometimes free as well, so routing our traffic through them should be fairly cost
     effective.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
 - en: Amazon, Microsoft, and Google all have an easy-to-use API for automating the
@@ -795,35 +1118,46 @@
     we can route our traffic to the target application through it and mask our true
     origin. This should make it much more difficult for automated systems to detect
     and alert on our activities.
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
 - en: Cue **ProxyCannon**, a great tool that does all the heavy lifting of talking
     to Amazon's AWS API, creating and destroying VM instances, rotating external IPs,
     and routing our traffic through them.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-165
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: 'ProxyCannon was developed by Shellntel and is available on GitHub: [https://github.com/Shellntel/scripts/blob/master/proxyCannon.py](https://github.com/Shellntel/scripts/blob/master/proxyCannon.py).'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
 - en: 'ProxyCannon requires `boto`, a Python library that provides API access to Amazon''s
     AWS. We can use Python''s `pip` command to install the required dependency:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE15]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'The ProxyCannon tool should now be ready to use with the `-h` option showing
     all of the available options:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: '![Proxy cannon](graphics/B09238_04_15.jpg)'
+  id: totrans-171
   prefs: []
   type: TYPE_IMG
 - en: By default, ProxyCannon creates `t2.nano` virtual instances in AWS, which should
@@ -831,6 +1165,7 @@
     but are typically enough for most attacks. To change the type of instance, we
     can supply the `-t` switch. The default region is `us-east-1` and can be adjusted
     using the `--region` switch.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
 - en: 'ProxyCannon will create as many instances as specified in the `num_of_instances`
@@ -838,108 +1173,145 @@
     useful to keep track of what public IPs ProxyCannon is using over the course of
     the execution. This is useful for reporting purposes: the blue team may need a
     list of all the IPs used in the attack.'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
 - en: In order for the tool to be able to communicate with our AWS account and to
     manage instances automatically, we have to create API access keys in the AWS console.
     The interface is fairly straightforward and can be accessed in the account **Security
     Credentials** page.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
 - en: The access key ID and the secret keys are randomly generated and should be stored
     securely. Once the engagement is over, you should delete the keys in the AWS console.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
 - en: '![Proxy cannon](graphics/B09238_04_13.jpg)'
+  id: totrans-176
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 4.13: Generating a new AWS API access key'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
 - en: We can start ProxyCannon using the `-r` and `-l` switches, and specify that
     we want `3` instances running at the same time.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Upon first run, ProxyCannon will ask you for these values and store them in
     the `~/.boto` file.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE18]'
+  id: totrans-181
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: As you can see, these are stored in plaintext, so make sure this file is properly
     protected. Amazon recommends that these keys are rotated frequently. It's probably
     a good idea to create new ones for each engagement and delete them from AWS as
     soon as they're not required anymore.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
 - en: ProxyCannon will connect to Amazon EC2, setup the SSH keys, adjust the security
     groups, and start the VM instances. This process may take a couple of minutes
     to complete.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE19]'
+  id: totrans-184
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'ProxyCannon will overwrite the current system `iptables` configuration to properly
     route all traffic through whatever instance is chosen:'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE20]'
+  id: totrans-186
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: As promised, ProxyCannon will periodically rotate our effective external IP
     using SSH tunnels and by modifying the routing table. All of this is done automatically,
     in the background, while Burp Suite or ZAP runs the password spraying attack.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following is the periodic output from ProxyCannon showing the IPs being
     rotated:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE21]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'On the AWS console, we can see the started `t2.nano` instances and their public
     IPs:'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: '![Proxy cannon](graphics/B09238_04_14.jpg)'
+  id: totrans-191
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 4.14: AWS instances created to route our traffic through'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: As with our Tor example earlier, we can test ProxyCannon by repeating a `curl`
     request to our target application using the `watch` command. We don't need to
     drop in a shell similar to torsocks because ProxyCannon modifies the local system
     routing to help us change our external IP.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE22]'
+  id: totrans-194
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'On the target application side, `c2.spider.ml`, the server log, shows connection
     attempts from various IPs belonging to the Amazon address space:'
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 在目标应用程序方面，`c2.spider.ml` 服务器日志显示来自属于 Amazon 地址空间的多个 IP 的连接尝试：
 - en: '[PRE23]'
+  id: totrans-196
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: It should be noted that there is a lower limit to how often we can rotate the
     IPs on Amazon or any cloud provider for that matter. It takes a while for instances
     to boot and IP addresses to be reserved, associated, and become active. ProxyCannon
     has a hardcoded value of about 90 seconds to ensure the effective IP actually
     changes.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 应当注意的是，我们在 Amazon 或任何云服务提供商上轮换 IP 的频率是有下限的。实例启动需要一段时间，IP 地址需要被保留、关联并变得活跃。ProxyCannon
+    设定了一个硬编码的时间大约为 90 秒，以确保有效 IP 确实发生变化。
 - en: Summary
+  id: totrans-198
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, we looked at a couple of techniques for staying under the radar
     while conducting brute-force attacks during an engagement. Low and slow attacks,
     with frequently rotating IPs, is a great way to guess passwords or look for interesting
@@ -947,8 +1319,11 @@
     of success while evading intrusion detection, or prevention systems and firewalls.
     We've also looked at scraping metadata from LinkedIn and Google to build effective
     user and password lists.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了在进行暴力攻击时保持低调的几种技术。低调缓慢的攻击，结合频繁更换 IP 地址，是猜测密码或寻找有趣 URL 的一种有效方式。如果我们能够将这一策略与密码喷洒攻击结合起来，我们可以在避免入侵检测、预防系统和防火墙的同时，提高成功的几率。我们还研究了从
+    LinkedIn 和 Google 中抓取元数据，以建立有效的用户和密码列表。
 - en: These deviations from the normal brute-force attack make an attack difficult
     to defend against, requiring the blue team to have properly tuned alerts, with
     low false-positive rates and, frankly, lots of resources dedicated to monitoring
@@ -957,9 +1332,13 @@
     false positives but that can also catch our attempts. Generally speaking, unless
     the target organization has a very mature security program with lots of funding,
     these types of attacks are easy to pull off and frequently successful.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些偏离常规暴力攻击的策略使得攻击难以防御，要求蓝队有合适的告警设置，低误报率，并且坦率地说，必须投入大量资源来监控检测系统。作为攻击者，我们知道蓝队通常会被过度分配资源，无法启用那些会产生大量误报但也能捕捉到我们攻击的规则。一般来说，除非目标组织有一个非常成熟且资金充足的安全计划，否则这些类型的攻击很容易实施并且经常成功。
 - en: In the next chapter, we will delve into exploiting vulnerabilities in how applications
     handle files and file paths from untrusted sources.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将深入探讨如何利用应用程序处理来自不受信任来源的文件和文件路径中的漏洞。
