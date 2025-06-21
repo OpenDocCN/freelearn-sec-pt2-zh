@@ -1,464 +1,634 @@
 - en: '7'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: Hacking the Cloud – Exploiting Azure Active Directory/Entra ID
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'In the last chapter, we looked at **Active Directory** (**AD**) and on-premises
     authentication. In this chapter, we are looking at its successor and cloud **identity
     provider** (**IdP**): **Azure Active Directory** (**AAD/Azure AD**).'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
 - en: As of July 11, 2023, Microsoft renamed Azure AD to **Entra ID**. As this was
     just shortly announced before this book was released, we will refer to Entra ID
     just as Azure Active Directory, Azure AD or AAD in this chapter.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
 - en: AAD is Microsoft’s cloud-based enterprise identity service. It provides **single
     sign-on** (**SSO**), Conditional Access, and **multi-factor authentication** (**MFA**)
     to protect users against various attack vectors, no matter whether they were initiated
     on-premises or using cloud-based techniques.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
 - en: AAD is a multi-tenant cloud directory and authentication service. Other services,
     such as Office 365 or even Azure, rely on this service for authentication and
     authorization, by leveraging the accounts, groups, and roles that are being provided
     with AAD.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
 - en: More and more organizations are using AAD in hybrid mode, and some are even
     completely abandoning the legacy on-premises AD solution for AAD.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
 - en: 'In this chapter, we will dive into AAD – especially into authentication with
     AAD – and explore what blue and red teamers should know when it comes to Azure
     AD Security from a PowerShell context:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
 - en: Differentiating between AD and AAD
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Authentication in AAD
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Overview of the most important built-in privileged accounts and roles
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Accessing AAD using PowerShell
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Attacking AAD
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Exploring AAD-related credential theft attacks
+  id: totrans-13
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Mitigating cloud-based attacks
+  id: totrans-14
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Technical requirements
+  id: totrans-15
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'To get the most out of this chapter, ensure that you have the following:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
 - en: PowerShell 7.3 and above
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Visual Studio Code installed
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Access to the GitHub repository for **Chapter07**:'
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07)'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
 - en: Differentiating between AD and AAD
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: A common misconception when comparing AD and AAD is that AAD is just AD in the
     cloud. This statement is not true.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
 - en: While AD is the directory service for on-premises domains, AAD allows users
     to access Office 365, the Azure portal, SaaS applications, internal resources,
     and other cloud-based apps.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
 - en: 'Both are identity and access management solutions, yes. But besides that, both
     technologies are very different, as you can see in the following figure:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.1 – AD versus AAD](image/B16679_07_001.jpg)'
+  id: totrans-25
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.1 – AD versus AAD
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
 - en: 'AAD can sync with an on-premises AD (**hybrid identity**) and supports **federation**
     (e.g., through **Security Assertion Markup Language (SAML)**) or can be used as
     a single identity and access provider. It supports different types of authentication,
     such as the following:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
 - en: '**Cloud-only authentication**: In this scenario, AAD acts as the sole IdP,
     without any synchronization with an on-premises AD. Users authenticate directly
     with AAD for access to resources.'
+  id: totrans-28
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**仅云身份验证**：在这种情况下，AAD 作为唯一的身份提供者（IdP），不与本地 AD 进行任何同步。用户直接与 AAD 进行身份验证以访问资源。'
 - en: '**AAD password hash synchronization**: This authentication method involves
     synchronizing password hashes from an on-premises AD to AAD. When users authenticate,
     AAD verifies the password against the synchronized hash stored in the cloud.'
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**AAD 密码哈希同步**：这种身份验证方法涉及将本地 AD 中的密码哈希同步到 AAD。当用户进行身份验证时，AAD 会根据存储在云中的同步哈希验证密码。'
 - en: '**AAD Pass-through Authentication (PTA)**: With this approach, the authentication
     process involves a hybrid setup. After the user’s password is validated by an
     on-premises authentication agent, AAD performs the final authentication step,
     granting access to the user.'
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**AAD 通行身份验证（PTA）**：通过这种方式，身份验证过程涉及混合设置。在用户的密码通过本地身份验证代理验证后，AAD 执行最终的身份验证步骤，从而授予用户访问权限。'
 - en: '**Federated authentication (AD FS)**: In a federated authentication scenario,
     authentication takes place on-premises using **Active Directory Federation Services**
     (**AD FS**). AAD acts as the IdP and relies on the federated trust established
     with AD FS to authenticate users.'
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**联合身份验证（AD FS）**：在联合身份验证场景中，身份验证发生在本地，使用**Active Directory 联合服务**（**AD FS**）。AAD
+    充当身份提供者，并依赖与 AD FS 建立的联合信任来验证用户。'
 - en: In AD, groups control permissions and access for user groups, whereas in AAD,
     this functionality is replaced by roles.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 AD 中，组控制用户组的权限和访问，而在 AAD 中，这一功能被角色所取代。
 - en: For example, in AD, the **Enterprise Administrator** group, followed by the
     **Domain Administrator** group, holds the most power. This can be compared to
     the **Global Administrator** role in AAD; if an account holds the **Global Administrator**
     role in AAD, then it has full control over the tenant.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，在 AD 中，**企业管理员**组，其次是**域管理员**组，拥有最多的权限。这可以与 AAD 中的**全局管理员**角色进行比较；如果一个帐户在
+    AAD 中拥有**全局管理员**角色，那么它对租户拥有完全控制权限。
 - en: However, the Global Administrator role isn’t the only role that can be exploited
     if misconfigured. We will delve deeper into important roles in AAD in the *Privileged
     accounts and* *roles* section.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果配置不当，全球管理员角色并不是唯一可能被滥用的角色。我们将在 *特权帐户和* *角色* 部分深入探讨 AAD 中的重要角色。
 - en: Additionally, the communication and authentication methods used by AD and AAD
     differ significantly. Let’s first examine how authentication works in AAD.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，AD 和 AAD 使用的通信和身份验证方法有显著差异。让我们首先看看 AAD 中身份验证是如何工作的。
 - en: Authentication in AAD
+  id: totrans-36
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 在 AAD 中的身份验证
 - en: Before we start to dive deeper into what protocols are used and how they work,
     we first need to understand what a device identity is and how devices are joined.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们深入探讨所使用的协议及其工作原理之前，我们首先需要了解设备身份是什么，以及设备是如何加入的。
 - en: Device identity – connecting devices to AAD
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 设备身份 – 将设备连接到 AAD
 - en: A device identity is simply the object that will be created in AAD once a device
     is registered or joined into the AAD tenant. It is similar to a device in on-premises
     AD and administrators can use it to manage the actual device or to get more information
     on it. Device identities can be found in the AAD portal under **Devices** | **All
     devices**.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 设备身份是指一旦设备注册或加入 AAD 租户后，在 AAD 中创建的对象。它类似于本地 AD 中的设备，管理员可以使用它来管理实际的设备或获取更多信息。设备身份可以在
+    AAD 门户中的 **设备** | **所有设备** 下找到。
 - en: 'There are three methods for joining or registering devices to AAD:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 有三种方法可以将设备加入或注册到 AAD：
 - en: '**AAD join**: The default method for joining modern devices, such as Windows
     10 or Windows 11, to your AAD tenant. Windows Server 2019+ **virtual machines**
     (**VMs**) running in your Azure tenant can be joined as well.'
+  id: totrans-41
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**AAD 加入**：将现代设备（如 Windows 10 或 Windows 11）加入 AAD 租户的默认方法。运行在 Azure 租户中的 Windows
+    Server 2019 及以上版本的 **虚拟机**（**VMs**）也可以加入。'
 - en: '**AAD registration**: A method to support **bring-your-own-device** (**BYOD**)
     or mobile device scenarios. This method is also considered a modern device scenario.'
+  id: totrans-42
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**AAD 注册**：一种支持**自带设备**（**BYOD**）或移动设备场景的方法。这种方法也被视为现代设备场景。'
 - en: '**Hybrid AAD join**: This method is not considered a modern device scenario,
     but rather a compromise to combine both older and modern machines in the same
     environment. In the long term, AAD join should be the preferred method, but organizations
     that are still running Windows 7+ and Windows Server 2008+ can leverage this scenario
     as a step in the right direction, until all machines are successfully migrated
     to a modern operating system.'
+  id: totrans-43
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**混合AAD加入**：这种方法不被视为现代设备场景，而是为了在同一环境中结合老旧机器和现代机器的折中方案。从长远来看，AAD加入应该是首选方法，但仍在运行Windows
+    7+和Windows Server 2008+的组织可以利用这种场景作为向正确方向迈进的一步，直到所有机器都成功迁移到现代操作系统。'
 - en: All three methods can be used in the same tenant and can coexist, but in most
     environments that I have seen, many devices are still joined using hybrid AAD
     join, and organizations still support **hybrid identities**. But what exactly
     is a hybrid identity?
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 这三种方法可以在同一个租户中使用并共存，但在我所见的大多数环境中，许多设备仍然通过混合AAD加入，组织仍然支持**混合身份**。但是，究竟什么是混合身份呢？
 - en: Hybrid identity
+  id: totrans-45
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 混合身份
 - en: Most of the time, AAD is used in parallel with on-premises AD. Organizations
     still have a lot of on-premises infrastructure, but they start to use the cloud
     in a hybrid scenario.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，AAD与本地AD并行使用。组织仍然拥有大量本地基础设施，但他们开始在混合场景中使用云。
 - en: Hypothetically, it is possible to use a different password when accessing cloud
     resources, instead of on-premises resources, but users are already overburdened
     with maintaining their on-premises passwords. So, to maintain a high standard
     for password security, it makes sense to allow users to use the same account for
     on-premises and cloud resources.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设在访问云资源时使用不同的密码，而不是本地资源密码是可能的，但用户已经负担过重，需要维护他们的本地密码。因此，为了保持高标准的密码安全，允许用户使用相同的帐户访问本地和云资源是合乎逻辑的。
 - en: To solve this problem, Microsoft developed AAD Connect. AAD Connect is a tool
     for achieving hybrid scenario goals and integrates the on-premises AD with AAD.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了解决这个问题，微软开发了AAD Connect。AAD Connect是实现混合场景目标的工具，将本地AD与AAD集成。
 - en: Users can be more productive and secure by using only one common identity to
     access on-premises resources as well as cloud resources.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户可以通过使用唯一的共同身份访问本地资源和云资源，从而提高生产力并增强安全性。
 - en: 'Administrators regularly connect one or more on-premises AD forest(s) and can
     choose between the following concepts:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 管理员定期连接一个或多个本地AD森林，并可以选择以下概念：
 - en: '**Password hash synchronization**: With the password hash synchronization concept,
     all on-premises passwords are synchronized to AAD to ensure that the same password
     can be used both on-premises and in the cloud. More information on password hash
     synchronization can be found here: [https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs).'
+  id: totrans-51
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**密码哈希同步**：通过密码哈希同步概念，所有本地密码都被同步到AAD，以确保本地和云中可以使用相同的密码。有关密码哈希同步的更多信息，请访问：[https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs)。'
 - en: '**PTA**: Using PTA, no credentials need to be synchronized to the cloud. When
     a user authenticates to AAD, the credentials are passed through to on-premises
     AD, which then validates the credentials before the authentication is successful.
     More information on PTA can be found at [https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta).'
+  id: totrans-52
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**PTA**：使用PTA时，无需将凭据同步到云中。当用户对AAD进行身份验证时，凭据会传递到本地AD，之后本地AD会验证凭据，然后身份验证成功。有关PTA的更多信息，请访问：[https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta)。'
 - en: '**Federation**: When connecting AD to AAD, administrators can also choose to
     configure a federation – either a federation using AD FS or PingFederate (a third-party
     provider) can be selected. A federation is a collection of organizations that
     trust each other, and therefore typically, the same authentication and authorization
     methods can be used.'
+  id: totrans-53
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**联合身份验证**：将AD连接到AAD时，管理员还可以选择配置联合身份验证——可以选择使用AD FS或PingFederate（第三方提供商）进行联合。联合身份验证是信任彼此的组织的集合，因此通常可以使用相同的身份验证和授权方法。'
 - en: When it comes to AAD, a federation serves as a mechanism to provide a seamless
     SSO experience by issuing tokens after verifying the user’s credentials against
     on-premises **domain controllers** (**DCs**). This approach ensures that users
     can access AAD resources without the need for repetitive authentication, enhancing
     the overall user experience and productivity.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 当谈到AAD时，联合机制作为提供无缝单点登录（SSO）体验的一种机制，在验证用户凭据与本地**域控制器**（**DCs**）匹配后，会发放令牌。这个方法确保用户能够访问AAD资源，而无需重复身份验证，从而提升整体用户体验和生产力。
 - en: 'Learn more about federations here: [https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed).'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 了解更多关于联合的信息，请点击这里：[https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/whatis-fed)。
 - en: 'The following screenshot shows all the available sign-on methods when connecting
     your AD to AAD:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了将AD连接到AAD时所有可用的登录方法：
 - en: '![Figure 7.2 – Selecting the sign-on method](image/B16679_07_002.jpg)'
+  id: totrans-57
   prefs: []
   type: TYPE_IMG
+  zh: '![图7.2 – 选择登录方式](image/B16679_07_002.jpg)'
 - en: Figure 7.2 – Selecting the sign-on method
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 图7.2 – 选择登录方式
 - en: So that users do not always have to enter their credentials over and over again,
     SSO can also be enabled during this step.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了避免用户反复输入凭据，单点登录（SSO）也可以在此步骤中启用。
 - en: Every sign-in concept has its advantages as well as disadvantages, and we will
     explore later in this chapter how some scenarios can be approached. But for now,
     let’s first look into how authentication works for users and devices connecting
     to AAD.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 每种登录概念都有其优点和缺点，我们将在本章后面探讨一些场景如何应对。但现在，让我们先了解一下连接到AAD的用户和设备的身份验证是如何工作的。
 - en: Protocols and concepts
+  id: totrans-61
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 协议和概念
 - en: Depending on how the device was joined and to which resource a user wants to
     connect, the authentication and authorization flows differ from each other. When
     it comes to AAD, the main protocols and standards that are used are **Open Authorization**
     (**OAuth**) 2.0, **OpenID Connect** (**OIDC**), and SAML.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 根据设备的加入方式以及用户想要连接的资源，身份验证和授权流程有所不同。对于AAD，主要使用的协议和标准是**开放授权**（**OAuth**）2.0、**OpenID
+    Connect**（**OIDC**）和SAML。
 - en: SAML, as well as OAuth in combination with OIDC, is a very popular protocol
     and can be used to implement SSO. The protocol that is used really depends on
     the application. Both protocols use token artifacts to communicate secrets, but
     work differently when it comes to authorization and authentication.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: SAML以及与OIDC结合使用的OAuth是非常流行的协议，可以用来实现单点登录（SSO）。实际使用的协议取决于应用程序。两者都使用令牌工件来传递秘密，但在授权和身份验证方面的工作方式不同。
 - en: Let’s explore how these protocols work in the following sections, and how the
     flow differs depending on the scenario.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来的几节将探讨这些协议的工作原理，以及根据不同场景，流程是如何变化的。
 - en: OAuth 2.0
+  id: totrans-65
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: OAuth 2.0
 - en: '**OAuth 2.0** is an open standard for access delegation that facilitates token-based
     **authorization** to securely access resources on the internet. It is important
     to note that OAuth 2.0 is not an authentication protocol but rather focuses on
     authorization and secure resource sharing between different applications and services.
     OAuth 2.0 was published in 2012 and has since become widely adopted in modern
     web and API authentication and authorization scenarios.'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: '**OAuth 2.0**是一种开放标准，用于访问委托，简化基于令牌的**授权**，以便安全地访问互联网上的资源。需要注意的是，OAuth 2.0并不是身份验证协议，而是专注于授权和不同应用程序与服务之间的安全资源共享。OAuth
+    2.0于2012年发布，自那时以来，已广泛应用于现代Web和API的身份验证与授权场景。'
 - en: OAuth 2.0 is completely different from the OAuth 1.0 version, which was released
     in 2007\. When using the term *OAuth* in this book, I will always refer to OAuth
     2.0.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: OAuth 2.0与2007年发布的OAuth 1.0版本完全不同。本书中提到的*OAuth*始终指的是OAuth 2.0。
 - en: Using OAuth, third parties can easily access external resources without the
     need to access the username or password of the user.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用OAuth，第三方可以轻松访问外部资源，而无需访问用户的用户名或密码。
 - en: '![Figure 7.3 – Login options with existing accounts](image/B16679_07_003.jpg)'
+  id: totrans-69
   prefs: []
   type: TYPE_IMG
+  zh: '![图7.3 – 使用现有帐户的登录选项](image/B16679_07_003.jpg)'
 - en: Figure 7.3 – Login options with existing accounts
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 图7.3 – 使用现有帐户的登录选项
 - en: For example, if you were to log in to a website, but do not have a login for
     this resource yet, many providers would allow you to use existing accounts (such
     as a Microsoft, Google, Facebook, or Twitter account) to identify yourself and
     log in, as shown in the preceding screenshot.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 举个例子，如果你要登录一个网站，但还没有该资源的登录信息，许多提供商会允许你使用现有账户（例如微软、谷歌、Facebook 或 Twitter 账户）来验证身份并登录，如前面截图所示。
 - en: OAuth vocabulary
+  id: totrans-72
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: OAuth 词汇表
 - en: 'But before we dive into how OAuth works, we first need to clarify some vocabulary:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们深入了解OAuth的工作原理之前，我们首先需要澄清一些词汇：
 - en: '**Resource owner**: This is the person who grants access to a resource, which
     is typically their own user account.'
+  id: totrans-74
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**资源所有者**：这是授予资源访问权限的人，通常是他们自己的用户账户。'
 - en: '**Client**: The application requesting to perform actions on behalf of the
     resource owner.'
+  id: totrans-75
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**客户端**：请求代表资源所有者执行操作的应用程序。'
 - en: '**Authorization server**: This server knows the resource owner and is able
     to authorize that this user is legit. Therefore, the resource owner usually has
     an existing account on the authorization server.'
+  id: totrans-76
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**授权服务器**：此服务器了解资源所有者，并能够授权该用户是否合法。因此，资源所有者通常在授权服务器上有一个现有账户。'
 - en: '**Resource server**: This is the resource/API that the client wants to access
     on behalf of the resource owner. Sometimes, the authorization and the resource
     server are the same servers, but they don’t need to be; sometimes, the authorization
     server is only a server that the resource server trusts.'
+  id: totrans-77
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**资源服务器**：这是客户端代表资源所有者想要访问的资源/API。有时，授权服务器和资源服务器是同一台服务器，但它们不必是同一台；有时，授权服务器只是一个受信任的服务器，资源服务器依赖于它。'
 - en: '**Redirect URI/callback URL**: The URL that the auth server redirects the resource
     owner to after granting permission to the client.'
+  id: totrans-78
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**重定向 URI/回调 URL**：授权服务器在授予客户端权限后，将资源所有者重定向到的 URL。'
 - en: '**Response type**: This indicates the kind of information that the client expects
     to receive. A code is the most common response type; in this case, an authorization
     code will be sent to the client.'
+  id: totrans-79
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**响应类型**：这表示客户端期望接收的信息类型。授权码是最常见的响应类型；在这种情况下，授权码将被发送给客户端。'
 - en: '**Authorization code**: This is a short-lived, temporary code. It is sent by
     the auth server to the client. The client sends it to the authorization server
     with the client secret and receives an access token. It’s important to note that
     the requirement to send a client secret may vary depending on the specific OAuth
     flow being used.'
+  id: totrans-80
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**授权码**：这是一个短期有效的临时代码。授权服务器将其发送给客户端。客户端将它与客户端密钥一起发送给授权服务器，进而获得访问令牌。需要注意的是，是否需要发送客户端密钥，取决于所使用的具体OAuth流程。'
 - en: '**Access token**: This is the token that the client utilizes to gain access
     to the desired resource. It serves as a credential that allows the client to communicate
     and interact with the resource server.'
+  id: totrans-81
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**访问令牌**：这是客户端用来访问所需资源的令牌。它作为凭证，允许客户端与资源服务器进行通信和交互。'
 - en: '**Refresh token**: This is a long-lived token that can be used to request and
     obtain a new access token, once the access token has expired.'
+  id: totrans-82
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**刷新令牌**：这是一个长期有效的令牌，可以在访问令牌过期后，用来请求并获取新的访问令牌。'
 - en: '**Scope**: This refers to granular permissions that the client requests (e.g.,
     read, write, or delete).'
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**范围**：这是客户端请求的细化权限（例如，读取、写入或删除）。'
 - en: '**Consent**: The user can review what permissions (scope) the client requested
     and grants consent by allowing the requested permissions.'
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**同意**：用户可以查看客户端请求的权限（范围），并通过允许请求的权限来授予同意。'
 - en: '**Client ID**: The client ID is used to uniquely identify the client when interacting
     with the authorization server. It serves as a means of identification for the
     client within the authorization process.'
+  id: totrans-85
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**客户端ID**：客户端ID用于唯一标识与授权服务器交互的客户端。在授权过程中，它作为客户端的身份标识符。'
 - en: '**Client secret**: A confidential password known exclusively by the client
     and the authorization server. It serves as a shared secret for authenticating
     the client’s identity during the authorization process.'
+  id: totrans-86
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**客户端密钥**：一个只有客户端和授权服务器知道的保密密码。它作为一个共享密钥，用于在授权过程中验证客户端的身份。'
 - en: Now that you are familiar with the necessary vocabulary, let’s look at how the
     OAuth flow works next.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在你已经熟悉了必要的词汇，接下来我们来看OAuth流程是如何工作的。
 - en: OAuth authorization code grant flow
+  id: totrans-88
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: OAuth 授权码授权流程
 - en: 'The following screenshot shows how the OAuth authorization code grant flow
     works:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图展示了 OAuth 授权码授权流程的工作原理：
 - en: '![Figure 7.4 – OAuth flow](image/B16679_07_004.jpg)'
+  id: totrans-90
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.4 – OAuth 流程](image/B16679_07_004.jpg)'
 - en: Figure 7.4 – OAuth flow
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.4 – OAuth 流程
 - en: 'In order to provide a clear understanding of how the OAuth flow works, the
     following is an example with detailed descriptions of each step involved:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了清楚地理解 OAuth 流程的工作原理，以下是一个包含每个步骤详细描述的示例：
 - en: The user, also called the **resource owner**, wants to allow a newsletter service
     to send a newsletter to specified recipients on their behalf and therefore navigates
     to the newsletter service, the client – for example, **www.1337newsletters.com**.
     Please note that this is just an imaginary newsletter URL.
+  id: totrans-93
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 用户，也被称为**资源拥有者**，希望允许新闻通讯服务代表他们向指定收件人发送新闻通讯，因此他们会导航到新闻通讯服务，即客户端——例如，**www.1337newsletters.com**。请注意，这只是一个虚构的新闻通讯
+    URL。
 - en: The **client** redirects the user to the authorization server – in our case,
     this is AAD. It also includes the client ID, redirect URL, response type, and
     one or more scope(s) if necessary.
+  id: totrans-94
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**客户端**将用户重定向到授权服务器——在我们的例子中，这是 AAD。它还会包括客户端 ID、重定向 URL、响应类型以及必要时的一或多个作用域。'
 - en: The **authorization server** (AAD) verifies the identity of the user and prompts
     them to log in if they aren’t logged in already. It also prompts the user for
     **consent**, ensuring they are fully informed about the scope of actions the client
@@ -466,35 +636,45 @@
     user can now agree or decline and grant or deny permission. It’s important to
     note that consent only needs to be granted once by the user, and not during every
     sign-in.
+  id: totrans-95
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**授权服务器**（AAD）验证用户的身份，并在用户尚未登录时提示其登录。它还会提示用户进行**同意**，确保他们完全了解客户端请求在指定资源服务器上代表他们执行的操作范围。用户可以同意或拒绝并授予或拒绝权限。需要注意的是，用户只需要在首次授权时授予同意，而不是每次登录时都需要同意。'
 - en: In our newsletter example, a possible scope could be to *read contacts* and
     *write and send emails* on behalf of the user.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的新闻通讯示例中，可能的作用域是代表用户*读取联系人*和*写入及发送电子邮件*。
 - en: 'The **redirect URL** is put in as the location: part of the HTTP header and
     a response, including the authorization code, is sent to the client by AAD. When
     the client retrieves a response with such a header, the client will be redirected
     to the designated location and sends the authorization code it retrieved from
     the authorization server.'
+  id: totrans-97
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**重定向 URL**作为位置被放入 HTTP 头部，AAD 将包含授权码的响应发送给客户端。当客户端获取到带有该头部的响应时，客户端将被重定向到指定位置，并发送其从授权服务器获取到的授权码。'
 - en: The **client** sends its client ID, the client secret, and the authorization
     code to the authorization server, and receives an **access token** once the data
     is verified to be legit. A **refresh token** is also sent within this step to
     ensure that the client can request a new access token once the old one expires.
+  id: totrans-98
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**客户端**将其客户端 ID、客户端密钥和授权码发送给授权服务器，一旦数据验证合法，便会接收**访问令牌**。在此步骤中，还会发送**刷新令牌**，以确保客户端在旧的访问令牌过期后可以请求新的访问令牌。'
 - en: The client can now use the access token, which contains the hardcoded scope
     assigned by the authorization server, to access the resource server. With the
     appropriate scope, the client can perform actions on the user’s behalf, such as
     reading contacts and sending out emails.
+  id: totrans-99
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，客户端可以使用访问令牌，该令牌包含由授权服务器分配的硬编码作用域，来访问资源服务器。在适当的作用域下，客户端可以代表用户执行操作，例如读取联系人和发送电子邮件。
 - en: Usually, the **client ID** as well as the **client secret** is generated by
     the **authorization server**, long before this OAuth authorization flow takes
     place. Once the client and the authorization server establish a working relationship,
@@ -502,126 +682,180 @@
     with the client. The secret is not to be shared, so that it’s only known by the
     client and the authorization server. In this way, the identity of the client is
     ensured and can be verified by the authorization server.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，**客户端 ID**以及**客户端密钥**是由**授权服务器**生成的，在 OAuth 授权流程发生之前很久就已生成。一旦客户端和授权服务器建立了工作关系，授权服务器会生成并与客户端共享客户端
+    ID 和客户端密钥。该密钥不能共享，确保只有客户端和授权服务器知道。这样，客户端的身份得到了保障，并且可以由授权服务器验证。
 - en: 'In addition to the Authorization Code Grant flow, there are also other OAuth
     flows specified in **RFC 6749**, such as the Implicit Grant, Resource Owner Password
     Credentials Grant, Client Credentials Grant, and Extension Grant flows. We will
     not look into these flows further in this book, but if you are interested in learning
     more about those different OAuth flows, refer to **RFC** **6749**: [https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749).'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了授权码授权流程外，**RFC 6749** 中还指定了其他 OAuth 流程，如隐式授权、资源所有者密码凭证授权、客户端凭证授权和扩展授权流程。本书中不会进一步探讨这些流程，但如果您有兴趣了解更多不同的
+    OAuth 流程，请参阅 **RFC 6749**：[https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749)。
 - en: OpenID Connect
+  id: totrans-102
   prefs:
   - PREF_H4
   type: TYPE_NORMAL
+  zh: OpenID Connect
 - en: OIDC is an additional layer built on the OAuth framework. It adds login and
     profile information about the identity of the user (that is, the resource owner)
     that is logged in. When an authorization server supports OIDC, it provides the
     client with information about the resource owner. OIDC authenticates the user
     and enables the user to use SSO.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: OIDC 是建立在 OAuth 框架上的额外一层。它增加了关于已登录用户（即资源所有者）的登录和个人资料信息。当授权服务器支持 OIDC 时，它向客户端提供关于资源所有者的信息。OIDC
+    认证用户并使用户能够使用单点登录（SSO）。
 - en: If an authorization server supports OIDC, we can also call it an **IdP**, which
     can be used for **authentication** as well.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一个授权服务器支持 OIDC，我们也可以称它为 **IdP**，并且可以用于 **身份验证**。
 - en: 'The authorization flow with OIDC is almost exactly the same as the regular
     OAuth flow; the only differences occur within *steps 2* and *5*, which are as
     follows:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 OIDC 的授权流程几乎与常规 OAuth 流程完全相同，唯一的不同发生在 *步骤 2* 和 *步骤 5* 中，具体如下：
 - en: '2\. The scope that is sent contains the information that OIDC should be used:
     **Scope=OpenID**.'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 2\. 发送的 scope 包含 OIDC 应该使用的信息：**Scope=OpenID**。
 - en: 5\. As well as the access token and the refresh token that are sent, an **ID
     token** is also sent.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 5\. 除了发送的访问令牌和刷新令牌外，还会发送一个 **ID 令牌**。
 - en: The access token is a **JSON Web Token** (**JWT**) that can be decoded, but
     that does not make much sense to the client and should not be used by the app
     to make any decisions. It needs to be sent every time to access the desired resources.
     An ID token is also a JWT and contains information about the user.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 访问令牌是一个 **JSON Web Token**（**JWT**），可以解码，但对于客户端没有太大意义，不应由应用程序用于做出任何决策。它需要每次都发送以访问所需的资源。ID
+    令牌也是一个 JWT，包含有关用户的信息。
 - en: Within the ID token, all user claims are available once the information is extracted.
     Claims are information such as the user’s name, their ID, when the user logged
     in, and the token’s expiration date. This token is signed so that it cannot be
     easily tampered with by a man-in-the-middle attack.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 ID 令牌中，一旦提取信息，所有用户声明都可以使用。声明是诸如用户姓名、用户 ID、用户登录时间和令牌过期时间等信息。此令牌经过签名，防止被中间人攻击轻易篡改。
 - en: SAML
+  id: totrans-110
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: SAML
 - en: '**SAML** is an open standard, used by **IdPs** to transfer authorization information
     to **service providers** (**SPs**). Using SAML, it is possible to use SSO directly
     without any other additional protocol – so that users can enter their login credentials
     only once and can use a variety of services without the need to authenticate over
     and over again.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '**SAML** 是一种开放标准，供 **IdP** 用于将授权信息传递给 **服务提供商**（**SP**）。使用 SAML，可以直接使用 SSO，而不需要任何其他附加协议——用户只需输入一次登录凭据，就可以使用多种服务，而无需一次又一次地进行身份验证。'
 - en: 'The following figure should help you to understand the SAML authentication
     flow:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图应该有助于您理解 SAML 认证流程：
 - en: '![Figure 7.5 – SAML authentication flow](image/B16679_07_005.jpg)'
+  id: totrans-113
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.5 – SAML 认证流程](image/B16679_07_005.jpg)'
 - en: Figure 7.5 – SAML authentication flow
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.5 – SAML 认证流程
 - en: 'To provide a comprehensive understanding of the SAML authentication flow when
     using AAD as the IdP, the following list outlines each action involved in authenticating
     a user through SAML:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了全面理解在使用 AAD 作为 IdP 时的 SAML 认证流程，以下列表概述了通过 SAML 认证用户时涉及的每个操作：
 - en: The user opens the browser and attempts to access a resource and therefore requests
     access from the SP.
+  id: totrans-116
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 用户打开浏览器并尝试访问一个资源，因此向 SP 请求访问。
 - en: The SP generates a **SAML authorization request** and redirects the user to
     the IdP, AAD. AAD authenticates the user.
+  id: totrans-117
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: SP 生成一个 **SAML 授权请求**，并将用户重定向到 IdP，AAD。AAD 对用户进行认证。
 - en: AAD generates the **SAML tokens** and sends them back to the user. Along with
     the SAML tokens, the session key is returned as well.
+  id: totrans-118
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: AAD生成**SAML令牌**并将其发送回用户。与SAML令牌一起，会返回会话密钥。
 - en: The user presents the SAML tokens to the SP.
+  id: totrans-119
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 用户向SP呈现SAML令牌。
 - en: The SP validates the SAML response as well as the SAML tokens and completes
     the sign-in if everything seems to be in order. The user is logged in and is forwarded
     to the secured web application.
+  id: totrans-120
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: SP验证SAML响应以及SAML令牌，并在一切正常的情况下完成登录。用户已登录，并被转发到安全的Web应用程序。
 - en: Primary Refresh Token
+  id: totrans-121
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 主刷新令牌
 - en: Regardless of whether OAuth or SAML is used, in both cases, **Primary Refresh
     Tokens** (**PRTs**) are generated by AAD and used to extend the user session.
     A PRT can be compared to a Ticket Granting Ticket in AD.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论使用的是OAuth还是SAML，在这两种情况下，**主刷新令牌**（**PRT**）都是由AAD生成并用于延长用户会话。PRT可以类比为AD中的票据授权票证。
 - en: It doesn’t just refresh the OAuth or SAML authentication; it is a master key
     that can be used to authenticate *any* application. PRTs were originally introduced
     to provide SSO across applications. This is also the reason why Microsoft applied
     extra protection to PRTs and recommends having devices equipped with a TPM – if
     a TPM is available, the cryptographic keys are stored within the TPM, which makes
     it almost impossible to retrieve them and obtain access to the PRT.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 它不仅仅刷新OAuth或SAML身份验证；它是一个主密钥，可以用来验证*任何*应用程序。PRT最初是为提供跨应用程序的SSO而引入的。这也是微软对PRT应用额外保护并建议设备配备TPM的原因——如果有TPM，密码学密钥就存储在TPM中，这使得几乎不可能提取它们并获取对PRT的访问权限。
 - en: However, if no TPM chip is present, the PRT can be extracted and can be abused.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果没有TPM芯片，PRT可以被提取并可能被滥用。
 - en: The PRT itself is a JWT that contains the user’s authentication information.
     It is encrypted with a transport key and tied to the specific device it was issued
     to. It also resides in the memory of the device it was issued to and can be extracted
@@ -630,148 +864,209 @@
     *Active Directory – Attacks and Mitigation*; please refer to this chapter if you
     want to understand what the LSA is. **CloudAP** is the part of the LSA that protects
     cloud-related tokens, such as the PRT.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: PRT本身是一个包含用户身份验证信息的JWT。它使用传输密钥加密，并与发放给定设备绑定。它还存在于发放给定设备的内存中，并可以通过**LSA CloudAP**使用**mimikatz**等工具提取。我们之前在[*第6章*](B16679_06_Final_PD.xhtml#_idTextAnchor150)《Active
+    Directory – 攻击与缓解》中讨论了**本地安全机构**（**LSA**），如果你想了解LSA的内容，请参考本章。**CloudAP**是LSA中保护与云相关的令牌（如PRT）的部分。
 - en: 'In this book, you just need to know that a PRT is the authentication artifact,
     and if it’s stolen, it opens up the possibility of impersonation. If you want
     to learn more about how a PRT is issued or refreshed, please refer to the Microsoft
     documentation: [https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token](https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token).'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本书中，你只需要知道PRT是身份验证文物，如果它被盗，就会导致身份冒充的可能性。如果你想了解更多关于PRT是如何发放或刷新的信息，请参考微软文档：[https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token](https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token)。
 - en: Understanding the importance of protecting the PRT is crucial, especially when
     it comes to privileged accounts and roles, which we will explore in the next section.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 了解保护PRT的重要性至关重要，尤其是当涉及到特权账户和角色时，我们将在下一节中深入探讨这一点。
 - en: Privileged accounts and roles
+  id: totrans-128
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 特权账户和角色
 - en: Privileged accounts and roles are the heart of any directory service and are
     the most powerful accounts/roles. Therefore, they are of special interest to adversaries
     and need an extra level of protection.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 特权账户和角色是任何目录服务的核心，它们是最强大的账户/角色。因此，它们对对手具有特殊的吸引力，需要额外的保护级别。
 - en: 'There are lots of built-in roles available in AAD. In this chapter, I won’t
     describe all of them, but will give you an overview of some important roles that
     have permissions that could be easily abused. Therefore, it makes sense to regularly
     check and audit which accounts do have those roles assigned:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: AAD中有许多内置角色。在本章中，我不会描述所有角色，而是会概述一些可能被轻易滥用的具有权限的重要角色。因此，定期检查和审计哪些账户被分配了这些角色是非常有意义的：
 - en: '**Global Administrator**: This is the most powerful role in AAD. It is allowed
     to perform every administrative task that is possible within AAD.'
+  id: totrans-131
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**全局管理员**：这是AAD中最强大的角色。它被允许执行AAD中所有可能的管理任务。'
 - en: '**Privileged Role Administrator**: This role can manage and assign all AAD
     roles, including the Global Administrator role. This role can also create and
     manage groups that can be assigned to AAD roles, as well as manage Privileged
     Identity Management and administrative units.'
+  id: totrans-132
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**特权角色管理员**：此角色可以管理和分配所有AAD角色，包括全局管理员角色。此角色还可以创建和管理可以分配给AAD角色的组，并管理特权身份管理和行政单元。'
 - en: '**Global Reader**: This role can read all information, but cannot perform any
     action. Nevertheless, it could be useful to attackers for enumeration purposes.'
+  id: totrans-133
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**全局读取器**：此角色可以读取所有信息，但无法执行任何操作。尽管如此，对于攻击者来说，它可能在枚举过程中仍然有用。'
 - en: '**Application Administrator/Cloud Application Administrator**: These roles
     can manage or create everything related to applications. They can also add credentials
     to an application, so they could be also used to impersonate an application, which
     could lead to a privilege escalation.'
+  id: totrans-134
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**应用管理员/云应用管理员**：这些角色可以管理或创建与应用程序相关的所有内容。他们还可以为应用程序添加凭证，因此也可以用来冒充应用程序，这可能导致特权升级。'
 - en: '**Intune Administrator**: This role can manage everything within Intune, as
     well as create and manage all security groups.'
+  id: totrans-135
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Intune管理员**：此角色可以管理Intune中的所有内容，并创建和管理所有安全组。'
 - en: '**Authentication Administrator**: This role can (re)set any authentication
     method and can manage credentials for non-administrative users, as well as for
     some roles.'
+  id: totrans-136
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**身份验证管理员**：此角色可以（重新）设置任何身份验证方法，并且可以管理非管理员用户以及某些角色的凭证。'
 - en: '**Privileged Authentication Administrator**: This role has similar rights to
     the Authentication Administrator, but can also set the authentication method policy
     for the entire tenant.'
+  id: totrans-137
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**特权身份验证管理员**：此角色具有与身份验证管理员类似的权限，但还可以为整个租户设置身份验证方法策略。'
 - en: '**Conditional Access Administrator**: This role can manage Conditional Access
     settings.'
+  id: totrans-138
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**条件访问管理员**：此角色可以管理条件访问设置。'
 - en: '**Exchange Administrator**: This role has global permissions within Exchange
     Online, which allows this role to create and manage all Microsoft 365 groups.'
+  id: totrans-139
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Exchange管理员**：此角色在Exchange Online中具有全局权限，允许该角色创建和管理所有Microsoft 365组。'
 - en: '**Security Administrator**: This role can manage all security-related Microsoft
     365 features (such as Microsoft 365 Defender or Identity Protection).'
+  id: totrans-140
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**安全管理员**：此角色可以管理所有与安全相关的Microsoft 365功能（例如Microsoft 365 Defender或身份保护）。'
 - en: 'Those are the most important built-in roles in AAD, but there are still many
     other roles that can be abused by attackers. A complete overview of all built-in
     AAD roles can be found here: [https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference](https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference).'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些是AAD中最重要的内置角色，但仍然有许多其他角色可能会被攻击者滥用。有关所有内置AAD角色的完整概览，请查看此链接：[https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference](https://docs.microsoft.com/en-us/azure/active-directory/roles/permissions-reference)。
 - en: Besides built-in roles, it is also important to keep track of your **Hypervisor
     Administrator** or **Subscription Administrators**, or privileged roles in general
     that are *able to access sensitive VMs*; such a role could easily get access to
     the hosted VMs and reset passwords. Once access to a machine is gained, the user
     can do everything with the VM and even obtain the credentials of users and administrators
     that log on to that VM.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了内置角色外，还需要跟踪您的**虚拟化管理员**或**订阅管理员**，或者一般的特权角色，这些角色*能够访问敏感虚拟机*；这样的角色很容易获得对托管虚拟机的访问权限并重置密码。一旦访问机器，用户可以对虚拟机执行任何操作，甚至获得登录该虚拟机的用户和管理员的凭证。
 - en: Also monitor other roles that can manage group membership, such as **Security
     Group** and **Microsoft 365** **group owners**.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 还需监视其他可以管理组成员身份的角色，例如**安全组**和**Microsoft 365** **组所有者**。
 - en: 'Please refer to the AAD role best practices to learn what you can do to protect
     your AAD roles in the best way: https://docs.microsoft.com/en-us/azure/active-directory/roles/best-practices.'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 请参考AAD角色最佳实践，了解如何以最佳方式保护您的AAD角色：[https://docs.microsoft.com/en-us/azure/active-directory/roles/best-practices](https://docs.microsoft.com/en-us/azure/active-directory/roles/best-practices)。
 - en: Accessing AAD using PowerShell
+  id: totrans-145
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用PowerShell访问AAD
 - en: 'Of course, we all know the Azure portal; surely attackers can also take advantage
     of seamless SSO and access the portal using the user’s browser. There’s even a
     way to run code directly from the Azure portal using Azure Cloud Shell. But these
     methods are hard to automate and attackers would struggle to stay undetected.
     The following screenshot shows how Azure Cloud Shell can be run from the Azure
     portal:'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，我们都知道 Azure 门户；攻击者也可以利用无缝 SSO 访问门户，使用用户的浏览器进行访问。甚至还有一种方法可以通过 Azure Cloud
+    Shell 直接从 Azure 门户运行代码。但这些方法很难自动化，攻击者也会很难保持不被发现。以下截图显示了如何从 Azure 门户运行 Azure Cloud
+    Shell：
 - en: '![Figure 7.6 – Using Azure Cloud Shell from the Azure portal](image/B16679_07_006.jpg)'
+  id: totrans-147
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.6 – 从 Azure 门户使用 Azure Cloud Shell](image/B16679_07_006.jpg)'
 - en: Figure 7.6 – Using Azure Cloud Shell from the Azure portal
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.6 – 从 Azure 门户使用 Azure Cloud Shell
 - en: 'But there are also some ways to access AAD using code or the command line directly
     from your computer:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，也有一些方法可以直接通过代码或命令行从你的计算机访问 AAD：
 - en: The Azure CLI
+  id: totrans-150
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Azure CLI
 - en: Azure PowerShell
+  id: totrans-151
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Azure PowerShell
 - en: 'Azure .NET: [https://docs.microsoft.com/en-us/dotnet/azure/](https://docs.microsoft.com/en-us/dotnet/azure/)'
+  id: totrans-152
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 'Azure .NET: [https://docs.microsoft.com/en-us/dotnet/azure/](https://docs.microsoft.com/en-us/dotnet/azure/)'
 - en: Originally, these methods were developed to support automation and simplify
     administration tasks, but as usual, they can also be abused by attackers.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 最初，这些方法是为了支持自动化和简化管理任务而开发的，但像往常一样，它们也可能被攻击者滥用。
 - en: 'We will not dive deeper into Azure .NET in this chapter. Azure .NET is a set
     of libraries for .NET developers to use to interact with Azure resources, including
     AAD. These libraries are available in various languages, such as C#, F#, and Visual
@@ -781,392 +1076,578 @@
     6*](B16679_06_Final_PD.xhtml#_idTextAnchor150), *Active Directory – Attacks and
     Mitigation*). For more information, please refer to this Azure .NET reference:
     [https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet).'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章不会深入探讨 Azure .NET。Azure .NET 是一套供 .NET 开发者使用的库，用来与 Azure 资源（包括 AAD）进行交互。这些库支持多种语言，如
+    C#、F# 和 Visual Basic。它们并没有为 PowerShell 提供直接接口，但可以通过 PowerShell 使用它们来自动化各种任务，类似于如何从
+    PowerShell 使用 .NET Framework 中的 **System.DirectoryServices** 命名空间（见 [*第 6 章*](B16679_06_Final_PD.xhtml#_idTextAnchor150)，*Active
+    Directory – 攻击与缓解*）。欲了解更多信息，请参考此 Azure .NET 文档：[https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet)。
 - en: In the following sections, let’s look more closely at the PowerShell-related
     Azure CLI and Azure PowerShell, which you can use not only exclusively from Azure
     Cloud Shell but also from your local computer.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将更详细地介绍与 PowerShell 相关的 Azure CLI 和 Azure PowerShell，除了可以专门在 Azure
+    Cloud Shell 中使用外，还可以在本地计算机上使用它们。
 - en: The Azure CLI
+  id: totrans-156
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Azure CLI
 - en: The Azure CLI is a cross-platform command-line tool to connect and administer
     AAD. It also authenticates using the OAuth protocol.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: Azure CLI 是一款跨平台的命令行工具，用于连接和管理 AAD。它还使用 OAuth 协议进行身份验证。
 - en: 'Before you can run the Azure CLI, you need to install it. Use the documentation
     that corresponds with your operation system: [https://docs.microsoft.com/en-us/cli/azure/install-azure-cli](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli).'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你可以运行 Azure CLI 之前，需要先安装它。请使用与你操作系统相对应的文档：[https://docs.microsoft.com/en-us/cli/azure/install-azure-cli](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)。
 - en: 'Once you’ve installed the Azure CLI successfully, you can get started and log
     in to the Azure CLI:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 安装 Azure CLI 成功后，你可以开始使用并登录到 Azure CLI：
 - en: '[PRE0]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: A new window opens in your browser that prompts you to log in or to select the
     account to log in – if you are already logged in to an account in your browser
     session.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 在浏览器中会打开一个新窗口，提示你登录或选择登录账户——如果你在浏览器会话中已经登录了账户。
 - en: If you are using the **--use-device-code** parameter, you will not be prompted
     with a new browser window; instead, you will be presented with a code that you
     can use on a device of your choice to authenticate this session by using the other
     device.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你使用 **--use-device-code** 参数，系统不会弹出新的浏览器窗口；而是会提供一个代码，你可以在选择的设备上使用该代码，通过其他设备进行身份验证以开始此会话。
 - en: 'Once you are logged in, you can use the typical Azure CLI syntax to interact
     with Azure. A complete overview of all available **Az** commands can be found
     here: [https://docs.microsoft.com/en-us/cli/azure/reference-index](https://docs.microsoft.com/en-us/cli/azure/reference-index).'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 登录后，您可以使用典型的 Azure CLI 语法与 Azure 进行交互。有关所有可用 **Az** 命令的完整概述，请参阅：[https://docs.microsoft.com/en-us/cli/azure/reference-index](https://docs.microsoft.com/en-us/cli/azure/reference-index)。
 - en: 'When interacting with AAD, you might find the **az ad** overview helpful: [https://docs.microsoft.com/en-us/cli/azure/ad](https://docs.microsoft.com/en-us/cli/azure/ad).'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 在与 AAD 交互时，您可能会发现 **az ad** 概述有用：[https://docs.microsoft.com/en-us/cli/azure/ad](https://docs.microsoft.com/en-us/cli/azure/ad)。
 - en: Azure PowerShell
+  id: totrans-165
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Azure PowerShell
 - en: When working with PowerShell and AAD, you can use the **Az** module. There's
     also the **AzureAD** module, but that module will be deprecated on March 30, 2024,
     and superseded by Microsoft Graph PowerShell. Although at the time of writing
     Microsoft plans for the **AzureAD** module to still work until six months after
     the announced deprecation date, Microsoft recommends migrating to Microsoft Graph
     PowerShell from now. So, we will not look into **AzureAD** cmdlets in this chapter.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 在使用 PowerShell 和 AAD 时，您可以使用 **Az** 模块。还有 **AzureAD** 模块，但该模块将在 2024 年 3 月 30
+    日被弃用，并由 Microsoft Graph PowerShell 取代。尽管在撰写本文时，Microsoft 计划让 **AzureAD** 模块在弃用公告日期后的六个月内仍能正常工作，但
+    Microsoft 建议从现在开始迁移到 Microsoft Graph PowerShell。因此，我们在本章中不会深入探讨 **AzureAD** cmdlet。
 - en: The Az module
+  id: totrans-167
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Az 模块
 - en: 'You can install the **Az** module via either an MSI installation file or **PowerShellGet**.
     The following example shows the installation via **PowerShellGet**:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以通过 MSI 安装文件或 **PowerShellGet** 安装 **Az** 模块。以下示例演示了通过 **PowerShellGet** 进行安装：
 - en: '[PRE1]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Azure PowerShell is part of the **Az** module and it is recommended to only
     install it for the current user.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: Azure PowerShell 是 **Az** 模块的一部分，建议仅为当前用户安装它。
 - en: 'For other installation modes and troubleshooting, refer to the official documentation:
     [https://docs.microsoft.com/en-us/powershell/azure/install-az-ps](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps).'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 有关其他安装方式和故障排除，请参阅官方文档：[https://docs.microsoft.com/en-us/powershell/azure/install-az-ps](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)。
 - en: 'Once the module is installed, you can get started by importing it into your
     current session and logging in:'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 模块安装完成后，您可以通过将其导入到当前会话并登录来开始使用：
 - en: '[PRE2]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Similar to the Azure CLI, a new window opens in your browser and prompts you
     to log in. Once the login is successful, this is also shown on your PowerShell
     command line:'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 Azure CLI 类似，您的浏览器中会打开一个新窗口，并提示您登录。登录成功后，PowerShell 命令行也会显示登录成功信息：
 - en: '![Figure 7.7 – Connect-AzAccount was successfully executed](image/B16679_07_007.jpg)'
+  id: totrans-175
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.7 – Connect-AzAccount 执行成功](image/B16679_07_007.jpg)'
 - en: Figure 7.7 – Connect-AzAccount was successfully executed
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.7 – Connect-AzAccount 执行成功
 - en: Similar to the Azure CLI, you can also request a code to sign in and authenticate
     from another device using the **-****UseDeviceAuthentication** parameter.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似于 Azure CLI，您还可以使用 **-** **UseDeviceAuthentication** 参数请求一个验证码，以便从另一台设备登录并进行身份验证。
 - en: 'But it is also possible to script the authentication using **Connect-AzAccount**
     – in the following example, you will be prompted by PowerShell to enter your credentials,
     which will then be used to authenticate:'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 但也可以使用 **Connect-AzAccount** 脚本化身份验证——在以下示例中，PowerShell 会提示您输入凭据，随后使用这些凭据进行身份验证：
 - en: '[PRE3]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Az PowerShell is quite extensive and consists of multiple modules. You can get
     an overview of all the currently existing modules by running the **Get-Module
     -Name** **Az.*** command.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: Az PowerShell 非常广泛，由多个模块组成。您可以通过运行 **Get-Module -Name** **Az.*** 命令获取当前所有现有模块的概述。
 - en: 'Once you have found the module, you want to know what commands are available.
     You can use **Get-Command** as usual, as shown in the following screenshot:'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 找到模块后，您可以查看哪些命令可用。您可以像往常一样使用 **Get-Command**，如以下截图所示：
 - en: '![Figure 7.8 – Finding out which cmdlets the Az.Accounts module provides](image/B16679_07_008.jpg)'
+  id: totrans-182
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.8 – 查找 Az.Accounts 模块提供的 cmdlet](image/B16679_07_008.jpg)'
 - en: Figure 7.8 – Finding out which cmdlets the Az.Accounts module provides
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.8 – 查找 Az.Accounts 模块提供的 cmdlet
 - en: 'For more information about Azure PowerShell, please refer to the documentation:
     [https://learn.microsoft.com/en-us/powershell/azure/](https://learn.microsoft.com/en-us/powershell/azure/).'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 如需了解有关 Azure PowerShell 的更多信息，请参考文档：[https://learn.microsoft.com/en-us/powershell/azure/](https://learn.microsoft.com/en-us/powershell/azure/)。
 - en: Microsoft Graph
+  id: totrans-185
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: Microsoft Graph
 - en: 'Microsoft Graph can be installed using **PowerShellGet**, as it is available
     in the PowerShell Gallery:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: Microsoft Graph可以使用**PowerShellGet**安装，因为它在PowerShell Gallery中可用：
 - en: '[PRE4]'
+  id: totrans-187
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Once it is installed, you will need to connect to AAD:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 安装完成后，您需要连接到AAD：
 - en: '[PRE5]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'A new window opens in your browser and prompts you to log in and grant consent,
     as shown in the following screenshot:'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 浏览器中会弹出一个新窗口，提示您登录并授予权限，如下图所示：
 - en: '![Figure 7.9 – Granting consent to Microsoft Graph](image/B16679_07_009.jpg)'
+  id: totrans-191
   prefs: []
   type: TYPE_IMG
+  zh: '![图7.9 – 授予Microsoft Graph权限](image/B16679_07_009.jpg)'
 - en: Figure 7.9 – Granting consent to Microsoft Graph
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 图7.9 – 授予Microsoft Graph权限
 - en: 'Once the login is successful, a welcome message is shown on your PowerShell
     command line:'
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 登录成功后，您的PowerShell命令行上会显示欢迎消息：
 - en: '![Figure 7.10 – Welcome message after logging in to Microsoft Graph](image/B16679_07_010.jpg)'
+  id: totrans-194
   prefs: []
   type: TYPE_IMG
+  zh: '![图7.10 – 登录Microsoft Graph后的欢迎消息](image/B16679_07_010.jpg)'
 - en: Figure 7.10 – Welcome message after logging in to Microsoft Graph
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 图7.10 – 登录Microsoft Graph后的欢迎消息
 - en: 'Now you can use Microsoft Graph to interact with your AAD instance. You can
     find more information about Microsoft Graph in the official documentation: [https://learn.microsoft.com/en-us/powershell/microsoftgraph/](https://learn.microsoft.com/en-us/powershell/microsoftgraph/).'
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您可以使用Microsoft Graph与您的AAD实例进行交互。有关Microsoft Graph的更多信息，请参阅官方文档：[https://learn.microsoft.com/en-us/powershell/microsoftgraph/](https://learn.microsoft.com/en-us/powershell/microsoftgraph/)。
 - en: Now that you have learned the basics about AAD, let’s look into how red teamers
     could attack it in the next sections.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您已经了解了关于AAD的基础知识，让我们在接下来的章节中看看红队如何攻击它。
 - en: Attacking AAD
+  id: totrans-198
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 攻击AAD
 - en: During an attack, enumeration is always one of the first steps (and repeated
     several times, depending on what the adversary can access) taken to get more details
     about an environment. Enumeration helps to find out what resources are available
     and what access rights can be abused.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 在攻击过程中，枚举通常是第一步（并且根据对手可以访问的内容，可能会重复几次）用来获取环境更多细节的步骤。枚举有助于找出哪些资源可用，以及哪些访问权限可能被滥用。
 - en: While in AD, every user who has access to the corporate network can enumerate
     all user accounts, as well as admin membership, in AAD, every user who has access
     to Office 365 services via the internet can enumerate them, but for AAD.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 在AD中，任何可以访问企业网络的用户都可以枚举所有用户账户以及管理员成员资格；而在AAD中，任何可以通过互联网访问Office 365服务的用户都可以枚举它们，但对于AAD来说。
 - en: Anonymous enumeration
+  id: totrans-201
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 匿名枚举
 - en: There is even a way to find out more about the current AAD tenant anonymously.
     For an adversary, this has huge advantages, as they do not need to trick a user
     into providing their credentials through a phishing attack or similar. Also, the
     risk of being detected is massively decreased.
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 甚至有一种方法可以匿名获取有关当前AAD租户的更多信息。对于对手来说，这有巨大的优势，因为他们无需通过钓鱼攻击或类似手段欺骗用户提供凭据。此外，被检测到的风险大大降低。
 - en: There are numerous APIs that do have a legit purpose, but can also be abused
     for anonymous enumeration.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 有许多API确实有合法的用途，但也可以被滥用进行匿名枚举。
 - en: 'One of those APIs is the following:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中一个API如下：
 - en: '[PRE6]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Just replace **<username@domain.tld>** with the user sign-in you want to get
     more information about and navigate to this URL in your browser. If you wanted
     to learn more about the environment the **PSSec-User@PSSec-Demo.onmicrosoft.com**
     user is part of, you could use the following URL:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 只需将**<username@domain.tld>**替换为您想要获取更多信息的用户登录名，并在浏览器中导航到此URL。如果您想了解有关**PSSec-User@PSSec-Demo.onmicrosoft.com**用户所在环境的更多信息，您可以使用以下URL：
 - en: '[https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1](https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1)'
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1](https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1)'
 - en: 'The following screenshot shows what the output would look like if the user
     existed:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了如果用户存在时，输出的样子：
 - en: '![Figure 7.11 – Enumerating an existing AAD user](image/B16679_07_011.jpg)'
+  id: totrans-209
   prefs: []
   type: TYPE_IMG
+  zh: '![图7.11 – 枚举现有AAD用户](image/B16679_07_011.jpg)'
 - en: Figure 7.11 – Enumerating an existing AAD user
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 图7.11 – 枚举现有AAD用户
 - en: This way, you can verify that the user exists. You can also tell that the company
     is using AAD (Office 365) and that this account is managed by AAD as indicated
     by **<NameSpaceType>Managed</NameSpaceType>**.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过这种方式，您可以验证用户是否存在。您还可以判断公司是否使用AAD（Office 365），并且该账户是由AAD管理的，如**<NameSpaceType>Managed</NameSpaceType>**所示。
 - en: 'Possible values for **NameSpaceType** are as follows:'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: '**NameSpaceType**的可能值如下：'
 - en: '**Federated**: Federated AD is used by this company and the queried account
     exists.'
+  id: totrans-213
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**联合**：该公司使用了联合AD，并且查询的账户存在。'
 - en: Prior to obtaining refresh and access tokens from AAD, the client must verify
     the user’s credentials against the on-premises AD or another identity management
     solution. It’s important to note that AAD does not perform credential validation.
     AAD will issue the necessary tokens to access cloud resources only after the client
     has received a SAML token as proof of the user’s verified credentials and identity.
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 在从AAD获取刷新令牌和访问令牌之前，客户端必须通过本地AD或其他身份管理解决方案验证用户的凭证。需要注意的是，AAD不执行凭证验证。只有在客户端收到SAML令牌作为用户验证凭证和身份的证明后，AAD才会发放访问云资源所需的令牌。
 - en: '**Managed**: Office 365 is in use and the account, which is managed by AAD,
     exists.'
+  id: totrans-215
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**托管**：正在使用Office 365，该账户由AAD管理，并且存在。'
 - en: Thus can refer to an account that is synced from an on-premises AD but is not
     federated, or it can be a cloud-only account created directly in AAD. For managed
     accounts, user authentication is performed exclusively in the cloud, and on-premises
     infrastructure is not involved in credential validation.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，可以指一个从本地AD同步过来的账户，但未进行联合，或者是直接在AAD中创建的仅云端账户。对于托管账户，用户认证仅在云端进行，本地基础设施不参与凭证验证。
 - en: '**Unknown**: No record with this username exists.'
+  id: totrans-217
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**未知**：没有该用户名的记录。'
 - en: 'If a queried account does not exist, **NameSpaceType** will show **Unknown**
     and you will get less information back, as shown in the following screenshot:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果查询的账户不存在，**NameSpaceType**将显示**未知**，并且你将获得较少的信息，如下图所示：
 - en: '![Figure 7.12 – Account does not exist](image/B16679_07_012.jpg)'
+  id: totrans-219
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.12 – 账户不存在](image/B16679_07_012.jpg)'
 - en: Figure 7.12 – Account does not exist
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.12 – 账户不存在
 - en: For attackers, accounts whose names indicate that the account has elevated privileges
     and are a valuable target could be of special interest, such as **admin@company.com**
     or **administrator@company.onmicrosoft.com**.
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 对攻击者来说，账户名中含有指示账户具有提升权限的信息，并且是有价值目标的账户，可能会特别感兴趣，例如**admin@company.com**或**administrator@company.onmicrosoft.com**。
 - en: 'There are also other open source scripts, such as **o365creeper**, that rely
     on public APIs to anonymously enumerate Office 365 environments: https://github.com/LMGsec/o365creeper.'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有其他一些开源脚本，如**o365creeper**，依赖于公共API来匿名枚举Office 365环境：https://github.com/LMGsec/o365creeper。
 - en: Using anonymous enumeration methods allows attackers to get a list of verified
     user accounts within an organization. The next objective is to get access by finding
     out at least the credentials of one account.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用匿名枚举方法允许攻击者获取组织内已验证用户账户的列表。下一个目标是通过找出至少一个账户的凭证来获得访问权限。
 - en: Password spraying
+  id: totrans-224
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 密码喷射攻击
 - en: Not every user uses a super-secure password that is hard to guess; therefore,
     password spraying is one of the most popular methods for gaining access to an
     environment.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 并非每个用户都使用难以猜测的超级安全密码；因此，密码喷射攻击是获取环境访问权限的最常见方法之一。
 - en: 'Surprisingly, the top 10 most common passwords in 2022 were very easy to guess:'
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 出人意料的是，2022年最常见的十大密码非常容易猜到：
 - en: '**123456**'
+  id: totrans-227
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**123456**'
 - en: '**123456789**'
+  id: totrans-228
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**123456789**'
 - en: '**qwerty**'
+  id: totrans-229
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**qwerty**'
 - en: '**password**'
+  id: totrans-230
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**password**'
 - en: '**1234567**'
+  id: totrans-231
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**1234567**'
 - en: '**12345678**'
+  id: totrans-232
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**12345678**'
 - en: '**12345**'
+  id: totrans-233
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**12345**'
 - en: '**iloveyou**'
+  id: totrans-234
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**iloveyou**'
 - en: '**111111**'
+  id: totrans-235
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**111111**'
 - en: '**123123**'
+  id: totrans-236
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**123123**'
 - en: Many companies don’t enforce MFA for all users, while other companies have MFA
     in place but they may not effectively configure Conditional Access policies to
     enforce MFA during specific risky events or under risky conditions. It is also
     very common for many high-privileged accounts to not have MFA configured at all.
     This makes it very easy for adversaries to log in using guessed passwords and
     gain unauthorized access.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多公司并未对所有用户强制执行MFA，而其他公司虽然有MFA，但可能未能有效配置条件访问策略，以在特定风险事件或风险条件下强制执行MFA。许多高权限账户根本没有配置MFA也是非常常见的情况。这使得攻击者可以轻松地通过猜测密码登录并获得未授权的访问权限。
 - en: Password spraying is an attack used by attackers to just brute-force into a
     formerly verified account; by trying to authenticate against multiple user accounts
     and trying out several common passwords, the chance of finding an account that
     has a weak password in place is high.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 密码喷射攻击是攻击者用来暴力破解一个曾经验证过的账户的攻击方式；通过对多个用户账户进行身份验证并尝试几个常见密码，能够找到使用弱密码的账户的几率很高。
 - en: AAD provides some mitigations against password spraying, but this attack is
     still possible.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: AAD提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍然是可能的。
 - en: Usually, attacks in AAD are very focused (such as sending spear-phishing emails);
     therefore, password spraying is less likely, but it is still a common attack and
     still occurs, usually launched by adversaries that are trying to find an entry
     point.
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
 - en: 'There are several open source tools that can help attackers to achieve their
     goal of discovering and enumerating accounts in AAD environments, as well as performing
     password-spraying attacks against them:'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
 - en: '**LyncSniper**: [https://github.com/mdsecresearch/LyncSniper](https://github.com/mdsecresearch/LyncSniper)'
+  id: totrans-242
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**MailSniper**: [https://github.com/dafthack/MailSniper](https://github.com/dafthack/MailSniper)'
+  id: totrans-243
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Ruler**: [https://github.com/sensepost/ruler/wiki/Brute-Force](https://github.com/sensepost/ruler/wiki/Brute-Force)'
+  id: totrans-244
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**SprayingToolkit**: [https://github.com/byt3bl33d3r/SprayingToolkit](https://github.com/byt3bl33d3r/SprayingToolkit)'
+  id: totrans-245
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Once an attacker achieves access to an account – for example, through password
     spraying or phishing – they can use this account for further enumeration and privilege
     escalation or further phishing campaigns.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
 - en: Authenticated enumeration
+  id: totrans-247
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1174,19 +1655,23 @@
     group memberships by default. That means if a user account that is part of an
     AAD infrastructure is compromised, it can be used as a starting point to gather
     more information about other users and groups.
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
 - en: This information can be very useful for attackers to understand the organization
     structure in a better way and launch more effective attacks. It could also reveal
     valuable accounts to target.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
 - en: Once you are logged in, authenticated enumeration using available scripting
     interfaces is very easy. We will look at how enumeration works using the Azure
     CLI and Azure PowerShell in the next subsections.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
 - en: Session, tenant, and subscription details
+  id: totrans-251
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
@@ -1194,475 +1679,701 @@
     using either Microsoft Graph or the Az module. This can be useful to learn which
     account you are logged in to and to get more details on the AAD environment itself
     (such as the tenant ID).
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
 - en: 'These are the relevant Microsoft Graph module commands:'
+  id: totrans-253
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE7]'
+  id: totrans-254
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Using the Az PowerShell module, you can retrieve information not only on the
     current session and tenant but also on the subscription:'
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE8]'
+  id: totrans-256
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Enumerating users
+  id: totrans-257
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: 'Using the Microsoft Graph module, you can enumerate users using the **Get-MgUser**
     cmdlet:'
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE9]'
+  id: totrans-259
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'To retrieve the details of only one user, use the **-UserId** parameter, followed
     by the **User Principal** **Name** (**UPN**):'
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE10]'
+  id: totrans-261
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'There’s also a very interesting attribute available, called **OnPremisesSecurityIdentifier**.
     With this attribute, you can find out whether an account was created and synced
     on-premises or from AAD. If it contains a **security identifier** (**SID**), it
     was created and synced on-premises; if not, the account was directly created in
     AAD:'
+  id: totrans-262
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE11]'
+  id: totrans-263
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Some other very interesting cmdlets are as follows:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
 - en: '**Get-MgUserCreatedObject**: Gets all objects that were created by the specified
     user'
+  id: totrans-265
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgUserCreatedObject**：获取指定用户创建的所有对象'
 - en: '**Get-MgUserOwnedObject**: Gets all objects that the specified user owns'
+  id: totrans-266
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgUserOwnedObject**：获取指定用户拥有的所有对象'
 - en: 'To enumerate users with the Az module, you can use the **Get-AzADUser** cmdlet.
     Enumerating one user only is also possible by using the **-UserPrincipalName**
     parameter, followed by the UPN:'
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用 Az 模块枚举用户，您可以使用**Get-AzADUser** cmdlet。也可以通过使用**-UserPrincipalName**参数后跟
+    UPN 来枚举单个用户：
 - en: '[PRE12]'
+  id: totrans-268
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: With both Microsoft Graph and the Az module, you can use the **-Search** parameter
     to look for special strings. This can be useful if you want to find accounts that
     have a certain string, such as **admin**, in their UPN.
+  id: totrans-269
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Microsoft Graph 和 Az 模块，您可以使用**-Search**参数查找特定字符串。如果您想查找在其 UPN 中包含某个特定字符串（如**admin**）的账户，这非常有用。
 - en: 'Retrieving a list of users using the Azure CLI is also quite easy:'
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Azure CLI 检索用户列表也非常简单：
 - en: '[PRE13]'
+  id: totrans-271
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'As this would generate a huge list, it can also make sense to specify what
     columns should be returned. In the following example, we will only see details
     such as whether the account is enabled, the display name, the user ID, and the
     UPN:'
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这会生成一个庞大的列表，因此也有必要指定应返回哪些列。在以下示例中，我们只会看到一些细节信息，如账户是否启用、显示名称、用户 ID 和 UPN：
 - en: '[PRE14]'
+  id: totrans-273
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Of course, you can also get the details of one single user by using the **-upn**
     parameter, followed by **userPrincipalName**.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，您还可以通过使用**-upn**参数，后跟**userPrincipalName**，来获取单个用户的详细信息。
 - en: Enumerating group membership
+  id: totrans-275
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 枚举组成员资格
 - en: In AAD, groups can be created to hold a number of users. Groups can also be
     assigned to roles. Therefore, it might be useful to also enumerate AAD groups.
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 AAD 中，组可以用来容纳多个用户，组也可以分配给角色。因此，枚举 AAD 组也是非常有用的。
 - en: 'With the Microsoft Graph module, you can retrieve an overview of all existing
     AAD groups using the following command:'
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Microsoft Graph 模块，您可以使用以下命令检索所有现有 AAD 组的概览：
 - en: '[PRE15]'
+  id: totrans-278
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: To get a specific group, you can use the **-UserId** parameter, followed by
     the object ID of the group.
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取特定的组，您可以使用**-UserId**参数，后跟该组的对象 ID。
 - en: 'You can also find out which groups a user is a member of:'
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以找出一个用户属于哪些组：
 - en: '[PRE16]'
+  id: totrans-281
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'If you want to enumerate a particular group and find out which users are a
     member, you can use the **Get-MgGroupMember** cmdlet:'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您想枚举特定的组并找出哪些用户是成员，可以使用**Get-MgGroupMember** cmdlet：
 - en: '[PRE17]'
+  id: totrans-283
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Using the Az PowerShell module, you can retrieve an overview of all groups using
     **Get-AzADGroup**. Use the **-ObjectId** parameter to enumerate a specific group.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Az PowerShell 模块，您可以使用**Get-AzADGroup**来检索所有组的概览。使用**-ObjectId**参数可以枚举特定组。
 - en: You can use **Get-AzADGroupMember** to retrieve all group members of a group;
     simply specify which group to enumerate using either the **-GroupObjectId** parameter
     followed by the object ID of the group or by using the **-GroupDisplayName** parameter,
     followed by the group’s display name.
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用**Get-AzADGroupMember**来检索组的所有成员；只需指定要枚举的组，可以通过**-GroupObjectId**参数后跟组的对象
+    ID，或使用**-GroupDisplayName**参数后跟组的显示名称。
 - en: Group objects are structured similarly to user objects, so you can also use
     the same methods we used for users, such as finding out whether a group was synced
     on-premises or from AAD (the **OnPremisesSecurityIdentifier** attribute), and
     you can also use the **-Search** parameter to find groups with specific strings
     in their name.
+  id: totrans-286
   prefs: []
   type: TYPE_NORMAL
+  zh: 组对象的结构与用户对象类似，因此您也可以使用我们在用户上使用过的相同方法，比如查找某个组是否在本地同步过，或者从 AAD 同步过（使用**OnPremisesSecurityIdentifier**属性），您还可以使用**-Search**参数查找名称中包含特定字符串的组。
 - en: 'You can also use the Azure CLI for enumeration purposes:'
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以使用 Azure CLI 进行枚举：
 - en: '[PRE18]'
+  id: totrans-288
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'Similar to enumerating users, you can also specify what data the output should
     show:'
+  id: totrans-289
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似于枚举用户，您还可以指定输出应显示哪些数据：
 - en: '[PRE19]'
+  id: totrans-290
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: You can also specify a single group by using the **-group** parameter, followed
     by the group name.
+  id: totrans-291
   prefs: []
   type: TYPE_NORMAL
+  zh: 您还可以通过使用**-group**参数，后跟组名称，来指定单个组。
 - en: Enumerating roles
+  id: totrans-292
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 枚举角色
 - en: You can enumerate RBAC role assignments by using the **Get-AzRoleAssignment**
     cmdlet, which is part of the Az PowerShell module. If nothing else is specified,
     it lists all assignments within the subscription. Using the **-Scope** parameter,
     you can specify a resource.
+  id: totrans-293
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用**Get-AzRoleAssignment** cmdlet 枚举 RBAC 角色分配，该 cmdlet 是 Az PowerShell 模块的一部分。如果没有指定其他内容，它将列出订阅中的所有分配。使用**-Scope**参数，您可以指定一个资源。
 - en: 'With the **-SignInName** parameter, followed by the UPN, you can enumerate
     all assignments for the specified user, as shown in the following screenshot:'
+  id: totrans-294
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用**-SignInName**参数，后跟UPN，你可以列举指定用户的所有分配，如下截图所示：
 - en: '![Figure 7.13 – Retrieving the role assignment for a user](image/B16679_07_013.jpg)'
+  id: totrans-295
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.13 – 检索用户的角色分配](image/B16679_07_013.jpg)'
 - en: Figure 7.13 – Retrieving the role assignment for a user
+  id: totrans-296
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.13 – 检索用户的角色分配
 - en: 'You can also use the Azure CLI to enumerate RBAC role assignments by using
     the following command:'
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以使用Azure CLI通过以下命令枚举RBAC角色分配：
 - en: '[PRE20]'
+  id: totrans-298
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'The built-in RBAC roles that are generally available are the following ones:'
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: 一般可用的内置RBAC角色包括以下几种：
 - en: '**Owner**: Full access; can also manage access for other users.'
+  id: totrans-300
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Owner**：完全访问权限；还可以管理其他用户的访问权限。'
 - en: '**Contributor**: Full access, but can’t manage access for other users.'
+  id: totrans-301
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Contributor**：完全访问权限，但不能管理其他用户的访问权限。'
 - en: '**Reader**: Viewing access.'
+  id: totrans-302
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Reader**：查看访问权限。'
 - en: '**User Access Administrator**: Viewing access; can also manage access for other
     users.'
+  id: totrans-303
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**User Access Administrator**：查看访问权限；还可以管理其他用户的访问权限。'
 - en: 'Of course, depending on the resource, additional built-in RBAC roles exist.
     A complete overview can be found here: [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles).'
+  id: totrans-304
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，根据资源的不同，还存在额外的内置RBAC角色。完整的概览可以在这里找到：[https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)。
 - en: Enumerating resources
+  id: totrans-305
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 枚举资源
 - en: 'Both the Az module and the Azure CLI offer various options for enumerating
     Azure resources, such as resources in general, VMs, key vaults, and storage accounts.
     The following table shows the most important cmdlets and commands to retrieve
     the desired information:'
+  id: totrans-306
   prefs: []
   type: TYPE_NORMAL
+  zh: Az模块和Azure CLI提供了多种枚举Azure资源的选项，例如一般资源、虚拟机、密钥库和存储账户。下表显示了检索所需信息的最重要的命令：
 - en: '![Figure 7.14 – Enumerating resources](image/B16679_07_014.jpg)'
+  id: totrans-307
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.14 – 枚举资源](image/B16679_07_014.jpg)'
 - en: Figure 7.14 – Enumerating resources
+  id: totrans-308
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.14 – 枚举资源
 - en: (Web) applications can also be considered resources. Let’s look deeper into
     how we can enumerate applications, function apps, and web apps.
+  id: totrans-309
   prefs: []
   type: TYPE_NORMAL
+  zh: （Web）应用程序也可以视为资源。让我们深入了解如何枚举应用程序、功能应用程序和Web应用程序。
 - en: Enumerating applications
+  id: totrans-310
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 枚举应用程序
 - en: 'Using the Microsoft Graph module, you can get a list of all available applications
     with the following command:'
+  id: totrans-311
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用Microsoft Graph模块，你可以通过以下命令获取所有可用应用程序的列表：
 - en: '[PRE21]'
+  id: totrans-312
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Using the **-ApplicationId** parameter, you can specify the object ID of an
     application. With the **-Search** parameter, you can search for particular strings
     in the display name of an application.
+  id: totrans-313
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用**-ApplicationId**参数，你可以指定一个应用程序的对象ID。使用**-Search**参数，你可以在应用程序的显示名称中搜索特定的字符串。
 - en: 'To find out who owns an application, the **Get-MgApplicationOwner** cmdlet
     can help you:'
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查找哪个应用程序的拥有者，可以使用**Get-MgApplicationOwner**命令：
 - en: '[PRE22]'
+  id: totrans-315
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Another very useful cmdlet is **Get-MgUserAppRoleAssignment**. To find out
     whether a user or a group has a role assigned for one or more applications, use
     the following command:'
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个非常有用的命令是**Get-MgUserAppRoleAssignment**。要找出某个用户或某个组是否为一个或多个应用程序分配了角色，可以使用以下命令：
 - en: '[PRE23]'
+  id: totrans-317
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'Using the Az module, you can also retrieve an overview of all available applications
     using the following command:'
+  id: totrans-318
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用Az模块，你也可以通过以下命令检索所有可用应用程序的概览：
 - en: '[PRE24]'
+  id: totrans-319
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: To retrieve a specific application, you can use **Get-AzADApplication** with
     the **-****ObjectId** parameter.
+  id: totrans-320
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检索特定的应用程序，你可以使用**Get-AzADApplication**和**-ObjectId**参数。
 - en: 'In AAD, you can either have a service or a function app. Use the **Get-AzFunctionApp**
     cmdlet to retrieve all function apps; if you want to get all service apps instead,
     use the following command:'
+  id: totrans-321
   prefs: []
   type: TYPE_NORMAL
+  zh: 在AAD中，你可以拥有一个服务应用程序或一个功能应用程序。使用**Get-AzFunctionApp**命令检索所有功能应用程序；如果你想获取所有服务应用程序，则使用以下命令：
 - en: '[PRE25]'
+  id: totrans-322
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'In the Azure CLI, using **az ad app list --output=table**, you can also enumerate
     applications in AAD. Use the **--query** parameter to specify the detailed output
     you want to see:'
+  id: totrans-323
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Azure CLI中，使用**az ad app list --output=table**，你也可以列举AAD中的应用程序。使用**--query**参数来指定你想要查看的详细输出：
 - en: '[PRE26]'
+  id: totrans-324
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: Use the **--identifier-uri** parameter followed by the URI to enumerate only
     one application.
+  id: totrans-325
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用**--identifier-uri**参数，后跟URI，可以仅列举一个应用程序。
 - en: Enumerating service principals
+  id: totrans-326
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 枚举服务主体
 - en: A **service principal** is an identity that is used by services and applications
     that were created by users. Similar to normal user accounts, SPs require permissions
     to perform actions on objects within a directory, such as accessing user mailboxes
     or updating contacts. These permissions, known as **scopes**, are typically granted
     through a **consent** process.
+  id: totrans-327
   prefs: []
   type: TYPE_NORMAL
+  zh: '**服务主体** 是由用户创建的服务和应用程序使用的身份。与普通用户账户类似，服务主体需要权限才能在目录中的对象上执行操作，例如访问用户邮箱或更新联系人。这些权限，称为
+    **范围**，通常通过 **同意** 过程授予。'
 - en: In general, standard users can only grant permissions to applications for a
     restricted set of actions related to themselves. However, if the SP needs broader
     permissions over other objects in the same directory, admin consent is required.
     As this is not a usual user account but still has a lot of permissions, SPs are
     an interesting target for adversaries.
+  id: totrans-328
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，标准用户只能为应用程序授予与自己相关的有限操作权限。然而，如果服务主体需要对同一目录中其他对象拥有更广泛的权限，则需要管理员同意。由于这不是一个普通的用户账户，但仍然具有大量权限，服务主体成为攻击者的一个有趣目标。
 - en: 'Using the Microsoft Graph module, you can simply get an overview of all existing
     SPs:'
+  id: totrans-329
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Microsoft Graph 模块，您可以简单地查看所有现有服务主体（SP）的概况：
 - en: '[PRE27]'
+  id: totrans-330
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: By using the **-ServicePrincipalId** parameter, you can specify a single SP,
     and by using the **-Search** parameter, you can filter the principals by their
     display names.
+  id: totrans-331
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过使用 **-ServicePrincipalId** 参数，您可以指定一个单一的服务主体（SP），并通过使用 **-Search** 参数，您可以按显示名称筛选服务主体。
 - en: 'There are some useful cmdlets that can help you work with SPs:'
+  id: totrans-332
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一些有用的 cmdlet 可以帮助您处理服务主体（SP）：
 - en: '**Get-MgServicePrincipalOwner**: Return the owner of an SP'
+  id: totrans-333
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgServicePrincipalOwner**: 返回服务主体（SP）的所有者'
 - en: '**Get-MgServicePrincipalOwnedObject**: Retrieve objects owned by a particular
     SP'
+  id: totrans-334
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgServicePrincipalOwnedObject**: 检索某个特定服务主体（SP）拥有的对象'
 - en: '**Get-MgServicePrincipalOwnedObject**: Get all objects owned by a particular
     SP'
+  id: totrans-335
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgServicePrincipalOwnedObject**: 获取某个特定服务主体（SP）拥有的所有对象'
 - en: '**Get-MgServicePrincipalCreatedObject**: Get all objects created by a particular
     SP'
+  id: totrans-336
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgServicePrincipalCreatedObject**: 获取某个特定服务主体（SP）创建的所有对象'
 - en: '**Get-MgServicePrincipalTransitiveMemberOf**: Enumerate the group and role
     membership of an SP'
+  id: totrans-337
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Get-MgServicePrincipalTransitiveMemberOf**: 枚举服务主体（SP）的组和角色成员身份'
 - en: 'Using the Az PowerShell module, you can also enumerate SPs in AAD:'
+  id: totrans-338
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Az PowerShell 模块，您也可以在 AAD 中枚举服务主体（SP）：
 - en: '[PRE28]'
+  id: totrans-339
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: By using the **-ObjectId** parameter, you can specify a single SP, and by using
     the **-DisplayName** parameter, you can filter the principals by their display
     names.
+  id: totrans-340
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过使用 **-ObjectId** 参数，您可以指定一个单一的服务主体（SP），并通过使用 **-DisplayName** 参数，您可以按显示名称筛选服务主体。
 - en: 'Also with the Azure CLI, you can easily retrieve an overview of all SPs:'
+  id: totrans-341
   prefs: []
   type: TYPE_NORMAL
+  zh: 同样，通过 Azure CLI，您也可以轻松地查看所有服务主体的概况：
 - en: '[PRE29]'
+  id: totrans-342
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'Similar to Az and the Microsoft Graph module, you can also filter by the display
     name using the Azure CLI:'
+  id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似于 Az 和 Microsoft Graph 模块，您还可以使用 Azure CLI 按显示名称进行筛选：
 - en: '[PRE30]'
+  id: totrans-344
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'Those were some of the methods you can use for enumeration within AAD, but
     they are, of course, not complete. There are also some very useful tools that
     you can use for enumeration purposes, such as the following ones:'
+  id: totrans-345
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些是您可以在 AAD 中使用的一些枚举方法，但当然并不完整。还有一些非常有用的工具可以用于枚举目的，例如以下这些：
 - en: '**AADInternals**: [https://github.com/Gerenios/AADInternals](https://github.com/Gerenios/AADInternals)'
+  id: totrans-346
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**AADInternals**: [https://github.com/Gerenios/AADInternals](https://github.com/Gerenios/AADInternals)'
 - en: '**BloodHound/AzureHound**: [https://github.com/BloodHoundAD/BloodHound](https://github.com/BloodHoundAD/BloodHound)/[https://github.com/BloodHoundAD/AzureHound](https://github.com/BloodHoundAD/AzureHound)'
+  id: totrans-347
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**BloodHound/AzureHound**: [https://github.com/BloodHoundAD/BloodHound](https://github.com/BloodHoundAD/BloodHound)/[https://github.com/BloodHoundAD/AzureHound](https://github.com/BloodHoundAD/AzureHound)'
 - en: '**msmailprobe**: [https://github.com/busterb/msmailprobe](https://github.com/busterb/msmailprobe)'
+  id: totrans-348
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**msmailprobe**: [https://github.com/busterb/msmailprobe](https://github.com/busterb/msmailprobe)'
 - en: '**o365creeper**: [https://github.com/LMGsec/o365creeper](https://github.com/LMGsec/o365creeper)'
+  id: totrans-349
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**o365creeper**: [https://github.com/LMGsec/o365creeper](https://github.com/LMGsec/o365creeper)'
 - en: '**office365userenum**: [https://bitbucket.org/grimhacker/office365userenum/src](https://bitbucket.org/grimhacker/office365userenum/src)'
+  id: totrans-350
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**office365userenum**: [https://bitbucket.org/grimhacker/office365userenum/src](https://bitbucket.org/grimhacker/office365userenum/src)'
 - en: '**o365recon**: [https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1](https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1)'
+  id: totrans-351
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**o365recon**: [https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1](https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1)'
 - en: '**ROADtools**: [https://github.com/dirkjanm/ROADtools](https://github.com/dirkjanm/ROADtools)'
+  id: totrans-352
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**ROADtools**: [https://github.com/dirkjanm/ROADtools](https://github.com/dirkjanm/ROADtools)'
 - en: '**Stormspotter**: [https://github.com/Azure/Stormspotter](https://github.com/Azure/Stormspotter)'
+  id: totrans-353
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Stormspotter**: [https://github.com/Azure/Stormspotter](https://github.com/Azure/Stormspotter)'
 - en: Be aware that some methods and/or tools generate a lot of noise and can easily
     be detected.
+  id: totrans-354
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，某些方法和/或工具会产生大量噪声，容易被检测到。
 - en: 'Now that we’ve covered various enumeration techniques to gather information
     about a target environment, let’s focus on a more nefarious activity next: credential
     theft.'
+  id: totrans-355
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经介绍了各种枚举技术来收集目标环境的信息，接下来让我们专注于一种更具恶意的活动：凭证盗窃。
 - en: Credential theft
+  id: totrans-356
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 凭证盗窃
 - en: Similar to on-premises AD, in AAD, identities are also the new perimeter and
     are very valuable to an adversary. As technology, as well as code review and secure
     coding processes, has drastically improved over the years, zero-day vulnerabilities
     are still a thing, but it is incredibly hard to spot them and to find a way to
     abuse them. Therefore, adversaries target the weakest link – the users, aka identities.
+  id: totrans-357
   prefs: []
   type: TYPE_NORMAL
+  zh: 与本地 AD 类似，在 AAD 中，身份也是新的边界，对对手来说极具价值。尽管技术以及代码审查和安全编码流程在这些年里有了显著提升，零日漏洞依然存在，但要发现它们并找到滥用它们的方式极其困难。因此，对手将目标锁定在最薄弱的环节——用户，也就是身份。
 - en: In this section, we will explore different ways that adversaries can steal AAD
     users’ identities and act in their name.
+  id: totrans-358
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将探讨对手如何窃取 AAD 用户的身份并以他们的名义进行操作的不同方式。
 - en: Token theft
+  id: totrans-359
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 令牌盗窃
 - en: One of the most common scenarios spotted in the wild is token theft. Token theft
     is a common attack vector in AAD, and it occurs when an attacker gains access
     to a user’s session token, authentication token, or session cookies. These tokens,
     such as refresh tokens and access tokens, can then be used to gain unauthorized
     access to the user’s account and sensitive information.
+  id: totrans-360
   prefs: []
   type: TYPE_NORMAL
+  zh: 在实际中最常见的场景之一是令牌盗窃。令牌盗窃是 AAD 中常见的攻击方式，它发生在攻击者获得用户的会话令牌、身份验证令牌或会话 cookie 时。这些令牌（如刷新令牌和访问令牌）可以被用来未经授权访问用户的帐户和敏感信息。
 - en: 'When we are talking about token theft in Azure, it is usually one of the following
     resources that attackers are interested in accessing through a stolen token:'
+  id: totrans-361
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们谈论 Azure 中的令牌盗窃时，通常是以下其中一种资源，攻击者试图通过窃取的令牌访问：
 - en: '**https://storage.azure.com**: Refers to Azure Storage, which provides cloud-based
     storage solutions for various data types'
+  id: totrans-362
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**https://storage.azure.com**: 指的是 Azure 存储，它为各种数据类型提供基于云的存储解决方案。'
 - en: '**https://vault.azure.net**: Represents Azure Key Vault, a secure storage and
     management service for cryptographic keys, secrets, and certificates'
+  id: totrans-363
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**https://vault.azure.net**: 代表 Azure 密钥保管库，这是一个用于存储和管理加密密钥、机密和证书的安全服务。'
 - en: '**https://graph.microsoft.com**: Relates to Microsoft Graph, an API endpoint
     that allows access to Microsoft 365 services and data'
+  id: totrans-364
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**https://graph.microsoft.com**: 与 Microsoft Graph 相关，这是一个 API 端点，可用于访问 Microsoft
+    365 服务和数据。'
 - en: '**https://management.azure.com**: Corresponds to the Azure Management API,
     which enables the management and control of Azure resources and services'
+  id: totrans-365
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**https://management.azure.com**: 对应 Azure 管理 API，该 API 可用于管理和控制 Azure 资源及服务。'
 - en: 'Token theft attacks often start with phishing attacks: the adversary sends
     an email or message to a user, often with a malicious file attached. When the
     user opens and executes the attachment, often malware is executed that tries to
     extract tokens out of the memory.'
+  id: totrans-366
   prefs: []
   type: TYPE_NORMAL
+  zh: 令牌盗窃攻击通常从钓鱼攻击开始：对手向用户发送电子邮件或消息，通常附带一个恶意文件。当用户打开并执行附件时，恶意软件通常会执行并试图从内存中提取令牌。
 - en: The PRT is a crucial component in authenticating cloud-joined and hybrid devices
     against AAD. It has a validity of 14 days and refreshes every 4 hours. The PRT
     is protected by **CloudAP** in **LSA**, and the session key is protected by a
@@ -1670,140 +2381,203 @@
     apps (such as the Outlook client) on AAD-registered, AAD-joined, or hybrid AAD-joined
     devices. Therefore, a browser session on a workgroup machine will not receive
     a PRT.
+  id: totrans-367
   prefs: []
   type: TYPE_NORMAL
+  zh: PRT 是验证云连接和混合设备与 AAD 的关键组件。它的有效期为 14 天，并且每 4 小时刷新一次。PRT 由 **CloudAP** 在 **LSA**
+    中保护，且会话密钥由 TPM（如果存在）保护。值得注意的是，只有在 AAD 注册、AAD 加入或混合 AAD 加入的设备上，原生应用程序（如 Outlook
+    客户端）才会收到 PRT。因此，在工作组机器上的浏览器会话将无法获得 PRT。
 - en: 'Attackers can steal and abuse the PRT in two ways: by passing the PRT or passing
     the cookie generated by the PRT.'
+  id: totrans-368
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者可以通过两种方式窃取和滥用 PRT：一种是传递 PRT，另一种是传递由 PRT 生成的 cookie。
 - en: To **pass the PRT**, attackers typically steal the PRT from the LSASS process
     on the victim’s computer using tools such as **mimikatz** or ProcDump. These tools
     dump the LSASS process and allow the attacker to extract the PRT. Once they have
     obtained the PRT, attackers can generate a PRT cookie on their own computer and
     use it to fetch an access token from AAD. This type of attack requires administrative
     rights on the victim’s machine.
+  id: totrans-369
   prefs: []
   type: TYPE_NORMAL
+  zh: 要**传递PRT**，攻击者通常使用**mimikatz**或ProcDump等工具从受害者计算机上的LSASS进程中窃取PRT。这些工具转储LSASS进程，并允许攻击者提取PRT。一旦获得PRT，攻击者可以在自己的计算机上生成PRT
+    Cookie，并用它从AAD获取访问令牌。这种攻击需要受害者机器上的管理员权限。
 - en: 'Let’s look at how a pass-the-PRT attack can be performed. You can easily access
     a local PRT by using **mimikatz**:'
+  id: totrans-370
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来看一下如何执行一个传递PRT的攻击。你可以通过使用**mimikatz**轻松访问本地PRT：
 - en: '[PRE31]'
+  id: totrans-371
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'Credentials that were protected by LSA CloudAP are now being displayed as in
     the following screenshot:'
+  id: totrans-372
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，通过LSA CloudAP保护的凭证被显示出来，如下截图所示：
 - en: "![Figure 7.15 – Displaying the PRT \uFEFFusing mimikatz](image/B16679_07_015.jpg)"
+  id: totrans-373
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.15 – 使用mimikatz显示PRT](image/B16679_07_015.jpg)'
 - en: Figure 7.15 – Displaying the PRT using mimikatz
+  id: totrans-374
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.15 – 使用mimikatz显示PRT
 - en: If there was a PRT present, it is indicated by the part that is labeled **PRT**
     in the preceding screenshot. Now you can extract the PRT and continue.
+  id: totrans-375
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果存在PRT，它将在前面的截图中显示为**PRT**标签部分。现在，你可以提取PRT并继续操作。
 - en: Why is the PRT not shown when using mimikatz?
+  id: totrans-376
   prefs: []
   type: TYPE_NORMAL
+  zh: 为什么在使用mimikatz时看不到PRT？
 - en: If you don’t see the PRT when using **mimikatz**, make sure that your device
     is really AAD-joined by using the **dsregcmd /status** command. If it is joined,
     you should see, under **SSO State**, that **AzureAdPrt** is set to **YES**.
+  id: totrans-377
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在使用**mimikatz**时没有看到PRT，请确保你的设备确实已加入AAD，可以通过使用**dsregcmd /status**命令来检查。如果已加入，你应该在**SSO
+    State**下看到**AzureAdPrt**的值为**YES**。
 - en: 'For better readability, I copied the output, pasted it into Visual Studio Code,
     and formatted it. Copy the value of the **Prt** label for later use. As a next
     step, you want to extract **KeyValue** of **ProofOfPossessionKey**, which is basically
     the session key, as shown in the following screenshot:'
+  id: totrans-378
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了更好地阅读，我将输出复制并粘贴到Visual Studio Code中进行格式化。复制**Prt**标签的值以备后用。下一步，你需要提取**ProofOfPossessionKey**的**KeyValue**，这基本上就是会话密钥，如下截图所示：
 - en: '![Figure 7.16 – Finding the session key](image/B16679_07_016.jpg)'
+  id: totrans-379
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.16 – 查找会话密钥](image/B16679_07_016.jpg)'
 - en: Figure 7.16 – Finding the session key
+  id: totrans-380
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.16 – 查找会话密钥
 - en: 'Next, we will need to decrypt the session key with the DPAPI master key. As
     this step needs to be performed in the **SYSTEM** context, we elevate our privileges
     in **mimikatz** first using **token::elevate** before we attempt to decrypt it.
     In the following example, replace **<CopiedKeyValue>** with the **KeyValue** of
     **ProofOfPossesionKey** that you extracted earlier:'
+  id: totrans-381
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要使用DPAPI主密钥解密会话密钥。由于此步骤需要在**SYSTEM**上下文中执行，因此我们首先在**mimikatz**中使用**token::elevate**提升权限，然后再尝试解密。在以下示例中，将**<CopiedKeyValue>**替换为你之前提取的**ProofOfPossesionKey**的**KeyValue**：
 - en: '[PRE32]'
+  id: totrans-382
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'The key is decrypted and you can again see multiple labels and values show
     up in your console; to generate PRT cookies as a next step, you will need to copy
     the value of **Context** as well as the value of the **Derived Key** label, as
     shown in the following screenshot:'
+  id: totrans-383
   prefs: []
   type: TYPE_NORMAL
+  zh: 密钥已解密，你可以再次在控制台中看到多个标签和值显示；下一步生成PRT Cookie时，你需要复制**Context**的值以及**Derived Key**标签的值，如下截图所示：
 - en: '![Figure 7.17 – Extracting the unencrypted values to generate a PRT cookie](image/B16679_07_017.jpg)'
+  id: totrans-384
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.17 – 提取未加密的值以生成PRT Cookie](image/B16679_07_017.jpg)'
 - en: Figure 7.17 – Extracting the unencrypted values to generate a PRT cookie
+  id: totrans-385
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 7.17 – 提取未加密的值以生成PRT Cookie
 - en: 'Now you can generate a PRT cookie, which you can then use to access AAD on
     behalf of the user. In the following command, replace **<Context>** with the value
     of **Context**, **<DerivedKey>** with the value of **Derived Key**, and finally,
     **<PRT>** with the value of the **Prt** label that you copied earlier:'
+  id: totrans-386
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，你可以生成一个PRT Cookie，然后用它代表用户访问AAD。在以下命令中，将**<Context>**替换为**Context**的值，将**<DerivedKey>**替换为**Derived
+    Key**的值，最后，将**<PRT>**替换为你之前复制的**Prt**标签的值：
 - en: '[PRE33]'
+  id: totrans-387
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'As you can see in the following screenshot, a new PRT cookie is generated,
     which you can now use in your session to impersonate **PSSec-User**:'
+  id: totrans-388
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下截图所示，生成了一个新的PRT Cookie，你现在可以在会话中使用它来伪装成**PSSec-User**：
 - en: '![Figure 7.18 – A new PRT cookie was generated](image/B16679_07_018.jpg)'
+  id: totrans-389
   prefs: []
   type: TYPE_IMG
+  zh: '![图 7.18 – 生成新的PRT Cookie](image/B16679_07_018.jpg)'
 - en: Figure 7.18 – A new PRT cookie was generated
+  id: totrans-390
   prefs: []
   type: TYPE_NORMAL
 - en: 'Now browse to [https://login.microsoftonline.com/](https://login.microsoftonline.com/)
     – either on another client or in a private/anonymous session. You will be prompted
     for your credentials:'
+  id: totrans-391
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.19 – Microsoft login prompt](image/B16679_07_019.jpg)'
+  id: totrans-392
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.19 – Microsoft login prompt
+  id: totrans-393
   prefs: []
   type: TYPE_NORMAL
 - en: Now inspect the source code of the web page. In Microsoft Edge, you can right-click
     and select **Inspect**; there are similar options for Google Chrome or Mozilla
     Firefox available. Select the right one depending on which browser you are using
     in your demo environment.
+  id: totrans-394
   prefs: []
   type: TYPE_NORMAL
 - en: 'Anyways, in Microsoft Edge, you can find the cookies under **Application**
     | **Cookies** when using the developer tools. Clear all existing cookies and create
     a new cookie with the following information:'
+  id: totrans-395
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE34]'
+  id: totrans-396
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: To create a cookie in Microsoft Edge's developer tools, you can just double-click
     an empty line and add your content. Make sure to replace **<PRTCookie>** with
     the value of the cookie that you created earlier.
+  id: totrans-397
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.20 – Creating your new PRT cookie in a browser session](image/B16679_07_020.jpg)'
+  id: totrans-398
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.20 – Creating your new PRT cookie in a browser session
+  id: totrans-399
   prefs: []
   type: TYPE_NORMAL
 - en: After navigating once more to the [https://login.microsoftonline.com/](https://login.microsoftonline.com/)
     website, it should now authenticate you automatically as the compromised user.
+  id: totrans-400
   prefs: []
   type: TYPE_NORMAL
 - en: The **pass-the-PRT-cookie** attack is similar to the **pass-the-PRT** attack;
@@ -1811,50 +2585,63 @@
     the attacker has the PRT cookie, they can use it to fetch an access token from
     AAD. Unlike stealing the PRT, depending on the scenario and what tools you use,
     this type of attack does not require administrative rights on the victim’s machine.
+  id: totrans-401
   prefs: []
   type: TYPE_NORMAL
 - en: To get the PRT cookie, an adversary can either extract the cookie manually from
     the browser and paste it into the browser session of another computer or extract
     the cookie from the browser’s database.
+  id: totrans-402
   prefs: []
   type: TYPE_NORMAL
 - en: 'Before you begin, verify where the cookies are stored on your system. The location
     is usually one of the following paths:'
+  id: totrans-403
   prefs: []
   type: TYPE_NORMAL
 - en: '**C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Cookies**'
+  id: totrans-404
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies**'
+  id: totrans-405
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: On my VM, Chrome’s cookies were located under the path **C:\Users\YourUser\AppData\Local\Google\Chrome\User
     Data\Default\Network\Cookies**.
+  id: totrans-406
   prefs: []
   type: TYPE_NORMAL
 - en: '**mimikatz.exe** is one of the various tools that can help you extract the
     PRT cookie from Google Chrome. Please note that by using this approach, you require
     permission to request debug privileges. By default, administrator accounts have
     this particular privilege, if not restricted.'
+  id: totrans-407
   prefs: []
   type: TYPE_NORMAL
 - en: 'First request the debug privilege, then run the corresponding **dpapi::chrome**
     command to extract all current browser cookies:'
+  id: totrans-408
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE35]'
+  id: totrans-409
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'Now look in the output for the **ESTSAUTHPERSISTENT** cookie. This is the cookie
     that you want to extract, as it allows the user to stay permanently signed in:'
+  id: totrans-410
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.21 – Extracting the PRT cookie with mimikatz](image/B16679_07_021.jpg)'
+  id: totrans-411
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.21 – Extracting the PRT cookie with mimikatz
+  id: totrans-412
   prefs: []
   type: TYPE_NORMAL
 - en: 'Now that you have the extracted PRT cookie, you can reuse it on another computer
@@ -1863,37 +2650,45 @@
     for authentication, browse, in the developer tools, to **Application** | **Cookies**
     | **https://login.microsoftonline.com** and create a new cookie, as shown in the
     following screenshot:'
+  id: totrans-413
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.22 – Creating the ESTSAUTHPERSISTENT cookie in Microsoft Edge](image/B16679_07_022.jpg)'
+  id: totrans-414
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.22 – Creating the ESTSAUTHPERSISTENT cookie in Microsoft Edge
+  id: totrans-415
   prefs: []
   type: TYPE_NORMAL
 - en: Create a cookie named **ESTSAUTHPERSISTENT** and enter the earlier-extracted
     PRT cookie as the value. Set the cookie to **HttpOnly** and reload the page. You
     will be logged in as the user whose cookie you just stole.
+  id: totrans-416
   prefs: []
   type: TYPE_NORMAL
 - en: 'You could also use tools such as **ROADtools** from **Dirk-jan Mollema** to
     log in via the command line to automate your attack further. Since ROADtools is
     not PowerShell-based, we will not look into it in this book. You can download
     ROADtools from GitHub: https://github.com/dirkjanm/ROADtools.'
+  id: totrans-417
   prefs: []
   type: TYPE_NORMAL
 - en: 'Another impressive suite that can help you with AAD-related attacks of all
     kinds is **AADInternals**, which was written by Dr. Nestori Syynimaa. This tool
     can be easily installed via **Install-Module AADInternals** or downloaded from
     GitHub: https://github.com/Gerenios/AADInternals.'
+  id: totrans-418
   prefs: []
   type: TYPE_NORMAL
 - en: 'Whether you want to play with PRTs or enumerate AAD, or are looking into other
     AAD-related attacks, I highly recommend looking into the huge *AADInternals* project.
     You can find the extensive documentation at the following link: https://aadinternals.com/aadinternals/.'
+  id: totrans-419
   prefs: []
   type: TYPE_NORMAL
 - en: Consent grant attack – persistence through app permissions
+  id: totrans-420
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1901,6 +2696,7 @@
     PowerShell, but you can use PowerShell to regularly monitor consent permissions.
     Additionally, it is also possible to turn off user application consent if you
     are certain that this functionality is not needed in your tenant.
+  id: totrans-421
   prefs: []
   type: TYPE_NORMAL
 - en: OAuth consent allows users to grant permissions to third-party applications
@@ -1908,6 +2704,7 @@
     their contacts. But also, adversaries take advantage of this by crafting phishing
     emails that redirect users to a fake OAuth consent page, which the user then grants
     access to, unknowingly giving the attacker permissions to their account.
+  id: totrans-422
   prefs: []
   type: TYPE_NORMAL
 - en: Once the attacker has gained access, they can persist control by abusing the
@@ -1916,12 +2713,14 @@
     this method requires the consented application to have permission to register
     new AAD apps (which requires admin consent). Therefore, for this method to work,
     the phished user would need to have administrative privileges.
+  id: totrans-423
   prefs: []
   type: TYPE_NORMAL
 - en: The attacker can then configure their own AAD application with delegated permissions
     that grant them access to data from the target’s tenant. By doing so, the attacker
     can exfiltrate data from the tenant’s environment even if the user’s account is
     removed.
+  id: totrans-424
   prefs: []
   type: TYPE_NORMAL
 - en: The attacker can also leverage the access granted to modify or add new application
@@ -1931,36 +2730,44 @@
     will grant them further access to data within the tenant. Threat actors may even
     add a new pair of credentials to SPs, expanding their control and compromising
     the security of the environment.
+  id: totrans-425
   prefs: []
   type: TYPE_NORMAL
 - en: Usually, OAuth consent permissions are rarely reviewed, which allows adversaries
     to stay undetected for longer to abuse the user’s account.
+  id: totrans-426
   prefs: []
   type: TYPE_NORMAL
 - en: 'There are various ways to audit OAuth consent, which are described here: [https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants](https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants).'
+  id: totrans-427
   prefs: []
   type: TYPE_NORMAL
 - en: If you want to use PowerShell to review OAuth consent grants, you will find
     the **Get-MgOauth2PermissionGrant**, **Get-MgServicePrincipalOauth2PermissionGrant**,
     and **Get-MgUserOauth2PermissionGrant** cmdlets very helpful.
+  id: totrans-428
   prefs: []
   type: TYPE_NORMAL
 - en: Abusing AAD SSO
+  id: totrans-429
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: AAD seamless SSO is a feature that allows users to sign in to AAD-connected
     applications without the need to enter their login credentials repeatedly.
+  id: totrans-430
   prefs: []
   type: TYPE_NORMAL
 - en: 'If you want to learn more about how AAD seamless SSO works, Microsoft has documented
     it in detail: [https://learn.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-sso-how-it-works](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-sso-how-it-works).'
+  id: totrans-431
   prefs: []
   type: TYPE_NORMAL
 - en: But as with every feature, SSO can also be abused by threat actors; if attackers
     manage to compromise the AAD seamless SSO computer account password NTLM hash
     (**AZUREADSSOACC**), they can use it to generate a silver ticket for the user
     they want to impersonate.
+  id: totrans-432
   prefs: []
   type: TYPE_NORMAL
 - en: Since the password of the **AZUREADSSOACC** account will never change (unless
@@ -1968,70 +2775,90 @@
     same – which also means that it will work forever. Having the password hash of
     the **AZUREADSSOACC** account enables adversaries to impersonate any user without
     having the need to authenticate using MFA.
+  id: totrans-433
   prefs: []
   type: TYPE_NORMAL
 - en: The silver ticket can then be injected into the local Kerberos cache, allowing
     the attacker to impersonate the user and gain access to AAD-connected applications
     and services. This is especially dangerous, as it allows adversaries to use silver
     tickets from the internet.
+  id: totrans-434
   prefs: []
   type: TYPE_NORMAL
 - en: Since the AAD seamless SSO computer account password does not change automatically,
     this attack vector is even more attractive to attackers. In order to exploit this
     mechanism, an adversary would need to have already gained access to a victim’s
     network with Domain Administrator rights.
+  id: totrans-435
   prefs: []
   type: TYPE_NORMAL
 - en: 'First, the adversary needs to dump the **NT LAN Manager** (**NTLM**) hash for
     the **AZUREADSSOACC** account. This can be done by launching **mimikatz.exe**
     and running the following command:'
+  id: totrans-436
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE36]'
+  id: totrans-437
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: This command needs to be either executed directly on a DC or by an account that
     is able to replicate information (refer to the information on the DCSync attack
     in [*Chapter 6*](B16679_06_Final_PD.xhtml#_idTextAnchor150), *Active Directory
     – Attacks* *and Mitigation*).
+  id: totrans-438
   prefs: []
   type: TYPE_NORMAL
 - en: 'Once we have that NTLM hash (in this example, **a7d6e2ca8d636573871af8d4db34f236**),
     we’ll save it in the **$ntlmhash** variable, which we will leverage later:'
+  id: totrans-439
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE37]'
+  id: totrans-440
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: 'Next, we need the domain and the SID. If we, for example, want to impersonate
     the user **PSSec-User**, the following commands would help us to retrieve the
     information needed:'
+  id: totrans-441
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE38]'
+  id: totrans-442
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: 'Now we use all the information we gathered earlier to create our silver ticket
     with **mimikatz**:'
+  id: totrans-443
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE39]'
+  id: totrans-444
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: Launch Mozilla Firefox and enter **about:config**. Configure **network.negotiate-auth.trusted-uris**
     to contain the value **https://aadg.windows.net.nsatc.net,**  **https://autologon.microsoftazuread-sso.com.**
+  id: totrans-445
   prefs: []
   type: TYPE_NORMAL
 - en: You can now access any web application that is integrated into your AAD domain
     by browsing to it and leveraging seamless SSO.
+  id: totrans-446
   prefs: []
   type: TYPE_NORMAL
 - en: Exploiting Pass-through Authentication (PTA)
+  id: totrans-447
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: Earlier, we talked briefly about PTA, which is an authentication concept that
     allows users to sign in to cloud-based resources using their on-premises credentials.
+  id: totrans-448
   prefs: []
   type: TYPE_NORMAL
 - en: Exploiting PTA is an approach that adversaries take to bypass legit authentication
@@ -2043,30 +2870,37 @@
     of a single user account. You can imagine a skeleton key as being like a master
     password, enabling adversaries to authenticate as any user without having to reset
     individual user account passwords.
+  id: totrans-449
   prefs: []
   type: TYPE_NORMAL
 - en: 'In order for this attack to work, there are two requirements: first, the environment
     needs to have AAD Connect with PTA enabled, and second, the adversary needs to
     have gotten access to an account with administrative access to a server with a
     PTA authentication agent installed.'
+  id: totrans-450
   prefs: []
   type: TYPE_NORMAL
 - en: 'Let’s first look at how PTA works. The following figure shows what the PTA
     workflow looks like:'
+  id: totrans-451
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 7.23 – PTA workflow](image/B16679_07_023.jpg)'
+  id: totrans-452
   prefs: []
   type: TYPE_IMG
 - en: Figure 7.23 – PTA workflow
+  id: totrans-453
   prefs: []
   type: TYPE_NORMAL
 - en: 'In order to understand the PTA workflow, the following list outlines each step
     involved:'
+  id: totrans-454
   prefs: []
   type: TYPE_NORMAL
 - en: The user attempts to authenticate against AAD or Office 365 by using their username
     and password.
+  id: totrans-455
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -2074,6 +2908,7 @@
     agent queue. AAD encrypts the user’s credentials by using the public key of the
     agent and places them into the agent queue, where the encrypted key is then collected
     by the agent.'
+  id: totrans-456
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -2082,19 +2917,23 @@
     on the user’s behalf to the on-premises AD. One of the functions involved in this
     process is the **LogonUserW** function, which is part of the **advapi32.dll**
     API binary.
+  id: totrans-457
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The DC verifies that the user credentials are legit and returns whether the
     authentication was successful or not.
+  id: totrans-458
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The agent forwards the DC’s response to AAD.
+  id: totrans-459
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: If the authentication was successful, the user will be logged in.
+  id: totrans-460
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -2102,19 +2941,23 @@
     they can now easily exploit the agent to their own advantage: for example, to
     log or capture all authentication attempts that are being processed by the server
     or even implement a backdoor to successfully log in with every account.'
+  id: totrans-461
   prefs: []
   type: TYPE_NORMAL
 - en: 'Adam Chester has a great example of how this can be achieved on his blog. Make
     sure to check it out: [https://blog.xpnsec.com/azuread-connect-for-redteam/#Hooking-Azure-AD-Connect](https://blog.xpnsec.com/azuread-connect-for-redteam/#Hooking-Azure-AD-Connect).'
+  id: totrans-462
   prefs: []
   type: TYPE_NORMAL
 - en: But in order to exploit PTA, an attacker would already need to be in the network
     and would have established access to usually very well-protected servers. So if
     an attacker would have been able to exploit PTA, you probably have worse problems
     and should plan a compromised recovery.
+  id: totrans-463
   prefs: []
   type: TYPE_NORMAL
 - en: Mitigations
+  id: totrans-464
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -2124,29 +2967,36 @@
     in your AAD tenant, which provides a baseline level of security for all users,
     including requiring MFA and blocking legacy authentication protocols. Please also
     have a look into the quick security wins that Microsoft recommends:'
+  id: totrans-465
   prefs: []
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-mfa-get-started](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-mfa-get-started)'
+  id: totrans-466
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/identity-secure-score](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/identity-secure-score)'
+  id: totrans-467
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-secure-remote-workers](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-secure-remote-workers)'
+  id: totrans-468
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/five-steps-to-full-application-integration-with-azure-ad](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/five-steps-to-full-application-integration-with-azure-ad)'
+  id: totrans-469
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-security-defaults](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/concept-fundamentals-security-defaults)'
+  id: totrans-470
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication](https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication)'
+  id: totrans-471
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
@@ -2154,6 +3004,7 @@
     enumeration attacks is by enforcing Conditional Access and Identity Protection
     policies. Enabling MFA for all users can add an extra layer of security and reduce
     the risk of successful enumeration attacks.
+  id: totrans-472
   prefs: []
   type: TYPE_NORMAL
 - en: To effectively monitor and identify suspicious activity, leveraging AAD risky
@@ -2162,12 +3013,14 @@
     features provide comprehensive insights into potential threats and allow for proactive
     mitigation. Limiting access to DCs to authorized administrators can also prevent
     attackers from gaining the initial access needed to launch attacks.
+  id: totrans-473
   prefs: []
   type: TYPE_NORMAL
 - en: Implementing advanced detection techniques, behavior-based anomaly detection,
     and threat hunting can help identify malicious activities associated with PTA
     attacks. Secure boot can also prevent the injection of malicious code into legit
     system processes, making it more difficult for attackers to launch PTA attacks.
+  id: totrans-474
   prefs: []
   type: TYPE_NORMAL
 - en: In addition to the preceding mitigations, regularly monitoring the AAD seamless
@@ -2176,6 +3029,7 @@
     MFA, monitoring for suspicious activity, regularly reviewing and updating security
     policies, and training employees on best security practices are also important
     steps to take to improve overall security in AAD.
+  id: totrans-475
   prefs: []
   type: TYPE_NORMAL
 - en: Consent grant attacks involve tricking users into granting permissions to malicious
@@ -2183,221 +3037,271 @@
     OAuth consent permissions granted to third-party applications in your tenant.
     By monitoring these permissions, you can identify and revoke any unauthorized
     access before it’s too late.
+  id: totrans-476
   prefs: []
   type: TYPE_NORMAL
 - en: 'To help you with this task, you can use Microsoft’s tutorial on how to remediate
     illicit consent grants: [https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants](https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants).'
+  id: totrans-477
   prefs: []
   type: TYPE_NORMAL
 - en: Additionally, ensure that your users are aware of the risks associated with
     granting permissions to third-party applications and educate them on how to identify
     and report suspicious OAuth consent requests.
+  id: totrans-478
   prefs: []
   type: TYPE_NORMAL
 - en: 'Also have a look at the following links to find out what else you can do to
     improve your AAD Security:'
+  id: totrans-479
   prefs: []
   type: TYPE_NORMAL
 - en: '[aka.ms/AzureADSecOps](http://aka.ms/AzureADSecOps)'
+  id: totrans-480
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '[aka.ms/IRPlaybooks](http://aka.ms/IRPlaybooks)'
+  id: totrans-481
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Summary
+  id: totrans-482
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: In this chapter, you learned about some basic aspects of security in AAD. AAD
     itself is a huge topic that we could write entire books about, so make sure that
     you spend more time researching AAD if you want to explore it further.
+  id: totrans-483
   prefs: []
   type: TYPE_NORMAL
 - en: We explored the differences between AAD and on-premises AD and know that AAD
     is not just AD in the cloud but much more.
+  id: totrans-484
   prefs: []
   type: TYPE_NORMAL
 - en: You should now be familiar with some of the protocols that are used when it
     comes to AAD and understand the basics of how authentication is done, as well
     as how adversaries try to exploit it.
+  id: totrans-485
   prefs: []
   type: TYPE_NORMAL
 - en: It’s important to have a solid understanding of privileged built-in accounts
     and where to find more information about them so that you can either protect your
     environment in a better way or use your knowledge for your next red team exercise.
+  id: totrans-486
   prefs: []
   type: TYPE_NORMAL
 - en: We explored several ways to connect to and interact with AAD via the command
     line and examined some of the most common attacks against AAD, such as anonymous
     and authenticated enumeration, password spraying, and credential theft.
+  id: totrans-487
   prefs: []
   type: TYPE_NORMAL
 - en: Last but not least, you learned how to protect your environment in a better
     way by implementing mitigation mechanisms.
+  id: totrans-488
   prefs: []
   type: TYPE_NORMAL
 - en: When it comes to PowerShell security, identities are very important. But if
     you work as a red teamer, what PowerShell snippets could come in handy for your
     daily tasks? Let’s discover together what PowerShell commands could be useful
     for your daily tasks in the next chapter.
+  id: totrans-489
   prefs: []
   type: TYPE_NORMAL
 - en: Further reading
+  id: totrans-490
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'If you want to explore some of the topics that were mentioned in this chapter,
     use these resources:'
+  id: totrans-491
   prefs: []
   type: TYPE_NORMAL
 - en: '**AAD devices**:'
+  id: totrans-492
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'What is a device identity?: [https://docs.microsoft.com/en-us/azure/active-directory/devices/overview](https://docs.microsoft.com/en-us/azure/active-directory/devices/overview)'
+  id: totrans-493
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Plan your hybrid Azure Active Directory join implementation: [https://learn.microsoft.com/en-us/azure/active-directory/devices/hybrid-azuread-join-plan](https://learn.microsoft.com/en-us/azure/active-directory/devices/hybrid-azuread-join-plan)'
+  id: totrans-494
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**AAD overview**:'
+  id: totrans-495
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'What is Azure Active Directory?: [https://adsecurity.org/?p=4211](https://adsecurity.org/?p=4211)'
+  id: totrans-496
   prefs: []
   type: TYPE_NORMAL
 - en: '**Azure** **AD Connect**:'
+  id: totrans-497
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Download Azure AD Connect: https://www.microsoft.com/en-us/download/details.aspx?id=47594'
+  id: totrans-498
   prefs: []
   type: TYPE_NORMAL
 - en: '**Entra ID**'
+  id: totrans-499
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Azure AD is Becoming Microsoft Entra ID: [https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436](https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436)'
+  id: totrans-500
   prefs: []
   type: TYPE_NORMAL
 - en: '**Federation**:'
+  id: totrans-501
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Authenticate users with WS-Federation in ASP.NET Core: [https://docs.microsoft.com/en-us/aspnet/core/security/authentication/ws-federation?view=aspnetcore-5.0](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/ws-federation?view=aspnetcore-5.0'
+  id: totrans-502
   prefs: []
   type: TYPE_NORMAL
 - en: )
+  id: totrans-503
   prefs: []
   type: TYPE_NORMAL
 - en: '**OAuth**:'
+  id: totrans-504
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'RFC – The OAuth 2.0 Authorization Framework: [https://datatracker.ietf.org/doc/html/rfc6749](https://datatracker.ietf.org/doc/html/rfc6749)'
+  id: totrans-505
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'RFC – The OAuth 2.0 Authorization Framework: Bearer Token Usage: https://datatracker.ietf.org/doc/html/rfc6750'
+  id: totrans-506
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Other** **helpful resources**:'
+  id: totrans-507
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Azure Active Directory Red Team: https://github.com/rootsecdev/Azure-Red-Team'
+  id: totrans-508
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Abusing Azure AD SSO with the Primary Refresh Token: https://dirkjanm.io/abusing-azure-ad-sso-with-the-primary-refresh-token/'
+  id: totrans-509
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'What is a Primary Refresh Token?: https://learn.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token'
+  id: totrans-510
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'AADInternals documentation: [https://aadinternals.com/aadinternals/](https://aadinternals.com/aadinternals/'
+  id: totrans-511
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: )
+  id: totrans-512
   prefs: []
   type: TYPE_NORMAL
 - en: 'AADInternals on GitHub: [https://github.com/Gerenios/AADInternals](https://github.com/Gerenios/AADInternals)'
+  id: totrans-513
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Pass-through Authentication**:'
+  id: totrans-514
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Exploiting PTA: []( https://blog.xpnsec.com/azuread-connect-for-redteam/#Pass-Through-Authentication)
     #Pass Through Authentication'
+  id: totrans-515
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'The **LogonUserW** function: [https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw)'
+  id: totrans-516
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'PTA deep dive: [https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive)'
+  id: totrans-517
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**Privileged accounts &** **roles**:'
+  id: totrans-518
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Least privileged roles by task in Azure Active Directory: [https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task](https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task)'
+  id: totrans-519
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: '**SAML**:'
+  id: totrans-520
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'SAML authentication with Azure Active Directory: [https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml)'
+  id: totrans-521
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'SAML: [https://developer.okta.com/docs/concepts/saml/](https://developer.okta.com/docs/concepts/saml/)'
+  id: totrans-522
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'The Difference Between SAML 2.0 and OAuth 2.0: [https://www.ubisecure.com/uncategorized/difference-between-saml-and-oauth/](https://www.ubisecure.com/uncategorized/difference-between-saml-and-oauth/)'
+  id: totrans-523
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'Microsoft identity platform token exchange scenarios with SAML and OIDC/OAuth:
     [https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-token-exchange-saml-oauth](https://docs.microsoft.com/en-us/azure/active-directory/develop/scenario-token-exchange-saml-oauth)'
+  id: totrans-524
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
 - en: 'How the Microsoft identity platform uses the SAML protocol: [https://learn.microsoft.com/en-us/azure/active-directory/develop/saml-protocol-reference](https://learn.microsoft.com/en-us/azure/active-directory/develop/saml-protocol-reference)'
+  id: totrans-525
   prefs:
   - PREF_IND
   - PREF_UL
@@ -2405,5 +3309,6 @@
 - en: 'You can also find all links mentioned in this chapter in the GitHub repository
     for [*Chapter 7*](B16679_07_Final_PD.xhtml#_idTextAnchor179) – there is no need
     to manually type in every link: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter07/Links.md](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter07/Links.md).'
+  id: totrans-526
   prefs: []
   type: TYPE_NORMAL
