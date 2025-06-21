@@ -1,14 +1,18 @@
 - en: Chapter 13. Breaking Containers
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第13章：突破容器
 - en: In this chapter, we will look at attacking application containers. Docker is
     by far the most popular container management system and is more likely to be deployed
     by enterprises than other such systems. We will examine how misconfigurations,
     assumptions, and insecure deployments can lead to full compromise of not only
     the target, but adjacent applications as well.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章将探讨攻击应用容器。Docker 是迄今为止最受欢迎的容器管理系统，比其他系统更可能被企业部署。我们将分析错误配置、假设以及不安全的部署如何导致不仅目标应用的完全妥协，还有邻近应用的泄露。
 - en: '"A Docker container image is a lightweight, standalone, executable package
     of software that includes everything needed to run an application: code, runtime,
     system tools, system libraries and settings. [...] Available for both Linux and
@@ -16,45 +20,63 @@
     of the infrastructure. Containers isolate software from its environment and ensure
     that it works uniformly despite differences for instance between development and
     staging."'
+  id: totrans-2
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '"Docker 容器镜像是一个轻量级、独立且可执行的软件包，包含运行应用所需的所有内容：代码、运行时、系统工具、系统库和设置。[...] 它适用于 Linux
+    和 Windows 应用，容器化的软件无论在何种基础设施上都会一致运行。容器将软件与环境隔离，确保其在不同环境中（例如开发和预发布环境）也能保持一致运行。"'
 - en: ''
+  id: totrans-3
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
 - en: '- Docker'
+  id: totrans-4
   prefs:
   - PREF_BQ
   type: TYPE_NORMAL
+  zh: '- Docker'
 - en: Without context, the preceding quote could be describing **virtual machines**
     (**VMs**). After all, we can package applications inside a VM and deploy them
     on any host without fear of conflict. There are, however, some fundamental differences
     between VMs and containers. What is of interest to the attacker is the isolation
     or lack thereof.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果没有上下文，上面的引用可能在描述**虚拟机**（**VMs**）。毕竟，我们可以将应用打包到虚拟机中，并将其部署到任何宿主机上而不担心冲突。然而，虚拟机与容器之间存在一些根本性差异。对攻击者而言，最重要的是隔离性，或者说缺乏隔离性。
 - en: 'This chapter will:'
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章内容：
 - en: Describe Docker and Linux containers
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 描述 Docker 和 Linux 容器
 - en: Show how Docker applications differ from traditional applications
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 展示 Docker 应用与传统应用的区别
 - en: Abuse Docker to compromise the target application and eventually the host
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 滥用 Docker 来攻破目标应用，最终攻破宿主机
 - en: The following figure illustrates how containers can run full application stacks
     adjacent to each other without conflict. A notable difference between this and
     the traditional VM is the kernel component. Containers are possible because of
     the ability to isolate processes using **control groups** (**cgroups**) and **namespaces**.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了容器如何在不冲突的情况下运行完整的应用堆栈。与传统的虚拟机（VM）相比，一个显著的区别是内核组件。容器之所以可行，是因为能够通过**控制组**（**cgroups**）和**命名空间**来隔离进程。
 - en: Containers have been described as **chroot** on steroids. Chroot is the Unix
     application that allows administrators to effectively change what a running application
     "thinks" the root of the filesystem is. The chroot directory is made to resemble
@@ -63,14 +85,21 @@
     this arbitrary subdirectory, which it perceives as the root filesystem. In the
     event the application breaks, it cannot corrupt shared system files or libraries,
     since it only has access to copies of the original.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 容器被形容为**chroot**的增强版。Chroot 是一种 Unix 应用程序，允许管理员有效地改变运行中的应用程序“认为”的文件系统根目录。chroot
+    目录被设计成类似于实际的文件系统根目录，为应用程序提供它需要的文件路径，以便正确运行。应用程序被限制（chrooted）在这个任意子目录中，并将其视为根文件系统。当应用程序出现故障时，它无法破坏共享的系统文件或库，因为它只能访问原始文件的副本。
 - en: '![Breaking Containers](graphics/B09238_13_01.jpg)'
+  id: totrans-12
   prefs: []
   type: TYPE_IMG
+  zh: '![突破容器](graphics/B09238_13_01.jpg)'
 - en: 'Figure 13.1: Containers running full application stacks (source: Docker)'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.1：容器运行完整应用堆栈（来源：Docker）
 - en: When an application is isolated using a container, it should not be able to
     see or interact with other processes running on the same host. It does, however,
     share kernel resources with other containers on the same machine. This is important
@@ -79,17 +108,21 @@
     does not compromise other VMs running on the same hardware. To attack other VMs,
     you would need very expensive and very rare virtual environment host (hypervisor)
     escape exploits.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
 - en: 'In the following figure, you can see the difference between Docker containers
     and traditional hypervisors (VM software), such as VMware, Hyper-V, or VirtualBox:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
 - en: '![Breaking Containers](graphics/B09238_13_02.03_merged.jpg)'
+  id: totrans-16
   prefs: []
   type: TYPE_IMG
 - en: 'Figure 13.2: The difference between Docker containers and traditional hypervisors
     (source: Docker)'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
 - en: The Docker daemon runs on the host operating system and abstracts the application layer,
@@ -98,6 +131,7 @@
     are lightweight, easy to build and deploy, and provide enough isolation that they
     remove application layer conflicts. This solves the problem of "it works in my
     environment," which so many developers struggle with today.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
 - en: An application runs exactly the same on the developer's machine as it does in
@@ -107,6 +141,7 @@
     the same thing, in order for an application to run successfully on the VM, it
     needs a full operating system. The disk space and CPU requirements, and overall
     performance costs, can add up.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
 - en: As mentioned, Docker is not the only container technology, but it is by far
@@ -115,14 +150,17 @@
     such as CPU, network, and disk input/output operations. Docker also provides the
     centralized Docker Hub, which the community can use to upload their own container
     images and share them with the world.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
 - en: The Docker model implements a client server architecture, which essentially
     translates into the Docker daemon orchestrating containers on the host, and the client controlling
     the daemon through an API that the daemon exposes.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
 - en: Vulnerable Docker scenario
+  id: totrans-22
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -131,6 +169,7 @@
     for security. The ability to quickly deploy, test, and develop applications at
     scale certainly has its benefits but can easily let security vulnerabilities slip
     through the cracks.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
 - en: Software is only as secure as its configuration. If an application is unpatched
@@ -138,33 +177,47 @@
     of compromise significantly. Docker is no different and the default configuration
     is usually not enough. We're here to exploit these configuration issues and deployment
     mistakes.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 软件的安全性仅与其配置有关。如果一个应用程序没有打补丁或没有正确锁定，它会显著增加攻击面和被攻破的可能性。Docker也不例外，默认配置通常不足够。我们在这里就是要利用这些配置问题和部署错误。
 - en: Compromising an application running in a container is one thing, but escalating
     privilege to the host can be the icing on the cake. To illustrate the impact of
     poorly configured and insecurely deployed Docker containers, we will use NotSoSecure's
     **Vulnerable Docker VM**. This is a well-put-together VM, which showcases some
     critical, yet common, issues with Docker deployment.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击运行在容器中的应用程序是一回事，但提升特权到主机则是锦上添花。为了说明配置不当和不安全部署的Docker容器的影响，我们将使用NotSoSecure的**脆弱的Docker虚拟机**。这是一台精心制作的虚拟机，展示了Docker部署中一些关键而常见的问题。
 - en: Note
+  id: totrans-26
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'The VM package is available for download on NotSoSecure''s site: [https://www.notsosecure.com/vulnerable-docker-vm/](https://www.notsosecure.com/vulnerable-docker-vm/).'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 虚拟机软件包可以在NotSoSecure的网站上下载：[https://www.notsosecure.com/vulnerable-docker-vm/](https://www.notsosecure.com/vulnerable-docker-vm/)。
 - en: 'Once the VM is up and running, the console screen will display its DHCP-issued
     IP address. For the sake of clarity, we will use `vulndocker.internal` as the
     domain pointing to the Docker instance:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦虚拟机启动并运行，控制台屏幕将显示其由DHCP分配的IP地址。为了清晰起见，我们将使用`vulndocker.internal`作为指向Docker实例的域名：
 - en: '![Vulnerable Docker scenario](graphics/B09238_13_04.jpg)'
+  id: totrans-29
   prefs: []
   type: TYPE_IMG
+  zh: '![脆弱的Docker场景](graphics/B09238_13_04.jpg)'
 - en: 'Figure 13.3: Vulnerable Docker VM login prompt'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.3：脆弱的Docker虚拟机登录提示
 - en: The application is running inside a container provided by the Docker host `vulndocker.internal`
     on port `8000`. In a real-world scenario, we'd see the application exposed on
     common ports, such as `80` or `443`. Typically, an NGINX (or similar) will proxy
@@ -172,154 +225,228 @@
     the other ports that the Docker host would normally have open. An attacker would
     have to focus on application vulnerabilities in order to gain access to the Docker
     host.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 该应用程序运行在由Docker主机`vulndocker.internal`提供的容器内，端口为`8000`。在实际场景中，我们通常会看到应用程序暴露在常见端口上，例如`80`或`443`。通常，NGINX（或类似的）会在容器化应用程序与攻击者之间代理HTTP流量，隐藏Docker主机通常会开放的其他端口。攻击者必须专注于应用程序漏洞，才能获取Docker主机的访问权限。
 - en: Foothold
+  id: totrans-32
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 立足点
 - en: 'Interacting with the web application provided by the Docker VM, we notice it
     is running a WordPress instance:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过与Docker虚拟机提供的Web应用程序交互，我们注意到它正在运行一个WordPress实例：
 - en: '![Foothold](graphics/B09238_13_05.jpg)'
+  id: totrans-34
   prefs: []
   type: TYPE_IMG
+  zh: '![立足点](graphics/B09238_13_05.jpg)'
 - en: 'Figure 13.4: WordPress application served by the VM'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.4：由虚拟机提供的WordPress应用程序
 - en: The next step in our attack will be running the `wpscan` tool and looking for
     any low-hanging fruit, and gathering as much information about the instance as
     possible.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们攻击的下一步将是运行`wpscan`工具，寻找任何简单的目标，并尽可能收集有关该实例的更多信息。
 - en: Note
+  id: totrans-37
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: The `wpscan` tool is available on Kali and almost any other penetration-testing-focused
     distribution. The latest version can be pulled from [https://github.com/wpscanteam/wpscan](https://github.com/wpscanteam/wpscan).
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: '`wpscan`工具可以在Kali以及几乎所有其他专注于渗透测试的发行版中找到。可以从[https://github.com/wpscanteam/wpscan](https://github.com/wpscanteam/wpscan)获取最新版本。'
 - en: We can start our attack by issuing a `wpscan` command in the attack machine
     terminal. By default, passive detection will be enabled to look for available
     plugins, as well as various other rudimentary checks. We can point the scanner
     to our application using the `--url` switch, passing the full URL, including the
     port `8000`, as the value.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过在攻击机器终端中发出`wpscan`命令来开始我们的攻击。默认情况下，将启用被动检测，寻找可用的插件，以及其他各种基本检查。我们可以使用`--url`选项，将完整的URL（包括端口`8000`）作为值，指向我们的应用程序。
 - en: '[PRE0]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: The scan results for this instance are pretty dry. The **Full Path Disclosure**
     (**FPD**) vulnerability may come in handy if we have to blindly drop a shell on
     disk through a MySQL instance (as we've done in previous chapters), or if we find
     a local file inclusion vulnerability. The **XML-RPC** interface appears to be
     available, which may come in handy a little later. For now, we will make a note
     of these findings.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个实例的扫描结果比较干燥。**完整路径泄露**（**FPD**）漏洞如果我们不得不通过 MySQL 实例盲目地将 shell 写入磁盘（正如我们在前几章中所做的），或者如果我们找到本地文件包含漏洞时，可能会派上用场。**XML-RPC**
+    接口似乎是可用的，这可能稍后会有所帮助。现在，我们将这些发现做个记录。
 - en: There are seemingly endless plugins for WordPress and most of the WordPress-related
     breaches come from outdated and vulnerable plugins. In our case, however, this
     simple blog does not use any visible plugins. The default `wpscan` plugin enumeration
     is passive; if a plugin is installed but not in use, it may not be detected. There
     is an option to actively test for the existence of plugins using a predefined
     database of known plugins.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: WordPress 有着看似无穷无尽的插件，而大多数与 WordPress 相关的漏洞来自于过时和易受攻击的插件。然而，在我们的案例中，这个简单的博客并没有使用任何可见的插件。默认的
+    `wpscan` 插件枚举是被动的；如果插件已安装但未使用，可能无法被检测到。有一个选项可以通过使用已知插件的预定义数据库，主动测试插件的存在。
 - en: 'To begin an active scan of all known WordPress plugins, we can use the `--enumerate`
     switch, specifying the `p` value when running `wpscan`:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 要开始对所有已知的 WordPress 插件进行主动扫描，我们可以在运行 `wpscan` 时使用 `--enumerate` 选项，并指定 `p` 值：
 - en: '[PRE1]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This scan will run for a few minutes but in this scenario, it does not return
     anything interesting. `wpscan` can also use some effective information disclosure
     techniques in WordPress, which can reveal some of the post authors and their respective
     login usernames. Enumerating users will be the next activity and hopefully we
     can attack the admin account, and move up to shell access.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个扫描将运行几分钟，但在这个场景下，它没有返回任何有趣的结果。`wpscan` 还可以使用一些有效的信息泄露技术，在 WordPress 中揭示一些文章作者及其相应的登录用户名。枚举用户将是接下来的活动，希望我们能够攻击管理员账户，进而获得
+    shell 访问权限。
 - en: 'To begin a username enumeration, we can use the `--enumerate` switch, this
     time with the `u` value specified:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 要开始进行用户名枚举，我们可以使用 `--enumerate` 选项，这次指定 `u` 值：
 - en: '[PRE2]'
+  id: totrans-47
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'The user enumeration returned one value: `bob`. With the ID of `1`, we can
     safely assume this is the administrative account. Bob will be the focus of our
     brute-force attack and since we''ve had success with the `10-million-password-list-`
     wordlists before, we will try them here as well.'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户枚举返回了一个值：`bob`。ID 为 `1`，我们可以安全地假设这是管理员账户。Bob 将是我们暴力破解攻击的重点，由于我们之前使用过 `10-million-password-list-`
+    字典成功，我们将再次尝试使用它。
 - en: The `wpscan` tool provides a login brute-forcing option through the `--passwords`
     and `--usernames` parameters. Not to be outdone by other tools, Metasploit also
     provides a brute-forcer for WordPress logins via the XML-RPC interface. For bigger
     engagements, it may be worthwhile to use this module instead, as the Metasploits
     database could come in handy for organizing findings and launching subsequent
     attacks quickly.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: '`wpscan` 工具通过 `--passwords` 和 `--usernames` 参数提供了一个登录暴力破解选项。为了不逊色于其他工具，Metasploit
+    也提供了一个通过 XML-RPC 接口对 WordPress 登录进行暴力破解的工具。对于更大规模的攻击，使用这个模块可能更为合适，因为 Metasploit
+    的数据库在整理发现并快速启动后续攻击方面可能会派上用场。'
 - en: 'For our purposes, the brute-forcer of `wpscan` is sufficient and we can let
     it fly:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 就我们的目的而言，`wpscan` 的暴力破解工具就足够了，我们可以让它开始：
 - en: '[PRE3]'
+  id: totrans-51
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Using the same parameters for the Metasploit `auxiliary/scanner/http/wordpress_xmlrpc_login`
     module, we produce the same results.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用相同的参数对 Metasploit 的 `auxiliary/scanner/http/wordpress_xmlrpc_login` 模块进行测试，我们得到相同的结果。
 - en: 'We can start the Metasploit console using the `msfconsole` command in the Linux terminal:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过在 Linux 终端中使用 `msfconsole` 命令启动 Metasploit 控制台：
 - en: '[PRE4]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'As we''ve done in previous chapters, we can load the `wordpress_xmlrpc_login`
     module with the `use` command:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们在前几章中所做的那样，我们可以使用 `use` 命令加载 `wordpress_xmlrpc_login` 模块：
 - en: '[PRE5]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Similar to the MySQL login scanning module from earlier chapters, this particular
     module can be configured by specifying the following options:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似于前面章节中的 MySQL 登录扫描模块，这个特定的模块可以通过指定以下选项进行配置：
 - en: '![Foothold](graphics/B09238_13_06.jpg)'
+  id: totrans-58
   prefs: []
   type: TYPE_IMG
+  zh: '![Foothold](graphics/B09238_13_06.jpg)'
 - en: 'Figure 13.5: Metasploit module options'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.5：Metasploit 模块选项
 - en: 'For this particular brute-force attack, we will target the discovered user
     `bob` with our selected dictionary. We will also increase the `THREADS` to `10`
     and make sure the `RHOSTS` and `RPORT` reflect the target application. To set
     each option, we will use the (you guessed it) `set` command as shown:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于这个特定的暴力破解攻击，我们将针对发现的用户`bob`使用我们选择的字典。我们还将把`THREADS`增大到`10`，并确保`RHOSTS`和`RPORT`反映目标应用程序的设置。为了设置每个选项，我们将使用（你猜对了）`set`命令，如下所示：
 - en: '[PRE6]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'With the module configured, we can launch the brute-force attack using the
     Metasploit `run` command:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置好模块后，我们可以使用Metasploit的`run`命令启动暴力破解攻击：
 - en: '[PRE7]'
+  id: totrans-63
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: While it is more steps to execute the Metasploit module, as opposed to just
     running `wpscan`, the value comes, once again, from Metasploit's ability to organize
     the data gathered during an attack. If this application is part of a larger engagement
     and the discovered credentials can be used in subsequent attacks, the Metasploit
     database is invaluable. With these credentials in hand, we have full access to
     the WordPress application.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管执行Metasploit模块的步骤比仅运行`wpscan`要多，但其价值再次体现在Metasploit能够组织在攻击过程中收集到的数据上。如果这个应用是更大规模攻防的一部分，而发现的凭据可以在后续攻击中使用，那么Metasploit数据库的价值是无可替代的。有了这些凭据，我们就可以完全访问WordPress应用。
 - en: 'Metasploit also provides the `exploit/unix/webapp/wp_admin_shell_upload` module,
     which will create a WordPress plugin that will connect back to the attacker using
     the `php/meterpreter/reverse_tcp` payload on port 4444 by default. There are other
@@ -328,33 +455,47 @@
     will leave behind incriminating artifacts. A wandering administrator would quickly
     notice these and raise the alarm. Can you spot the malicious plugin? Of course,
     you can.'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: Metasploit还提供了`exploit/unix/webapp/wp_admin_shell_upload`模块，该模块将创建一个WordPress插件，通过`php/meterpreter/reverse_tcp`有效载荷连接回攻击者，默认使用4444端口。还有其他有效载荷选项，但最终结果基本相同。然而，Metasploit模块存在一个问题：噪音。失败或中断的利用尝试会留下令人不安的证据。若有管理员经过，他们很快就能发现并发出警报。你能发现这个恶意插件吗？当然，你可以。
 - en: 'The following figure shows the installed WordPress plugins, including the leftover
     MSF payload:'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图显示了已安装的WordPress插件，包括遗留下的MSF有效载荷：
 - en: '![Foothold](graphics/B09238_13_07.jpg)'
+  id: totrans-67
   prefs: []
   type: TYPE_IMG
+  zh: '![Foothold](graphics/B09238_13_07.jpg)'
 - en: 'Figure 13.6: WordPress plugins'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.6：WordPress插件
 - en: If we are trying to stay under the radar and avoid detection, we can opt for
     a more manual approach. Since we have full control over the CMS, we can create
     a custom plugin and upload it, just as Metasploit has done, or better yet, we
     can backdoor existing ones.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们想保持低调并避免被发现，我们可以选择更加手动的方法。由于我们完全控制了CMS，我们可以像Metasploit一样创建并上传自定义插件，或者更好的是，我们可以对现有插件进行后门处理。
 - en: 'To keep things interesting, we will go the backdoor route and leverage Weevely
     again, since it provides a safe and hard-to-detect shell. We will execute the
     `weevely generate` command and inspect the contents of the newly created `shell.php`
     file as follows:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了保持趣味性，我们将选择后门路径，再次利用Weevely，因为它提供了一种安全且难以检测的shell。我们将执行`weevely generate`命令，并检查新创建的`shell.php`文件内容，如下所示：
 - en: '[PRE8]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: For this scenario, we won't be uploading the PHP shell to disk and accessing
     it directly. Instead, we will modify an existing file and inject the contents
     somewhere inside. There are several options available to us, but we will go with
@@ -362,179 +503,271 @@
     provides a **Plugins** > **Editor** function, which allows the modification of
     plugin PHP code. Attackers love applications that have this feature, as it makes
     everyone's life much easier.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于这个场景，我们不会将PHP shell上传到磁盘并直接访问。相反，我们将修改一个现有文件，并将内容注入其中。我们有多个选择，但我们将选择自带的Hello
+    Dolly插件，WordPress自带此插件。WordPress管理面板提供了**插件** > **编辑器**功能，允许修改插件的PHP代码。攻击者特别喜欢具备此功能的应用，因为它大大简化了操作。
 - en: 'Our target is the `hello.php` file from the Hello Dolly plugin. The majority
     of its contents will be replaced by the generated `weevely shell.php` file, as
     shown in the following figure:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的目标是来自Hello Dolly插件的`hello.php`文件。其大部分内容将被生成的`weevely shell.php`文件所替换，如下图所示：
 - en: '![Foothold](graphics/B09238_13_08.jpg)'
+  id: totrans-74
   prefs: []
   type: TYPE_IMG
+  zh: '![Foothold](graphics/B09238_13_08.jpg)'
 - en: 'Figure 13.7: Replacing the contents of the hello.php file'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.7：替换hello.php文件的内容
 - en: Note
+  id: totrans-76
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Remember our ROE. If you are modifying application files, take extra care not
     to cause extended outages in production environments. Always make backups and
     revert changes as soon as the engagement ends, or there is a noticeable impact
     to legitimate users of the application.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住我们的 ROE。如果你修改应用程序文件，请格外小心，避免导致生产环境中长时间的宕机。始终备份，并在参与结束后尽快恢复更改，或者对应用程序的合法用户造成明显影响时恢复更改。
 - en: It's probably a good idea to leave the header intact, in case any passing administrators
     glance at the plugin. We can also leave most of the file intact, as long as it
     doesn't produce any unwanted error messages. PHP warnings and parse errors will
     interfere with Weevely and the backdoor will not work. We've seen that the `wpscan`
     results suggest that this application does not suppress error messages. For the
     sake of stealth, we have to remember this going forward.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 可能最好保持文件头部不变，以防任何管理员浏览插件时看到它。我们也可以保持文件的大部分内容不变，只要它不产生任何不必要的错误消息。PHP 警告和解析错误会干扰
+    Weevely，导致后门无法工作。我们已看到 `wpscan` 结果表明该应用程序没有屏蔽错误消息。为了保持隐蔽性，我们必须记住这一点。
 - en: 'In the preceding code block, we have closed the `<?php` tag with `?>` before
     pasting in the Weevely shell contents. Once the file is updated successfully,
     the Weevely shell can be accessed via the URL, `http://vulndocker.internal:8000/wp-content/plugins/hello.php`:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的代码块中，我们已经使用 `?>` 关闭了 `<?php` 标签，然后再粘贴 Weevely shell 的内容。一旦文件成功更新，Weevely
+    shell 可以通过 URL `http://vulndocker.internal:8000/wp-content/plugins/hello.php`
+    访问：
 - en: '[PRE9]'
+  id: totrans-80
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Now that we have shell access to the application server, we can check to see
     if this is indeed a container by inspecting the `/proc/1/cgroup` file:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 既然我们已获得应用服务器的 shell 访问权限，我们可以通过检查 `/proc/1/cgroup` 文件来确认这是否确实是一个容器：
 - en: '[PRE10]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'As another way to confirm that the application is running inside a container,
     we can look at the process list. In typical Linux environments, **process ID**
     (**PID**) `1` belongs to the `init`, `systemd`, or a similar daemon. Since containers
     are minimal environments, the first process listed is the daemon responsible for
     providing access to the application. In the case of web applications, `apache2`,
     `httpd`, `nginx`, or `nodejs` binaries are commonly assigned PID `1`:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为确认应用程序是否运行在容器中的另一种方法，我们可以查看进程列表。在典型的 Linux 环境中，**进程 ID** (**PID**) `1` 属于
+    `init`、`systemd` 或类似的守护进程。由于容器是最小化的环境，列出的第一个进程是负责提供应用程序访问的守护进程。在 Web 应用程序中，`apache2`、`httpd`、`nginx`
+    或 `nodejs` 二进制文件通常被分配为 PID `1`：
 - en: '[PRE11]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: Situational awareness
+  id: totrans-85
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 态势感知
 - en: Now that we have access to the shell of the Docker container, we should look
     around and see what else we can find. As we've mentioned before, Docker containers
     are not VMs. They contain just enough binaries for the application to function.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 既然我们已获得 Docker 容器的 shell 访问权限，我们应该四处看看，看看还能找到什么。如前所述，Docker 容器并非虚拟机。它们仅包含应用程序运行所需的必要二进制文件。
 - en: Since we have shell access on the container, we are constrained to the environment
     it provides. If the application doesn't rely on `ifconfig`, for example, it will
     likely not be packaged with the container and therefore would be unavailable to
     us now.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们可以通过 shell 访问容器，因此我们受到容器所提供环境的限制。例如，如果应用程序不依赖于`ifconfig`，那么它很可能没有与容器一起打包，因此现在我们无法使用它。
 - en: 'We can confirm that our environment is somewhat limited by calling:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过调用以下命令确认我们的环境有所限制：
 - en: '[PRE12]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'We do, however, have access to `curl`, which we can use in place of `wget`:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我们确实可以使用 `curl`，它可以替代 `wget`：
 - en: '[PRE13]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: In the worst-case scenario, we could also upload the binaries through Weevely's
     `:file_upload` command.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 在最坏的情况下，我们也可以通过 Weevely 的 `:file_upload` 命令上传二进制文件。
 - en: 'To move around the container and its network, we do need access to binaries,
     such as `nmap` and `ncat`, and thankfully, these are available in a neatly organized
     GitHub repository. User andrew-d maintains the **static-binaries** repository
     over on [https://github.com/andrew-d/static-binaries/](https://github.com/andrew-d/static-binaries/):'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在容器及其网络中移动，我们确实需要访问一些二进制文件，如`nmap`和`ncat`，幸运的是，这些文件可以在一个 neatly organized 的
+    GitHub 仓库中找到。用户 andrew-d 维护了 [**static-binaries**](https://github.com/andrew-d/static-binaries/)
+    仓库：
 - en: '![Situational awareness](graphics/B09238_13_09.jpg)'
+  id: totrans-94
   prefs: []
   type: TYPE_IMG
+  zh: '![态势感知](graphics/B09238_13_09.jpg)'
 - en: 'Figure 13.8: We''re interested in the binaries/linux/x86_64 folder specifically'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.8：我们特别关注 `binaries/linux/x86_64` 文件夹
 - en: 'Since the container does not have the `nmap` binary available, we can download
     it with `curl` and make it executable with `chmod`. We''ll use `/tmp/sess_[random]`
     as the filename template, to try and blend in as dummy session files, in case
     any administrator is glancing through the system temp folder:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于容器中没有 `nmap` 可执行文件，我们可以通过 `curl` 下载它，并使用 `chmod` 使其可执行。我们将使用 `/tmp/sess_[random]`
+    作为文件名模板，尝试将其伪装成虚假的会话文件，以防有管理员查看系统临时文件夹：
 - en: '[PRE14]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'We can also upload `ifconfig` from the attacker machine using Weevely''s `:file_upload`
     command, since the container does not have this binary either. We have a local
     copy of `ifconfig` that will work just fine, which we will upload to the target
     system''s `/tmp` folder under a dummy name:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以通过 Weevely 的 `:file_upload` 命令将 `ifconfig` 从攻击者机器上传到容器中，因为容器中也没有这个二进制文件。我们有一个本地副本的
+    `ifconfig`，它可以正常工作，我们将它上传到目标系统的 `/tmp` 文件夹下，使用一个虚假的文件名：
 - en: '[PRE15]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Just as with the `nmap`, we have to make the file an executable using `chmod`
     and the `+x` parameter:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 和 `nmap` 一样，我们需要使用 `chmod` 和 `+x` 参数使文件具有可执行权限：
 - en: '[PRE16]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'Now that we have some tools, we can get our bearings by running the recently
     uploaded `ifconfig` command:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们有了一些工具，我们可以通过运行最近上传的 `ifconfig` 命令来确定我们的方向：
 - en: '[PRE17]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: Recall that a Docker container employs its own internal network, separate from
     the host's network. Unless otherwise specified, by default, neighboring applications
     housed in other containers will join the same network. In this case, the `172.18.0.0/16`
     network is reachable through the `eth0` interface. This could provide a path to
     other applications that may be in scope for our engagement.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 记住，Docker 容器使用的是自己的内部网络，与主机的网络是分开的。除非另有指定，默认情况下，托管在其他容器中的邻近应用将加入同一网络。在这种情况下，`172.18.0.0/16`
+    网络可以通过 `eth0` 接口访问。这可能为我们提供访问其他应用程序的路径，而这些应用程序可能在我们参与的范围之内。
 - en: 'Now that we have an idea of what to look at, we can call up the `nmap` binary
     (`/tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu`) to do a quick service scan on the container
     network:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经知道要查看什么内容，可以调用 `nmap` 可执行文件（`/tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu`）对容器网络进行快速服务扫描：
 - en: '[PRE18]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The `172.18.0.1` IP appears to be the Docker host and the SSH service is protected.
     The MySQL service on `172.18.0.3` also looks interesting, but it may not be easily
     exploitable. This is likely the database used by the WordPress application.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: '`172.18.0.1` IP 看起来是 Docker 主机，并且 SSH 服务已被保护。位于 `172.18.0.3` 的 MySQL 服务也很有趣，但可能不容易被利用。它很可能是
+    WordPress 应用程序使用的数据库。'
 - en: We could go back and grab the credentials from `wp-config.php` and attempt to
     dump the data, but we may be limited in what we can do on the system with SQL
     access alone. If our goal is to break out of the container and gain access to
     the host, we may have to try a different attack path. It doesn't hurt to save
     those credentials until the end of the test. We may need to brute-force another
     set of credentials and password reuse is common.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以返回去抓取 `wp-config.php` 中的凭证并尝试导出数据，但仅凭 SQL 访问可能限制了我们在系统上能做的操作。如果我们的目标是突破容器并获得对主机的访问权限，我们可能需要尝试不同的攻击路径。在测试结束前保存这些凭证也无妨。我们可能需要暴力破解另一组凭证，密码重用是常见的现象。
 - en: The `content_ssh_1` container also stands out, but before we do anything else,
     let's upgrade our Weevely shell to a more robust Meterpreter session. Meterpreter
     also mimics the functionality of many Linux binaries that may not be available,
     making our job a little easier. Meterpreter is more a piece of malware that will
     allow us to easily pivot around the Docker host and its containers.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '`content_ssh_1` 容器也很引人注目，但在做其他事情之前，让我们将 Weevely shell 升级为更强大的 Meterpreter 会话。Meterpreter
+    还模仿了许多可能不存在的 Linux 二进制文件的功能，使我们的工作变得更容易。Meterpreter 更像是一种恶意软件，允许我们轻松地在 Docker
+    主机及其容器之间进行转移。'
 - en: Pivoting is the technique used to tunnel traffic through an already compromised
     host to reach an otherwise unreachable target. Since we've compromised the container
     hosting the blog platform, we can use it as a pivot point to attack other adjacent
     containers or even the host itself.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: Pivoting（转移攻击）是一种通过已经被攻陷的主机隧道化流量，以到达其他无法直接访问的目标的技术。由于我们已经攻破了托管博客平台的容器，我们可以将其作为转移点，攻击其他相邻的容器，甚至是主机本身。
 - en: On the attacker machine in the Linux terminal, we can use **MSFvenom** to generate
     a simple reverse payload, which will connect back to our attack machine `192.168.1.193`
     on port `443`. MSFvenom is an application provided by MSF to generate portable
@@ -543,107 +776,165 @@
     on the target system. Since we did not use Metasploit for initial shell access,
     and we wish to spawn a Meterpreter session, we can generate a standalone Meterpreter
     reverse TCP payload for manual execution.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 在攻击者机器的 Linux 终端中，我们可以使用 **MSFvenom** 生成一个简单的反向有效负载，它将通过端口 `443` 连接回我们的攻击机 `192.168.1.193`。MSFvenom
+    是 Metasploit 提供的一个应用程序，用于使用任何可用的有效负载生成便携式恶意软件。通常，在使用 Metasploit 模块成功利用系统后，第一阶段会在目标系统上执行。由于我们没有使用
+    Metasploit 来获得初始 shell 访问，并且希望生成一个 Meterpreter 会话，我们可以生成一个独立的 Meterpreter 反向 TCP
+    有效负载以便手动执行。
 - en: 'The `msfvenom` command allows us to specify the desired payload (`-p`), in
     this case `linux/x64/meterpreter/reverse_tcp`; the IP address of our attacker
     machine, `192.168.1.193`; the port on which the malware will connect back to us,
     `443`; and the format in which to save the resulting executable (`-f`). In this
     case, we will use the ELF binary format:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: '`msfvenom` 命令允许我们指定所需的有效负载（`-p`），在本例中为 `linux/x64/meterpreter/reverse_tcp`；攻击者机器的
+    IP 地址 `192.168.1.193`；恶意软件将连接回我们的端口 `443`；以及保存结果可执行文件的格式（`-f`）。在本例中，我们将使用 ELF
+    二进制格式：'
 - en: '[PRE19]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: This malware will be a 64-bit Linux Meterpreter `reverse_tcp` payload, which
     connects back to our external IP. Port `443` will increase the likelihood of success
     if the Docker host is sitting behind an aggressive firewall.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 该恶意软件将是一个 64 位 Linux Meterpreter `reverse_tcp` 有效负载，它将连接回我们的外部 IP。如果 Docker
+    主机位于一个较为严格的防火墙后，使用端口 `443` 会增加成功的可能性。
 - en: Before we execute the standalone freshly generated `malware /root/tools/nix64_rev443`,
     we have to setup a handler in Metasploit that will handle the incoming connection
     from the compromised host.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 在执行新生成的独立 `malware /root/tools/nix64_rev443` 之前，我们必须在 Metasploit 中设置一个处理程序来处理来自被攻陷主机的传入连接。
 - en: 'Back in the Metasploit console, we have to load the `exploit/multi/handler`
     module and configure it with the same values we gave `msfvenom`:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Metasploit 控制台中，我们需要加载 `exploit/multi/handler` 模块，并使用与 `msfvenom` 中相同的值进行配置：
 - en: '[PRE20]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'We will have to set the `PAYLOAD` variable to a value that matches our malware''s:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们必须将 `PAYLOAD` 变量设置为与我们的恶意软件匹配的值：
 - en: '[PRE21]'
+  id: totrans-119
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The `LHOST` and `LPORT` should also reflect what the malware was configured
     with, to ensure it is listening on the appropriate IP address and port:'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: '`LHOST` 和 `LPORT` 也应该与恶意软件的配置一致，以确保它在正确的 IP 地址和端口上监听：'
 - en: '[PRE22]'
+  id: totrans-121
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Finally, we can `run` the handler module to spawn a listener and wait for incoming
     Meterpreter sessions:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们可以 `run` 处理模块，启动监听器并等待传入的 Meterpreter 会话：
 - en: '[PRE23]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'Once that''s done, we can upload and execute the reverse shell `nix64_rev443`
     onto the container. We can use Weevely to help us with this as well:'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 完成上述步骤后，我们可以将反向 shell `nix64_rev443` 上传并执行到容器中。我们也可以使用 Weevely 来帮助我们完成此操作：
 - en: 'In the Weevely console, we can use the `:file_upload` command once again:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Weevely 控制台中，我们可以再次使用 `:file_upload` 命令：
 - en: '[PRE24]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'With the malware safely in the target''s temp folder, we have to make it an
     executable using `chmod`, and finally, just call it directly:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 将恶意软件安全地放入目标的临时文件夹后，我们需要使用 `chmod` 将其设置为可执行文件，最后直接运行它：
 - en: '[PRE25]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'The Metasploit handler module should have spawned a new Meterpreter session.
     We can confirm the reverse Meterpreter shell is functional by issuing a `sysinfo`
     command:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: Metasploit 处理程序模块应已生成一个新的 Meterpreter 会话。我们可以通过执行 `sysinfo` 命令来确认反向 Meterpreter
+    shell 是否正常工作：
 - en: '[PRE26]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: As mentioned previously, pivoting is a technique that allows us to proxy traffic
     through a compromised host, and attack the internal network and beyond. Metasploit
     provides routing functionality, which we can use to tunnel TCP traffic from our
     attacker machine through the Meterpreter session.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，pivoting（跳板攻击）是一种技术，它允许我们通过被攻陷主机代理流量，并攻击内部网络及更远的地方。Metasploit 提供了路由功能，我们可以使用它将
+    TCP 流量通过 Meterpreter 会话从我们的攻击机进行隧道传输。
 - en: 'To accomplish this, we will have to send the Meterpreter session to the background.
     This won''t kill the connection and we will be able to configure Metasploit itself
     to properly route traffic through the compromised system:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了实现这一点，我们必须将 Meterpreter 会话发送到后台。这样不会中断连接，并且我们将能够配置 Metasploit 以便通过被攻陷的系统正确地路由流量：
 - en: '[PRE27]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'With the Meterpreter session patiently waiting in the background, we can add
     a new Metasploit route using a familiar `route add` command:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE28]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: While the command looks similar to something we'd enter into a Linux prompt,
     this is not a typical network route. It exists only within Metasploit itself.
     If we were to launch an exploit from within `msfconsole` and aim it at say `172.18.0.1`,
     the traffic would be routed through the Meterpreter session and the exploit would
     succeed. Outside of Metasploit, however, a tool such as `wpscan` would fail to
     find the target.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
 - en: To get around this limitation, we can set up a SOCKS4 proxy server using the
@@ -656,49 +947,62 @@
     routes defined within. This means that we can request that the proxy forward our
     traffic to `172.168.0.0/16` and Metasploit will be smart enough to send that traffic
     through the Meterpreter session in the background.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
 - en: 'Let''s first load the `auxiliary/server/socks4a` module with the familiar `use`
     command inside the Metasploit console:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE29]'
+  id: totrans-139
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'The module creates a SOCKS4 server listening on port `1080` by default. We
     really only need to listen on the local host IP address, `127.0.0.1`, since we''re
     the only ones leveraging this proxy server. Running the auxiliary module sends
     the proxy server into the background, ready to accept incoming commands:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE30]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: Kali Linux comes bundled with a tool called **ProxyChains**, which we can use
     to force any application to push its traffic through a particular proxy. In our
     case, this is the proxy we've just created with Metasploit. This means that TCP
     network traffic, generated by applications running on our attacker machine, will
     effectively be forwarded to the Docker network, allowing us to run local attack
     tools and pivot right into the compromised network.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-143
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: 'ProxyChains is available on all penetration testing distros: [http://proxychains.sourceforge.net/](http://proxychains.sourceforge.net/).'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
 - en: The ProxyChains default proxy list can be adjusted to match the Metasploit `socks4a`
     module configuration using the `/etc/proxychains.conf` file.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
 - en: With the Metasploit route added and the `socks4a` server running, we can pivot
     any connections through the Meterpreter session and into the container network
     from our Kali machine.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
 - en: Container breakout
+  id: totrans-147
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -709,48 +1013,64 @@
     range are always interesting because underprotected development web servers can
     be found there. This particular port could be an exploitable web application and
     may give us more access than we currently have.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
 - en: 'The Nmap scan report for the `content_ssh_1` container also had the SSH port
     open, but this service is typically harder to exploit, short of brute-forcing
     for weak credentials:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE31]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'If we go back and drop into a shell on the compromised container, we can execute
     a quick `curl` command to view the contents of this web application. In the Metasploit
     console, we can interact with the Meterpreter session using the `sessions` command
     and passing the number `1` to the `-i` (interact) switch:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE32]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'Once back inside the Meterpreter session, we can drop further into the target
     container''s terminal using the `shell` Meterpreter command:'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE33]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'We may not see the typical Linux prompt, but we can execute simple Linux terminal
     commands, such as `curl`, to inspect the `8022` service on the `172.18.0.2` container:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE34]'
+  id: totrans-156
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: Fascinating! It appears that this particular container is a Docker-SSH application,
     which, as the name implies, provides SSH access to containers.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-158
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: Docker-SSH is available on Docker Hub and on [https://github.com/jeroenpeeters/docker-ssh](https://github.com/jeroenpeeters/docker-ssh).
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
 - en: 'We did go through a couple of steps to be able to execute the `curl` command
@@ -758,28 +1078,38 @@
     but from our attacker machine instead. The `curl` request will be proxied through
     the Metasploit SOCKS4 server we setup earlier and traffic will flow through the
     Meterpreter session, giving us access to the target one hop away:'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE35]'
+  id: totrans-161
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'On our attack machine, we can proxy an SSH connection straight to this container
     and see what we''re dealing with:'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE36]'
+  id: totrans-163
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: 'It looks like we were connected automatically without being prompted for a
     password. It also appears that we are running as `root` in this particular container:'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE37]'
+  id: totrans-165
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE37]'
 - en: Neat. Docker-SSH has a few authentication configuration options and this instance
     of Docker-SSH appears to have been configured with the `noAuth` parameter, which
     allows anonymous connections.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
 - en: You may be thinking that it is highly unlikely that any organization would deploy
@@ -790,15 +1120,19 @@
     and Docker-SSH deployment is greenlit. The issue is fixed and the chaos subsides,
     but after the engineer has put in 40 odd hours straight, mistakes happen. Insecure
     containers, tools, and backups are left online, ready to be misused by attackers.
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
 - en: 'If we browse the filesystem of the Docker-SSH container, we notice an interesting
     file in `/var/run`:'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE38]'
+  id: totrans-169
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE38]'
 - en: The exposed `docker.sock` file provides a way for containers to issue commands
     to the Docker daemon running on the host. With root access to the container, we
     can do all sorts of interesting things. Notably, we can communicate with the host
@@ -807,6 +1141,7 @@
     other containers on the same box. In these types of deployments, the Docker daemon
     running on the host must expose `docker.sock` in order for that particular container
     to be able to do its job.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
 - en: Remember that containers are generally minimalistic and common Unix tools may
@@ -815,32 +1150,42 @@
     client, we can use the bash script provided by [get.docker.com](http://get.docker.com).
     This is the official shell script from Docker that sets up the environment, resolves
     dependencies, and makes sure the Docker client installs successfully.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
 - en: 'We can easily upload the Docker install bash script from [get.docker.com](http://get.docker.com)
     using `proxychains` and `scp`. In a separate terminal on the attacker machine,
     we use `wget` to download the script and save it locally. We then wrap a `scp`
     (Secure Copy) command with `proxychains` and upload the script to the target container:'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE39]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE39]'
 - en: 'Back in the Docker-SSH container terminal, we can execute the Docker install
     script using `bash`:'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE40]'
+  id: totrans-175
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE40]'
 - en: 'Once we have the Docker client binary, we can talk to our gracious host and
     ask it to create another container with the host filesystem mounted inside, with
     the following `docker run` command:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE41]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE41]'
 - en: What we've done here is created a new Ubuntu container instance from within
     the Docker-SSH container. The `-v` option will mount the host root filesystem
     to the new container's `/host` folder with read-write privileges. The Docker client
@@ -848,76 +1193,101 @@
     and the `-i` switch makes sure that Docker does not drop the container into the
     background (daemonize), and we have an interactive session. In other words, we
     have a root shell on a new Ubuntu container.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
 - en: This is all made possible by the exposed Docker socket found in the `/var/run/docker.sock`.
     The Docker client used this special file to communicate with the Docker host API
     and issue arbitrary commands.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
 - en: 'Inside this newly spawned Ubuntu container, we can observe the mounted host
     filesystem:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE42]'
+  id: totrans-181
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE42]'
 - en: 'With read-write privileges to this directory, we can quickly compromise the
     host itself with the help of `chroot`:'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE43]'
+  id: totrans-183
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE43]'
 - en: 'If you recall, the `chroot` functionality resets the effective filesystem root
     to an arbitrary directory. In this case, the arbitrary directory happens to be
     the host''s root file system. If we issue another `ps` command within the `chroot
     /host` directory, the output is slightly different from before:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE44]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE44]'
 - en: It appears that we're not in Kansas anymore! You'll notice the process listing
     shows `dockerd` running, as well as `init` with `PID 1`. This is a process listing
     of the Docker host.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
 - en: We'll need to persist our access in case we lose connectivity to the Docker
     containers. The easiest way is to generate a new SSH authentication key pair and
     add the public key to the `authorized_keys` file.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
 - en: 'The attacker machine `ssh-keygen` can be used to generate a new RSA keypair:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE45]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE45]'
 - en: Note
+  id: totrans-190
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
 - en: Remember the ROE and remove any artifacts, such as authorized SSH keys, once
     the engagement has completed.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
 - en: 'Back inside the container, we can append our key to the Docker host''s `authorized_keys`
     file, granting us root access through SSH public key authentication:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE46]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE46]'
 - en: 'From our attack box, we can pivot through our Meterpreter session, get inside
     the container network, and authenticate to the SSH service of `172.18.0.1`, which we''ve previously
     suspected, based on `nmap` results, belongs to the host:'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE47]'
+  id: totrans-195
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE47]'
 - en: Summary
+  id: totrans-196
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -925,11 +1295,13 @@
     is revolutionary in the way it handles container images and deployment. As attackers,
     we have to look at all new technology with the hacker mindset. How can we break
     it and how can we use it to gain access that we didn't have before?
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
 - en: If a business switches from VMs to containers in the hope of reducing costs,
     while assuming they provide the same protection, the company is exposing itself to cross-application
     attacks that were difficult, if not impossible, before.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
 - en: In this chapter, we saw how compromising a simple containerized CMS led to access to
@@ -938,11 +1310,13 @@
     like any other software, Docker must be configured securely before deployment.
     A vulnerable or improperly configured container could allow attackers to pivot
     to other more sensitive applications, or worse, the host.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
 - en: We also looked at the perils of deploying applications using insecure container
     networks. We were able to compromise an application and once inside, we successfully
     pivoted around the Docker network, gaining access to other containers, and ultimately
     compromising the host itself.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
