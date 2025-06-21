@@ -1,7 +1,9 @@
 - en: Chapter 5. File Inclusion Attacks
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第五章 文件包含攻击
 - en: In previous chapters, we looked at setting up our environment and getting to
     know our tools. We even discussed attacking applications by looking for low-hanging
     fruit. In the same spirit, in this chapter, we will be analyzing file inclusion
@@ -14,27 +16,39 @@
     of executable server-side code, as we will see later in the chapter. There is
     still a surprising amount of applications that are vulnerable to LFI, file upload
     abuse, and sometimes even RFI.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前几章中，我们了解了如何设置我们的环境并熟悉我们的工具。我们甚至讨论了通过寻找低风险漏洞来攻击应用程序。秉承同样的精神，在本章中，我们将分析文件包含和文件上传攻击。虽然这些类型的攻击并不复杂，但它们仍然很常见。文件包含漏洞似乎已经存在很久了，而且看起来短时间内不会消失。**本地文件包含**（**LFI**）和**远程文件包含**（**RFI**）漏洞并不是唯一可以利用应用程序并使其受到攻击的方式。即使开发人员已经限制了可上传的服务器端可执行代码，文件上传漏洞仍然可以被滥用，正如我们稍后在本章中将看到的那样。仍然有相当多的应用程序容易受到LFI、文件上传滥用，甚至有时是RFI的攻击。
 - en: 'In this chapter, we will cover the following topics:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章将涵盖以下主题：
 - en: RFI
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: RFI
 - en: LFI
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: LFI
 - en: File upload abuse
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 文件上传滥用
 - en: Chaining vulnerabilities to achieve code execution
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 链接漏洞以实现代码执行
 - en: 'If you have spent any amount of time working in the enterprise world, you can
     no doubt attest to how frequent these issues can be. Custom in-house applications
     are often built with deadlines in mind, not security. Enterprise web applications
@@ -45,29 +59,41 @@
     device security is rudimentary, if at all present. IoT devices are the new PHP
     applications of the 2000s and vulnerabilities we thought were gone are coming
     back with a vengeance.'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你曾在企业界工作过，肯定会发现这些问题发生的频率是多么的高。定制的内部应用程序通常是以截止日期为导向开发的，而不是考虑安全性。企业级web应用程序并不是唯一的问题：**物联网**（**IoT**）的噩梦才刚刚开始蔓延。大多数价格实惠的设备，比如Wi-Fi路由器或互联网连接的毛绒玩具，都设计得很差，一旦发布就再也不会更新。由于许多约束因素，包括财务限制和硬件局限性，设备的安全性非常基础，甚至根本没有。物联网设备是2000年代的PHP应用程序，而我们曾认为消失的漏洞正在卷土重来，带着强烈的报复性。
 - en: 'To illustrate these issues, we will be using the **Damn Vulnerable Web App**
     (**DVWA**) project. This particular application was built to easily showcase the
     most popular web vulnerabilities seen in the wild. Everything from command injection
     to XSS can be tested on three levels of difficulty: low, medium, and hard.'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了说明这些问题，我们将使用**Damn Vulnerable Web App**（**DVWA**）项目。这个特别的应用程序是为了展示在实际环境中常见的最流行的web漏洞而构建的。从命令注入到XSS，所有这些都可以在三个难度级别（低、中、高）上进行测试。
 - en: Note
+  id: totrans-9
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注
 - en: DVWA can be downloaded in various formats, including an easy to run live CD,
     from [http://www.dvwa.co.uk/](http://www.dvwa.co.uk/).
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: DVWA可以以多种格式下载，包括一个易于运行的Live CD，网址为[http://www.dvwa.co.uk/](http://www.dvwa.co.uk/)。
 - en: To keep things simple, our instance of DVWA will be accessible via [http://dvwa.app.internal](http://dvwa.app.internal).
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了简化，我们的DVWA实例将通过[http://dvwa.app.internal](http://dvwa.app.internal)进行访问。
 - en: RFI
+  id: totrans-12
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: RFI
 - en: Although not as common in modern applications, RFI vulnerabilities do still
     pop up from time to time. RFI was popular back in the early days of the web and
     PHP. PHP was notorious for allowing developers to implement features that were
@@ -76,75 +102,112 @@
     This makes web applications more powerful and dynamic but comes at a great cost.
     As you can imagine, allowing user data to pass to `include()` unsanitized can
     result in application or server compromise.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管在现代应用程序中不那么常见，但 RFI 漏洞仍然会时不时地出现。RFI 在早期的 Web 和 PHP 中非常流行。PHP 因允许开发者实现一些本质上危险的功能而臭名昭著。`include()`
+    和 `require()` 函数本质上允许从其他文件中包含代码，这些文件可以位于同一磁盘上，也可以通过网络加载。这使得 Web 应用程序更强大、更动态，但也付出了巨大的代价。正如你所想的那样，允许未经清理的用户数据传递给
+    `include()` 函数，可能导致应用程序或服务器被攻陷。
 - en: The danger of allowing remote files to be included in server-side code is pretty
     obvious. PHP will download the remote text and interpret it as code. If the remote
     URL is controlled by the attacker, they could easily feed the application a shell.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许将远程文件包含到服务器端代码中的危险性是显而易见的。PHP 会下载远程文本并将其解释为代码。如果远程 URL 被攻击者控制，他们可以轻松地将 shell
+    代码传递给应用程序。
 - en: 'In the following example, the RFI vulnerability can be exploited using a simple
     `system()` passthrough shell. On the attacker-controlled `c2.spider.ml` server,
     a plaintext file containing the shellcode is made available:'
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，RFI 漏洞可以通过一个简单的 `system()` 透传 shell 来利用。在攻击者控制的 `c2.spider.ml` 服务器上，提供了一个包含
+    shellcode 的纯文本文件：
 - en: '[PRE0]'
+  id: totrans-16
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'The DVWA application is vulnerable to an RFI attack in the following URL:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: DVWA 应用程序在以下 URL 中存在 RFI 漏洞：
 - en: '[PRE1]'
+  id: totrans-18
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'Attackers can specify an arbitrary page to be included using the `page` `GET`
     parameter, like this:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者可以使用 `page` `GET` 参数指定一个任意页面进行包含，示例如下：
 - en: '[PRE2]'
+  id: totrans-20
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Since there is no proper input sanitization on the `page` parameter, attackers
     can specify whatever file they wish the server to load and display, including
     a remote file hosted elsewhere. Attackers can then instruct the vulnerable application
     `dvwa.app.internal` to include the remote file, which will be processed as PHP
     code, essentially resulting in code execution.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于 `page` 参数没有进行适当的输入清理，攻击者可以指定任何他们希望服务器加载和显示的文件，包括托管在其他地方的远程文件。然后，攻击者可以指示易受攻击的应用程序
+    `dvwa.app.internal` 包含该远程文件，该文件将作为 PHP 代码进行处理，实质上导致代码执行。
 - en: 'We can specify the full URL to the attacker-controlled URL `http://c2.spider.ml/test.txt`
     as the page to be included, as shown:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将攻击者控制的完整 URL `http://c2.spider.ml/test.txt` 指定为要包含的页面，如下所示：
 - en: '[PRE3]'
+  id: totrans-23
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: '![RFI](graphics/B09238_05_01.jpg)'
+  id: totrans-24
   prefs: []
   type: TYPE_IMG
+  zh: '![RFI](graphics/B09238_05_01.jpg)'
 - en: 'Figure 5.1: The application includes the remotely hosted PHP code, executes
     it, and returns the contents of /etc/passwd'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.1：应用程序包含远程托管的 PHP 代码，执行它，并返回 /etc/passwd 的内容
 - en: As mentioned before, RFI bugs are less frequent in modern applications, but
     thanks to IoT devices with outdated libraries and packages, they are making a
     comeback.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，RFI 漏洞在现代应用程序中较少见，但由于 IoT 设备使用过时的库和包，它们正在卷土重来。
 - en: There are legitimate reasons for allowing `include()` to fetch code over the
     network. Applications may have been architected around this feature and migrating
     from it may be too costly. From an enterprise perspective, it may be cheaper to
     leave the architecture alone and simply patch in controls, and hope to sanitize
     the input using a whitelist or blacklist approach.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许 `include()` 从网络获取代码有其合理的原因。某些应用程序可能围绕这一特性进行架构设计，迁移出去可能成本过高。从企业角度来看，可能更便宜的是保持现有架构不变，仅通过打补丁添加控制措施，并希望通过白名单或黑名单的方法来清理输入。
 - en: A whitelist-based control is the ideal choice, but it is also difficult to maintain
     in a fluid production environment. If domains and IPs are rotated frequently (think
     CDNs and cloud infrastructure) it may be resource-intensive to update the whitelist
     to match. Criticality of the application may demand zero downtime; therefore,
     the solution should be automated. However, this may be difficult to achieve without
     introducing security flaws.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 基于白名单的控制是理想选择，但在动态的生产环境中维护起来也较为困难。如果域名和 IP 经常变动（比如 CDN 和云基础设施），更新白名单以匹配可能会消耗大量资源。应用程序的关键性可能要求零停机时间；因此，解决方案应该是自动化的。然而，没有引入安全漏洞的情况下实现这一点可能是非常困难的。
 - en: A blacklist may be chosen instead, although it is impossible to know all current
     and future attack input. This is generally discouraged because given enough time,
     attackers can reverse engineer the blacklist and fashion a bypass. However, a blacklist
@@ -152,8 +215,10 @@
     finding requires a security control on a particular application component, but
     it is not very specific on how to accomplish this, it may be quicker to get that
     compliance checkmark if a blacklist is implemented.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 也可以选择黑名单方法，尽管无法知道所有当前和未来的攻击输入。通常不推荐使用黑名单，因为攻击者可以利用足够的时间反向工程黑名单并绕过它。然而，某些情况下由于缺乏资源或时间，仍然会实现黑名单。如果审计结果要求对特定应用组件实施安全控制，但没有具体说明如何执行，可能通过实施黑名单可以更快地获得合规检查标记。
 - en: Controls for limiting RFI can be implemented at the network level. The application
     egress traffic is scrutinized to only allow connection to known servers, thus
     preventing the attacker from including code from the C2 server. In theory, this
@@ -161,158 +226,240 @@
     the application workflow. Developers can provide the network security engineers
     with a list of domains, which should be accessible, and everything else should
     be dropped.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 限制 RFI 的控制措施可以在网络层面实现。应用程序的出口流量会被严格审查，仅允许连接到已知服务器，从而防止攻击者从 C2 服务器包含代码。理论上，这是一个有效的控制方法。它是一个白名单方法，并且不需要重新设计应用程序的工作流程。开发人员可以向网络安全工程师提供一个应当可以访问的域名列表，其他所有连接应当被拒绝。
 - en: LFI
+  id: totrans-31
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: LFI
 - en: LFI vulnerabilities are still going strong and will likely not disappear anytime
     soon. It is often useful for the application to be able to pull code from other
     files on the disk. This makes it more modular and easier to maintain. The problem
     arises when the string passed to the `include` directive is assembled in many
     parts of the application and may include data supplied by an untrusted user.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: LFI 漏洞依然十分严重，且可能不会很快消失。应用程序能够从磁盘上的其他文件拉取代码通常是有用的。这使得应用更加模块化并且更易于维护。问题出现在通过 `include`
+    指令传递的字符串在应用的多个部分被拼接，并且可能包含由不可信用户提供的数据。
 - en: A combination of file upload and file inclusion can be devastating. If we upload
     a PHP shell and it is dumped somewhere on the disk outside of the web directory,
     an LFI exploit could fetch that code and execute it.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件上传与文件包含的组合可能会带来灾难。如果我们上传一个 PHP shell 并将其存储在 Web 目录外的某个位置，则 LFI 漏洞可能会提取并执行该代码。
 - en: The DVWA can be used to showcase this type of attack. The `high` difficulty
     setting disallows the uploading of anything but JPEG or PNG files, so we can't
     just access the uploaded shell directly and execute the code.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: DVWA 可以用来展示这种攻击类型。`high` 难度设置禁止上传除 JPEG 或 PNG 文件以外的任何文件，因此我们不能直接访问上传的 shell
+    并执行代码。
 - en: 'To get around this issue, we can generate a fake PNG file using ImageMagick''s
     `convert` command. We will create a small 32×32 pixel image, with a pink background,
     and save it as `shell.png` using the following switches:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了解决这个问题，我们可以使用 ImageMagick 的 `convert` 命令生成一个假的 PNG 文件。我们将创建一个 32×32 像素的小图像，背景为粉色，并使用以下开关将其保存为
+    `shell.png`：
 - en: '[PRE4]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'The file data structure is relatively simple. The PNG header and a few bytes
     describing the content are automatically generated by the `convert` command. We can
     inspect these bytes using the `hexdump` command. The `-C` parameter will make
     the output a bit more readable:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件数据结构相对简单。PNG 文件头和描述内容的几个字节是通过 `convert` 命令自动生成的。我们可以使用 `hexdump` 命令检查这些字节。`-C`
+    参数会使输出更加可读：
 - en: '[PRE5]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: There's a lot of strange data but it all contributes to a functional PNG image.
     It also turns out that we can add arbitrary bytes to the end of the file and most
     image viewers will not have a problem rendering the file. We can leverage this
     knowledge to backdoor the file with some PHP code to be later executed by the
     server using an LFI exploit.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然有很多奇怪的数据，但它们都能构成一个正常的 PNG 图像。事实上，我们还可以在文件末尾添加任意字节，大多数图像查看器都不会有问题来渲染该文件。我们可以利用这个知识通过
+    LFI 漏洞将一些 PHP 代码嵌入文件中，以便稍后由服务器执行。
 - en: 'First, we need a simple PHP shell, similar to previous chapters. The following
     shows the PHP code we will append to the PNG file:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要一个简单的 PHP shell，类似于前面的章节。以下是我们将附加到 PNG 文件中的 PHP 代码：
 - en: '![LFI](graphics/B09238_05_02.jpg)'
+  id: totrans-41
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_02.jpg)'
 - en: 'Figure 5.2: Web shell source code'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.2：Web shell 源代码
 - en: Just as before, the `if` statement will check that the MD5 hash value of the
     incoming `password` parameter matches `f1aab5cd9690adfa2dde9796b4c5d00d`. If there's
     a match, the command string in the `cmd` `GET` parameter will be passed to the
     PHP `system()` function, which will execute it as a system command, giving us
     shell access.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像之前一样，`if` 语句会检查传入的 `password` 参数的 MD5 哈希值是否匹配 `f1aab5cd9690adfa2dde9796b4c5d00d`。如果匹配，`cmd`
+    `GET` 参数中的命令字符串将传递给 PHP 的 `system()` 函数，后者会将其作为系统命令执行，从而给我们提供 shell 访问。
 - en: 'The MD5 value we''re looking for is the hash of `DVWAAppLFI1`, as confirmed
     by the `md5sum` Linux command:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们要找的 MD5 值是 `DVWAAppLFI1` 的哈希值，正如通过 `md5sum` Linux 命令确认的那样：
 - en: '[PRE6]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'We can use the `echo` shell command to append (`>>`) the PHP code to our `shell.png`
     image:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `echo` shell 命令将 PHP 代码追加（`>>`）到我们的 `shell.png` 图片中：
 - en: '[PRE7]'
+  id: totrans-47
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: We've seen this passthrough shell before and it should do the trick for now.
     We can replace it with a more advanced shell if needed, but for our proof of concept,
     this should suffice.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们之前见过这种透过的 shell，目前应该可以顺利运行。如果需要，我们可以将其替换为更高级的 shell，但对于我们的概念验证，这已经足够了。
 - en: If we inspect the contents of the PNG shell using `hexdump`, we can clearly
     see the PHP shell was written right after the PNG image file structure ends.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们使用 `hexdump` 检查 PNG shell 的内容，我们可以清楚地看到 PHP shell 被写入在 PNG 图片文件结构结束之后。
 - en: '[PRE8]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'For all intents and purposes, this is still a valid PNG image. Most rendering
     software should have no problem displaying the contents, a small pink box, as
     shown:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 就所有意图和目的而言，这仍然是一个有效的 PNG 图片。大多数渲染软件应该不会有问题显示其内容，一个小的粉红色框，如下所示：
 - en: '![LFI](graphics/B09238_05_03.jpg)'
+  id: totrans-52
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_03.jpg)'
 - en: 'Figure 5.3: The backdoored image file displays successfully'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.3：带后门的图片文件成功显示
 - en: While DVWA will not actually check whether the file has a valid PNG header,
     some applications might. Even if the web application has smarter checking than
     just "does the file name end in `.png`?," our shell should go past unnoticed.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然 DVWA 实际上不会检查文件是否具有有效的 PNG 头，但一些应用程序可能会检查。即使 Web 应用程序的检查方式比单纯地检查文件名是否以 `.png`
+    结尾更智能，我们的 shell 也应该能悄无声息地通过。
 - en: The backdoored PNG file can now be uploaded through the `http://dvwa.app.internal/vulnerabilities/upload/`
     component of DVWA.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在可以通过 DVWA 的 `http://dvwa.app.internal/vulnerabilities/upload/` 组件上传被植入后门的
+    PNG 文件。
 - en: '![LFI](graphics/B09238_05_04.jpg)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_04.jpg)'
 - en: 'Figure 5.4: The backdoored PNG file successfully uploaded to the target application'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.4：带后门的 PNG 文件成功上传到目标应用程序
 - en: DVWA is nice enough to tell us where the application stored our file. In real-world
     scenarios, we may not be so lucky. We'd have to rely on information leaks for
     the absolute path if the vulnerability required it. If we can use relative paths
     in the file inclusion attack, we can try and find the file on disk by systematically
     moving through the filesystem (`../`, `../../`, `../../../` and so on).
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: DVWA 很贴心地告诉我们应用程序存储了我们的文件。在实际情况中，我们可能不会这么幸运。如果漏洞需要绝对路径，我们就得依赖信息泄漏来获取路径。如果我们可以在文件包含攻击中使用相对路径，我们可以通过有系统地遍历文件系统（`../`、`../../`、`../../../`
+    等）来尝试找到磁盘上的文件。
 - en: To make use of our PNG shell, we will use the DVWA file inclusion vulnerability
     at `http://dvwa.app.internal/vulnerabilities/fi/`. The LFI issue is present in
     the `page` parameter via a `GET` request. The application allows inclusion of
     a few files on disk, presumably to be more modular and easier to manage.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了利用我们的 PNG shell，我们将使用 DVWA 文件包含漏洞，地址为 `http://dvwa.app.internal/vulnerabilities/fi/`。LFI
+    问题出现在 `GET` 请求中的 `page` 参数。该应用程序允许包含几个磁盘上的文件，显然是为了更加模块化和易于管理。
 - en: The file inclusion vulnerability is straightforward and essentially allows the
     user to specify a file on disk to include. There are some security controls that
     prevent us from including any file we want. Given that this is the DVWA project,
     we can inspect the source of the application and look at the conditions under
     which the control may prevent us from accessing our shell.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件包含漏洞非常简单，本质上允许用户指定一个磁盘上的文件来包含。虽然有一些安全控制防止我们包含任意文件，但由于这是 DVWA 项目，我们可以检查应用程序的源代码，查看哪些条件会阻止我们访问
+    shell。
 - en: 'This figure shows the source code of the LFI security control. Before the file
     is included, this particular check is performed:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 该图展示了 LFI 安全控制的源代码。在包含文件之前，会执行此特定检查：
 - en: '![LFI](graphics/B09238_05_05.jpg)'
+  id: totrans-62
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_05.jpg)'
 - en: 'Figure 5.5: File inclusion vulnerability source code'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.5：文件包含漏洞源代码
 - en: 'The `if` statement will only allow files to be included if they begin with
     the word `file`, such as `file01.php`, or `file02.php`. The `include.php` file
     is also allowed to be included. Anything else, such as `http://c2.spider.ml/test.txt`,
     for example, will produce an `ERROR: File not found!` message.'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: '`if` 语句仅允许以 `file` 开头的文件被包含，例如 `file01.php` 或 `file02.php`。`include.php` 文件也可以被包含。其他任何文件，例如
+    `http://c2.spider.ml/test.txt`，都将产生 `ERROR: File not found!` 错误信息。'
 - en: At first glance, this is a fairly stringent control, but there are some issues.
     This particular control implementation illustrates an important issue with application
     development and security. In an effort to prevent inclusion attacks, the developers
@@ -322,8 +469,11 @@
     at all. Hard-coding values is more secure, but the code is harder to manage. There
     is always a tradeoff between security and usability, and as attackers, we bank
     on management going with the more cost effective and typically more insecure option.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 乍一看，这是一个相当严格的控制，但也存在一些问题。这种控制实现展示了应用开发和安全性中的一个重要问题。为了防止包含攻击，开发者采用了白名单方法，但由于时间限制和高维护成本，他们决定使用字符串匹配，而不是显式列出文件。理想情况下，用户输入永远不应传递给
+    `include`（或类似的）函数。硬编码的值更安全，但代码管理起来更困难。在安全性和可用性之间总是有取舍，作为攻击者，我们通常依赖于管理者选择更具成本效益但通常更不安全的选项。
 - en: We could name our PNG shell `file.png`, but since our uploaded file will reside
     outside of the vulnerable script's directory, the string we'd have to pass in
     would need to be an absolute (or relative) path, which would fail to trigger the
@@ -331,33 +481,51 @@
     again, PHP's versatility and developer-friendliness comes to the rescue. PHP allows
     developers to reference files on disk by relative path (`../../../etc/passwd`),
     by absolute path (`/etc/passwd`), or using the built-in URL scheme `file://`.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将我们的 PNG shell 命名为 `file.png`，但由于我们上传的文件将位于易受攻击脚本的目录之外，我们需要传递的字符串必须是绝对（或相对）路径，这将无法触发前面截图中显示的
+    `if` 条件，从而导致攻击失败。再次强调，PHP 的多功能性和开发者友好性提供了帮助。PHP 允许开发者通过相对路径（`../../../etc/passwd`）、绝对路径（`/etc/passwd`）或使用内建的
+    URL 方案 `file://` 来引用磁盘上的文件。
 - en: To bypass the upload restriction, we can directly reference the `shell.png`
     file using an absolute path in combination with the `file://` scheme, pointing
     to the `hackable/uploads` directory, which the file upload page so graciously
     told us about.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了绕过上传限制，我们可以直接使用绝对路径，并结合 `file://` 方案引用 `shell.png` 文件，指向 `hackable/uploads`
+    目录，这是文件上传页面慷慨告知我们的。
 - en: 'On Linux systems, we can make educated guesses as to where on disk the web
     root folder is. A prime candidate is `/var/www/html/`. We can confirm the shell
     is accessible via the `file://` scheme by using the following payload for the
     `page` parameter when calling the vulnerable URL:'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Linux 系统上，我们可以凭经验猜测网站根目录在磁盘上的位置。一个主要候选目录是 `/var/www/html/`。我们可以通过使用以下负载来确认
+    `file://` 方案下的 shell 是否可访问，当调用易受攻击的 URL 时，将 `page` 参数设置为该负载：
 - en: '[PRE9]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The Burp Repeater module can help us to trigger and inspect the results of
     exploiting this vulnerability, as shown in the following figure:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: Burp Repeater 模块可以帮助我们触发并检查利用此漏洞的结果，如下图所示：
 - en: '![LFI](graphics/B09238_05_06.jpg)'
+  id: totrans-71
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_06.jpg)'
 - en: 'Figure 5.6: Successfully including the backdoored PNG using LFI'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.6：成功通过 LFI 包含后门 PNG 文件
 - en: This looks good. In the left column is a raw HTTP `GET` request to the vulnerable
     page using the `file://` scheme and the absolute path to our `shell.png` for the
     `page` parameter. In the right column, the server response appears to indicate
@@ -365,68 +533,103 @@
     meaning it either executed or it was stripped out by a compression or cropping
     function. The latter would be unfortunate, but we can quickly see whether code
     execution is successful by trying to trigger the shell through the URL.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 看起来不错。左栏是向易受攻击页面发送的原始 HTTP `GET` 请求，使用 `file://` 方案和指向我们 `shell.png` 文件的绝对路径作为
+    `page` 参数。在右栏中，服务器响应似乎表明文件已经被包含，并且我们附加的 PHP 源代码没有显示，意味着它要么已执行，要么被压缩或裁剪功能去除。后一种情况虽然不幸，但我们可以通过尝试通过
+    URL 触发 shell 来迅速判断代码执行是否成功。
 - en: 'The uploaded shell will execute command strings passed via the `GET` parameter
     `cmd` and we can append the `whoami` operating system command to our previous
     payload, and observe the Burp Repeater module''s output. We must also provide
     the expected password via the `password` parameter, as show in the following figure:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 上传的 shell 将执行通过 `GET` 参数 `cmd` 传递的命令字符串，我们可以将 `whoami` 操作系统命令附加到之前的载荷中，并观察 Burp
+    Repeater 模块的输出。我们还必须通过 `password` 参数提供预期的密码，如下图所示：
 - en: '![LFI](graphics/B09238_05_07.jpg)'
+  id: totrans-75
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_07.jpg)'
 - en: 'Figure 5.7: The backdoored PNG successfully executes the shell command after
     LFI'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.7：经过后门处理的 PNG 文件在 LFI 后成功执行了 shell 命令
 - en: 'Success! We now have code execution on the system by taking advantage of two
     vulnerabilities: poor controls in file upload and LFI. The Repeater **Request**
     column highlights the command `whoami`, being passed to the vulnerable application
     and the server response confirms that we have achieved our goal of displaying
     the user `www-data` as the context of the application.'
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 成功了！通过利用两个漏洞：文件上传控制不严格和 LFI，我们现在可以在系统上执行代码。Repeater **Request** 列显示了 `whoami`
+    命令，它被传递到易受攻击的应用程序中，服务器的响应确认我们已经成功地以 `www-data` 用户身份显示应用程序的上下文。
 - en: With LFI vulnerabilities, an accompanying file upload feature is not always
     a requirement. There are other ways to trick the application into executing code.
     In a scenario where RFI is not possible, there is no file upload feature, or the
     uploaded file is not accessible by the `include` function, we have to get a bit
     more creative to execute code.
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于 LFI 漏洞，并不总是需要一个文件上传功能。还有其他方式可以欺骗应用程序执行代码。在无法进行 RFI 的情况下，若没有文件上传功能或上传的文件无法通过
+    `include` 函数访问，我们需要更加具有创意才能执行代码。
 - en: Not unlike the `file://` payload looking for the uploaded shell, we can reference
     another file on the system whose contents we control to an extent. Apache web
     servers, by default, generate an `access.log` file somewhere on the disk. This
     file contains every request sent to the application, including the URL. Experience
     of some Google-fu tells us that this file is usually in `/var/log/apache2` or
     `/var/log/httpd`.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 与寻找上传的 shell 的 `file://` 载荷类似，我们可以引用系统上的另一个文件，其内容我们在一定程度上可控。默认情况下，Apache Web
+    服务器会在磁盘上生成一个 `access.log` 文件。该文件包含发送到应用程序的每个请求，包括 URL。根据一些 Google-fu 的经验，我们知道这个文件通常位于
+    `/var/log/apache2` 或 `/var/log/httpd` 目录下。
 - en: Since we can't upload our shell through a file upload function, we can, instead,
     send our shell source code via the URL. Apache will write the request attempt
     to the access log file and we can include this file using the LFI vulnerability.
     There will be tons of garbage printed, but more importantly, when PHP encounters
     our `<?php` tag it will begin to execute code.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们无法通过文件上传功能上传 shell，我们可以改为通过 URL 发送 shell 源代码。Apache 会将请求尝试记录到访问日志文件中，我们可以通过
+    LFI 漏洞包含该文件。虽然会打印大量垃圾内容，但更重要的是，当 PHP 遇到我们的 `<?php` 标签时，它会开始执行代码。
 - en: 'We can pass in our shell using a simple HTTP `GET` request to the application:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过简单的 HTTP `GET` 请求将 shell 传递给应用程序：
 - en: '![LFI](graphics/B09238_05_08.jpg)'
+  id: totrans-82
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_08.jpg)'
 - en: 'Figure 5.8: Sending our PHP shell code to the application server log through
     a GET request'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.8：通过 GET 请求将我们的 PHP shell 代码发送到应用程序服务器日志
 - en: 'The server response is irrelevant, as the `access.log` has already been poisoned.
     On the application server, we can confirm that the shell was written to the log
     file by looking for it using `grep`, as shown:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器的响应无关紧要，因为 `access.log` 文件已经被毒化。在应用程序服务器上，我们可以通过使用 `grep` 查找该文件，确认 shell
+    已被写入日志文件，如下所示：
 - en: '[PRE10]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'All that''s left to do is use LFI and have PHP execute whatever code is in
     the log file. As before, we have to provide the correct password via the `GET`
     request. Our URL payload will contain the `file://` scheme and the absolute path
@@ -434,28 +637,42 @@
     and the command to view the contents of the `/etc/passwd` file. Since this command
     is sent via a `GET` request parameter, we have to convert the space between `cat`
     and `/etc/passwd` with a plus sign, as shown:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 剩下的就是利用 LFI 让 PHP 执行日志文件中的任何代码。如前所述，我们必须通过 `GET` 请求提供正确的密码。我们的 URL 载荷将包含 `file://`
+    协议和 Apache `access.log` 文件的绝对路径 `/var/log/apache2/access.log`，我们的 shell 密码，以及查看
+    `/etc/passwd` 文件内容的命令。由于该命令是通过 `GET` 请求参数发送的，我们必须将 `cat` 和 `/etc/passwd` 之间的空格转换为加号，如下所示：
 - en: '![LFI](graphics/B09238_05_09.jpg)'
+  id: totrans-87
   prefs: []
   type: TYPE_IMG
+  zh: '![LFI](graphics/B09238_05_09.jpg)'
 - en: 'Figure 5.9: Remote code execution via LFI and poisoned Apache log files'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.9：通过 LFI 和被毒化的 Apache 日志文件实现远程代码执行
 - en: The server response confirms that the shell command `cat` was executed successfully.
     Somewhere inside all of the response noise, we can find the contents of `/etc/passwd`.
     There are some obvious stealth issues with this approach. If log files are scrutinized
     by the defenders, this would stand out like a sore thumb.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器响应确认 `cat` 命令已成功执行。在响应的噪音中，我们可以找到 `/etc/passwd` 的内容。使用这种方法明显存在一些隐蔽问题。如果防御方仔细检查日志文件，这将像一个明显的错误一样突出。
 - en: This method may be crude, but it does showcase the extent of the damage a simple
     file inclusion vulnerability can cause.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法可能比较粗糙，但它确实展示了一个简单的文件包含漏洞可能造成的损害程度。
 - en: File inclusion to remote code execution
+  id: totrans-91
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 文件包含到远程代码执行
 - en: 'Similar to the `file://` scheme used in the earlier example, the PHP interpreter
     also provides access to various input and output streams via the `php://` scheme.
     This makes sense for when PHP is used in a **command-line interface** (**CLI**)
@@ -466,154 +683,232 @@
     to the terminal ("Enter your existing password"), `stderr` to display error messages
     ("Invalid password"), and `stdin` to prompt for user input to change the existing
     password.'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 类似于之前示例中使用的 `file://` 协议，PHP 解释器也通过 `php://` 协议提供访问各种输入和输出流的功能。这在 PHP 用于**命令行界面**（**CLI**）时尤其有意义，开发者需要访问这些常见的操作系统标准流：`stdin`、`stderr`、`stdout`，甚至内存。标准流是应用程序用来与它们执行环境进行通信的。例如，Linux
+    中的 `passwd` 命令会使用 `stdout` 流向终端显示信息性消息（“请输入您的现有密码”），`stderr` 用于显示错误信息（“密码无效”），而
+    `stdin` 则提示用户输入以更改现有密码。
 - en: The traditional way to parse input coming in from a web client is to read data
     using the `$_GET` and `$_POST` superglobals. The `$_GET` superglobal provides
     data that is passed in via the URL, while the `$_POST` superglobal contains the
     `POST` body data, neatly parsed.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 Web 客户端获取输入的传统方式是通过 `$_GET` 和 `$_POST` 超全局变量读取数据。`$_GET` 超全局变量提供通过 URL 传递的数据，而
+    `$_POST` 超全局变量则包含已解析的 `POST` 正文数据。
 - en: Note
+  id: totrans-94
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'A superglobal is a variable that is always set by the PHP interpreter and is
     accessible throughout the application. `$_GET` and `$_POST` are the most popular,
     but there are others, including `$_SESSION`, `$_ENV`, and `$_SERVER`. More information
     can be found in the PHP manual: [http://php.net/manual/en/language.variables.superglobals.php](http://php.net/manual/en/language.variables.superglobals.php).'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 超全局变量是由 PHP 解释器始终设置的变量，并且在整个应用程序中都可访问。`$_GET` 和 `$_POST` 是最常用的，但还有其他变量，包括 `$_SESSION`、`$_ENV`
+    和 `$_SERVER`。更多信息可以在 PHP 手册中找到：[http://php.net/manual/en/language.variables.superglobals.php](http://php.net/manual/en/language.variables.superglobals.php)。
 - en: In a file inclusion vulnerability, the `php://` scheme can be leveraged alongside
     the input (aka `stdin`) stream to attack the application. Instead of accessing
     a resource over the common `http://` or `https://`, the `php://input` URL can
     be included in the application to force PHP to read the request body as if it
     were code and execute it. The input data is retrieved by the interpreter from
     the body of the request.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 在文件包含漏洞中，`php://` 协议可以与输入流（即 `stdin`）结合使用来攻击应用程序。与常见的 `http://` 或 `https://`
+    协议不同，`php://input` URL 可以被包含到应用程序中，迫使 PHP 将请求体当作代码读取并执行。解释器从请求体中获取输入数据。
 - en: 'If we pass in the `php://input` value as the included page and in the body
     of the request we enter arbitrary PHP code, the server-side interpreter will read
     it and execute it, as shown in the following figure:'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们将 `php://input` 的值作为包含的页面，并且在请求体中输入任意 PHP 代码，服务器端解释器将读取并执行它，如下图所示：
 - en: '![File inclusion to remote code execution](graphics/B09238_05_10.jpg)'
+  id: totrans-98
   prefs: []
   type: TYPE_IMG
+  zh: '![文件包含到远程代码执行](graphics/B09238_05_10.jpg)'
 - en: 'Figure 5.10: Executing PHP code using LFI'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.10：使用 LFI 执行 PHP 代码
 - en: The `GET` request shown in the preceding screenshot, in the left page, uses
     the `php://input` as the `page` parameter, instructing PHP to include code coming
     in from user input. In a web application setting, input data comes from the body
     of the request. In this case, the body contains a simple PHP script that executes
     the command `cat /etc/passwd` on the system. The response reflects the output
     of `/etc/passwd`, confirming that remote code execution was successful.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面的截图中，左侧页面中的 `GET` 请求使用 `php://input` 作为 `page` 参数，指示 PHP 包含来自用户输入的代码。在 Web
+    应用程序环境中，输入数据来自请求体。在这个案例中，请求体包含一个简单的 PHP 脚本，它在系统上执行命令 `cat /etc/passwd`。响应反映了 `/etc/passwd`
+    的输出，确认远程代码执行成功。
 - en: No external connections are made and the network-based egress whitelist control
     has been bypassed. PHP is a feature-rich programming language and there are many ways
     to accomplish the same thing. This is usually a good thing for attackers, as it provides
     more opportunity for control bypass, obfuscation, and data exfiltration. This
     statement is true not only for PHP but other languages as well.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有建立外部连接，并且基于网络的出口白名单控制已被绕过。PHP 是一种功能丰富的编程语言，有许多方法可以完成相同的事情。这通常对攻击者有利，因为它提供了更多的绕过控制、混淆和数据外泄的机会。这一说法不仅适用于
+    PHP，还适用于其他语言。
 - en: More file upload issues
+  id: totrans-102
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 更多文件上传问题
 - en: Earlier in the chapter, we had a look at how file upload can help us to compromise
     an application and the server it sits on. We were able to upload a valid PNG file
     containing an embedded PHP shell. The LFI vulnerability allowed us to execute
     that code.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章早些时候，我们查看了文件上传如何帮助我们攻破一个应用程序以及它所在的服务器。我们能够上传一个有效的 PNG 文件，其中嵌入了 PHP Shell。LFI
+    漏洞使我们能够执行该代码。
 - en: There are other problems with allowing users to upload arbitrary files to the
     application. You could very well prevent users from uploading PHP, JSP, or ASP
     shells by simply blacklisting the extension. PHP only executes code in files with
     a particular extension (or two) if they are called directly. Barring any LFI vulnerability
     somewhere else in the application, the file upload feature should be fairly safe
     from a code execution perspective.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 允许用户上传任意文件到应用程序还有其他问题。你完全可以通过简单地将扩展名加入黑名单来防止用户上传 PHP、JSP 或 ASP Shell。PHP 只会在文件具有特定扩展名（或两个扩展名）的情况下执行代码，前提是这些文件被直接调用。如果应用程序中没有其他地方存在
+    LFI 漏洞，那么文件上传功能从代码执行角度来看应该是相对安全的。
 - en: If one of the application features is to allow file storage for users, whitelisting
     may be difficult and cumbersome to implement. In this scenario, blacklisting extensions
     may be the most cost-effective solution. When we can't upload a shell or execute
     server-side code, we can still attack the user.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果应用程序的某个功能是允许用户存储文件，那么白名单可能很难实施，并且过程繁琐。在这种情况下，黑名单扩展名可能是最具成本效益的解决方案。当我们无法上传
+    Shell 或执行服务器端代码时，我们仍然可以攻击用户。
 - en: The SecLists repository, which we've used in the past, contains a neat Flash
     file called `xssproject.swf` that will allow us to perform XSS attacks on users.
     Flash code is able to execute JavaScript code just like any other site using Flash
     plugin `ExternalInterface` API.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们以前使用过的 SecLists 仓库包含一个名为 `xssproject.swf` 的 Flash 文件，它将允许我们对用户执行 XSS 攻击。Flash
+    代码能够像任何其他使用 Flash 插件的站点一样执行 JavaScript 代码，使用 `ExternalInterface` API。
 - en: 'The **ActionScript** (**AS**) code used to generate `xssproject.swf` is fairly
     straightforward. ActionScript is Adobe Flash''s programming language used to automate
     Flash applications. It''s very similar to Java in its syntax and just like Java,
     it is compiled to bytecode and executed by a host application, the Flash plugin:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 用于生成 `xssproject.swf` 的 **ActionScript** (**AS**) 代码相当简单。ActionScript 是 Adobe
+    Flash 的编程语言，用于自动化 Flash 应用程序。它的语法与 Java 非常相似，就像 Java 一样，它会被编译成字节码并由宿主应用程序（即 Flash
+    插件）执行：
 - en: '[PRE11]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: We don't have to be Flash developers to understand what's going on here. This
     AS code simply wraps the main code in `try`-`catch` blocks for cleaner execution,
     grabs the `js` parameter from the `GET` request using the `root.loaderInfo.parameters`
     object, and passes the contents to the Flash plugin (via `ExternalInterface`)
     for execution within the browser.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不必是 Flash 开发者就能理解这里发生了什么。这个 AS 代码简单地将主代码包装在 `try`-`catch` 块中，以便更清晰地执行，使用 `root.loaderInfo.parameters`
+    对象从 `GET` 请求中获取 `js` 参数，并将内容传递给 Flash 插件（通过 `ExternalInterface`）以便在浏览器内执行。
 - en: 'Let''s go ahead and upload the XSSProject SWF malicious file using the application''s
     file upload feature. You may need to change the DVWA difficulty to `low`, to allow
     non-image file upload. The following figure shows that the XSSProject malware
     was uploaded successfully in the familiar directory:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们继续使用应用程序的文件上传功能上传 XSSProject SWF 恶意文件。您可能需要将 DVWA 难度设置为`low`，以允许非图像文件上传。以下图显示了
+    XSSProject 恶意软件在熟悉目录中成功上传的情况：
 - en: '![More file upload issues](graphics/B09238_05_11.jpg)'
+  id: totrans-111
   prefs: []
   type: TYPE_IMG
+  zh: '![更多文件上传问题](graphics/B09238_05_11.jpg)'
 - en: 'Figure 5.11: A successful upload of the XSSProject malware'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.11：XSSProject 恶意软件成功上传
 - en: 'To get the Flash file to execute JavaScript code in the browser, we can call
     it directly and pass in arbitrary code via the `js` parameter, like this:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使 Flash 文件在浏览器中执行 JavaScript 代码，我们可以直接调用它，并通过 `js` 参数传入任意代码，就像这样：
 - en: '[PRE12]'
+  id: totrans-114
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: As a **proof of concept** (**POC**), we can display the PHP session cookie,
     but in a real-world attack, we'd want to silently exfiltrate this data and display
     a benign error message or send the victim back to the main page. For the POC,
     we can call the `alert()` JavaScript function with the value of the cookies set
     on the particular page. In this case, DVWA's login cookie, `PHPSESSID`, should
     be displayed in a pop - up window.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为**概念验证**（**POC**），我们可以显示 PHP 会话 cookie，但在实际攻击中，我们希望悄悄地外泄这些数据，并显示一个良性的错误消息或将受害者发送回主页。对于
+    POC，我们可以调用 `alert()` JavaScript 函数，并显示在特定页面上设置的 cookies 的值。在这种情况下，DVWA 的登录 cookie，`PHPSESSID`，应该在弹出窗口中显示。
 - en: 'To test the POC, we can call the following URL and observe the browser behavior:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 要测试 POC，我们可以调用以下 URL 并观察浏览器行为：
 - en: '[PRE13]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: We can use this URL to perform XSS attacks against users of the vulnerable application.
     Instead of popping up a window to prove the vulnerability exists, we could inject
     more useful JavaScript code, such as a **Browser Exploitation Framework** (**BeEF**)
     hook. We will discuss this tool in [Chapter 9](ch09.html "Chapter 9. Practical
     Client-Side Attacks"), *Practical Client-Side Attacks*.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用此 URL 对易受攻击应用程序的用户执行 XSS 攻击。我们可以注入更有用的 JavaScript 代码，例如**浏览器利用框架**（**BeEF**）钩子，而不是弹出窗口来证明漏洞的存在。我们将在[第
+    9 章](ch09.html "第 9 章。实用客户端攻击") *实用客户端攻击*中讨论此工具。
 - en: 'The following figure shows that the JavaScript code was injected successfully
     by the malware (`xssproject.swf`):'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图显示了 JavaScript 代码被恶意软件（`xssproject.swf`）成功注入：
 - en: '![More file upload issues](graphics/B09238_05_12.jpg)'
+  id: totrans-120
   prefs: []
   type: TYPE_IMG
+  zh: '![更多文件上传问题](graphics/B09238_05_12.jpg)'
 - en: 'Figure 5.12: XSS attack after abusing file upload functionality'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.12：滥用文件上传功能后的 XSS 攻击
 - en: For a more practical application of the exploit, we can try to exfiltrate the
     cookie data silently and perhaps use the `PHPSESSID` value to impersonate the
     user in our own browser session. We can grab the cookie data, Base64-encode it
@@ -621,8 +916,12 @@
     collect the cookie data, we can force a redirection to the main application page
     to not raise suspicion. The data exfiltration piece will be transparent to the
     victim.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于利用漏洞的更实际应用，我们可以尝试悄悄地外泄 cookie 数据，并可能使用 `PHPSESSID` 值在我们自己的浏览器会话中冒充用户。我们可以获取
+    cookie 数据，使用 JavaScript 的 `btoa()` 函数对其进行 Base64 编码，并将所有数据发送到我们的 C2 服务器。一旦收集到
+    cookie 数据，我们可以强制重定向到主应用程序页面，以避免引起怀疑。数据外泄部分对受害者是透明的。
 - en: This payload will write new HTML code to the **Document Object Model** (**DOM**)
     using the `document` object. The HTML code is a hidden `iframe` element, which
     makes an HTTP request to our command and control infrastructure. The HTTP request
@@ -630,99 +929,145 @@
     us to capture this data remotely. The last function to redirect the client to
     the main page `'/'` will trigger after 500 milliseconds. This is to ensure the
     `iframe` has a chance to load and exfiltrate our data.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 此有效载荷将使用 `document` 对象将新的 HTML 代码写入**文档对象模型**（**DOM**）。HTML 代码是一个隐藏的 `iframe`
+    元素，它会向我们的命令和控制基础设施发出 HTTP 请求。HTTP 请求将在请求 URL 中包含受害者的 cookies，以 Base64 编码的形式，使我们能够远程捕获这些数据。最后一个函数将在
+    500 毫秒后重定向客户端到主页 `'/'`，以确保 `iframe` 有机会加载和外泄我们的数据。
 - en: 'Our attack code will look like this:'
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的攻击代码将如下所示：
 - en: '[PRE14]'
+  id: totrans-125
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The preceding JavaScript will have to be compressed to one line, separated
     by a semicolon, and because we have to use the URL to inject this code, we must
     URL encode the characters as well to ensure there are no issues in transmission.
     Burp''s Decoder module can be used to encode and obfuscate the payload:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面的JavaScript代码将被压缩为一行，用分号分隔，因为我们必须使用URL来注入此代码，所以我们还必须对字符进行URL编码，以确保在传输过程中没有问题。Burp的解码器模块可以用于编码和混淆负载：
 - en: '![More file upload issues](graphics/B09238_05_13.jpg)'
+  id: totrans-127
   prefs: []
   type: TYPE_IMG
+  zh: '![更多文件上传问题](graphics/B09238_05_13.jpg)'
 - en: 'Figure 5.13: URL encoding the JavaScript payload using Burp''s Decoder module'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 图5.13：使用Burp的解码器模块对JavaScript负载进行URL编码
 - en: 'All characters will be converted to their hex equivalent, prepended with a
     percent sign (`%`), obfuscating the attack code and making sure it executes successfully
     on the victim''s side. The URL containing the encoded payload will look like this:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有字符都将转换为它们的十六进制等价物，并在前面加上百分号（`%`），混淆攻击代码并确保它在受害者端成功执行。包含编码负载的URL看起来像这样：
 - en: '[PRE15]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Once the victim follows the preceding malicious link, we should be able to see
     the request coming in on `c2.spider.ml` and grab the encoded cookie values from
     the `GET` request. To accomplish this, we can setup a listener on port `80` using
     the netcat (`nc`) application. Netcat is a Swiss Army knife for attackers and
     can do much more than just becoming a simple server, but for our purposes, this
     should suffice.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦受害者跟随前面的恶意链接，我们应该能够看到请求进入`c2.spider.ml`并从`GET`请求中获取编码的cookie值。为了实现这一点，我们可以使用netcat（`nc`）应用程序在端口`80`上设置监听器。Netcat是攻击者的瑞士军刀，可以做的远不止成为一个简单的服务器，但对于我们的目的，这应该足够了。
 - en: 'We can call the `nc` binary with the following switches: `-l` to initiate a
     listener, `-v` to display verbose information, and `-p` to specify port `80` as
     the listening port:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用以下开关调用`nc`二进制文件：`-l`用于启动监听器，`-v`用于显示详细信息，`-p`用于指定端口`80`作为监听端口：
 - en: '[PRE16]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'With the server ready for incoming connections from our victim, we can start
     our attack and wait for the user to click on our malicious URL:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 当服务器准备好接收来自受害者的连接时，我们可以开始我们的攻击，并等待用户点击我们恶意的URL：
 - en: '[PRE17]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'The `GET` URL is a Base64-encoded value containing the exfiltrated cookie data.
     We can confirm this by decoding the contents using the `base64` Linux command
     with the `-d` switch:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '`GET` URL是一个包含被窃取的cookie数据的Base64编码值。我们可以通过使用`base64` Linux命令和`-d`开关解码内容来确认这一点：'
 - en: '[PRE18]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: Success! With the session ID in hand, we can impersonate the victim and take
     over the account.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 成功！有了会话ID，我们可以冒充受害者并接管账户。
 - en: We can also try to upload HTML or HTM files, which could accomplish the same
     thing; however, these extensions are more likely to be blacklisted in applications.
     Developers may forget that Flash provides an API for executing JavaScript and
     SWF files can sometimes slip by unnoticed.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们也可以尝试上传HTML或HTM文件，这可能会实现相同的效果；然而，这些扩展名更有可能在应用程序中被列入黑名单。开发人员可能会忘记Flash提供了一个用于执行JavaScript和SWF文件的API，因此SWF文件有时可能会悄悄地通过。
 - en: File upload can also be abused to store malicious payloads during an assessment.
     Application servers can be turned into simple C2 servers to evade prying blue-team
     eyes. It is not common for Linux/Unix-based operating systems to have antivirus
     software installed, and malicious Windows binaries or Meterpreter payloads can
     be stored on unsuspecting servers.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件上传也可以被滥用来在评估期间存储恶意负载。应用服务器可以被转变为简单的C2服务器，以逃避窥探的蓝队眼睛。Linux/Unix操作系统通常不会安装防病毒软件，恶意的Windows二进制文件或Meterpreter负载可以被存储在毫无戒心的服务器上。
 - en: Summary
+  id: totrans-141
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: In this chapter, we looked at several methods for using an application's underlying
     filesystem to our advantage. We were able to get code execution using file inclusion
     and even attack the client using XSS vulnerabilities that we introduced ourselves.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了几种利用应用程序底层文件系统的方法。我们能够使用文件包含获得代码执行，甚至利用我们自己引入的XSS漏洞攻击客户端。
 - en: Application development frameworks are maturing and, thankfully, some even take security
     seriously. As previously mentioned, there will always be a trade-off between security
     and usability. A file sharing site can be completely secure, but if it only allows
     a small number of extensions, it isn't very usable. This is a weakness that we,
     as attackers, can exploit for profit.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序开发框架正在成熟，幸运的是，一些甚至认真对待安全性。如前所述，安全性和可用性之间总会存在一个权衡。一个文件共享站点可以完全安全，但如果只允许少量扩展名，那就不太可用。这是我们作为攻击者可以利用以获取利润的一个弱点。
 - en: In the next chapter, we we will look at out-of-band discovery and exploitation
     of application vulnerabilities.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将讨论应用漏洞的带外发现和利用。

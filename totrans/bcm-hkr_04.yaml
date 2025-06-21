@@ -957,6 +957,7 @@
   id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.11：Repeater 响应显示 Tor 退出节点作为我们的有效 IP
 - en: While the Tor client does refresh the circuit periodically, it may not be quick
     enough for a brute-force attack, where rotating IPs is needed for evasion. We
     don't want to throttle our connection so much that the scan does not finish before
@@ -964,6 +965,7 @@
   id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管 Tor 客户端会定期刷新电路，但它可能不足以应对暴力破解攻击，在这种攻击中需要不断变化的 IP 以实现规避。我们不希望将连接的限制设置得过低，以至于扫描在结束前无法完成。
 - en: The Tor proxy can be forced to update the current circuit with a **process hang
     up signal** (**SIGHUP**). Using the `killall` or `kill` Linux commands, we can
     issue a `HUP` signal to the Tor application and force the process to rotate our
@@ -971,12 +973,16 @@
   id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以通过 **进程挂起信号** (**SIGHUP**) 强制更新 Tor 代理的当前电路。通过使用 `killall` 或 `kill` 等 Linux
+    命令，我们可以向 Tor 应用程序发出一个 `HUP` 信号，并强制该进程旋转我们的退出节点。
 - en: 'First, we can drop into a torsocks shell to hook all `curl` requests and forward
     them through the Tor network. The `torsocks` command can be called using the `--shell`
     parameter, as shown:'
   id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们可以进入 torsocks shell，拦截所有的 `curl` 请求，并通过 Tor 网络转发它们。可以使用 `--shell` 参数调用
+    `torsocks` 命令，如下所示：
 - en: '[PRE11]'
   id: totrans-142
   prefs: []
@@ -988,6 +994,8 @@
   id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 后续从 torsocks shell 中启动的应用程序的网络请求应该会通过 Tor 转发。为了查看 SIGHUP 信号的作用，我们可以使用 `curl`
+    请求访问一个在线服务，该服务返回我们当前的公共 IP，如 `ipinfo.io`：
 - en: '[PRE12]'
   id: totrans-144
   prefs: []
@@ -1001,6 +1009,8 @@
   id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 每次请求 IP 服务时都会返回一个新的 Tor 退出节点。我们也可以通过在单独的终端中使用 `watch` 命令粗略地自动发送 HUP 信号。`-n`
+    选项指定了执行 `killall` 命令的频率。在这种情况下，Tor 将每 `10` 秒发出一次 SIGHUP 信号，从而有效地同时旋转我们的外部 IP：
 - en: '[PRE13]'
   id: totrans-146
   prefs: []
@@ -1018,31 +1028,39 @@
   id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们的计划是对 `c2.spider.ml` 应用进行密码喷射攻击，例如，我们可以配置 Burp Suite 使用集群炸弹 Intruder 配置，并配合一个常见用户名和密码的列表。同时，在后台，`watch`
+    命令每 10 秒刷新一次 Tor 电路。我们将限制 Burp 的请求频率为每 10 秒一次，这将确保每次密码猜测尝试都来自不同的 IP，从而提高我们的隐蔽性。需要注意的是，Burp
+    的免费版不支持流量限制。通过使用 OWASP ZAP，同样的功能可以通过后台运行 `watch` 来循环 Tor 电路实现。
 - en: 'The following figure shows the `watch` command running the `killall` command
     on the Tor application every 10 seconds, while Burp''s Intruder module performs
     a password guessing attack:'
   id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图示展示了 `watch` 命令每 10 秒运行一次 `killall` 命令，控制 Tor 应用程序，同时 Burp 的 Intruder 模块进行密码猜测攻击：
 - en: '![Torify](graphics/B09238_04_12.jpg)'
   id: totrans-149
   prefs: []
   type: TYPE_IMG
+  zh: '![Torify](graphics/B09238_04_12.jpg)'
 - en: 'Figure 4.12: Running a password guessing attack with a constantly changing
     exit IP'
   id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.12：使用不断变化的退出 IP 进行密码猜测攻击
 - en: As expected, the `c2.spider.ml` application server log shows the attack coming
     in every 10 seconds from a new exit node IP.
   id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如预期的那样，`c2.spider.ml` 应用服务器日志显示，每隔 10 秒钟就会从一个新的退出节点 IP 发起一次攻击。
 - en: 'The following shows a sample PHP webserver listing each HTTP request, the time,
     and the originating IP:'
   id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下展示了一个示例 PHP Web 服务器，列出了每个 HTTP 请求、时间和来源 IP：
 - en: '[PRE14]'
   id: totrans-153
   prefs: []
@@ -1056,6 +1074,7 @@
   id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击的低速特性，再加上不断变化的源 IP，使得防御者更难将我们的攻击流量与合法流量区分开。虽然设计有效规则以识别来自多个地区和多个 IP 的暴力破解攻击并非不可能，但在不产生误报的情况下做到这一点相当困难。
 - en: There are a couple of issues with conducting attacks through the Tor network.
     The routing protocol is inherently slower than a more direct connection. This
     is because Tor adds several layers of encryption to each transmission, and each
@@ -1067,11 +1086,14 @@
   id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过 Tor 网络发起攻击存在一些问题。其路由协议本质上比直接连接要慢。这是因为 Tor 对每次传输都添加了几层加密，而且每次传输都会通过三个 Tor
+    节点转发，除此之外还需要进行正常的互联网通信路由。这一过程增强了匿名性，但也显著增加了通信延迟。对于正常的网页浏览来说，这种延迟是可以忍受的，但对于大规模扫描，它可能不是理想的传输方式。
 - en: Note
   id: totrans-156
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: It should also be noted that Tor is used heavily in regions of the world where
     privacy is of utmost importance. Conducting large volume attacks through Tor is
     discouraged, as it can lead to unnecessary network slowdowns and can impact legitimate
@@ -1082,6 +1104,8 @@
   id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 还应注意，Tor 在隐私至关重要的地区被广泛使用。通过 Tor 进行大规模攻击是不被提倡的，因为它可能导致不必要的网络延迟，并可能影响合法用户。低速且缓慢的攻击通常不会造成任何问题。一些红队任务可能需要通过
+    Tor 网络进行测试，以验证相关的 IDS/IPS 规则是否按预期工作，但在通过这种有限资源的公共媒介发起攻击时，应谨慎行事。
 - en: The other problem with Tor is that the exit nodes are public. Firewalls, IDS,
     IPS, and even host-based controls can be configured to outright block any connection
     from known Tor nodes. While there are legitimate users on Tor, it also has a long
@@ -1091,20 +1115,25 @@
   id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Tor 的另一个问题是出口节点是公开的。防火墙、IDS、IPS，甚至基于主机的控制可以配置为直接阻止来自已知 Tor 节点的任何连接。虽然 Tor
+    上有合法用户，但它也有被广泛用于非法活动的历史；因此，组织通常认为，因禁止 Tor 连接而惹恼少数潜在客户的风险是可以接受的。
 - en: Note
   id: totrans-159
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'A list of active Tor exit nodes can be found here: [https://check.torproject.org/cgi-bin/TorBulkExitList.py](https://check.torproject.org/cgi-bin/TorBulkExitList.py).'
   id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 活跃的 Tor 出口节点列表可以在此找到：[https://check.torproject.org/cgi-bin/TorBulkExitList.py](https://check.torproject.org/cgi-bin/TorBulkExitList.py)。
 - en: Proxy cannon
   id: totrans-161
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Proxy cannon
 - en: An alternative to using Tor for diversifying our attack IPs is to simply use
     the cloud. There are countless **Infrastructure as a Service** (**IaaS**) providers,
     each with a large IP space available for free to VM instances. VMs are cheap and
@@ -1113,6 +1142,8 @@
   id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Tor 来多样化我们的攻击 IP 的一个替代方案是直接使用云服务。市面上有无数的 **基础设施即服务**（**IaaS**）提供商，每个提供商都有大量的
+    IP 空间，供虚拟机实例免费使用。虚拟机通常便宜，有时甚至是免费的，所以通过它们路由我们的流量应该是相当经济有效的。
 - en: Amazon, Microsoft, and Google all have an easy-to-use API for automating the
     management of VM instances. If we can spawn a new VM with a new external IP periodically,
     we can route our traffic to the target application through it and mask our true
@@ -1121,26 +1152,32 @@
   id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 亚马逊、微软和谷歌都提供了易于使用的 API 来自动化虚拟机实例的管理。如果我们能定期生成一个新的虚拟机并分配一个新的外部 IP，我们可以通过它将流量路由到目标应用程序，并隐藏我们的真实来源。这应该会使自动化系统更难检测并警告我们的活动。
 - en: Cue **ProxyCannon**, a great tool that does all the heavy lifting of talking
     to Amazon's AWS API, creating and destroying VM instances, rotating external IPs,
     and routing our traffic through them.
   id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 这时就需要 **ProxyCannon**，一个能够与 Amazon AWS API 通信、创建和销毁虚拟机实例、轮换外部 IP 并通过它们路由流量的强大工具。
 - en: Note
   id: totrans-165
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: 'ProxyCannon was developed by Shellntel and is available on GitHub: [https://github.com/Shellntel/scripts/blob/master/proxyCannon.py](https://github.com/Shellntel/scripts/blob/master/proxyCannon.py).'
   id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 是由 Shellntel 开发的，可以在 GitHub 上找到：[https://github.com/Shellntel/scripts/blob/master/proxyCannon.py](https://github.com/Shellntel/scripts/blob/master/proxyCannon.py)。
 - en: 'ProxyCannon requires `boto`, a Python library that provides API access to Amazon''s
     AWS. We can use Python''s `pip` command to install the required dependency:'
   id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 需要 `boto`，这是一个提供访问 Amazon AWS API 的 Python 库。我们可以使用 Python 的 `pip`
+    命令来安装所需的依赖项：
 - en: '[PRE15]'
   id: totrans-168
   prefs: []
@@ -1151,6 +1188,7 @@
   id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 工具现在应该已经准备好使用，通过 `-h` 选项显示所有可用的选项：
 - en: '[PRE16]'
   id: totrans-170
   prefs: []
@@ -1160,6 +1198,7 @@
   id: totrans-171
   prefs: []
   type: TYPE_IMG
+  zh: '![Proxy cannon](graphics/B09238_04_15.jpg)'
 - en: By default, ProxyCannon creates `t2.nano` virtual instances in AWS, which should
     be free for a limited time with new accounts. They have very little resources
     but are typically enough for most attacks. To change the type of instance, we
@@ -1168,6 +1207,8 @@
   id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，ProxyCannon 会在 AWS 中创建 `t2.nano` 虚拟实例，新的账户在有限时间内应该是免费的。它们的资源非常有限，但通常足够用于大多数攻击。如果需要更改实例类型，可以使用
+    `-t` 开关。默认区域是 `us-east-1`，可以通过 `--region` 开关进行调整。
 - en: 'ProxyCannon will create as many instances as specified in the `num_of_instances`
     and using the `-r` switch, it will rotate them regularly. The `-l` switch is also
     useful to keep track of what public IPs ProxyCannon is using over the course of
@@ -1176,6 +1217,8 @@
   id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 将根据 `num_of_instances` 参数创建指定数量的实例，并使用 `-r` 开关定期轮换它们。`-l` 开关对于跟踪
+    ProxyCannon 在执行过程中使用的公共 IP 非常有用，这对于报告来说很重要：蓝队可能需要攻击中使用的所有 IP 列表。
 - en: In order for the tool to be able to communicate with our AWS account and to
     manage instances automatically, we have to create API access keys in the AWS console.
     The interface is fairly straightforward and can be accessed in the account **Security
@@ -1183,24 +1226,30 @@
   id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了让工具能够与我们的 AWS 账户进行通信，并自动管理实例，我们必须在 AWS 控制台中创建 API 访问密钥。这个界面相当简单，可以在账户的 **安全凭证**
+    页面访问。
 - en: The access key ID and the secret keys are randomly generated and should be stored
     securely. Once the engagement is over, you should delete the keys in the AWS console.
   id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 访问密钥 ID 和密钥是随机生成的，应当安全存储。一旦任务结束，应从 AWS 控制台删除这些密钥。
 - en: '![Proxy cannon](graphics/B09238_04_13.jpg)'
   id: totrans-176
   prefs: []
   type: TYPE_IMG
+  zh: '![Proxy cannon](graphics/B09238_04_13.jpg)'
 - en: 'Figure 4.13: Generating a new AWS API access key'
   id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.13：生成新的 AWS API 访问密钥
 - en: We can start ProxyCannon using the `-r` and `-l` switches, and specify that
     we want `3` instances running at the same time.
   id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `-r` 和 `-l` 开关启动 ProxyCannon，并指定同时运行 `3` 个实例。
 - en: '[PRE17]'
   id: totrans-179
   prefs: []
@@ -1211,6 +1260,7 @@
   id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 在第一次运行时，ProxyCannon 会要求输入这些值，并将它们存储在 `~/.boto` 文件中。
 - en: '[PRE18]'
   id: totrans-181
   prefs: []
@@ -1223,12 +1273,15 @@
   id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，这些信息以明文形式存储，因此请确保这个文件得到妥善保护。亚马逊建议这些密钥应该经常轮换。每次任务开始时，最好为每个任务创建新的密钥，并在不再需要时从
+    AWS 删除它们。
 - en: ProxyCannon will connect to Amazon EC2, setup the SSH keys, adjust the security
     groups, and start the VM instances. This process may take a couple of minutes
     to complete.
   id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 将连接到 Amazon EC2，设置 SSH 密钥，调整安全组，并启动虚拟机实例。这个过程可能需要几分钟才能完成。
 - en: '[PRE19]'
   id: totrans-184
   prefs: []
@@ -1239,6 +1292,7 @@
   id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: ProxyCannon 将覆盖当前系统的 `iptables` 配置，以确保所有流量都通过所选实例进行正确路由：
 - en: '[PRE20]'
   id: totrans-186
   prefs: []
@@ -1250,11 +1304,14 @@
   id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如承诺的那样，ProxyCannon 会定期通过 SSH 隧道和修改路由表来轮换我们的有效外部 IP。所有这些操作都是自动进行的，在后台执行，而 Burp
+    Suite 或 ZAP 正在进行密码喷洒攻击。
 - en: 'The following is the periodic output from ProxyCannon showing the IPs being
     rotated:'
   id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是 ProxyCannon 的定期输出，显示正在轮换的 IP 地址：
 - en: '[PRE21]'
   id: totrans-189
   prefs: []
@@ -1265,14 +1322,17 @@
   id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 AWS 控制台中，我们可以看到启动的 `t2.nano` 实例及其公共 IP 地址：
 - en: '![Proxy cannon](graphics/B09238_04_14.jpg)'
   id: totrans-191
   prefs: []
   type: TYPE_IMG
+  zh: '![Proxy cannon](graphics/B09238_04_14.jpg)'
 - en: 'Figure 4.14: AWS instances created to route our traffic through'
   id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.14：创建的 AWS 实例，用于通过它们路由我们的流量
 - en: As with our Tor example earlier, we can test ProxyCannon by repeating a `curl`
     request to our target application using the `watch` command. We don't need to
     drop in a shell similar to torsocks because ProxyCannon modifies the local system
@@ -1280,6 +1340,8 @@
   id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 和之前的 Tor 示例一样，我们可以通过使用 `watch` 命令重复 `curl` 请求来测试 ProxyCannon，目标应用是我们的目标。我们不需要像
+    torsocks 那样进入 shell，因为 ProxyCannon 会修改本地系统路由，帮助我们更改外部 IP 地址。
 - en: '[PRE22]'
   id: totrans-194
   prefs: []

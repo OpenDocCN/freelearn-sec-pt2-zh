@@ -1,7 +1,9 @@
 - en: Chapter 6. Out-of-Band Exploitation
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第六章：带外利用
 - en: In the previous chapter, we looked at confirming and exploiting file inclusion
     attacks. The confirmation piece was straightforward, since the server immediately
     made it obvious that the application was vulnerable. What happens when things
@@ -11,102 +13,147 @@
     into the input and observe the application's behavior. Sometimes, if they are
     lucky, the server returns a bright-red SQL error message, which can indicate the
     existence of an injection point.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们探讨了确认和利用文件包含漏洞。确认部分是直观的，因为服务器会立即显现出应用程序的漏洞。那么，当情况并不那么明显时会发生什么呢？如果服务器有漏洞，但在收到意外输入时没有任何明显的提示呢？在测试
+    SQL 注入漏洞时，攻击者通常会输入特制的值并观察应用程序的行为。有时，如果他们运气好，服务器会返回一个鲜红的 SQL 错误信息，这可以表明存在注入点。
 - en: As applications and frameworks get more complex, production applications are
     hardened and the behavioral hints that we used to rely on to confirm a vulnerability
     are no longer as obvious. Modern applications tend to suppress error messages
     by default and may not always process the input synchronously. If our payload
     is executed by a backend batch job every eight hours, we would not see the effect
     in the HTTP response and could miss a potentially critical vulnerability.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 随着应用程序和框架变得越来越复杂，生产环境中的应用程序经过加固，曾经用于确认漏洞的行为线索不再那么显而易见。现代应用程序默认抑制错误信息，并且可能不会总是同步处理输入。如果我们的有效载荷每隔八小时由后台批处理作业执行一次，我们就无法在
+    HTTP 响应中看到效果，可能会错过一个潜在的关键漏洞。
 - en: '**Out-of-band** vulnerability discovery is the process by which we can force
     the application to interact with an external service that we control. If an application
     is vulnerable to a SQL injection attack but there are no immediate hints during
     the initial scan, we can feed it a payload that tricks the application into communicating
     with our C2 server, just enough that it proves our payload was executed.'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: '**带外**漏洞发现是指我们通过迫使应用程序与我们控制的外部服务交互的过程。如果一个应用程序存在 SQL 注入漏洞，但在初次扫描时没有明显的线索，我们可以输入一个有效载荷，诱使应用程序与我们的
+    C2 服务器通信，足以证明我们的有效载荷已经被执行。'
 - en: 'In this chapter, we will look at the following:'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论以下内容：
 - en: Creating a C2 server
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 创建 C2 服务器
 - en: Using **INetSim** to emulate services
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用**INetSim**模拟服务
 - en: Confirming vulnerabilities using out-of-band techniques
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用带外技术确认漏洞
 - en: Advanced data exfiltration
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 高级数据泄露
 - en: A common scenario
+  id: totrans-9
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 一个常见场景
 - en: Imagine that the application `http://vuln.app.internal/user.aspx?name=Dade`
     is vulnerable to a SQL injection attack on the `name` parameter. Traditional payloads
     and polyglots do not seem to affect the application's response. Perhaps database
     error messages are disabled and the `name` value is not processed synchronously
     by the application.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设应用程序`http://vuln.app.internal/user.aspx?name=Dade`在`name`参数上存在 SQL 注入漏洞。传统的有效载荷和多用途载荷似乎不会影响应用程序的响应。也许数据库错误信息被禁用，而且应用程序对`name`值的处理是异步的。
 - en: 'Somewhere on the backend **Microsoft SQL** (**MS SQL**) server, the following
     query is executed:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 在后台的某个地方，**Microsoft SQL**（**MS SQL**）服务器执行了以下查询：
 - en: '[PRE0]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'A simple single-quote value for `name` would produce a SQL error and we''d
     be in business, but in this case, the error messages are suppressed, so from a
     client perspective, we''d have no idea something went wrong. Taking it a step
     further, we can force the application to delay the response by a significant amount
     of time to confirm the vulnerability:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 对`name`值使用简单的单引号会导致 SQL 错误，这时我们就可以进行攻击，但在这种情况下，错误信息被抑制，因此从客户端的角度来看，我们根本不知道出了什么问题。进一步说，我们可以强制应用程序延迟响应一段显著的时间来确认漏洞：
 - en: '[PRE1]'
+  id: totrans-14
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: This payload injects a 20 second delay into the query return, which is noticeable
     enough that it would raise some flags, but the query is executed asynchronously.
     That is, the application responds to us before the query has completed because
     it probably doesn't depend on the result.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个有效载荷将一个 20 秒的延迟注入到查询返回中，这个延迟足够明显，能够引起警觉，但查询是异步执行的。也就是说，应用程序在查询完成之前就响应我们，因为它可能不依赖于查询结果。
 - en: 'This is where forcing an out-of-band service interaction comes in handy while
     hunting for obscure vulnerabilities. Instead of the `WAITFOR DELAY` payload, the
     following will force an MS SQL server to connect to an arbitrary host over the
     **Server Message Block** (**SMB**) protocol, a host that we control:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是在寻找难以发现的漏洞时，强制执行带外服务交互的优势所在。与`WAITFOR DELAY`有效载荷不同，以下内容将强制MS SQL服务器通过**服务器消息块**（**SMB**）协议连接到我们控制的任意主机：
 - en: '[PRE2]'
+  id: totrans-17
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'While unusual, the payload is fairly simple to understand, even for those of
     us who don''t work with SQL every day. The code will:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管不常见，但这个有效载荷相当容易理解，即使是对于那些每天不处理SQL的我们来说。代码将：
 - en: Allocate space for a string variable `@q` (type `varchar`, length `99` bytes)
+  id: totrans-19
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 为字符串变量`@q`分配空间（类型`varchar`，长度`99`字节）
 - en: 'Set the `@q` variable value to a **Universal Naming Convention** (**UNC**)
     path pointing to our server: `\\attacker.c2\test`'
+  id: totrans-20
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将`@q`变量值设置为指向我们服务器的**通用命名约定**（**UNC**）路径：`\\attacker.c2\test`
 - en: Execute a directory listing of the UNC path stored in `@q`
+  id: totrans-21
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 执行存储在`@q`中的UNC路径的目录列表
 - en: The server may or may not be able to negotiate an SMB connection to our server
     and grab a list of files. Whether or not the SMB protocol communication was successful
     is irrelevant. If we have control over the `attacker.c2` domain, we almost immediately
@@ -118,8 +165,10 @@
     to the attacker, but once an administrator logs on, the exploit triggers. This
     could be hours, maybe days after the payload was injected. Out-of-band discovery
     and exploitation would alert the attacker as soon as the payload executes.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 服务器可能能够或无法与我们的服务器协商SMB连接并获取文件列表。是否成功建立SMB协议通信并不重要。如果我们控制`attacker.c2`域，我们几乎可以立即证明SQL注入攻击的存在。这对许多通过传统扫描方法难以发现的漏洞类型同样适用。例如，**XML外部实体**（**XXE**）攻击也可以通过完全相同的方法带外确认。一些XSS漏洞从攻击者的角度看并不总是明显。注入的JavaScript代码可能仅在一个控制面板中显示，而该控制面板通常不会呈现给攻击者，但一旦管理员登录，漏洞就会触发。这可能是几小时，甚至几天后，载荷被注入之后。带外发现和利用可以在载荷执行时立即警告攻击者。
 - en: Before we get ahead of ourselves, we need proper C2 infrastructure to help us
     to verify some of these vulnerabilities. The C2 needs to not only accept connections
     from our target application, but also DNS queries. On the off chance that the
@@ -128,94 +177,135 @@
     are almost always allowed outbound. Even if the application is not allowed to
     connect to our server directly, by design, DNS servers on the target network will proxy
     the resolution request until it reaches our server.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们深入讨论之前，我们需要一个合适的C2基础设施来帮助验证这些漏洞。C2不仅需要接受来自目标应用程序的连接，还需要处理DNS查询。如果应用程序的后端在出口规则集中被防火墙隔离，它将无法协商SMB握手。另一方面，UDP端口`53`上的DNS查询几乎总是允许外发。即使应用程序无法直接连接到我们的服务器，根据设计，目标网络中的DNS服务器会代理解析请求，直到它到达我们的服务器。
 - en: Command and control
+  id: totrans-24
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 命令与控制
 - en: 'There are many cloud providers and thanks to competition, they are fairly cheap.
     We don''t need a beefy machine: we can get away with a micro instance from any
     of these providers:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前有许多云服务提供商，且由于竞争激烈，它们的价格相当便宜。我们不需要一台高性能的机器：我们可以使用任何这些提供商的微型实例：
 - en: Google Cloud
+  id: totrans-26
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 谷歌云
 - en: Amazon AWS
+  id: totrans-27
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 亚马逊AWS
 - en: Microsoft Azure
+  id: totrans-28
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 微软Azure
 - en: DigitalOcean
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: DigitalOcean
 - en: Google Cloud and Amazon AWS have tiers that provide you with all the VM resources
     you need for free; for a limited time, of course. However, the few dollars a month
     it costs to run VMs in the cloud is well worth it for those of us who rely on
     C2 infrastructure.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 谷歌云和亚马逊AWS有一些套餐，可以免费提供你所需要的所有虚拟机资源；当然，这些资源是有限时的。然而，对于依赖C2基础设施的我们来说，每月几美元的费用完全值得。
 - en: Note
+  id: totrans-31
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: These C2 instances should also be a per-client deployment and the disks should
     be encrypted. Due to the nature of our work, sensitive customer data may flow
     in and could be stored insecurely. Once an engagement is complete, destroy the
     instance, along with any client data it may have collected.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些C2实例也应该是每个客户端独立部署，并且磁盘应该加密。由于我们工作的性质，敏感的客户数据可能会流入，并且可能会以不安全的方式存储。一旦任务完成，销毁该实例及其可能收集的任何客户数据。
 - en: Once the VM is up and running, it is usually assigned an ephemeral external
     IP address. In some cases, you can request a static IP, but this is generally
     not required. Ephemeral external IPs will remain unchanged while the VM is powered
     on.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦虚拟机启动并运行，通常会分配一个临时的外部IP地址。在某些情况下，您可以请求一个静态IP，但通常不需要。临时外部IP在虚拟机开机时将保持不变。
 - en: '![Command and control](graphics/B09238_06_01.jpg)'
+  id: totrans-34
   prefs: []
   type: TYPE_IMG
+  zh: '![命令与控制](graphics/B09238_06_01.jpg)'
 - en: 'Figure 6.1: The c2.spider.ml VM instance is up and running in Google Cloud'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.1：c2.spider.ml虚拟机实例在Google Cloud中已启动并运行
 - en: Make note of the external IP, as this VM will have to be the authoritative **nameserver**
     (**NS**) for the C2 domain. We can use any domain, or subdomain for that matter,
     that we control.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意外部IP，因为该虚拟机必须成为C2域的权威**名称服务器**（**NS**）。我们可以使用任何我们控制的域或子域。
 - en: In the following example, the authoritative zone `spider.ml` delegates the C2
     subdomain to our VM's IP. A record is required (`ns1.spider.ml`) for the NS, as you cannot
     delegate directly to an IP address.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，权威区域 `spider.ml` 将C2子域委托给我们的虚拟机IP。NS记录是必需的（`ns1.spider.ml`），因为不能直接将委托指向IP地址。
 - en: '![Command and control](graphics/B09238_06_02.jpg)'
+  id: totrans-38
   prefs: []
   type: TYPE_IMG
+  zh: '![命令与控制](graphics/B09238_06_02.jpg)'
 - en: 'Figure 6.2: The zone configuration and the delegation of c2.spider.ml to our
     C2 instance''s IP'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.2：区域配置及将 c2.spider.ml 委托给我们的C2实例IP
 - en: With these two records, queries for `c2.spider.ml` will effectively be sent
     to the C2 server we've just created. Any query for a subdomain of `c2.spider.ml`
     will also be sent to this IP address for resolution.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 有了这两个记录，针对 `c2.spider.ml` 的查询将有效地发送到我们刚创建的C2服务器。任何针对 `c2.spider.ml` 子域的查询也会发送到该IP地址进行解析。
 - en: 'This is important, as we have to be able to see all the connection requests
     for `c2.spider.ml`. There are a couple of ways to do this; the traditional way
     being configuring a **BIND** service with authority over the newly delegated zone:
     `c2.spider.ml`. For less complex C2 infrastructure, there is a simpler-to-configure
     alternative, with many other features.'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这很重要，因为我们必须能够查看所有对 `c2.spider.ml` 的连接请求。实现这一点有几种方式；传统的方式是配置一个**BIND**服务，拥有对新委托区域
+    `c2.spider.ml` 的授权。对于较不复杂的C2基础设施，存在一个更简单的配置替代方案，并且具备更多功能。
 - en: Let’s Encrypt Communication
+  id: totrans-42
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Let’s Encrypt 通信
 - en: In order to provide some transport security, we may want spawn an HTTPS server
     or maybe use SMTPS. We could use self-signed certificates, but this is not ideal.
     Clients become suspicious when the TLS alert pops up on their browser, or network
@@ -223,367 +313,549 @@
     is signed by a trusted root certificate authority. There are countless paid services
     which offer all manner of TLS certificates, but the easiest and most cost effective
     is Let’s Encrypt.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了提供一定的传输安全性，我们可能希望启动一个HTTPS服务器，或者使用SMTPS。我们可以使用自签名证书，但这并不理想。当TLS警告出现在客户端浏览器中时，用户会产生怀疑，或者网络代理可能会直接断开连接。我们希望使用由受信任的根证书颁发机构签署的证书。虽然有无数付费服务提供各种TLS证书，但最简单且成本效益最高的是
+    Let’s Encrypt。
 - en: Let’s Encrypt, a root certificate authority trusted by most clients, allows
     server administrators to request free, domain-validated certificates for their
     hosts. Their mission is to help move us towards an encrypted internet, and free
     certificates is a great step forward.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: Let’s Encrypt 是一个受大多数客户端信任的根证书颁发机构，允许服务器管理员为其主机请求免费的域名验证证书。它们的使命是推动我们走向一个加密的互联网，免费证书是向前迈出的重要一步。
 - en: Note
+  id: totrans-45
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Let’s Encrypt provides free domain-validated certificates for hostnames and
     even wildcard certificates. More information can be found on [https://letsencrypt.org/](https://letsencrypt.org/).
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: Let’s Encrypt 提供免费的域名验证证书，用于主机名，甚至是通配符证书。更多信息请访问 [https://letsencrypt.org/](https://letsencrypt.org/)。
 - en: For demonstration purposes, our C2 will be hosted under the `spider.ml` domain
     and we will request a wildcard certificate.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示，我们的C2将托管在 `spider.ml` 域下，并且我们将请求一个通配符证书。
 - en: 'First step is to download the `certbot-auto` wrapper script which installs
     dependencies and automates a lot of Let’s Encrypt’s certificate request process.
     On Debian distributions such as Kali, this script is available from:'
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一步是下载 `certbot-auto` 包装脚本，该脚本安装依赖项并自动化大部分 Let’s Encrypt 的证书请求过程。在 Debian 系统（如
+    Kali）中，可以从以下位置获得此脚本：
 - en: '[PRE3]'
+  id: totrans-49
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Certbot does have the option to automatically update web server configuration
     but for our purposes, we will do a manual request. This will drop the new certificate
     somewhere on disk and we can use it as we please.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: Certbot 确实提供了自动更新 web 服务器配置的选项，但为了我们的目的，我们将手动请求。这会将新证书存放在磁盘的某个位置，供我们自由使用。
 - en: The `--manual` switch will allow us to walk through a request with custom options.
     We will specify which domains the certificate is valid for using the `-d` switch.
     For wildcard certificates, we have to specify the parent domain `spider.ml` and
     the wildcard as well, `*.spider.ml`.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: '`--manual` 选项将允许我们通过自定义选项逐步完成请求。我们将使用 `-d` 选项指定证书有效的域名。对于通配符证书，我们必须同时指定父域名
+    `spider.ml` 和通配符 `*.spider.ml`。'
 - en: '[PRE4]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: For wildcard domains, we will use the DNS challenge, meaning we will have to
     add a custom TXT record in order for Let’s Encrypt to be able to verify that we
     actually own this the parent domain.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于通配符域名，我们将使用 DNS 挑战，这意味着我们必须添加一个自定义的 TXT 记录，以便 Let’s Encrypt 能够验证我们确实拥有这个父域名。
 - en: '[PRE5]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: The certbot wizard will eventually prompt us to create a `TXT` record `_acme-challenge.spider.ml`
     using a randomly generated nonce.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: certbot 向导最终会提示我们创建一个 `TXT` 记录 `_acme-challenge.spider.ml`，并使用随机生成的随机数。
 - en: '[PRE6]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Before pressing *Enter*, we have to add the record in the DNS manager for `spider.ml`:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 在按下 *Enter* 之前，我们需要在 `spider.ml` 的 DNS 管理器中添加记录：
 - en: '![Let’s Encrypt Communication](graphics/B09238_06_03.jpg)'
+  id: totrans-58
   prefs: []
   type: TYPE_IMG
+  zh: '![Let’s Encrypt 通信](graphics/B09238_06_03.jpg)'
 - en: 'Figure 6.3 : Adding a TXT DNS record'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.3：添加 TXT DNS 记录
 - en: The wizard may prompt you again to update the `TXT` value to something new,
     in which case you may have to wait a few minutes before continuing. A low TTL
     value such as 5 minutes or less will help with the wait.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 向导可能会再次提示你更新 `TXT` 值为新值，这时你可能需要等待几分钟才能继续。设置一个较低的 TTL 值，如 5 分钟或更少，将有助于减少等待时间。
 - en: 'If everything is in order and Let’s Encrypt was able to verify the `TXT` records,
     a new certificate will be issues and stored on disk somewhere in `/etc/letsencrypt/live/`:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果一切顺利，且 Let’s Encrypt 能够验证 `TXT` 记录，新的证书将被签发并存储在 `/etc/letsencrypt/live/` 目录中的某个位置：
 - en: '[PRE7]'
+  id: totrans-62
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: These certificates are only valid for a few months at a time, as per Let’s Encrypt
     policy. You will have to renew these using a similar process as the initial request.
     Certbot keeps a record of requested certificates and their expiry dates. Issuing
     a renew command will iterate through our certificates and automatically renew
     them.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些证书的有效期通常为几个月，符合 Let’s Encrypt 政策。你需要使用与初始请求相似的过程来更新这些证书。Certbot 会记录请求的证书及其到期日期。发出续订命令时，它会遍历我们的证书并自动续订它们。
 - en: These PEM files can now be used in Apache, NGINX, INetSim or any other web server
     we stand-up for command and control.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些 PEM 文件现在可以用于 Apache、NGINX、INetSim 或任何我们用于命令与控制的 Web 服务器。
 - en: We can point our INetSIM instance to the newly minted certificates by adjusting
     the configuration file. The options to look for are `https_ssl_keyfile` which
     points to the private key, and `https_ssl_certfile` which is the certificate itself.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过调整配置文件，将 INetSIM 实例指向新生成的证书。需要查找的选项是 `https_ssl_keyfile`，它指向私钥，以及 `https_ssl_certfile`，它是证书本身。
 - en: '[PRE8]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: INetSIM looks for these files in the `certs` directory which is typically located
     under `/usr/share/inetsim/data`/.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: INetSIM 会在 `certs` 目录中查找这些文件，通常该目录位于 `/usr/share/inetsim/data/` 下。
 - en: The next step is to copy the `privkey.pem` and `fullchain.pem` files from the
     Let’s Encrypt `live` directory to the INetSIM `certs` directory. We will have
     to remember to do this whenever we renew the certificates. Automation through
     `crontab` is also an option.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步是将 `privkey.pem` 和 `fullchain.pem` 文件从 Let’s Encrypt 的 `live` 目录复制到 INetSIM
+    的 `certs` 目录。每次更新证书时，我们都需要记得执行此操作。通过 `crontab` 实现自动化也是一种选择。
 - en: '[PRE9]'
+  id: totrans-69
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'We should probably try to secure the private key as much as possible as well.
     We will set the owner of the file to `inetsim` and trim the permissions for all
     other users using `chmod`:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可能还应该尽量确保私钥的安全。我们将文件的所有者设置为 `inetsim`，并使用 `chmod` 限制其他所有用户的权限：
 - en: '[PRE10]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'We can now enable the simulated HTTPS service and test the certificate validity:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在可以启用模拟的 HTTPS 服务并测试证书的有效性：
 - en: '![Let’s Encrypt Communication](graphics/B09238_06_04.jpg)'
+  id: totrans-73
   prefs: []
   type: TYPE_IMG
+  zh: '![Let''s Encrypt 通信](graphics/B09238_06_04.jpg)'
 - en: 'Figure 6.4 : C2 HTTPS certificate provided by Let''s Encrypt'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.4：Let's Encrypt 提供的 C2 HTTPS 证书
 - en: INet simulation
+  id: totrans-75
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: INet 模拟
 - en: 'To keep things simple, we will use INetSim to emulate a variety of network
     services. It quickly sets up listeners for a slew of known ports and even provides
     default responses using the appropriate protocol. For example, an FTP service
     can be started, which will accept any credentials and will allow the connectee
     to interact with the service: upload, download, list files, and so on.'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了保持简单，我们将使用 INetSim 来模拟各种网络服务。它可以快速为多个已知端口设置监听器，并通过适当的协议提供默认响应。例如，可以启动一个 FTP
+    服务，接受任何凭证，并允许连接者与服务进行交互：上传、下载、列出文件等。
 - en: Note
+  id: totrans-77
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: INetSim binaries, source, and documentation is available on [http://www.inetsim.org/](http://www.inetsim.org/).
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: INetSim 的二进制文件、源代码和文档可以在 [http://www.inetsim.org/](http://www.inetsim.org/)
+    获取。
 - en: INetSim is frequently used on closed networks to fake C2 servers for malware,
     and to capture valuable data. We can leverage the same INetSim tool to quickly
     setup a simple infrastructure that will handle connections from our targets, with
     the added benefit of producing a report of each session.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: INetSim 常用于封闭网络中，模拟 C2 服务器以应对恶意软件，并捕获有价值的数据。我们可以利用相同的 INetSim 工具，快速设置一个简单的基础设施，处理来自目标的连接，并附带生成每个会话报告的功能。
 - en: 'On our Debian VM instance in the cloud, we can add the official package repository
     for a quick install using the following `echo` command:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们的云端 Debian 虚拟机实例中，我们可以使用以下 `echo` 命令，添加官方软件包仓库，快速安装：
 - en: '[PRE11]'
+  id: totrans-81
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'To keep Debian''s `apt` from complaining during installation, we can fetch
     the signing key using the `wget` command. We will pipe the response to the `apt-key`
     in order to add it to our keychain:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了避免 Debian 的 `apt` 在安装过程中出现警告，我们可以使用 `wget` 命令来获取签名密钥。然后我们将响应通过管道传递给 `apt-key`，以便将其添加到密钥链中：
 - en: '[PRE12]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The next step is to grab the `inetsim` package from the newly installed `apt`
     repository and install it.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步是从新安装的 `apt` 仓库中获取 `inetsim` 软件包并进行安装。
 - en: '[PRE13]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The INetSim default configuration may be a bit too much for our purposes. Services
     such as FTP, which allow arbitrary credentials and provide upload support, should
     not be enabled on the internet.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: INetSim 的默认配置可能对于我们的目的来说有些过于复杂。诸如 FTP 这样的服务，允许任意凭证并提供上传支持，不应在互联网上启用。
 - en: Note
+  id: totrans-87
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: INetSim is a great tool, but use with care. If the C2 server you are building is
     intended for a long-term engagement, it is better to use a proper daemon for each
     service you are intercepting.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: INetSim 是一个很棒的工具，但使用时需要小心。如果你构建的 C2 服务器是用于长期合作，最好为每个拦截的服务使用合适的守护进程。
 - en: 'We can go ahead and disable services that we will not need by editing the `/etc/inetsim/inetsim.conf`
     file. We can prepend each `start_service` line we wish to disable with a pound
     sign (`#`), as shown:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过编辑 `/etc/inetsim/inetsim.conf` 文件，禁用不需要的服务。我们可以在每个希望禁用的 `start_service`
+    行前加上井号（`#`），如所示：
 - en: '![INet simulation](graphics/B09238_06_05.jpg)'
+  id: totrans-90
   prefs: []
   type: TYPE_IMG
+  zh: '![INet 模拟](graphics/B09238_06_05.jpg)'
 - en: 'Figure 6.5: Editing the INetSim configuration file to enable only DNS, HTTP,
     and HTTPS simulation'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.5：编辑 INetSim 配置文件，以仅启用 DNS、HTTP 和 HTTPS 模拟
 - en: The default DNS configuration will also have to be altered to match the `c2.spider.ml`
     delegated zone. The `dns_default_ip` value should point to the C2 external IP,
     as we want HTTP traffic to be redirected there as well.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认的 DNS 配置也必须修改，以匹配 `c2.spider.ml` 委派的区域。`dns_default_ip` 值应指向 C2 外部 IP，因为我们希望
+    HTTP 流量也能被重定向到那里。
 - en: The `dns_default_hostname` value will be set to the zone subdomain `c2`, while
     the `dns_default_domainname` value will be the `spider.ml` parent domain. This essentially
     tells INetSim to respond to any queries in that zone with the `dns_default_ip`
     value.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: '`dns_default_hostname` 值将设置为区域子域 `c2`，而 `dns_default_domainname` 值将是 `spider.ml`
+    主域名。这基本上告诉 INetSim 对该区域的任何查询都以 `dns_default_ip` 值进行响应。'
 - en: This will be useful in our out-of-band vulnerability discovery and has other
     uses, as we will see later on.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将对我们的带外漏洞发现非常有用，并且还有其他用途，稍后我们会看到。
 - en: '![INet simulation](graphics/B09238_06_06.jpg)'
+  id: totrans-95
   prefs: []
   type: TYPE_IMG
+  zh: '![INet 模拟](graphics/B09238_06_06.jpg)'
 - en: 'Figure 6.6: The dns_default_* settings modified in the /etc/inetsim/inetsim.conf
     configuration file'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.6：修改后的 /etc/inetsim/inetsim.conf 配置文件中的 dns_default_* 设置
 - en: By default, INetSim responds to requests with default "fake" data for whatever
     protocol is being queried. These "fake" files are stored in `/var/lib/inetsim`
     and they're fairly descriptive. To be a bit more stealthy, we should at least
     add some innocuous text to the default HTTP responses.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，INetSim会对请求作出响应，并返回针对查询的协议的默认“假”数据。这些“假”文件存储在`/var/lib/inetsim`中，并且描述性较强。为了更加隐蔽，我们应该至少在默认的HTTP响应中添加一些无害的文本。
 - en: 'The following `echo` command will replace the contents of the sample HTTP files
     with benign JavaScript code:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下`echo`命令将用良性JavaScript代码替换示例HTTP文件的内容：
 - en: '[PRE14]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'To get our simple C2 server online, we have to start the INetSim daemon and
     tell it to bind service listeners to `0.0.0.0`, using the `--bind-address` switch,
     as shown:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了将我们的简单C2服务器上线，我们必须启动INetSim守护进程，并使用`--bind-address`选项告诉它将服务监听器绑定到`0.0.0.0`，如图所示：
 - en: '[PRE15]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'We can test the DNS server provided by INetSim by either browsing to a random
     subdomain within the scope of the delegated domain, or by issuing a `dig` query
     from our attack Kali machine:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过访问委托域范围内的随机子域，或者从我们的攻击Kali机器发出`dig`查询，来测试INetSim提供的DNS服务器：
 - en: '[PRE16]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'This is the path our DNS query takes through the internet:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是我们的DNS查询在互联网上的路径：
 - en: The client asks their local DNS servers for an answer
+  id: totrans-105
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 客户端向其本地DNS服务器请求答案
 - en: Local DNS server forwards to the internet root name servers
+  id: totrans-106
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 本地DNS服务器转发到互联网根名称服务器
 - en: Root servers will forward the query to the authority for the ML top-level domain
+  id: totrans-107
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 根服务器将查询转发到ML顶级域的权威服务器
 - en: The ML authority will forward the query to the `spider.ml` authority
+  id: totrans-108
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: ML权威服务器将查询转发到`spider.ml`权威服务器
 - en: The NS record that we've added earlier will forward the query to our C2 server
+  id: totrans-109
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们之前添加的NS记录会将查询转发到我们的C2服务器
 - en: 'Since we control this DNS server responsible for the `c2` zone, we can inspect
     `/var/log/inetsim/service.log` and observe the response sent to the `dig` request,
     using the `tail` command as shown:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们控制着负责`c2`区域的DNS服务器，我们可以检查`/var/log/inetsim/service.log`文件，并使用`tail`命令观察对`dig`请求的响应，如下所示：
 - en: '[PRE17]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: The C2 infrastructure is ready for out-of-band vulnerability discovery scans.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: C2基础设施已准备好进行带外漏洞发现扫描。
 - en: The confirmation
+  id: totrans-113
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 确认
 - en: Now that the cloud server is properly configured to record incoming requests
     over DNS, we can go back to our earlier example and leverage the cloud to confirm
     the vulnerability out-of-band.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在云服务器已正确配置为记录通过DNS接收到的请求，我们可以回到之前的示例，利用云服务器进行带外确认漏洞。
 - en: You'll recall that the vulnerable application allows unsanitized input to be
     executed on the SQL server via the `name` parameter. The challenge we sometimes
     face, as attackers, is the difficulty in confirming the existence of this type
     of vulnerability when the application does not behave differently based on the
     input given. Sometimes, we may even be lucky enough to examine source code, in
     which case we'd just skip right to exploiting the vulnerability.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会记得，存在漏洞的应用允许通过`name`参数执行未经过滤的输入到SQL服务器。作为攻击者，我们有时面临的挑战是，应用在输入时没有表现出不同的行为，从而很难确认此类漏洞的存在。有时，我们甚至幸运地能够检查源代码，在这种情况下我们可以直接跳到利用漏洞的步骤。
 - en: The `WAITFOR DELAY` payload will work for most blind SQL injections, as the
     majority of application views depend on the result from SQL queries that the controller
     executes.
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: '`WAITFOR DELAY`有效载荷适用于大多数盲SQL注入，因为大多数应用视图依赖于控制器执行的SQL查询结果。'
 - en: '[PRE18]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: In the surprisingly common scenario where the vulnerable query is executed asynchronously
     and the page does not return any useful information, we can trick the SQL server
     into contacting our newly created C2 infrastructure and get confirmation without
     the application's help.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种令人惊讶的常见场景中，漏洞查询是异步执行的，且页面没有返回任何有用的信息，我们可以欺骗SQL服务器联系我们新创建的C2基础设施，从而在没有应用帮助的情况下得到确认。
 - en: 'The payload to accomplish this will look like the following:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 完成此操作的有效载荷将如下所示：
 - en: '[PRE19]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'When the backend system builds the query for execution, it will translate into
     the following:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 当后台系统构建查询以执行时，它将转换为以下内容：
 - en: '[PRE20]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Once again, if we inspect the `/var/log/inetsim/service.log` file on our C2
     server, we can see the query coming in from the SQL server backend in an attempt
     to resolve the `sqli-test-payload-1.c2.spider.ml` domain before the directory
     listing of the share can be carried out:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次检查我们的C2服务器上的`/var/log/inetsim/service.log`文件时，我们可以看到来自SQL服务器后台的查询，试图在执行共享目录列表之前解析`sqli-test-payload-1.c2.spider.ml`域名：
 - en: '[PRE21]'
+  id: totrans-124
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: We've forced the application to make a DNS query to a server that we control.
     Seeing the very specific query in the C2 logs, we're able to confirm that there
     is an exploitable SQL injection vulnerability.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们已强制应用程序向我们控制的服务器发起DNS查询。通过在C2日志中看到非常特定的查询，我们能够确认存在可利用的SQL注入漏洞。
 - en: Async data exfiltration
+  id: totrans-126
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 异步数据泄露
 - en: There is one more challenge with this particular type of vulnerability. Its
     asynchronous nature makes it impossible to use traditional methods for data exfiltration.
     While the query may execute successfully and the SQL server will delay the query
     result, we'd never be able to measure this, as the application that we are targeting
     does not wait for the SQL server response and returns immediately.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种特定类型的漏洞还有一个挑战。由于它的异步特性，传统的数据泄露方法无法使用。虽然查询可能会成功执行，且SQL服务器会延迟查询结果，但我们永远无法衡量这一点，因为我们所针对的应用程序不会等待SQL服务器的响应，而是立即返回。
 - en: We have to be a bit more clever to extract data and successfully compromise
     the target. MS SQL server, MySQL, PostgreSQL, and others all have ways to accomplish
     our goal. We'll just go over an MS SQL method, but with a little creativity, any
     database engine can bend to the attacker's will. It's also important to remember
     that this method can be used when confirming not just SQL injection vulnerabilities
     but also XSS and XXE, discussed in other chapters of this book.
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要稍微动点脑筋才能提取数据并成功攻破目标。MS SQL服务器、MySQL、PostgreSQL等都提供了实现我们目标的方法。我们将只讨论一种MS
+    SQL的方法，但凭借一些创意，任何数据库引擎都可以为攻击者所用。还要记住，这种方法不仅可以用于确认SQL注入漏洞，也可以用于XSS和XXE漏洞，这些内容在本书的其他章节中有讨论。
 - en: 'Let''s go ahead and revisit the method we''ve used to confirm the vulnerability
     in the first place. We''ve passed in a query that forced the SQL server to resolve
     an arbitrary domain name in an attempt to list the contents of a network share
@@ -592,200 +864,302 @@
     the application server attempting to resolve the domain for the network share
     we passed in. To actually get the data out, we''ll have to build a query that
     performs these actions:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们重新回顾一下我们用来确认漏洞的方法。我们传入了一个查询，强制SQL服务器解析一个任意的域名，试图通过SMB列出网络共享的内容。由于我们控制着该共享域名的DNS服务器，我们可以拦截发送到它的任何查询。确认漏洞的过程只是观察到应用服务器尝试解析我们传入的网络共享域名。要实际获取数据，我们需要构建一个执行这些操作的查询：
 - en: Selects one high-value user by role (`admin`)
+  id: totrans-130
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 按角色选择一个高价值用户（`admin`）
 - en: Selects that user's password
+  id: totrans-131
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 选择该用户的密码
 - en: 'Concatenates the two values with a period: `[admin].[hash]`'
+  id: totrans-132
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 用句点连接这两个值：[admin].[hash]
 - en: Prepends that value to the `c2.spider.ml` domain
+  id: totrans-133
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将该值添加到`c2.spider.ml`域名前面
 - en: Forces a DNS query
+  id: totrans-134
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 强制执行DNS查询
 - en: 'Similar to our first payload, we will declare a variable `@q`, which will store
     the data we will be pulling from the database:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 与我们的第一个载荷类似，我们将声明一个变量`@q`，该变量将存储我们从数据库中提取的数据：
 - en: '[PRE22]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Next, we will use a couple of `SELECT` statements to read the `user` field
     for the first account with the `admin` role:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们将使用几个`SELECT`语句来读取第一个具有`admin`角色的账户的`user`字段：
 - en: '[PRE23]'
+  id: totrans-138
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'We will also select the `password` field for this particular user:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还将选择该用户的`password`字段：
 - en: '[PRE24]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'In order to exfiltrate this data, we need to concatenate the two values using
     MS SQL''s `CONCAT()` function:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了泄露这些数据，我们需要使用MS SQL的`CONCAT()`函数来拼接这两个值：
 - en: '[PRE25]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'The result of the concatenation will be stored in the `@q` variable, as shown:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 拼接的结果将存储在`@q`变量中，如下所示：
 - en: '[PRE26]'
+  id: totrans-144
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'Finally, we execute the `xp_fileexist` MS SQL function to force a DNS and SMB
     request to our C2 server, with the contents of `@q` as the subdomain:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们执行`xp_fileexist` MS SQL函数，强制发起DNS和SMB请求到我们的C2服务器，并将`@q`的内容作为子域：
 - en: '[PRE27]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: The confusing double and single quotes preceding the double backslash is just
     the Windows way to escape the single quote.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 紧跟在双斜杠前面的双引号和单引号是Windows方式的转义单引号。
 - en: 'The final payload is a bit messy but should do the trick. We will combine all
     of our statements into one line, with each statement separated by a semicolon:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终的载荷有点凌乱，但应该能奏效。我们将把所有语句合并为一行，每个语句之间用分号分隔：
 - en: '[PRE28]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'On the backend, the SQL query to be executed will look like the following:'
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 在后台，执行的SQL查询将如下所示：
 - en: '[PRE29]'
+  id: totrans-151
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Just as with the out-of-band confirmation, we've declared a variable whose value
     will be the concatenated administrative username and its respective password hash.
     The final command instructs the SQL server to execute the `xp_fileexist` command
     through the `EXEC()` MS SQL function. As before, we don't care about the result;
     we just want to force the server to issue a DNS query for the domain we control.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像带外确认一样，我们声明了一个变量，其值将是连接的管理员用户名及其相应的密码哈希。最终命令指示 SQL 服务器通过 `EXEC()` MS SQL 函数执行
+    `xp_fileexist` 命令。和之前一样，我们不关心结果；我们只是想强制服务器发出一个我们控制的域名的 DNS 查询。
 - en: 'The C2 server should have received a DNS query containing the credentials extracted
     from the database in the form of a domain name:'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: C2 服务器应该已收到一个包含从数据库中提取的凭证的 DNS 查询，以域名的形式表示：
 - en: '[PRE30]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: Great! Now all we have to do is "crack" the hash. We could launch **John the
     Ripper** or **hashcat** to perform a dictionary or brute-force attack, or we can
     check whether this value was already computed.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 很好！现在我们要做的就是“破解”哈希值。我们可以启动**John the Ripper**或**hashcat**来执行字典攻击或暴力破解，或者检查该值是否已经被计算过。
 - en: '![Async data exfiltration](graphics/B09238_06_07.jpg)'
+  id: totrans-156
   prefs: []
   type: TYPE_IMG
+  zh: '![异步数据泄露](graphics/B09238_06_07.jpg)'
 - en: 'Figure 6.7: A quick search on Hashtoolkit.com for the retrieved password hash
     with the value "summer17" popping up in the results'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.7：在 Hashtoolkit.com 上快速搜索已检索的密码哈希值，值为“summer17”，并在结果中显示出来
 - en: Note
+  id: totrans-158
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Hash Toolkit lets you run searches for MD5 and SHA-* hashes to quickly return
     their plaintext counterparts. The most common passwords have already been cracked
     or computed by somebody somewhere and sites like Hash Toolkit provide a quick
     index for the results. As with anything on the internet, be aware of what data
     you submit to an untrusted medium. Hash Toolkit is available on [https://hashtoolkit.com/](https://hashtoolkit.com/).
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: Hash Toolkit 让你可以搜索 MD5 和 SHA-* 哈希值，并快速返回它们的明文对应值。最常见的密码已经被某人破解或计算过，并且像 Hash
+    Toolkit 这样的站点提供了结果的快速索引。与互联网上的任何事物一样，要注意你向不受信任的媒介提交的数据。Hash Toolkit 可通过 [https://hashtoolkit.com/](https://hashtoolkit.com/)
+    访问。
 - en: Data inference
+  id: totrans-160
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 数据推断
 - en: Let's consider a simpler scenario where the application does not process the
     payload asynchronously. This is a far more common scenario. Typically, in a blind
     injection scenario we can use conditional statements in the injected query to
     infer data from the database. If the preceding example vulnerability was not asynchronous,
     we could introduce a significant delay in the response. Combine that with a traditional
     if-then-else and we can make assumptions about the data we are trying to retrieve.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们考虑一个更简单的场景，即应用程序没有异步处理负载。这是一个更常见的场景。通常，在盲注攻击的情况下，我们可以使用注入查询中的条件语句从数据库中推断数据。如果前面的示例漏洞不是异步的，我们可以在响应中引入显著的延迟。结合传统的
+    if-then-else 语句，我们就可以对试图获取的数据做出假设。
 - en: 'The high-level pseudocode we''d use for this type of attack looks like this:'
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们为这种类型的攻击所使用的高级伪代码如下所示：
 - en: '[PRE31]'
+  id: totrans-163
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: We could repeatedly check for the contents of the `password` field for a particular
     user, simply by observing the server response time. In the preceding pseudocode,
     after the first three iterations, we'd be able to infer that the `password` value
     begins with `ab`.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过观察服务器的响应时间，反复检查特定用户的 `password` 字段内容。在前面的伪代码中，经过前三次迭代后，我们就能推断出 `password`
+    值以 `ab` 开头。
 - en: In order to generate that observable delay, in MS SQL we can ask the server
     to repeatedly perform an arbitrary operation using the `BENCHMARK()` function.
     If we use a CPU-intensive function, such as `MD5()`, we will introduce a significant
     and measurable delay in the return of the query.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了生成可观察到的延迟，在 MS SQL 中，我们可以使用 `BENCHMARK()` 函数请求服务器反复执行某个任意操作。如果我们使用一个 CPU 密集型的函数，例如
+    `MD5()`，则会在查询返回时引入一个显著且可测量的延迟。
 - en: 'The following MS SQL function can be used to induce a delay in the server response:'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下 MS SQL 函数可用于引入服务器响应中的延迟：
 - en: '[PRE32]'
+  id: totrans-167
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: The benchmark operation will calculate the MD5 hash of the lowercase "c" character,
     represented by `CHAR(99)`, five million times. We may have to play with the number
     of iterations if the server is really powerful or if it is very slow.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 基准操作将计算小写字母“c”的 MD5 哈希值，该字符由 `CHAR(99)` 表示，计算五百万次。如果服务器性能非常强大或非常慢，我们可能需要调整迭代次数。
 - en: If the number of iterations is too low, the server would return a result quickly,
     making it harder to determine if the injection was successful. We also don't want
     to introduce too much of a delay, as enumerating a database could take days.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果迭代次数过低，服务器将迅速返回结果，这会使得判断注入是否成功变得更加困难。我们也不希望引入过多的延迟，因为枚举数据库可能需要几天时间。
 - en: 'The final attack payload will combine the `IF` statement and the benchmark
     operation. We will also use the `UNION` keyword to combine the existing `SELECT`
     with our very own:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终的攻击载荷将结合`IF`语句和基准操作。我们还将使用`UNION`关键字，将现有的`SELECT`与我们自己的查询合并。
 - en: '[PRE33]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'The backend SQL query to be executed will, once again, look like the following:'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 要执行的后端 SQL 查询将再次如下所示：
 - en: '[PRE34]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: If there is a significant delay in the response, we can infer that the admin
     user password begins with lowercase "a." To find the entire value, we'd have to
     loop over hundreds of queries and modify the `SUBSTRING()` parameters, and "walk"
     through the string as more of the password value is uncovered.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果响应中存在显著的延迟，我们可以推测管理员用户密码以小写字母“a”开头。为了找到完整的密码值，我们需要对数百个查询进行循环，并修改`SUBSTRING()`参数，随着密码值的逐步揭示，逐步“走”过字符串。
 - en: Summary
+  id: totrans-175
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, we've used a pretty common SQL injection example to showcase
     potential issues with vulnerability discovery when the application does not provide
     any kind of feedback to the attacker. There are ways around these types of obstacles
     and some tricks can even exfiltrate sensitive data asynchronously. We've also
     looked at how to manually retrieve data through inference in a blind injection
     scenario.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们使用了一个相当常见的 SQL 注入示例，展示了在应用程序没有向攻击者提供任何反馈的情况下，漏洞发现的潜在问题。针对这些障碍是有应对方法的，一些技巧甚至能够异步地提取敏感数据。我们还探讨了如何在盲注场景中通过推测手动获取数据。
 - en: The key takeaway here is the ability to alter the application behavior in a
     way that is measurable by the attacker. Even some of the more secure application
     development environments, which aggressively filter outgoing traffic, tend to
@@ -794,10 +1168,15 @@
     As attackers, once again we are able to take full advantage of these limitations
     and as I've shown in the earlier example, fully compromise the application by
     exploiting a difficult-to-discover vulnerability.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的关键要点是能够以攻击者可测量的方式改变应用程序的行为。即使是一些更加安全的应用程序开发环境，它们会积极过滤出去的流量，通常也会允许至少让 DNS
+    UDP 数据包通过。过滤出口 DNS 查询是一项困难的任务，我并不羡慕任何负责执行此任务的安全团队。作为攻击者，我们再次能够充分利用这些局限性，正如我在之前的示例中所展示的，通过利用一个难以发现的漏洞，完全破坏应用程序。
 - en: In the following chapter, we will look at automating some of this activity,
     including leveraging Burp's Collaborator feature to make out-of-band discovery
     easier.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将探讨如何自动化一些活动，包括利用 Burp 的 Collaborator 功能，使得带外发现变得更容易。
