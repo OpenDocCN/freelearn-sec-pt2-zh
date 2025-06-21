@@ -1,38 +1,54 @@
 - en: Dynamic Analysis
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 动态分析
 - en: Dynamic analysis (behavioral analysis) involves analyzing a sample by executing
     it in an isolated environment and monitoring its activities, interaction, and
     effect on the system. In the previous chapter, you learned the tools, concepts,
     and techniques to examine the different aspects of the suspect binary without
     executing it. In this chapter, we will build on that information to further explore
     the nature, purpose, and functionality of the suspect binary using dynamic analysis.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态分析（行为分析）涉及通过在隔离环境中执行样本并监控其活动、交互和对系统的影响来分析样本。在上一章中，你学习了不执行嫌疑二进制文件的情况下检查其不同方面的工具、概念和技术。在本章中，我们将基于这些信息，通过动态分析进一步探索嫌疑二进制文件的性质、目的和功能。
 - en: 'You will learn the following topics:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 你将学习以下主题：
 - en: Dynamic analysis tools and their features
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 动态分析工具及其功能
 - en: Simulating internet services
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 模拟互联网服务
 - en: Steps involved in dynamic analysis
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 动态分析所涉及的步骤
 - en: Monitoring the malware activity and understanding its behavior
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 监控恶意软件活动并理解其行为
 - en: 1\. Lab Environment Overview
+  id: totrans-7
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1\. 实验环境概述
 - en: 'When performing dynamic analysis, you will be executing the malware specimen,
     so you need to have a safe and secure lab environment to prevent your production
     system from being infected. To demonstrate the concepts, I will be using the isolated
@@ -40,29 +56,39 @@
     to Malware Analysis*. The following diagram shows the lab environment that will
     be used to perform dynamic analysis and the same lab architecture is used throughout
     the book:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 在进行动态分析时，你将执行恶意软件样本，因此你需要有一个安全的实验环境，以防止生产系统受到感染。为了演示这些概念，我将使用在[第1章](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485)中配置的隔离实验环境，*恶意软件分析简介*。下图展示了用于执行动态分析的实验环境，且本书中整个实验过程都使用相同的实验架构：
 - en: '![](../images/00035.jpeg)'
+  id: totrans-9
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00035.jpeg)'
 - en: In this setup, both the Linux and Windows VM were configured to use the host-only
     network configuration mode. The Linux VM was preconfigured to an IP address of
     `192.168.1.100`, and the IP address of the Windows VM was set to `192.168.1.50`.
     The default gateway and the DNS of the Windows VM were set to the IP address of
     the Linux VM (`192.168.1.100`), so all the Windows network traffic is routed through
     the Linux VM.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此设置中，Linux和Windows虚拟机都被配置为使用仅主机网络配置模式。Linux虚拟机的IP地址预配置为`192.168.1.100`，而Windows虚拟机的IP地址设置为`192.168.1.50`。Windows虚拟机的默认网关和DNS设置为Linux虚拟机的IP地址（`192.168.1.100`），因此所有Windows网络流量都通过Linux虚拟机路由。
 - en: The Windows VM will be used to execute the malware sample during analysis, and
     the Linux VM will be used to monitor the network traffic and will be configured
     to simulate internet services (such as DNS, HTTP, and so on) to provide the appropriate
     response when malware requests these services.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows虚拟机将在分析过程中用于执行恶意软件样本，Linux虚拟机将用于监控网络流量，并配置为模拟互联网服务（如DNS、HTTP等），以便在恶意软件请求这些服务时提供适当的响应。
 - en: 2\. System And Network Monitoring
+  id: totrans-12
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2\. 系统和网络监控
 - en: When malware is executed, it can interact with a system in various ways and
     perform different activities. For example, when executed, a malware can spawn
     a child process, drop additional files on the filesystem, create registry keys
@@ -70,103 +96,142 @@
     from the command and control server. Monitoring a malware's interaction with the
     system and network will help in gaining a better understanding of the nature and
     purpose of the malware.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 当恶意软件被执行时，它可以以多种方式与系统交互并执行不同的活动。例如，执行时，恶意软件可能会生成子进程，在文件系统中丢弃附加文件，为其持久性创建注册表键值，下载其他组件或从命令和控制服务器获取命令。监控恶意软件与系统和网络的交互有助于更好地了解恶意软件的性质和目的。
 - en: 'During dynamic analysis, when the malware is executed, you will carry out various
     monitoring activities. The objective is to gather real-time data related to malware
     behavior and its the impact on the system. The following list outlines different
     types of monitoring carried out during dynamic analysis:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 在动态分析过程中，当恶意软件被执行时，你将进行各种监控活动。其目标是收集与恶意软件行为及其对系统影响相关的实时数据。以下列表概述了动态分析过程中进行的不同类型的监控活动：
 - en: '**Process monitoring**: Involves monitoring the process activity and examining
     the properties of the result process during malware execution.'
+  id: totrans-15
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**进程监控**：在恶意软件执行过程中，监控进程活动并检查结果进程的属性。'
 - en: '**File system monitoring**: Includes monitoring the real-time file system activity
     during malware execution.'
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**文件系统监控**：包括监控恶意软件执行期间的实时文件系统活动。'
 - en: '**Registry monitoring**: Involves monitoring the registry keys accessed/modified
     and registry data that is being read/written by the malicious binary.'
+  id: totrans-17
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**注册表监控**：涉及监控恶意二进制文件访问/修改的注册表键以及正在读取/写入的注册表数据。'
 - en: '**Network monitoring**: Involves monitoring the live traffic to and from the
     system during malware execution.'
+  id: totrans-18
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**网络监控**：涉及监控恶意软件执行期间系统进出流量的实时情况。'
 - en: The monitoring activities explained in the preceding points will help in gathering
     host and network information related to the malware's behavior. The upcoming sections
     will cover the practical use of these activities. In the next section, you will
     understand various tools that can be used to perform these monitoring activities.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 前述监控活动有助于收集与恶意软件行为相关的主机和网络信息。接下来的章节将介绍这些活动的实际应用。在下一节中，您将了解可以用于执行这些监控活动的各种工具。
 - en: 3\. Dynamic Analysis (Monitoring) Tools
+  id: totrans-20
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3\. 动态分析（监控）工具
 - en: Before performing dynamic analysis, it is essential to understand the tools
     that you will use to monitor the malware's behavior. In this chapter and throughout
     this book, various malware analysis tools will be covered. If you have setup your
     lab environment as described in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
     you can download these tools to your *host machine* and then transfer/install
     those tools to your virtual machines and take a new, clean snapshot.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 在执行动态分析之前，了解您将使用的工具来监控恶意软件行为是至关重要的。本章及整本书将涵盖各种恶意软件分析工具。如果您按照[第1章](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485)中的说明设置了实验环境，您可以将这些工具下载到您的*主机机器*上，然后将这些工具传输/安装到虚拟机中，并拍摄一个全新的、干净的快照。
 - en: This section covers various dynamic analysis tools and some of their features.
     Later in this chapter, you will understand how to use these tools to monitor the
     behavior of the malware while it is executing. You will need to run these tools
     with administrator privileges; this can be done by right-clicking on the executable
     and selecting Run as administrator. While you are reading, it is recommended that
     you run these tools and get familiar with their features.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节介绍了各种动态分析工具及其一些功能。稍后在本章中，您将了解如何使用这些工具来监控恶意软件执行过程中的行为。您需要以管理员权限运行这些工具；可以通过右键单击可执行文件并选择“以管理员身份运行”来实现。在阅读过程中，建议您运行这些工具，并熟悉它们的功能。
 - en: 3.1 Process Inspection with Process Hacker
+  id: totrans-23
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.1 使用Process Hacker检查进程
 - en: '*Process Hacker* ([http://processhacker.sourceforge.net/](http://processhacker.sourceforge.net/))
     is an open source, multi-purpose tool that helps in monitoring system resources.
     It is a great tool for examining the processes running on the system and to inspect
     the process attributes. It can also be used to explore services, network connections,
     disk activity, and so on.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '*Process Hacker*（[http://processhacker.sourceforge.net/](http://processhacker.sourceforge.net/)）是一个开源的多功能工具，帮助监控系统资源。它是检查系统上正在运行的进程并检查进程属性的绝佳工具。它还可以用于探索服务、网络连接、磁盘活动等。'
 - en: Once the malware specimen is executed, this tool can help you identify the newly
     created malware process (its process name and process ID), and by right-clicking
     on a process name and selecting Properties, you will be able to examine various
     process attributes. You can also right-click on a process and terminate it.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦恶意软件样本执行，该工具可以帮助您识别新创建的恶意软件进程（其进程名称和进程ID），通过右键单击进程名称并选择“属性”，您可以检查各种进程属性。您还可以右键单击进程并终止它。
 - en: 'The following screenshot shows Process Hacker listing all the processes  running on
     the system, and the properties of `wininit.exe`:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图展示了Process Hacker列出系统上所有正在运行的进程，以及`wininit.exe`的属性：
 - en: '![](../images/00036.jpeg)'
+  id: totrans-27
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00036.jpeg)'
 - en: 3.2 Determining System Interaction with Process Monitor
+  id: totrans-28
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.2 使用Process Monitor确定系统与恶意软件的交互
 - en: '*Process Monitor* ([https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx](https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx))
     is an advanced monitoring tool that shows the real-time interaction of the processes
     with the filesystem, registry, and process/thread activity.'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: '*Process Monitor*（[https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx](https://technet.microsoft.com/en-us/sysinternals/processmonitor.aspx)）是一个高级监控工具，展示了进程与文件系统、注册表及进程/线程活动的实时交互。'
 - en: 'When you run this tool (run as Administrator), you will immediately notice
     that it captures all the system events, as shown in the following screenshot.
     To stop capturing the events, you can press Ctrl + E, and to clear all the events
     you can press Ctrl+ X. The following screenshot shows the activities captured
     by Process Monitor on a clean system:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你运行这个工具（以管理员身份运行）时，你会立刻注意到它会捕获所有系统事件，如下图所示。要停止捕获事件，可以按 Ctrl + E，要清除所有事件，可以按
+    Ctrl + X。下图展示了在干净系统上由进程监视器捕获的活动：
 - en: '![](../images/00037.jpeg)'
+  id: totrans-31
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00037.jpeg)'
 - en: 'From the events captured by the Process Monitor, you can see that lots of activity
     gets generated on a clean system. When performing malware analysis, you will only
     be interested in the activities produced by the malware. To reduce noise, you
@@ -174,15 +239,22 @@
     filter on specific attributes. To access this feature, select the Filter menu
     and then click on Filter (or press Ctrl + L). In the following screenshot, the
     filter is configured to display events only related to the process, `svchost.exe`:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 从进程监视器捕获的事件中，你可以看到即使是干净系统也会产生大量活动。在进行恶意软件分析时，你只会对恶意软件产生的活动感兴趣。为了减少噪音，你可以使用过滤功能来隐藏不需要的条目，并根据特定属性进行过滤。要访问此功能，选择过滤器菜单，然后点击过滤（或按
+    Ctrl + L）。在下面的截图中，过滤器被配置为仅显示与进程`svchost.exe`相关的事件：
 - en: '![](../images/00038.jpeg)'
+  id: totrans-33
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00038.jpeg)'
 - en: 3.3 Logging System Activities Using Noriben
+  id: totrans-34
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.3 使用 Noriben 记录系统活动
 - en: Even though Process Monitor is a great tool to monitor a malware's interaction
     with the system, it can be very noisy, and manual effort is required to filter
     the noise. *Noriben* ([https://github.com/Rurik/Noriben](https://github.com/Rurik/Noriben))
@@ -190,16 +262,24 @@
     collecting, analyzing, and reporting runtime indicators of the malware. The advantage
     of using Noriben is that it comes with pre-defined filters that assist in reducing
     noise and allow you to focus on the malware-related events.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然进程监视器是一个监控恶意软件与系统交互的好工具，但它可能会产生大量噪音，需要手动努力去过滤这些噪音。*Noriben*（[https://github.com/Rurik/Noriben](https://github.com/Rurik/Noriben)）是一个与进程监视器配合使用的
+    Python 脚本，帮助收集、分析和报告恶意软件的运行时指标。使用 Noriben 的优点是它提供了预定义的过滤器，帮助减少噪音，让你可以专注于与恶意软件相关的事件。
 - en: 'To use Noriben, download it to your Windows VM, extract it to a folder, and
     copy Process Monitor (`Procmon.exe`) into the same folder before running the `Noriben.py`
     Python script, as shown in the following screenshot:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用 Noriben，首先下载它到你的 Windows 虚拟机中，将其解压到一个文件夹，然后将进程监视器（`Procmon.exe`）复制到同一个文件夹中，最后运行
+    `Noriben.py` Python 脚本，如下图所示：
 - en: '![](../images/00039.jpeg)'
+  id: totrans-37
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00039.jpeg)'
 - en: 'When you run *Noriben*, it launches *Process Monitor*. Once you are done with
     the monitoring, you can stop Noriben by pressing Ctrl + C, which will terminate
     Process Monitor. Once terminated, Noriben stores the results in a *text file*
@@ -208,29 +288,42 @@
     activity) in separate sections, as shown in the following screenshot. Also, note
     that the number of events is much less because it applied predefined filters that
     reduced most of the unwanted noise:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你运行*Noriben*时，它会启动*进程监视器*。一旦监控完成，你可以通过按 Ctrl + C 停止 Noriben，这将终止进程监视器。终止后，Noriben
+    会将结果存储在同一目录中的*文本文件*（`.txt`）和*CSV 文件*（`.csv`）中。*文本文件*将根据类别（如进程、文件、注册表和网络活动）将事件分隔成不同部分，如下图所示。还需注意，事件数量大大减少，因为它应用了预定义的过滤器，减少了大部分不必要的噪音：
 - en: '![](../images/00040.jpeg)'
+  id: totrans-39
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00040.jpeg)'
 - en: 'The *CSV file* contains all the events (process, file, registry, and network
     activity) sorted by the timeline (the order in which the events occurred), as
     shown in the following screenshot:'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '*CSV 文件*包含按时间轴排序的所有事件（进程、文件、注册表和网络活动），如下面的截图所示：'
 - en: '![](../images/00041.jpeg)'
+  id: totrans-41
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00041.jpeg)'
 - en: The *text file* and the *CSV* file can give different perspectives. If you are
     interested in the summary of events based on the category then you can look at
     the text file; if you are interested in the sequence of events in the order in
     which it occurred then you can view the *CSV* file.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: '*文本文件*和*CSV*文件可以提供不同的视角。如果你对基于类别的事件摘要感兴趣，可以查看文本文件；如果你对事件发生的顺序感兴趣，可以查看*CSV*文件。'
 - en: 3.4 Capturing Network Traffic With Wireshark
+  id: totrans-43
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4 使用 Wireshark 捕获网络流量
 - en: 'When the malware is executed, you will want to capture the network traffic
     generated as a result of running the malware; this will help you understand the
     communication channel used by the malware and will also help in determining network-based
@@ -239,49 +332,67 @@
     of Wireshark on the *Linux VM *was covered in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
     *Introduction to Malware Analysis*). To invoke Wireshark on Linux, run the following
     command:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 当恶意软件执行时，你将希望捕获由恶意软件运行所产生的网络流量；这将帮助你了解恶意软件使用的通信通道，并帮助确定基于网络的指示器。*Wireshark*（[https://www.wireshark.org/](https://www.wireshark.org/)）是一款数据包嗅探器，可以捕获网络流量。在[第1章](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485)，*恶意软件分析简介*中介绍了如何在*Linux虚拟机*上安装Wireshark。要在Linux上启动Wireshark，请运行以下命令：
 - en: '[PRE0]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'To start capturing the traffic on a network interface, click on Capture | **Options**
     ( Or press *Ctrl + K*), select the network interface, and click on Start:'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 要开始在网络接口上捕获流量，点击捕获 | **选项**（或按*Ctrl + K*），选择网络接口，然后点击开始：
 - en: '![](../images/00042.jpeg)'
+  id: totrans-47
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00042.jpeg)'
 - en: 3.5 Simulating Services with INetSim
+  id: totrans-48
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.5 使用INetSim模拟服务
 - en: Most malware, when executed, reach out to the internet (command and control
     server), and it is not a good idea to allow the malware to connect to its C2 server,
     and also sometimes these servers may be unavailable. During malware analysis,
     you need to determine the behavior of the malware without allowing it to contact
     the actual *command and control (C2)* server, but at the same time, you need to
     provide all the services required by the malware so that it can continue its operation.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数恶意软件在执行时会连接到互联网（命令与控制服务器），而允许恶意软件连接到其C2服务器并不是一个好主意，而且有时这些服务器可能不可用。在恶意软件分析过程中，你需要在不允许恶意软件与实际的*命令与控制（C2）*服务器联系的情况下，确定恶意软件的行为，但同时，你需要提供恶意软件所需的所有服务，以便它能继续操作。
 - en: '*INetSim* is a free Linux-based software suite for simulating standard internet
     services (such as DNS, HTTP/HTTPS, and so on). The steps to install and configure
     *INetSim* on the *Linux VM* were covered in [Chapter 1](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485),
     *Introduction to Malware Analysis*. Once INetSim is launched, it simulates various
     services, as shown in the following output, and it also runs a dummy service that
     handles connections directed at nonstandard ports:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: '*INetSim* 是一个免费的基于Linux的软件套件，用于模拟标准的互联网服务（如DNS、HTTP/HTTPS等）。在[第1章](part0020.html#J2B80-ac10ba3f98854c44bac1c2c5641ca485)，*恶意软件分析简介*中介绍了如何在*Linux虚拟机*上安装和配置*INetSim*。启动*INetSim*后，它会模拟各种服务，如下所示的输出所示，并且它还运行一个处理定向到非标准端口的虚拟服务：'
 - en: '[PRE1]'
+  id: totrans-51
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Apart from simulating services, INetSim can log communications, and it can also
     be configured to respond to HTTP/HTTPS requests and return any files based on
     the extensions. For example, if malware requests an executable (`.exe`) file from
     the C2 server, INetSim can return a dummy executable file to the malware. That
     way, you get to know what malware does with the executable file after downloading
     it from the C2 server.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了模拟服务，*INetSim*还可以记录通信，并且可以配置为响应HTTP/HTTPS请求，并根据扩展名返回任何文件。例如，如果恶意软件从C2服务器请求一个可执行文件（`.exe`），*INetSim*可以向恶意软件返回一个虚拟的可执行文件。通过这种方式，你可以了解恶意软件在从C2服务器下载可执行文件后会做什么。
 - en: 'The following example demonstrates the use of INetSim. In this example, a malware
     sample was executed on the *Windows VM*, and the network traffic was captured
     using *Wireshark* on the *Linux VM* without invoking *INetSim*. The following
@@ -290,92 +401,128 @@
     first resolving the C2 domain, but because our Linux VM does not have a DNS server
     running, that domain could not be resolved (as indicated by the Port Unreachable
     message):'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例演示了*INetSim*的使用。在这个例子中，一个恶意软件样本在*Windows虚拟机*上执行，并且在*Linux虚拟机*上使用*Wireshark*捕获网络流量，未启用*INetSim*。以下截图显示了Wireshark捕获的流量。它显示了被感染的Windows系统（`192.168.1.50`）首先尝试通过解析C2域名与C2服务器通信，但由于我们的Linux虚拟机没有运行DNS服务器，该域名无法解析（如端口不可达消息所示）：
 - en: '![](../images/00043.jpeg)'
+  id: totrans-54
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00043.jpeg)'
 - en: 'This time, the malware was executed, and the network traffic was captured on
     the Linux VM with INetSim running (simulating services). From the following screenshot,
     it can be seen that the malware first resolves the C2 domain, which is resolved
     to the Linux VM''s IP address of `192.168.1.100`. Once resolved, it then makes
     an HTTP communication to download a file (`settings.ini`):'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 这次，恶意软件被执行，网络流量通过运行INetSim（模拟服务）的Linux虚拟机捕获。从下图可以看到，恶意软件首先解析C2域名，解析结果为Linux虚拟机的IP地址`192.168.1.100`。解析完成后，恶意软件通过HTTP通信下载文件（`settings.ini`）：
 - en: '![](../images/00044.jpeg)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00044.jpeg)'
 - en: 'From the following screenshot, it can be seen that the HTTP response was given
     by the HTTP server simulated by INetSim. In this case, the `User-Agent` field
     in the HTTP request suggests that the standard browser did not initiate the communication
     and such an indicator can be used to create network signatures:'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 从下图可以看到，HTTP响应是由INetSim模拟的HTTP服务器提供的。在这种情况下，HTTP请求中的`User-Agent`字段表明标准浏览器并未发起该通信，这样的指示可以用于创建网络签名：
 - en: '![](../images/00045.jpeg)'
+  id: totrans-58
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00045.jpeg)'
 - en: By simulating the services, it was possible to determine that the malware downloads
     a file from the C2 server after execution. A tool such as INetSim allows a security
     analyst to quickly determine the malware's behavior and capture its network traffic
     without having to manually configure all the services (such as DNS, HTTP and so
     on).
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过模拟服务，成功确定恶意软件在执行后会从C2服务器下载文件。像INetSim这样的工具可以让安全分析师快速确定恶意软件的行为，并捕获其网络流量，而无需手动配置所有服务（如DNS、HTTP等）。
 - en: Another alternative to *INetSim* is *FakeNet-NG* ([https://github.com/fireeye/flare-fakenet-ng](https://github.com/fireeye/flare-fakenet-ng)),
     which allows you to intercept and redirect all or specific network traffic by
     simulating network services.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个替代*INetSim*的工具是*FakeNet-NG*（[https://github.com/fireeye/flare-fakenet-ng](https://github.com/fireeye/flare-fakenet-ng)），它可以通过模拟网络服务来拦截并重定向所有或特定的网络流量。
 - en: 4\. Dynamic Analysis Steps
+  id: totrans-61
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4. 动态分析步骤
 - en: 'During dynamic analysis (behavioral analysis)*,* you will follow a sequence
     of steps to determine the functionality of the malware. The following list outlines
     the steps involved in the dynamic analysis:'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 在动态分析（行为分析）*过程中*，你将遵循一系列步骤来确定恶意软件的功能。以下是动态分析过程中涉及的步骤：
 - en: '**Reverting to the clean snapshot**: This includes reverting your virtual machines
     to a clean state.'
+  id: totrans-63
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**恢复到干净的快照**：这包括将虚拟机恢复到干净的状态。'
 - en: '**Running the monitoring/dynamic analysis tools**: In this step, you will run
     the monitoring tools before executing the malware specimen. To get the most out
     of the monitoring tools covered in the previous section, you need to run them
     with administrator privileges.'
+  id: totrans-64
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**运行监控/动态分析工具**：在此步骤中，你将在执行恶意软件样本之前运行监控工具。为了充分利用前一部分所介绍的监控工具，你需要以管理员权限运行它们。'
 - en: '**Executing the malware specimen**: In this step, you will run the malware
     sample with administrator privileges.'
+  id: totrans-65
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**执行恶意软件样本**：在此步骤中，你将以管理员权限运行恶意软件样本。'
 - en: '**Stopping the monitoring tools**: This involves terminating the monitoring
     tools after the malware binary is executed for a specified time.'
+  id: totrans-66
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**停止监控工具**：这包括在恶意软件二进制文件执行指定时间后终止监控工具。'
 - en: '**Analyzing the results**: This involves collecting the data/reports from the
     monitoring tools and analyzing them to determine the malware''s behavior and functionality.'
+  id: totrans-67
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**分析结果**：这包括收集监控工具的数据/报告并对其进行分析，以确定恶意软件的行为和功能。'
 - en: '5\. Putting it All Together: Analyzing a Malware Executable'
+  id: totrans-68
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 5. 将一切整合起来：分析恶意软件可执行文件
 - en: Once you have an understanding of the dynamic analysis tools and steps involved
     in dynamic analysis, these tools can be used together to glean maximum information
     from the malware sample. In this section, we will perform both static and dynamic
     analysis to determine the characteristics and behavior of a malware sample (`sales.exe`).
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦你了解了动态分析工具和动态分析过程中涉及的步骤，这些工具可以结合使用，以从恶意软件样本中提取最大的信息。在本节中，我们将执行静态和动态分析，以确定恶意软件样本（`sales.exe`）的特征和行为。
 - en: 5.1 Static Analysis of the Sample
+  id: totrans-70
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 5.1 样本的静态分析
 - en: 'Let''s start the examination of the malware sample with static analysis. In
     static analysis, since the malware sample is not executed, it can be performed
     on either the *Linux VM* or the *Windows VM*, using the tools and techniques covered
@@ -383,14 +530,22 @@
     Analysis*. We will start by determining the *file type* and the *cryptographic
     hash*. Based on the following output, the malware binary is a 32-bit executable
     file:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将从静态分析开始检查恶意软件样本。在静态分析中，由于恶意软件样本没有执行，因此可以在 *Linux 虚拟机* 或 *Windows 虚拟机* 上执行，使用在
+    [第 2 章](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485) *静态分析* 中讨论的工具和技术。我们将从确定
+    *文件类型* 和 *加密哈希* 开始。根据以下输出，恶意软件二进制文件是一个 32 位的可执行文件：
 - en: '[PRE2]'
+  id: totrans-72
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: '[PRE3]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'The ASCII strings extracted from the binary using the *strings* utility contains
     references to a set of batch commands, which looks like a command to delete files.
     The strings also show a reference to a batch file (`_melt.bat`), which indicates
@@ -398,145 +553,216 @@
     those batch commands. The strings also have references to the `RUN` registry key;
     this is interesting because most malware adds an entry in the `RUN` registry key
     to persist on the system after reboot:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 *strings* 工具从二进制文件中提取的 ASCII 字符串包含一组批处理命令的引用，看起来像是删除文件的命令。这些字符串还显示了对批处理文件（`_melt.bat`）的引用，这表明在执行时，恶意软件可能会创建一个批处理（`.bat`）文件并执行这些批处理命令。这些字符串还引用了
+    `RUN` 注册表键；这很有趣，因为大多数恶意软件会在 `RUN` 注册表键中添加一个条目，以便在重启后仍能保持在系统中：
 - en: '[PRE4]'
+  id: totrans-75
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'Examining the imports shows references to *file system*-and *registry-*related
     API calls, indicating the malware''s ability to perform file system and registry
     operations, as highlighted in the following output. The presence of API calls
     `WinExec` and `ShellExecuteA`, suggest the malware''s capability to invoke other
     programs (create a new process):'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 检查导入显示出对 *文件系统* 和 *注册表* 相关 API 调用的引用，表明恶意软件能够执行文件系统和注册表操作，如以下输出所示。`WinExec`
+    和 `ShellExecuteA` API 调用的存在，表明恶意软件有能力调用其他程序（创建新进程）：
 - en: '[PRE5]'
+  id: totrans-77
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Querying the hash value from the *VirusTotal* database shows 58 antivirus detections,
     and signature names suggest that we are probably dealing with a malware sample
     called *PoisonIvy*. To perform the hash search from VirusTotal, you need internet
     access, and if you want to use the VirusTotal public API, then you need an API
     key, which can be obtained by signing up for a VirusTotal account:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 从 *VirusTotal* 数据库查询哈希值显示 58 个杀毒软件的检测，签名名称表明我们可能正在处理一个名为 *PoisonIvy* 的恶意软件样本。要从
+    VirusTotal 执行哈希搜索，你需要互联网访问权限，如果要使用 VirusTotal 的公共 API，则需要一个 API 密钥，您可以通过注册 VirusTotal
+    账户来获取该密钥：
 - en: '[PRE6]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 5.2 Dynamic Analysis of the Sample
+  id: totrans-80
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 5.2 样本的动态分析
 - en: 'To understand the malware''s behavior, the dynamic analysis tools discussed
     in this chapter were used, and the following dynamic analysis steps were followed:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了了解恶意软件的行为，本章讨论了动态分析工具，并遵循以下动态分析步骤：
 - en: Both the Windows VM and the Linux VM were reverted to the clean snapshots.
+  id: totrans-82
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: Windows 虚拟机和 Linux 虚拟机都已恢复到干净的快照。
 - en: On Windows VM, *Process Hacker* was started with administrator privileges to
     determine process attributes, and the *Noriben* Python script was executed (which
     in turn started *Process Monitor*) to inspect the malware's interaction with the
     system.
+  id: totrans-83
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在 Windows 虚拟机上，*Process Hacker* 以管理员权限启动，用于确定进程属性，随后执行了 *Noriben* Python 脚本（该脚本又启动了
+    *Process Monitor*），以检查恶意软件与系统的交互。
 - en: On the Linux VM, *INetSim* was launched to simulate network services, and *Wireshark*
     was executed and configured to capture the network traffic on the network interface.
+  id: totrans-84
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在 Linux 虚拟机上，启动了 *INetSim* 模拟网络服务，执行了 *Wireshark* 并配置为捕获网络接口上的网络流量。
 - en: With all the monitoring tools running, the malware was executed with administrator
     privileges (right click | Run as Administrator) for around 40 seconds.
+  id: totrans-85
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在所有监控工具运行时，恶意软件以管理员权限（右键 | 以管理员身份运行）执行了大约 40 秒。
 - en: After 40 seconds, Noriben was stopped on the Windows VM. INetSim and Wireshark
     were stopped on the Linux VM.
+  id: totrans-86
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 40 秒后，Windows 虚拟机上的 Noriben 被停止，Linux 虚拟机上的 INetSim 和 Wireshark 被停止。
 - en: Results from the monitoring tools were collected and examined to understand
     the malware's behavior.
+  id: totrans-87
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 收集并检查了来自监控工具的结果，以了解恶意软件的行为。
 - en: 'After performing dynamic analysis, the following information about the malware
     was determined from different monitoring tools:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 在执行动态分析后，通过不同的监控工具确定了以下关于恶意软件的信息：
 - en: 'Upon executing the malware sample (`sales.exe`), a new process, `iexplorer.exe`, was
     created with a process ID of `1272`. The process executable is located in the
     `%Appdata%` directory. The following screenshot is the output from *Process Hacker*
     showing the newly created process:'
+  id: totrans-89
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 执行恶意样本 (`sales.exe`) 后，创建了一个名为 `iexplorer.exe` 的新进程，进程 ID 是 `1272`。进程可执行文件位于
+    `%Appdata%` 目录中。以下截图是 *Process Hacker* 显示的新创建进程的输出：
 - en: '![](../images/00046.jpeg)'
+  id: totrans-90
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00046.jpeg)'
 - en: 'By examining the Noriben logs, it can be determined that the malware dropped
     a file called `iexplorer.exe` in the `%AppData%` directory. The name of the file
     (`iexplorer.exe`) is similar to the file name of the Internet Explorer (`iexplore.exe`)
     browser. This technique is a deliberate attempt by the attacker to make the malicious
     binary look like a legitimate executable:'
+  id: totrans-91
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 通过检查 Noriben 日志，可以确定恶意软件在 `%AppData%` 目录中放置了一个名为 `iexplorer.exe` 的文件。文件名 (`iexplorer.exe`)
+    与 Internet Explorer (`iexplore.exe`) 浏览器的文件名相似。这种技术是攻击者有意使恶意二进制看起来像合法可执行文件的一种尝试：
 - en: '[PRE7]'
+  id: totrans-92
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: After dropping the file, the malware executed the dropped file. As a result
     of that, a new process `iexplorer.exe` was created. This was the process that
     was displayed by the *Process Hacker:*
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 放置文件后，恶意软件执行了该文件。由此产生的新进程 `iexplorer.exe` 就是 *Process Hacker* 显示的进程：
 - en: '[PRE8]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The malware then drops another file called `MDMF5A5.tmp_melt.bat`, as shown
     in the following output. At this point, it can be deduced that the  `_melt.bat` string
     that we found during static analysis is concatenated with another string called `MDMF5A5.tmp`,
     which is used to generate a file name,` MDMF5A5.tmp_melt.bat`. Once the filename
     is generated, the malware drops a file with this name on the disk:'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，恶意软件放置了另一个名为 `MDMF5A5.tmp_melt.bat` 的文件，如下输出所示。此时可以推断出我们在静态分析期间找到的 `_melt.bat`
+    字符串与另一个名为 `MDMF5A5.tmp` 的字符串连接在一起，用于生成文件名 `MDMF5A5.tmp_melt.bat`。生成文件名后，恶意软件将此文件名保存到磁盘上：
 - en: '[PRE9]'
+  id: totrans-96
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'It then executes the dropped batch (`.bat`) script by invoking cmd.exe:'
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后通过调用 cmd.exe 执行放置的批处理 (`.bat`) 脚本：
 - en: '[PRE10]'
+  id: totrans-98
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'As a result of `cmd.exe` executing the batch script, both the original file
     (`sales.exe`) and the batch script (`MDMF5A5.tmp_melt.bat`) were deleted, as shown
     in the following code snippet. This behavior confirms the delete functionality
     of the batch (`.bat`) file (if you recall, batch commands to delete files were
     found during the string extraction process):'
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于 `cmd.exe` 执行了批处理脚本，原始文件 (`sales.exe`) 和批处理脚本 (`MDMF5A5.tmp_melt.bat`) 都被删除，如下代码片段所示。此行为确认了批处理
+    (`.bat`) 文件的删除功能（回想一下，在字符串提取过程中发现了删除文件的批处理命令）：
 - en: '[PRE11]'
+  id: totrans-100
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'The malicious binary then adds the path of the dropped file, as an entry in
     the `RUN` registry key for persistence, which allows the malware to start even
     after the system reboots:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意二进制然后将删除文件的路径添加到 `RUN` 注册表键中以保持持久性，这使得恶意软件能够在系统重新启动后继续运行：
 - en: '[PRE12]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'From the network traffic captured by *Wireshark*, it can be seen that the malware
     resolves the C2 domain and establishes a connection on port `80`:'
+  id: totrans-103
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 从 *Wireshark* 捕获的网络流量中可以看到，恶意软件解析了 C2 域并在端口 `80` 上建立了连接：
 - en: '![](../images/00047.jpeg)'
+  id: totrans-104
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00047.jpeg)'
 - en: 'The TCP stream of the port 80 communication, as shown in the following screenshot,
     is not standard HTTP traffic; this suggests that the malware probably uses a custom
     protocol or encrypted communication. In most cases, the malware uses a custom
@@ -545,220 +771,316 @@
     the network traffic. In the upcoming chapters, you will learn the techniques to
     perform code analysis in order to gain an insight into the inner workings of a
     malware binary:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 端口 80 通信的 TCP 流，如下截图所示，不是标准的 HTTP 流量；这表明恶意软件可能使用了自定义协议或加密通信。在大多数情况下，恶意软件使用自定义协议或加密其网络流量以避开基于网络的签名。您需要对恶意二进制进行代码分析，以确定网络流量的性质。在接下来的章节中，您将学习执行代码分析的技术，以深入了解恶意软件二进制的内部工作原理：
 - en: '![](../images/00048.jpeg)'
+  id: totrans-106
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00048.jpeg)'
 - en: 'Comparing the cryptographic hash of the dropped sample (`iexplorer.exe`) and
     the original binary (`sales.exe`) shows that they are identical:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 比较放置样本 (`iexplorer.exe`) 的加密哈希和原始二进制 (`sales.exe`) 的哈希显示它们是相同的：
 - en: '[PRE13]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: To summarize, when malware is executed, it copies itself into the `%AppData%`
     directory as `iexplorer.exe` and then drops a batch script whose job is to delete
     the original binary and itself. The malware then adds an entry into the registry
     key so that it can start every time the system starts. The malicious binary possibly
     encrypts its network traffic and communicates with the *command and control (C2)*
     server on port 80 using a non-standard protocol.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 总结来说，当恶意软件被执行时，它会将自身复制到 `%AppData%` 目录下，并命名为 `iexplorer.exe`，然后丢弃一个批处理脚本，该脚本的作用是删除原始二进制文件及其自身。恶意软件接着会在注册表中添加一个条目，以便每次系统启动时都能启动它。该恶意二进制文件可能会加密其网络流量，并使用非标准协议通过端口
+    80 与 *命令与控制（C2）* 服务器进行通信。
 - en: By combining both static and dynamic analysis, it was possible to determine
     the characteristics and the behavior of the malicious binary. These analysis techniques
     also helped in identifying the network and host-based indicators associated with
     the malware sample.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过结合静态分析和动态分析，成功地确定了恶意二进制文件的特征和行为。这些分析技术还帮助识别了与恶意软件样本相关的网络和主机基础的指标。
 - en: Incident response teams use the indicators determined from the malware analysis
     to create the network and host-based signatures to detect additional infections
     on the network. When performing malware analysis, note down those indicators that
     can help you or your incident response team to detect infected hosts on your network.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 事件响应团队利用从恶意软件分析中确定的指标，创建网络和主机基础的签名，以检测网络上的其他感染。当进行恶意软件分析时，记录下那些能够帮助你或你的事件响应团队检测网络上感染主机的指标。
 - en: 6\. Dynamic-Link Library (DLL) Analysis
+  id: totrans-112
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6\. 动态链接库（DLL）分析
 - en: A *Dynamic-Link Library (DLL)* is a module that contains functions (called *exported
     functions* or *exports*) that can be used by another program (such as an Executable
     or DLL). An executable can use the functions implemented in a DLL by importing
     it from the DLL.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '*动态链接库（DLL）* 是一个包含函数（称为 *导出函数* 或 *exports*）的模块，这些函数可以被其他程序（如可执行文件或 DLL）使用。可执行文件可以通过从
+    DLL 导入来使用 DLL 中实现的函数。'
 - en: The Windows operating system contains many DLLs that export various functions
     called *Application Programming Interfaces (APIs)*. The functions contained in
     these DLLs are used by the processes to interact with the file system, process,
     registry, network, and the graphical user interface (GUI).
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows 操作系统包含许多导出各种函数的 DLL，这些函数被称为 *应用程序编程接口（APIs）*。这些 DLL 中包含的函数供进程用于与文件系统、进程、注册表、网络和图形用户界面（GUI）进行交互。
 - en: 'To display the exported functions in *CFF Explorer* tool, load the PE file
     that export functions and click on Export Directory. The following screenshot
     show some of the functions exported by `Kernel32.dll` (it is an operating system
     DLL and is located in the `C:\Windows\System32` directory). One of the functions
     exported by `Kernel32.dll` is `CreateFile`; this API function is used to create
     or open a file:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在 *CFF Explorer* 工具中显示导出的函数，加载导出函数的 PE 文件并点击 Export Directory。下方的截图展示了 `Kernel32.dll`
+    导出的一些函数（它是一个操作系统 DLL，位于 `C:\Windows\System32` 目录）。`Kernel32.dll` 导出的一项函数是 `CreateFile`；该
+    API 函数用于创建或打开文件：
 - en: '![](../images/00049.jpeg)'
+  id: totrans-116
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00049.jpeg)'
 - en: 'In the following screenshot, it can be seen that `notepad.exe` imports some
     of the functions exported by `kernel32.dll`, including the `CreateFile` function.
     When you open or create a file with Notepad, it calls the `CreateFile` API implemented
     in `Kernel32.dll`:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下方的截图中，可以看到 `notepad.exe` 导入了 `kernel32.dll` 导出的部分函数，包括 `CreateFile` 函数。当你用记事本打开或创建文件时，它会调用在
+    `Kernel32.dll` 中实现的 `CreateFile` API：
 - en: '![](../images/00050.jpeg)'
+  id: totrans-118
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00050.jpeg)'
 - en: In the preceding example, `notepad.exe` did not have to implement the functionality
     to create or open the file in its code. To do that, it just imports and calls
     the `CreateFile` API implemented in `Kernel32.dll`. The advantage of implementing
     the DLL is that its code can be shared by multiple applications. If an application
     wants to call an API function, it must first load a copy of DLL that exports the
     API into its memory space.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的示例中，`notepad.exe` 并不需要在其代码中实现创建或打开文件的功能。为了实现这一点，它只需导入并调用在 `Kernel32.dll`
+    中实现的 `CreateFile` API。实现 DLL 的优势在于，其代码可以被多个应用程序共享。如果一个应用程序想要调用 API 函数，它必须先加载导出该
+    API 的 DLL 副本到其内存空间中。
 - en: If you wish to know more about Dynamic-Link Libraries, read the following documents: [https://support.microsoft.com/en-us/help/815065/what-is-a-dll](https://support.microsoft.com/en-us/help/815065/what-is-a-dll)
     and [https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx).
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想了解更多关于动态链接库的知识，请阅读以下文档：[https://support.microsoft.com/en-us/help/815065/what-is-a-dll](https://support.microsoft.com/en-us/help/815065/what-is-a-dll)
+    和 [https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681914(v=vs.85).aspx)。
 - en: 6.1 Why Attackers Use DLLs
+  id: totrans-121
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.1 攻击者为什么使用 DLL
 - en: 'You will often see malware authors distributing their malicious code as DLL
     instead of executable files. The following list outlines some of the reasons why
     attackers implement their malicious code as DLLs:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 你经常会看到恶意软件作者将他们的恶意代码以 DLL 而非可执行文件的形式分发。以下列出了一些攻击者将其恶意代码实现为 DLL 的原因：
 - en: A DLL cannot be executed by double-clicking; DLL needs a host process to run.
     By distributing the malicious code as a DLL, a malware author can load his/her
     DLL into any process, including a legitimate process such as `Explorer.exe`, `winlogon.exe`,
     and so on. This technique gives the attacker the capability to hide a malware's
     actions, and all the malicious activity performed by the malware will appear to
     originate from the host process.
+  id: totrans-123
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 双击无法执行 DLL；DLL 需要一个主机进程来运行。通过将恶意代码分发为 DLL，恶意软件作者可以将他/她的 DLL 加载到任何进程中，包括合法进程如
+    `Explorer.exe`、`winlogon.exe` 等。这种技术使攻击者能够隐藏恶意软件的行为，所有恶意活动看起来都是源自主机进程。
 - en: Injecting a DLL into an already running process provides the attacker with the
     capability to persist on the system.
+  id: totrans-124
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将 DLL 注入到已运行的进程中使攻击者能够在系统上持久存在。
 - en: When a DLL is loaded by a process into its memory space, the DLL will have access
     to the entire process memory space, thereby giving it the ability to manipulate
     the process's functionality. For example, an attacker can inject a DLL into a
     browser process and steal credentials by redirecting its API function.
+  id: totrans-125
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当 DLL 被一个进程加载到其内存空间时，DLL 将访问整个进程的内存空间，从而使其能够操纵进程的功能。例如，攻击者可以将 DLL 注入到浏览器进程中，并通过重定向其
+    API 函数来窃取凭据。
 - en: Analyzing a DLL is not straightforward and can be tricky compared to analyzing
     an executable.
+  id: totrans-126
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 分析 DLL 不像分析可执行文件那样直接，可能更加棘手。
 - en: Most malware samples drop or download a DLL and then load the DLL into the memory
     space of another process. After loading the DLL, the dropper/loader component
     deletes itself. As a result, when performing a malware investigation, you may
     only find the DLL. The following section covers the techniques to analyze the
     DLL.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数恶意软件样本会释放或下载一个 DLL，然后将该 DLL 加载到另一个进程的内存空间中。加载完 DLL 后，传播者/加载器组件会自行删除。因此，在进行恶意软件调查时，你可能只会找到
+    DLL。接下来的部分介绍了分析 DLL 的技术。
 - en: 6.2 Analyzing the DLL Using rundll32.exe
+  id: totrans-128
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.2 使用 rundll32.exe 分析 DLL
 - en: To determine the malware's behavior and to monitor its activity using dynamic
     analysis, it is essential to understand how to execute the DLL. As previously
     mentioned, a DLL needs a process to run. On Windows, `rundll32.exe` can be used
     to launch a DLL and to invoke functions exported from the DLL. The following is
     a syntax to launch a DLL and to invoke an export function using `rundll32.exe`*:*
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 要确定恶意软件的行为并通过动态分析监控其活动，理解如何执行 DLL 是至关重要的。如前所述，DLL 需要一个进程来运行。在 Windows 上，可以使用
+    `rundll32.exe` 来启动 DLL 并调用 DLL 中导出的函数。以下是使用 `rundll32.exe` 启动 DLL 并调用导出函数的语法：*：*
 - en: '[PRE14]'
+  id: totrans-130
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The parameters associated with `rundll32.exe` are explained as follows:'
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 `rundll32.exe` 相关的参数解释如下：
 - en: '**Full path to DLL:** Specifies the full path to the DLL, and this path cannot
     contain spaces or special characters.'
+  id: totrans-132
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**DLL 的完整路径：** 指定 DLL 的完整路径，该路径不能包含空格或特殊字符。'
 - en: '**Export function**: This is a function in the DLL that will be called after
     the DLL is loaded.'
+  id: totrans-133
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**导出函数：** 这是 DLL 中加载后将调用的函数。'
 - en: '**Optional arguments**: The arguments are optional, and if supplied, these
     arguments will be passed to the export function when it is called.'
+  id: totrans-134
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**可选参数：** 参数是可选的，如果提供，则在调用导出函数时将传递这些参数。'
 - en: '**The comma**: This is put between the full path to the DLL and the export
     function. The export function is required for the syntax to be correct.'
+  id: totrans-135
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**逗号：** 这是放置在 DLL 的完整路径和导出函数之间的符号。导出函数对于语法的正确性是必需的。'
 - en: 6.2.1 Working of rundll32.exe
+  id: totrans-136
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.2.1 rundll32.exe 的工作方式
 - en: 'Understanding the workings of `rundll32.exe` is important to avoid any mistakes
     while running the DLL. When you launch `rundll32.exe` using the command-line arguments
     mentioned previously, the following steps are performed by `rundll32.exe`:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解`rundll32.exe`的工作原理对于避免在运行DLL时发生错误非常重要。当你使用前述命令行参数启动`rundll32.exe`时，`rundll32.exe`将执行以下步骤：
 - en: Command-line arguments passed to `rundll32.exe` are first validated; if the
     syntax is incorrect, `rundll32.exe` terminates.
+  id: totrans-138
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 传递给`rundll32.exe`的命令行参数首先会经过验证；如果语法不正确，`rundll32.exe`会终止。
 - en: If the syntax is correct, it loads the supplied DLL. As a result of loading
     the DLL, the DLL entry point function gets executed (which in turn invokes the `DLLMain`
     function). Most malware implement their malicious code in the `DLLMain` function.
+  id: totrans-139
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果语法正确，它会加载提供的DLL。加载DLL后，DLL的入口点函数将被执行（该函数会进一步调用`DLLMain`函数）。大多数恶意软件会在`DLLMain`函数中实现其恶意代码。
 - en: After loading the DLL, it obtains the address of the export function and calls
     the function. If the address of the function cannot be determined, then `rundll32.exe`
     terminates.
+  id: totrans-140
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 加载DLL后，`rundll32.exe`会获取导出函数的地址并调用该函数。如果无法确定该函数的地址，`rundll32.exe`将终止。
 - en: If the optional arguments are provided, then the optional arguments are supplied
     to the export function when calling it.
+  id: totrans-141
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果提供了可选参数，那么在调用导出函数时，这些可选参数将作为参数传递给该函数。
 - en: Detailed information about the rundll32 interface and its working is explained
     in this article: [https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface](https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface).
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于rundll32接口及其工作原理的详细信息，请参见本文：[https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface](https://support.microsoft.com/en-in/help/164787/info-windows-rundll-and-rundll32-interface)。
 - en: 6.2.2 Launching the DLL Using rundll32.exe
+  id: totrans-143
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.2.2 使用rundll32.exe启动DLL
 - en: During malware investigation, you will come across different variations of DLLs.
     Understanding how to recognize and analyze them is essential in determining their
     malicious actions. The following examples cover different scenarios involving
     DLLs.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 在恶意软件调查中，你会遇到不同版本的DLL。了解如何识别和分析它们对于确定其恶意行为至关重要。以下示例涵盖了涉及DLL的不同场景。
 - en: Example 1 – Analyzing a DLL With No Exports
+  id: totrans-145
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 示例1 – 分析一个没有导出的DLL
 - en: Whenever a DLL is loaded, its entry point function gets called (which in turn
     calls its `DLLMain` function). An attacker can implement malicious functionality
     (such as keylogging, information stealing, and so on) in the `DLLMain` function
     without exporting any functions.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 每当加载DLL时，它的入口点函数都会被调用（该函数会进一步调用其`DLLMain`函数）。攻击者可以在`DLLMain`函数中实现恶意功能（如键盘记录、信息窃取等），而无需导出任何函数。
 - en: 'In the following example, the malicious DLL (`aa.dll`) does not contain any
     exports, which tells you that, all the malicious functionality may be implemented
     in its `DLLmain` function, which will be executed (called from the `DLL entry
@@ -767,36 +1089,52 @@
     related to HTTP or FTP). This indicates that the malware probably calls these
     network functions within the `DLLMain` function, to interact with the C2 server
     using HTTP or FTP protocol:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，恶意DLL（`aa.dll`）不包含任何导出，这说明所有恶意功能可能都实现于其`DLLmain`函数中，只有当DLL被加载时（从`DLL入口点`调用），该函数才会被执行。从以下截图可以看出，恶意软件从`wininet.dll`导入函数（该库导出了与HTTP或FTP相关的函数）。这表明恶意软件可能在`DLLMain`函数内调用这些网络函数，通过HTTP或FTP协议与C2服务器进行交互：
 - en: '![](../images/00051.jpeg)'
+  id: totrans-148
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00051.jpeg)'
 - en: 'You might assume that, because there is no export, a DLL can be executed using
     the following syntax:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会认为，由于没有导出函数，可以使用以下语法执行一个DLL：
 - en: '[PRE15]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: When you run a DLL with the preceding syntax, the DLL will not execute successfully;
     at the same time, you will not receive any error. The reason for this is that
     when `rundll32.exe` validates the command-line syntax (s*tep 1* mentioned in the
     *Section 6.2.1* *Working of rundll32.exe*), it fails the syntax check. As a result,
     `rundll32.exe` exits without loading the DLL.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你使用前述语法运行DLL时，DLL不会成功执行；同时，你也不会收到任何错误提示。原因是，当`rundll32.exe`验证命令行语法时（*第1步*，详见*第6.2.1节
+    rundll32.exe的工作原理*），语法检查未通过。因此，`rundll32.exe`会在未加载DLL的情况下退出。
 - en: 'You need to make sure that the command-line syntax is correct to load a DLL
     successfully. The command shown in the following output should run the DLL successfully.
     In the following command, `test` is a dummy name, and there is no such export
     function, it is just used to make sure the command-line syntax is correct. Before
     running the following command, the various monitoring tools that we covered in
     this chapter (Process Hacker, Noriben, Wireshark, Inetsim) were started:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要确保命令行语法正确，才能成功加载 DLL。以下输出中显示的命令应该能够成功运行 DLL。在以下命令中，`test` 是一个虚拟名称，并没有这样一个导出函数，它只是用来确保命令行语法是正确的。在运行以下命令之前，我们在本章中提到的各种监控工具（Process
+    Hacker、Noriben、Wireshark、Inetsim）已启动：
 - en: '[PRE16]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'After running the command, the following error was received, but the DLL was
     successfully executed. In this case, because the syntax is correct, `rundll32.exe`
     loaded the DLL (*step 2,* mentioned in the *Section 6.2.1* *Working of rundll32.exe*).
@@ -806,167 +1144,249 @@
     of rundll32.exe*). Since it cannot find the address of `test`, the following error
     was displayed. Even though the error message was displayed, the DLL was successfully
     loaded (that''s exactly what we wanted for monitoring its activity):'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行命令后，收到以下错误信息，但 DLL 已成功执行。在这种情况下，由于语法正确，`rundll32.exe` 加载了 DLL（*步骤 2,* 在 *第
+    6.2.1 节* *rundll32.exe 的工作原理* 中提到）。因此，调用了它的 `DLL 入口点` 函数（进而调用了 `DLLMain`，其中包含恶意代码）。然后，`rundll32.exe`
+    尝试查找导出函数 `test` 的地址（这就是 *步骤 3,* 在 *第 6.2.1 节* *rundll32.exe 的工作原理* 中提到）。由于找不到
+    `test` 的地址，显示了以下错误信息。尽管显示了错误信息，DLL 还是成功加载了（这正是我们希望监控其活动的原因）：
 - en: '![](../images/00052.jpeg)'
+  id: totrans-155
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00052.jpeg)'
 - en: 'Upon execution, the malware establishes an HTTP connection with the C2 domain
     and downloads a file (`Thanksgiving.jpg`), as shown in the following *Wireshark*
     output:'
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行后，恶意软件与 C2 域建立了 HTTP 连接，并下载了一个文件（`Thanksgiving.jpg`），如下所示的 *Wireshark* 输出所示：
 - en: '![](../images/00053.jpeg)'
+  id: totrans-157
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00053.jpeg)'
 - en: Example 2 – Analyzing a DLL Containing Exports
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 示例 2 – 分析包含导出函数的 DLL
 - en: 'In this example, we will look at another malicious DLL (`obe.dll`). The following
     screenshot shows two functions (`DllRegisterServer` and `DllUnRegisterServer`) exported
     by the DLL:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个示例中，我们将查看另一个恶意 DLL（`obe.dll`）。以下截图显示了该 DLL 导出的两个函数（`DllRegisterServer` 和
+    `DllUnRegisterServer`）：
 - en: '![](../images/00054.jpeg)'
+  id: totrans-160
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00054.jpeg)'
 - en: 'The DLL sample was run with the following command. Even though `obe.dll` was
     loaded into the memory of `rundll32.exe`, it did not trigger any behavior. This
     is because DLL''s entry point function does not implement any functionality:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 该 DLL 示例通过以下命令运行。尽管 `obe.dll` 已加载到 `rundll32.exe` 的内存中，但没有触发任何行为。这是因为 DLL 的入口点函数没有实现任何功能：
 - en: '[PRE17]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'On the other hand, running the sample with the `DllRegisterServer` function
     as shown below, triggered an HTTPS communication to the C2 server. From this,
     it can be deduced that `DLLRegisterServer` implements the network functionality:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一方面，通过运行以下带有 `DllRegisterServer` 函数的示例，触发了与 C2 服务器的 HTTPS 通信。由此可以推断出 `DLLRegisterServer`
+    实现了网络功能：
 - en: '[PRE18]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'The following screenshot shows the network traffic captured by Wireshark:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了 Wireshark 捕获的网络流量：
 - en: '![](../images/00055.jpeg)You can write a script to determine all the exported
     functions (as covered in [Chapter 2](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485),
     *Static Analysis*) in a DLL and call them in sequence while running the monitoring
     tools. This technique can help in understanding the functionality of each exported
     function. DLLRunner ([https://github.com/Neo23x0/DLLRunner](https://github.com/Neo23x0/DLLRunner))
     is a Python script that executes all exported functions in a DLL.'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](../images/00055.jpeg)你可以编写一个脚本来确定 DLL 中的所有导出函数（如在 [第 2 章](part0032.html#UGI00-ac10ba3f98854c44bac1c2c5641ca485)
+    *静态分析* 中所述），并在运行监控工具时按顺序调用它们。这种技术有助于理解每个导出函数的功能。DLLRunner（[https://github.com/Neo23x0/DLLRunner](https://github.com/Neo23x0/DLLRunner)）是一个执行
+    DLL 中所有导出函数的 Python 脚本。'
 - en: Example 3 – Analyzing a DLL Accepting Export Arguments
+  id: totrans-167
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 示例 3 – 分析接受导出参数的 DLL
 - en: The following example shows how you can analyze a DLL that accepts export arguments.
     The DLL used in this example was delivered via powerpoint, as described in this
     link: [https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/](https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/).
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例展示了如何分析一个接受导出参数的DLL。此示例中使用的DLL是通过PowerPoint传送的，具体描述见此链接：[https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/](https://securingtomorrow.mcafee.com/mcafee-labs/threat-actors-use-encrypted-office-binary-format-evade-detection/)。
 - en: 'The DLL (`SearchCache.dll`) consists of an export function, `_flushfile@16`,
     whose functionality is to delete a file. This export function accepts an argument,
     which is the file to delete:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: DLL（`SearchCache.dll`）包含一个导出函数`_flushfile@16`，其功能是删除文件。该导出函数接受一个参数，即要删除的文件：
 - en: '![](../images/00056.jpeg)'
+  id: totrans-170
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00056.jpeg)'
 - en: 'To demonstrate the delete functionality, a test file (`file_to_delete.txt`)
     was created, and the monitoring tools were launched. The test file was passed
     an argument to the export function `_flushfile@16` using the following command.
     After running the following command, the test file was deleted from the disk:'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示删除功能，创建了一个测试文件（`file_to_delete.txt`），并启动了监控工具。测试文件通过以下命令被传递给导出函数`_flushfile@16`。运行以下命令后，测试文件被从磁盘中删除：
 - en: '[PRE19]'
+  id: totrans-172
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'The following is the output from the Noriben logs showing `rundll32.exe` deleting
     the file `(file_to_delete.txt)`:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是Noriben日志的输出，显示`rundll32.exe`删除文件`(file_to_delete.txt)`：
 - en: '[PRE20]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: To determine the parameters and the type of parameters accepted by an export
     function, you will need to perform code analysis. You will be learning code analysis
     techniques in the upcoming chapters.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确定导出函数接受的参数及其类型，您需要执行代码分析。您将在接下来的章节中学习代码分析技巧。
 - en: 6.3 Analyzing a DLL with Process Checks
+  id: totrans-176
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6.3 分析带有进程检查的DLL
 - en: Most of the time, launching a DLL with `rundll32.exe` will work fine, but some
     DLLs check if they are running under a particular process (such as `explorer.exe`
     or `iexplore.exe`) and might change their behavior or terminate themselves if
     they are running under any other process (including `rundll32.exe`). In such cases,
     you will have to inject the DLL into the specific process to trigger the behavior.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数情况下，使用`rundll32.exe`启动DLL时会正常工作，但某些DLL会检查它们是否在特定进程下运行（例如`explorer.exe`或`iexplore.exe`），并且如果它们在其他进程下运行（包括`rundll32.exe`），可能会改变行为或终止自己。在这种情况下，您需要将DLL注入到特定进程中以触发其行为。
 - en: A tool such as *RemoteDLL* ([http://securityxploded.com/remotedll.php](http://securityxploded.com/remotedll.php))
     allows you to inject a DLL into any running process on the system. It allows you
     to inject a DLL using three different methods; this is useful because if one method
     fails, you can try another method.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用*RemoteDLL*（[http://securityxploded.com/remotedll.php](http://securityxploded.com/remotedll.php)）这样的工具，可以将DLL注入到系统中的任何正在运行的进程。它允许通过三种不同的方法注入DLL；这很有用，因为如果一种方法失败，可以尝试另一种方法。
 - en: 'The DLL (`tdl.dll`) used in the following example, is a component of *TDSS
     Rootkit*. This DLL does not contain any exports; all of the malicious behavior
     is implemented in the DLL''s `entry point` function. Running the DLL using the
     following command generated an error stating that the DLL initialization routine
     failed, this is an indication that the `DLL entry point` function was not successfully
     executed:'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例中使用的DLL（`tdl.dll`）是*TDSS Rootkit*的一部分。该DLL不包含任何导出项；所有的恶意行为都在DLL的`入口点`函数中实现。使用以下命令运行DLL时，出现了一个错误，提示DLL初始化例程失败，这表明`DLL入口点`函数未能成功执行：
 - en: '![](../images/00057.jpeg)'
+  id: totrans-180
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00057.jpeg)'
 - en: 'To understand the condition that triggered the error, static code analysis
     (reverse engineering) was carried out. After analyzing the code, it was found
     that the DLL, in its entry point function, performed a check to determine if it
     is running under `spoolsv.exe` (the print spooler service). If it is running under
     any other process, the DLL initialization fails:'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了理解触发错误的条件，进行了静态代码分析（逆向工程）。分析代码后发现，DLL在其入口点函数中进行了检查，判断它是否在`spoolsv.exe`（打印机后台处理程序服务）下运行。如果它在任何其他进程下运行，则DLL初始化失败：
 - en: For now, don't worry about how to perform code analysis. You will learn the
     techniques to perform code analysis in the upcoming chapters.![](../images/00058.jpeg)
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前，暂时不用担心如何执行代码分析。您将在接下来的章节中学习如何执行代码分析的技巧。![](../images/00058.jpeg)
 - en: 'To trigger the behavior, malicious DLL had to be injected into the `spoolsv.exe`
     process using the *RemoteDLL* tool. After injecting the DLL into `spoolsv.exe`,
     the following activities were captured by the monitoring tools. The malware created
     a folder (`resycled`) and a file `autorun.inf` on the `C:\` drive. It then dropped
     a file `boot.com` in the newly created folder `C:\resycled`:'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 为触发该行为，恶意 DLL 必须通过 *RemoteDLL* 工具注入到 `spoolsv.exe` 进程中。注入 DLL 到 `spoolsv.exe`
+    后，监控工具捕获到了以下活动。恶意软件在 `C:\` 盘上创建了一个文件夹（`resycled`）和一个文件 `autorun.inf`。然后，它将一个文件
+    `boot.com` 投放到新创建的文件夹 `C:\resycled` 中：
 - en: '[PRE21]'
+  id: totrans-184
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The malware added the following registry entries; from the added entries you
     can tell that the malware is storing some encrypted or configuration data in the
     registry:'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意软件添加了以下注册表项；从这些添加的项中可以看出，恶意软件在注册表中存储了一些加密数据或配置信息：
 - en: '[PRE22]'
+  id: totrans-186
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'The following screenshot shows malware''s C2 communication on port `80`:'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了恶意软件在 `80` 端口上的 C2 通信：
 - en: '![](../images/00059.jpeg)During malware investigation, you will come across
     DLL, that will run only when it is loaded as a service. This type of DLL is called
     a *service DLL*. To fully understand the working of a service DLL, knowledge of
     code analysis and the Windows API is required, which will be covered in later
     chapters.'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](../images/00059.jpeg)在恶意软件调查过程中，你将遇到仅在被加载为服务时才会运行的 DLL。这类 DLL 被称为 *服务 DLL*。要完全理解服务
+    DLL 的工作原理，需要掌握代码分析和 Windows API 知识，这将在后续章节中介绍。'
 - en: Summary
+  id: totrans-189
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: Dynamic analysis is a great technique to understand the behavior of malware
     and to determine its network and host-based indicators. You can use dynamic analysis
     to validate findings obtained during static analysis. Combining static  analysis
@@ -974,16 +1394,22 @@
     Basic dynamic analysis has its limitations, and to gain a deeper insight into
     the workings of the malware binary, you will have to perform code analysis (reverse
     engineering).
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态分析是一种很好的技术，可以帮助理解恶意软件的行为，并确定其网络和主机相关的指标。你可以使用动态分析来验证在静态分析过程中获得的发现。将静态分析和动态分析相结合，有助于你更好地理解恶意软件的二进制文件。基本的动态分析有其局限性，若要深入了解恶意软件二进制文件的工作原理，就需要进行代码分析（逆向工程）。
 - en: For example, most malware samples used in this chapter used encrypted communication
     to communicate with their C2 server. Using dynamic analysis, we were only able
     to determine the encrypted communication, but to understand how the malware is
     encrypting the traffic and what data it is encrypting, you need to learn how to
     perform code analysis.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，本章中使用的大部分恶意软件样本通过加密通信与其 C2 服务器进行通信。通过动态分析，我们仅能确定通信是加密的，但要了解恶意软件如何加密流量以及加密了哪些数据，你需要学习如何进行代码分析。
 - en: In the next few chapters, you will learn the basics, tools, and techniques to
     perform code analysis.
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的几章中，你将学习执行代码分析的基础知识、工具和技术。
