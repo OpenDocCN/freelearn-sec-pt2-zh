@@ -1,15 +1,19 @@
 - en: Code Injection and Hooking
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 代码注入与挂钩
 - en: In the previous chapter, we looked at the different persistence mechanisms used
     by malware to remain on a victim system. In this chapter, you will learn how malicious
     programs inject code into another process (called *target process* or *remote
     process*) to perform malicious actions. The technique of injecting malicious code
     into a target process's memory and executing the malicious code within the context
     of the target process is called *code injection (or process injection)*.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们探讨了恶意软件为了在受害者系统中保持存在所使用的不同持久性机制。在本章中，您将学习恶意程序如何将代码注入到另一个进程中（称为*目标进程*或*远程进程*）以执行恶意操作。将恶意代码注入到目标进程的内存并在目标进程的上下文中执行恶意代码的技术被称为*代码注入（或进程注入）*。
 - en: An attacker typically chooses a legitimate process (such as `explorer.exe` or
     `svchost.exe`) as the target process. Once the malicious code is injected into
     the target process, it can then perform malicious actions, such as logging keystrokes,
@@ -18,16 +22,22 @@
     responsible for injecting code can either continue to persist on the system, thereby
     injecting code into the target process every time the system reboots, or it can
     delete itself from the filesystem, keeping the malicious code in memory only.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者通常选择一个合法进程（如`explorer.exe`或`svchost.exe`）作为目标进程。一旦恶意代码被注入到目标进程中，它就可以在目标进程的上下文中执行恶意操作，如记录击键、窃取密码和外泄数据。在将代码注入到目标进程的内存后，负责注入代码的恶意组件可以选择继续在系统中保持持久性，从而在每次系统重启时都注入代码到目标进程中，或者它可以从文件系统中删除自身，仅将恶意代码保留在内存中。
 - en: Before we delve into the malware code injection techniques, it is essential
     to understand the virtual memory concept.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在深入了解恶意软件代码注入技术之前，理解虚拟内存的概念是至关重要的。
 - en: 1\. Virtual Memory
+  id: totrans-4
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1\. 虚拟内存
 - en: 'When you double-click a program containing a sequence of instructions, a process
     is created. The Windows operating system provides each new process created with
     its own private memory address space (called the *process memory*). The process
@@ -41,11 +51,16 @@
     loads it from the disk back to the memory. The following diagram illustrates two
     processes, A and B, whose process memories are mapped to the physical memory while
     some parts are paged to the disk:'
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 当您双击一个包含指令序列的程序时，一个进程就会被创建。Windows 操作系统为每个新创建的进程提供自己的私有内存地址空间（称为*进程内存*）。进程内存是*虚拟内存*的一部分；虚拟内存并不是真正的物理内存，而是操作系统内存管理器创造的一种幻觉。正是因为这种幻觉，每个进程都认为它拥有自己的私有内存空间。在运行时，Windows
+    内存管理器在硬件的帮助下，将虚拟地址转换为实际数据所在的物理地址（在 RAM 中）；为了管理内存，操作系统会将部分内存分页到磁盘。当进程的线程访问已分页到磁盘的虚拟地址时，内存管理器会将其从磁盘加载回内存。下图说明了两个进程A和B，它们的进程内存被映射到物理内存，同时部分内存被分页到磁盘：
 - en: '![](../images/00231.jpeg)'
+  id: totrans-6
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00231.jpeg)'
 - en: Since we normally deal with virtual addresses (the ones that you see in your
     debugger), we will keep physical memory out of the discussion for the rest of
     the chapter. Now, let's focus on virtual memory. *Virtual memory* is segregated
@@ -57,8 +72,10 @@
     is reserved for user processes (process memory or user space), and the upper half
     of the address (upper 2 GB), ranging from `0x80000000` through `0xFFFFFFFF`, is
     reserved for kernel memory (kernel space).
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们通常处理的是虚拟地址（即你在调试器中看到的地址），因此本章剩余部分将不讨论物理内存。现在，让我们集中讨论虚拟内存。*虚拟内存*分为*进程内存*（进程空间或用户空间）和*内核内存*（内核空间或系统空间）。虚拟内存地址空间的大小取决于硬件平台。例如，在32位架构上，默认情况下，总虚拟地址空间（包括进程和内核内存）最大为4GB。下半部分（下2GB），地址范围从`0x00000000`到`0x7FFFFFFF`，保留给用户进程（进程内存或用户空间）；上半部分（上2GB），地址范围从`0x80000000`到`0xFFFFFFFF`，保留给内核内存（内核空间）。
 - en: 'On a 32-bit system, out of the 4 GB virtual address space, each process thinks
     that it has 2 GB of process memory, ranging from `0x00000000` - `0x7FFFFFFF`.
     Since each process thinks that it has its own private virtual address space (which
@@ -75,28 +92,38 @@
     space by examining the symbol `MmHighestUserAddress`, and the lower boundary (first
     usable address) of the kernel space by querying the symbol `MmSystemRangeStart`
     with a kernel debugger such as *Windbg*:'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 在32位系统中，在4GB的虚拟地址空间中，每个进程认为它有2GB的进程内存，地址范围从`0x00000000`到`0x7FFFFFFF`。由于每个进程认为它拥有自己的私有虚拟地址空间（最终映射到物理内存），因此总虚拟地址空间远大于可用的物理内存（RAM）。Windows内存管理器通过将部分内存分页到磁盘来解决这个问题；这释放了物理内存，可以用于其他进程或操作系统本身。即使每个Windows进程都有自己的私有内存空间，内核内存在大多数情况下是公共的，所有进程共享。以下图表显示了32位架构的内存布局。你可能会注意到用户空间和内核空间之间有一个64KB的间隙；这一区域不可访问，确保内核不会意外跨越边界并损坏用户空间。你可以通过检查符号`MmHighestUserAddress`来确定进程地址空间的上边界（最后可用地址），并通过使用内核调试器如*Windbg*查询符号`MmSystemRangeStart`来确定内核空间的下边界（第一个可用地址）：
 - en: '![](../images/00232.jpeg)'
+  id: totrans-9
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00232.jpeg)'
 - en: Even though the virtual address range is the same for each process (`x00000000
     - 0x7FFFFFFF`), both the hardware and Windows make sure that the physical addresses
     mapped to this range are different for each process. For instance, when two processes
     access the same virtual address, each process will end up accessing a different
     address in the physical memory. By providing private address space for each process,
     the operating system ensures that processes do not overwrite each other's data.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使每个进程的虚拟地址范围相同（`0x00000000`到`0x7FFFFFFF`），硬件和Windows也会确保映射到该范围的物理地址对于每个进程都是不同的。例如，当两个进程访问相同的虚拟地址时，每个进程最终将访问物理内存中的不同地址。通过为每个进程提供私有地址空间，操作系统确保进程不会覆盖彼此的数据。
 - en: 'The virtual memory space need not always be divided into 2 GB halves; that
     is just the default setup. For example, you can enable a 3 GB boot switch by using
     the following command, which increases the process memory to 3 GB, ranging from
     `0x00000000` - `0xBFFFFFFF`; the kernel memory gets the remaining 1 GB, from `0xC0000000` - `0xFFFFFFFF`:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 虚拟内存空间不一定总是被划分为2GB的两半；这只是默认的设置。例如，你可以通过使用以下命令启用3GB启动开关，这样可以将进程内存增加到3GB，地址范围从`0x00000000`到`0xBFFFFFFF`；内核内存则获得剩余的1GB，地址范围从`0xC0000000`到`0xFFFFFFFF`：
 - en: '[PRE0]'
+  id: totrans-12
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'The x64 architecture provides much larger address space for both the process
     and kernel memory, as shown in the following diagram. On x64 architecture, the
     user space ranges from `0x0000000000000000 - 0x000007ffffffffff`, and the kernel
@@ -107,15 +134,21 @@
     reason for this is that all addresses used in x64 code must be canonical. An address
     is said to be canonical if it has the bits `47-63` either all *set* or all *clear*.
     Attempting to use a non-canonical address results in a page fault exception:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: x64架构为进程和内核内存提供了更大的地址空间，如下图所示。在x64架构中，用户空间的范围是`0x0000000000000000 - 0x000007ffffffffff`，内核空间从`0xffff080000000000`开始，向上延伸。你可能会注意到用户空间与内核空间之间存在巨大的地址空隙；这个地址范围是不可用的。即使在下图中，内核空间显示从`0xffff080000000000`开始，内核空间中的第一个可用地址是从`ffff800000000000`开始。之所以如此，是因为x64代码中使用的所有地址必须是规范的。一个地址被称为规范地址，若其`47-63`位要么全部*设置*，要么全部*清除*。尝试使用非规范地址会导致页面错误异常：
 - en: '![](../images/00233.jpeg)'
+  id: totrans-14
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00233.jpeg)'
 - en: 1.1 Process Memory Components (User Space)
+  id: totrans-15
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.1 进程内存组件（用户空间）
 - en: 'With an understanding of virtual memory, let us focus our attention on a part
     of the virtual memory called *process memory*. Process memory is the memory used
     by *user applications*. The following screenshot shows two processes and gives
@@ -123,72 +156,101 @@
     the following screenshot, the kernel space is deliberately left blank for simplicity
     (we will fill in that blank in the next section). Keep in mind that processes
     share the same kernel space:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 了解虚拟内存后，让我们将注意力集中在虚拟内存的一部分——*进程内存*。进程内存是*用户应用程序*使用的内存。下图展示了两个进程，并给出了进程内存中组成部分的高层概览。在下图中，内核空间为了简洁起见被故意留空（我们将在下一节填补这个空白）。请记住，进程共享相同的内核空间：
 - en: '![](../images/00234.jpeg)'
+  id: totrans-17
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00234.jpeg)'
 - en: 'Process memory consists of the following major components:'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 进程内存由以下主要部分组成：
 - en: '**Process executable**: This region contains the executable associated with
     the application. When a program on the disk is double-clicked, a process is created,
     and the executable associated with the program is loaded into the process memory.'
+  id: totrans-19
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**进程可执行文件：** 该区域包含与应用程序相关的可执行文件。当磁盘上的程序被双击时，会创建一个进程，并将与该程序相关的可执行文件加载到进程内存中。'
 - en: '**Dynamic Linked Libraries (DLLs)**: When a process is created, all its associated
     DLLs get loaded into the process memory. This region represents all DLLs associated
     with a process.'
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**动态链接库（DLLs）：** 当进程创建时，所有与之关联的DLL会被加载到进程内存中。该区域表示与进程相关的所有DLL。'
 - en: '**Process environment variables:** This memory region stores the process''s
     environment variables, such as the temporary directories, home directory, AppData
     directory, and so on.'
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**进程环境变量：** 该内存区域存储进程的环境变量，例如临时目录、主目录、AppData目录等。'
 - en: '**Process heap(s):** This region specifies the process heap. Each process has
     a single heap and can create additional heaps as required. This region specifies
     the dynamic input that the process receives.'
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**进程堆：** 该区域指定进程堆。每个进程有一个堆，并可以根据需要创建额外的堆。该区域指定进程接收的动态输入。'
 - en: '**Thread stack(s):** This region represents the dedicated range of process
     memory allocated to each thread, called its *runtime stack*. Each thread gets
     its own stack, and this is where function arguments, local variables, and return
     addresses can be found.'
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**线程栈：** 该区域表示分配给每个线程的专用进程内存范围，称为其*运行时栈*。每个线程都有自己的栈，这里存储函数参数、本地变量和返回地址。'
 - en: '**Process Environment Block (PEB)**: This region represents the `PEB` structure,
     which contains information about where the executable is loaded, its full path
     on the disk, and where to find the DLLs in memory.'
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**进程环境块（PEB）：** 该区域表示`PEB`结构，包含有关可执行文件加载位置的信息、其在磁盘上的完整路径，以及在内存中查找DLL的位置。'
 - en: You can examine the contents of a process memory by using the* Process Hacker*
     ([https://processhacker.sourceforge.io/](https://processhacker.sourceforge.io/))tool.
     To do that, launch Process Hacker, right-click on the desired process, select
     Properties, and choose the Memory tab.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用*Process Hacker*（[https://processhacker.sourceforge.io/](https://processhacker.sourceforge.io/)）工具查看进程内存的内容。操作方法是启动Process
+    Hacker，右键点击所需进程，选择属性，然后选择内存标签。
 - en: 1.2 Kernel Memory Contents (Kernel Space)
+  id: totrans-26
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 1.2 内核内存内容（内核空间）
 - en: 'The *kernel memory* contains the operating system and the device drivers. The
     following screenshot shows the user-space and kernel space components. In this
     section, we will  mainly focus on the kernel space components:'
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: '*内核内存*包含操作系统和设备驱动程序。下图显示了用户空间和内核空间的组件。在本节中，我们将主要关注内核空间的组件：'
 - en: '![](../images/00235.jpeg)'
+  id: totrans-28
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00235.jpeg)'
 - en: 'The kernel memory consists of the following key components:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 内核内存由以下关键组件组成：
 - en: '`hal.dll`: The *hardware abstraction layer (HAL)* is implemented in the loadable
     kernel module `hal.dll`. HAL isolates the operating system from the hardware;
     it implements functions to support different hardware platforms (mostly chipsets).
@@ -196,9 +258,11 @@
     mode *device drivers*. The kernel mode device drivers invoke functions exposed
     by `hal.dll` to interact with the hardware, instead of directly communicating
     with the hardware.'
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`hal.dll`：*硬件抽象层（HAL）*在可加载的内核模块`hal.dll`中实现。HAL将操作系统与硬件隔离；它实现了支持不同硬件平台（主要是芯片组）的功能。它主要为*Windows执行体*、*内核*和内核模式的*设备驱动程序*提供服务。内核模式设备驱动程序调用`hal.dll`暴露的函数与硬件进行交互，而不是直接与硬件通信。'
 - en: '`ntoskrnl.exe`: This binary is the core component of the Windows operating
     system known as kernel image. The `ntoskrnl.exe` binary provides two types of
     functionality: the *executive* and the *kernel*. The *executive* implements functions
@@ -208,19 +272,25 @@
     manager, and so on. The *kernel* implements low-level operating system services
     and exposes sets of routines, which are built upon by the executive to provide
     high-level services.'
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ntoskrnl.exe`：该二进制文件是Windows操作系统的核心组件，称为内核映像。`ntoskrnl.exe`二进制文件提供两种功能：*执行体*和*内核*。*执行体*实现了称为*系统服务例程*的功能，用户模式应用程序可以通过受控机制调用这些例程。执行体还实现了操作系统的主要组件，如内存管理器、I/O管理器、对象管理器、进程/线程管理器等。*内核*实现了低级操作系统服务，并暴露出一组例程，执行体依赖这些例程提供更高级的服务。'
 - en: '`Win32K.sys`: This kernel mode driver implements *UI* and *graphics device
     interface (GDI)* services, which are used to render graphics on output devices
     (such as monitors). It exposes functions for GUI applications.'
+  id: totrans-32
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`Win32K.sys`：此内核模式驱动程序实现了*UI*和*图形设备接口（GDI）*服务，这些服务用于在输出设备（如显示器）上渲染图形。它为GUI应用程序提供了函数。'
 - en: 2\. User Mode And Kernel Mode
+  id: totrans-33
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2\. 用户模式与内核模式
 - en: In the previous section, we saw how virtual memory is divided into user-space
     (process memory) and kernel space (kernel memory). The *user-space* contains code
     (such as executable and DLL) that runs with restricted access, known as the *user
@@ -233,14 +303,18 @@
     that a user-mode application cannot cause system instability by accessing protected
     memory or I/O ports. Third-party drivers can get their code to run in kernel mode
     by implementing and installing signed drivers.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一节中，我们看到虚拟内存是如何被划分为用户空间（进程内存）和内核空间（内核内存）的。*用户空间*包含运行时具有受限访问权限的代码（例如可执行文件和DLL），即*用户模式*。换句话说，运行在用户空间中的可执行文件或DLL代码不能访问内核空间中的任何内容，也不能直接与硬件进行交互。*内核空间*包含内核本身（`ntoskrnl.exe`）和*设备驱动程序*。在内核空间中运行的代码具有较高的权限，称为*内核模式*，它可以访问用户空间和内核空间。通过为内核提供较高的权限级别，操作系统确保用户模式的应用程序无法通过访问受保护的内存或I/O端口来导致系统不稳定。第三方驱动程序可以通过实现并安装签名驱动程序将其代码运行在内核模式中。
 - en: The difference between the space (user space/kernel space) and the mode (user
     mode/kernel mode) is that *space* specifies the location where the contents (data/code)
     are stored, and *mode* refers to the execution mode, which specifies how an application's
     instructions are allowed to execute.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 空间（用户空间/内核空间）和模式（用户模式/内核模式）之间的区别在于，*空间*指定内容（数据/代码）存储的位置，而*模式*指的是执行模式，指定应用程序指令如何被允许执行。
 - en: 'If the user-mode applications cannot directly interact with the hardware, then
     the question is, how can a malware binary running in user-mode write content to
     a file on the disk by calling the `WriteFile` API?. In fact, most of the APIs
@@ -255,15 +329,21 @@
     as a gateway for the GUI applications. In the next section, we will mainly focus
     on the transition of the API call to the kernel executive''s system service routines
     via `ntdll.dll`:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果用户模式的应用程序无法直接与硬件交互，那么问题来了，如何通过调用`WriteFile` API，用户模式下运行的恶意软件二进制文件能够将内容写入磁盘上的文件呢？事实上，大多数用户模式应用程序调用的API最终会调用内核执行程序（`ntoskrnl.exe`）中实现的*系统服务例程*（函数），而这些函数又与硬件交互（例如，用于写入磁盘上的文件）。同样，任何调用与GUI相关的API的用户模式应用程序，最终都会调用内核空间中的`win32k.sys`暴露的函数。以下图示说明了这一概念；为了简化起见，我删除了用户空间的一些组件。`ntdll.dll`（驻留在用户空间中）充当用户空间与内核空间之间的网关。以同样的方式，`user32.dll`充当GUI应用程序的网关。在下一节中，我们将主要关注通过`ntdll.dll`将API调用过渡到内核执行程序的系统服务例程：
 - en: '![](../images/00236.jpeg)'
+  id: totrans-37
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00236.jpeg)'
 - en: 2.1 Windows API Call Flow
+  id: totrans-38
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.1 Windows API 调用流程
 - en: 'The Windows operating system provides services by exposing APIs implemented
     in DLLs. An application uses the service by calling the API implemented in the
     DLL. Most API functions end up calling the *system service routine* in the `ntoskrnl.exe`
@@ -272,11 +352,16 @@
     (executive). Specifically, we will look at what happens when an application invokes
     the `WriteFile()` API. The following diagram gives a high-level overview of the
     API call flow:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: Windows操作系统通过暴露实现于DLL中的API来提供服务。应用程序通过调用实现于DLL中的API来使用该服务。大多数API函数最终都会调用`ntoskrnl.exe`（内核执行程序）中的*系统服务例程*。在本节中，我们将研究应用程序调用API时发生了什么，以及API如何最终调用`ntoskrnl.exe`（执行程序）中的系统服务例程。具体来说，我们将探讨应用程序调用`WriteFile()`
+    API时发生的情况。以下图表概述了API调用流程的高层次概览：
 - en: '![](../images/00237.jpeg)'
+  id: totrans-40
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00237.jpeg)'
 - en: When a process is invoked by double-clicking a program, the process executable
     image and all its associated DLLs are loaded into the process memory by the Windows
     loader. When a process starts, the main thread gets created, which reads the executable
@@ -285,9 +370,11 @@
     the code (a process is merely a container for the threads). The thread that is
     created starts executing in the user-mode (with restricted access). A process
     may explicitly create additional threads, as required.
+  id: totrans-41
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 当通过双击程序启动一个进程时，进程的可执行映像及其所有相关的DLL会被Windows加载器加载到进程内存中。当进程启动时，会创建主线程，主线程从内存中读取可执行代码并开始执行。需要记住的重要一点是，不是进程执行代码，而是线程执行代码（进程只是线程的容器）。创建的线程在用户模式下开始执行（具有受限访问权限）。进程可以根据需要显式地创建额外的线程。
 - en: Let's suppose that an application needs to call the `WriteFile()` API, which
     is exported by `kernel32.dll`. To transfer the execution control to `WriteFile()`,
     the thread has to know the address of `WriteFile()` in the memory. If the application
@@ -296,15 +383,19 @@
     preceding diagram. This table is located in an application's executable image
     in the memory, and it is populated by the windows loader with the function addresses
     when the DLLs are loaded.
+  id: totrans-42
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 假设一个应用程序需要调用由`kernel32.dll`导出的`WriteFile()` API。为了将执行控制转移到`WriteFile()`，线程必须知道`WriteFile()`在内存中的地址。如果应用程序导入了`WriteFile()`，那么它可以通过查看一个函数指针表格，称为*导入地址表（IAT）*，来确定其地址，如前面的图所示。该表格位于应用程序的可执行映像中，并且在加载DLL时，Windows加载器会填充该表格，填入函数地址。
 - en: An application can also load a DLL during runtime by calling the `LoadLibrary()`
     API, and it can determine the address of a function within the loaded DLL by using
     the `GetProcessAddress()` API. If an application loads a DLL during runtime, then
     the IAT does not get populated.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用程序也可以通过调用`LoadLibrary()` API在运行时加载DLL，并且可以通过使用`GetProcessAddress()` API来确定加载的DLL中某个函数的地址。如果应用程序在运行时加载了DLL，那么IAT就不会被填充。
 - en: Once the thread determines the address of `WriteFile()` from the IAT or during
     runtime, it calls `WriteFile()`, implemented in `kernel32.dll`. The code in the
     `WriteFile()` function ends up calling a function, `NtWriteFile()`, exported by
@@ -314,9 +405,12 @@
     the real implementation. The `NtWriteFile()` in `ntdll.dll` is just a stub routine
     that executes either `SYSENTER` (x86) or `SYSCALL` (x64) instructions. These instructions
     transition the code to the kernel mode.
+  id: totrans-44
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦线程从IAT或运行时中确定了`WriteFile()`的地址，它就会调用`WriteFile()`，该函数在`kernel32.dll`中实现。`WriteFile()`函数中的代码最终会调用一个由网关DLL
+    `ntdll.dll` 导出的函数`NtWriteFile()`。`ntdll.dll`中的`NtWriteFile()`并不是真正实现的`NtWriteFile()`。具有相同名称的实际函数`NtWriteFile()`（系统服务例程）位于`ntoskrnl.exe`（执行程序）中，包含真正的实现。`ntdll.dll`中的`NtWriteFile()`只是一个桩程序，它执行`SYSENTER`（x86）或`SYSCALL`（x64）指令，这些指令将代码切换到内核模式。
 - en: Now, the thread running in kernel mode (with unrestricted access) needs to find
     the address of the actual function, `NtWriteFile()`, implemented in `ntoskrnl.exe`.
     To do that, it consults a table in the kernel space called the *System Service
@@ -326,26 +420,34 @@
     manager*. The I/O manager then directs the request to the appropriate kernel-mode
     device driver. The kernel-mode device driver uses the routines exported by `HAL`
     to interface with the hardware.
+  id: totrans-45
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，运行在内核模式下的线程（具有无限制访问权限）需要找到实际的`NtWriteFile()`函数的地址，该函数由`ntoskrnl.exe`实现。为此，它查阅了内核空间中的一个表格，称为*系统服务描述符表（SSDT）*，并确定了`NtWriteFile()`的地址。然后它调用Windows执行程序中的实际`NtWriteFile()`（系统服务例程）（位于`ntoskrnl.exe`中），该函数将请求引导到*I/O管理器*中的I/O功能。I/O管理器随后将请求传递给适当的内核模式设备驱动程序。内核模式设备驱动程序使用`HAL`导出的例程与硬件进行交互。
 - en: 3\. Code Injection Techniques
+  id: totrans-46
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3. 代码注入技术
 - en: 'As mentioned earlier, the objective of a code injection technique is to inject
     code into the remote process memory and execute the injected code within the context
     of a remote process. The injected code could be a module such as an executable,
     DLL, or even shellcode. Code injection techniques provide many benefits for attackers;
     once the code is injected into the remote process, an adversary can do the following
     things:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前所述，代码注入技术的目标是将代码注入到远程进程的内存中，并在远程进程的上下文中执行注入的代码。注入的代码可以是一个模块，如可执行文件、DLL，甚至是Shellcode。代码注入技术为攻击者提供了许多好处；一旦代码被注入到远程进程中，对手可以执行以下操作：
 - en: Force the remote process to execute the injected code to perform malicious actions
     (such as downloading additional files or stealing keystrokes).
+  id: totrans-48
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 强制远程进程执行注入的代码以执行恶意操作（例如下载附加文件或窃取击键）。
 - en: Inject a malicious module (such as a DLL) and redirect the API call made by
     the remote process to a malicious function in the injected module. The malicious
     function can then intercept the input parameters of the API call, and also filter
@@ -361,24 +463,37 @@
     server, and it also allows an attacker to replace or insert additional data into
     the server’s response (such as inserting an extra field into the HTML content)
     before it reaches the victim's browser.
+  id: totrans-49
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 注入一个恶意模块（如 DLL），并将远程进程的 API 调用重定向到注入模块中的恶意函数。恶意函数可以拦截 API 调用的输入参数，同时过滤输出参数。例如，*Internet
+    Explorer* 使用 `HttpSendRequest()` 发送一个包含可选 POST 负载的请求到 Web 服务器，并使用 `InternetReadFile()`
+    从服务器的响应中获取字节，以便在浏览器中显示。攻击者可以将一个模块注入到 Internet Explorer 的进程内存中，并将 `HttpSendRequest()`
+    重定向到注入模块中的恶意函数，从 POST 负载中提取凭证。以同样的方式，它可以拦截通过 `InternetReadFile()` API 接收到的数据，以读取或修改从
+    Web 服务器接收到的数据。这使得攻击者可以在数据到达 Web 服务器之前拦截数据（如银行凭证），并且还可以在数据到达受害者浏览器之前，替换或插入额外的数据到服务器响应中（如向
+    HTML 内容中插入一个额外字段）。
 - en: Injecting code into an already running process allows an adversary to achieve
     persistence.
+  id: totrans-50
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将代码注入到已运行的进程中，可以让攻击者实现持久性。
 - en: Injecting code into trusted processes allows an attacker to bypass security
     products (such as whitelisting software) and hide from the user.
+  id: totrans-51
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将代码注入到受信任的进程中，可以让攻击者绕过安全产品（如白名单软件）并隐藏自己。
 - en: In this section, we will mainly focus on the code injection techniques in the
     user-space. We will look at various methods used by the attackers to perform code
     injection into the remote process.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将主要关注用户空间中的代码注入技术。我们将探讨攻击者用来将代码注入远程进程的各种方法。
 - en: In the following code injection techniques, there is a malware process (*launcher*
     or *loader*) that injects code, and a legitimate process (such as `explorer.exe`)
     into which the code will be injected. Before performing code injection, the launcher
@@ -393,8 +508,14 @@
     by malware to determine whether it is the target process or not. Sometimes, instead
     of injecting code into an already running process, malicious programs launch a
     new process (such as `notepad.exe`) and then inject code into it.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下代码注入技术中，有一个恶意进程（*启动器*或*加载器*）用于注入代码，另一个合法进程（如`explorer.exe`）则是代码将被注入的目标进程。在执行代码注入之前，启动器需要首先识别要注入代码的进程。这通常通过枚举系统中运行的进程来实现；它使用三个
+    API 调用：`CreateToolhelp32Snapshot()`、`Process32First()` 和 `Process32Next()`。`CreateToolhelp32Snapshot()`
+    用于获取所有运行中的进程的快照；`Process32First()` 获取快照中第一个进程的信息；`Process32Next()` 在循环中用于遍历所有进程。`Process32First()`
+    和 `Process32Next()` APIs 获取进程的相关信息，如可执行文件名、进程 ID 和父进程 ID；这些信息可供恶意软件判断是否是目标进程。有时，恶意程序会选择启动一个新进程（如
+    `notepad.exe`），然后将代码注入到该进程中，而不是注入到已运行的进程。
 - en: 'Whether the malware injects code into an already running process or launches
     a new process to inject code, the objective in all the code injection techniques
     (covered next) is to inject malicious code (either DLL, executable, or Shellcode)
@@ -403,15 +524,22 @@
     the malicious component to be injected can reside on the disk or in the memory.
     The following diagram should give you a high-level overview of code injection
     techniques in the user-space:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论恶意软件是将代码注入到已在运行的进程中，还是启动一个新进程来注入代码，所有代码注入技术（接下来会介绍）的目标都是将恶意代码（可以是 DLL、可执行文件或
+    Shellcode）注入到目标（合法）进程的地址空间，并迫使合法进程执行注入的代码。根据代码注入技术，待注入的恶意组件可以存储在磁盘上或内存中。以下图示应能为您提供一个关于用户空间代码注入技术的高层次概览：
 - en: '![](../images/00238.jpeg)'
+  id: totrans-55
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00238.jpeg)'
 - en: 3.1 Remote DLL Injection
+  id: totrans-56
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.1 远程 DLL 注入
 - en: In this technique, the target (remote) process is forced to load a malicious
     DLL into its process memory space via the `LoadLibrary()` API. The `kernel32.dll`
     exports `LoadLibrary()`, and this function takes a single argument, which is the
@@ -422,15 +550,23 @@
     process, the target process loads the malicious DLL into its address space. Once
     the target process loads the malicious DLL, the operating system automatically
     calls the DLL's `DllMain()` function, thus executing the malicious code.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此技术中，目标（远程）进程被强制通过`LoadLibrary()` API 将一个恶意 DLL 加载到其进程内存空间中。`kernel32.dll`
+    导出 `LoadLibrary()`，此函数接受一个参数，即磁盘上 DLL 的路径，并将该 DLL 加载到调用进程的地址空间中。在这种注入技术中，恶意软件进程在目标进程中创建一个线程，并使该线程调用
+    `LoadLibrary()`，通过传递恶意 DLL 路径作为参数。由于线程是在目标进程中创建的，目标进程将恶意 DLL 加载到其地址空间中。一旦目标进程加载了恶意
+    DLL，操作系统会自动调用该 DLL 的 `DllMain()` 函数，从而执行恶意代码。
 - en: 'The following steps describe in detail how this technique is performed, with
     an example of a malware named `nps.exe` (loader or launcher) that injects a DLL
     via `LoadLibrary()` into the legitimate `explorer.exe` process. Before injecting
     the malicious DLL component, it is dropped onto the disk, and then the following
     steps are performed:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下步骤详细描述了如何执行该技术，并以名为`nps.exe`（加载器或启动器）的恶意软件为例，通过`LoadLibrary()`将 DLL 注入到合法的
+    `explorer.exe` 进程中。在注入恶意 DLL 组件之前，它会被写入磁盘，然后执行以下步骤：
 - en: 'The malware process (`nps.exe`) identifies the target process (`explorer.exe`,
     in this case) and gets its process ID (pid). The idea of getting the pid is to
     open a handle to the target process so that the malware process can interact with
@@ -439,12 +575,17 @@
     calls `OpenProcess()` by passing the pid of `explorer.exe` (`0x624`, which is
     `1572`) as the third parameter. The return value of `OpenProcess()` is the handle
     to the `explorer.exe` process:'
+  id: totrans-59
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件进程（`nps.exe`）识别目标进程（在此案例中为`explorer.exe`）并获取其进程 ID（pid）。获取 pid 的目的是打开一个目标进程的句柄，以便恶意软件进程能够与其交互。为了打开句柄，使用`OpenProcess()`
+    API，其中一个接受的参数是进程的 pid。在下面的截图中，恶意软件通过将 `explorer.exe` 的 pid（`0x624`，即`1572`）作为第三个参数来调用`OpenProcess()`。`OpenProcess()`的返回值是指向`explorer.exe`进程的句柄：
 - en: '![](../images/00239.jpeg)'
+  id: totrans-60
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00239.jpeg)'
 - en: 'The malware process then allocates memory in the target process using the `VirutualAllocEx()`
     API. In the following screenshot, the 1^(st) argument (`0x30`) is the handle to
     `explorer.exe` (the target process), which it acquired from the previous step.
@@ -452,12 +593,18 @@
     in the target process, and the 5^(th) argument (`0x4`) is a constant value that
     represents the memory protection of `PAGE_READWRITE`. The return value of `VirtualAllocEx()`
     is the address of the allocated memory in `explorer.exe`:'
+  id: totrans-61
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件进程接着使用`VirutualAllocEx()` API 在目标进程中分配内存。在下面的截图中，第一个参数（`0x30`）是`explorer.exe`（目标进程）的句柄，它是从前一步获取的。第三个参数，`0x27
+    (39)`，表示在目标进程中要分配的字节数，第五个参数（`0x4`）是常量值，表示 `PAGE_READWRITE` 内存保护。`VirtualAllocEx()`
+    的返回值是 `explorer.exe` 中分配内存的地址：
 - en: '![](../images/00240.jpeg)'
+  id: totrans-62
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00240.jpeg)'
 - en: 'The reason for allocating the memory in the target process is to copy a string
     that identifies the full path of the malicious DLL on the disk. The malware uses
     `WriteProcessMemory()` to copy the DLL pathname to the allocated memory in the
@@ -465,12 +612,18 @@
     is the address of the allocated memory in the target process, and the 3^(rd) argument
     is the full path to the DLL that will be written to the allocated memory address
     `0x01E30000` in `explorer.exe`:'
+  id: totrans-63
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在目标进程中分配内存的原因是为了复制一个字符串，该字符串标识磁盘上恶意 DLL 的完整路径。恶意软件使用 `WriteProcessMemory()`
+    将 DLL 路径名复制到目标进程中分配的内存。在下面的截图中，第 2 个参数 `0x01E30000` 是目标进程中分配内存的地址，第 3 个参数是将写入目标内存地址
+    `0x01E30000` 中的 DLL 完整路径，该路径将写入 `explorer.exe` 中：
 - en: '![](../images/00241.jpeg)'
+  id: totrans-64
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00241.jpeg)'
 - en: The idea of copying the DLL pathname to the target process memory is that, later,
     when the remote thread is created in the target process and when `LoadLibrary()`
     is called via a remote thread, the DLL path will be passed as the argument to
@@ -479,9 +632,14 @@
     API and passes `kernel32.dll` as the argument, which will return the base address
     of `Kernel32.dll`. Once it gets the base address of `kernel32.dll`, it determines
     the address of `LoadLibrary()` by calling `GetProcessAddress()`.
+  id: totrans-65
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将 DLL 路径名复制到目标进程内存中的想法是，稍后，当在目标进程中创建远程线程并通过远程线程调用 `LoadLibrary()` 时，DLL 路径将作为参数传递给
+    `LoadLibrary()`。在创建远程线程之前，恶意软件必须确定 `LoadLibrary()` 在 `kernel32.dll` 中的地址；为此，它调用
+    `GetModuleHandleA()` API，并将 `kernel32.dll` 作为参数传递，该函数将返回 `Kernel32.dll` 的基地址。一旦获得
+    `kernel32.dll` 的基地址，它通过调用 `GetProcessAddress()` 确定 `LoadLibrary()` 的地址。
 - en: 'At this point, the malware has copied the DLL pathname in the target process
     memory, and it has determined the address of `LoadLibrary()`. Now, the malware
     needs to create a thread in the target process (`explorer.exe`), and this thread
@@ -498,18 +656,30 @@
     the DLL from the disk into the `explorer.exe` process memory space. As a result
     of loading the malicious DLL, its `DLLMain()` function gets called automatically,
     thereby executing malicious code within the context of `explorer.exe`:'
+  id: totrans-66
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 此时，恶意软件已将 DLL 路径名复制到目标进程的内存中，并且已确定 `LoadLibrary()` 的地址。接下来，恶意软件需要在目标进程（`explorer.exe`）中创建一个线程，并且该线程必须通过传递已复制的
+    DLL 路径名来执行 `LoadLibrary()`，以便 `explorer.exe` 加载恶意 DLL。为此，恶意软件调用 `CreateRemoteThread()`（或未文档化的
+    API `NtCreateThreadEx()`），该 API 会在目标进程中创建一个线程。在下面的截图中，`CreateRemoteThread()` 的第
+    1 个参数 `0x30` 是 `explorer.exe` 进程的句柄，在此进程中将创建该线程。第 4 个参数是目标进程内存中线程将开始执行的地址，即 `LoadLibrary()`
+    的地址，第 5 个参数是目标进程内存中包含 DLL 完整路径的地址。调用 `CreateRemoteThread()` 后，在 `explorer.exe`
+    中创建的线程将调用 `LoadLibrary()`，从磁盘加载 DLL 到 `explorer.exe` 的进程内存空间中。由于加载了恶意 DLL，其 `DLLMain()`
+    函数会自动被调用，从而在 `explorer.exe` 上下文中执行恶意代码：
 - en: '![](../images/00242.jpeg)'
+  id: totrans-67
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00242.jpeg)'
 - en: Once the injection is complete, the malware calls the `VirtualFree()` API to
     free the memory containing the DLL path and closes the handle to the target process
     (`explorer.exe`) by using the `CloseHandle()` API.
+  id: totrans-68
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 注入完成后，恶意软件调用 `VirtualFree()` API 释放包含 DLL 路径的内存，并使用 `CloseHandle()` API 关闭对目标进程（`explorer.exe`）的句柄。
 - en: A malicious process can inject code into other processes running with the same
     integrity level or lower. For instance, a malware process running with medium
     integrity can inject code into the `explorer.exe` process (which also runs with
@@ -517,29 +687,42 @@
     process needs to enable `SE_DEBUG_PRIVILEGE` (which requires administrator privileges)
     by calling `AdjustTokenPrivileges()`; this allows it to read, write, or inject
     code into another process's memory.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意进程可以将代码注入到与其具有相同或更低完整性级别的其他进程中。例如，一个具有中等完整性级别的恶意进程可以将代码注入到同样具有中等完整性级别的 `explorer.exe`
+    进程中。要操控系统级进程，恶意进程需要通过调用 `AdjustTokenPrivileges()` 启用 `SE_DEBUG_PRIVILEGE`（这需要管理员权限）；这样它就可以读取、写入或将代码注入到另一个进程的内存中。
 - en: 3.2 DLL Injection Using APC (APC Injection)
+  id: totrans-70
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.2 使用 APC 进行 DLL 注入（APC 注入）
 - en: In the previous technique, after writing the DLL pathname, `CreateRemoteThread()`
     was invoked to create a thread in the target process, which in turn called `LoadLibrary()`
     to load the malicious DLL. The *APC injection* technique is similar to remote
     DLL injection, but instead of using `CreateRemoteThread()`, a malware makes use
     of *Asynchronous Procedure Calls (APCs)* to force the thread of a target process
     to load the malicious DLL.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前述技术中，写入 DLL 路径名后，调用 `CreateRemoteThread()` 创建目标进程中的线程，该线程进而调用 `LoadLibrary()`
+    来加载恶意 DLL。*APC 注入* 技术与远程 DLL 注入类似，但不同的是，恶意软件利用 *异步过程调用（APC）* 来强制目标进程的线程加载恶意 DLL，而不是使用
+    `CreateRemoteThread()`。
 - en: 'An APC is a function that executes asynchronously in the context of a particular
     thread. Each thread contains a queue of APCs that will be executed when the target
     thread enters an alertable state. As per Microsoft documentation ([https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx)),
     a thread enters an alertable state if it calls one of the following functions:'
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: APC 是在特定线程的上下文中异步执行的一个函数。每个线程都有一个 APC 队列，当目标线程进入可警报状态时，队列中的 APC 将会被执行。根据微软文档（[https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681951(v=vs.85).aspx)），线程会在调用以下函数之一时进入可警报状态：
 - en: '[PRE1]'
+  id: totrans-73
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The way the APC injection technique works is, a malware process identifies the
     thread in the target process (the process into which the code will be injected)
     that is in an alertable state, or likely to go into an alertable state. It then
@@ -547,8 +730,11 @@
     function. The idea of queuing the custom code is that, when the thread enters
     the alertable state, the custom code gets picked up from the APC queue, and it
     gets executed by the thread of the target process.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: APC 注入技术的工作原理是，恶意软件进程识别目标进程中处于可警报状态或可能进入可警报状态的线程。然后，它使用 `QueueUserAPC()` 函数将自定义代码放入该线程的
+    APC 队列中。排队自定义代码的目的是，当线程进入可警报状态时，线程会从 APC 队列中获取并执行该代码。
 - en: 'The following steps describe a malware sample using APC injection to load a
     malicious DLL into the Internet Explorer `(iexplore.exe)` process. This technique
     starts with the same four steps as remote DLL injection (in other words, it opens
@@ -556,18 +742,27 @@
     malicious DLL pathname into the allocated memory, and determines the address of
     `Loadlibrary()`). It then follows these steps to force the remote thread to load
     the malicious DLL:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下步骤描述了一个恶意软件样本，通过 APC 注入技术将恶意 DLL 加载到 Internet Explorer `（iexplore.exe）` 进程中。这项技术与远程
+    DLL 注入的四个步骤相同（换句话说，它打开了 `iexplore.exe` 的句柄，在目标进程中分配内存，将恶意 DLL 的路径名复制到分配的内存中，并确定
+    `Loadlibrary()` 的地址）。接下来，按照以下步骤强制远程线程加载恶意 DLL：
 - en: 'It opens a handle to the thread of the target process using the `OpenThread()`
     API. In the following screenshot, the 3^(rd) argument, `0xBEC(3052)`, is the thread
     ID (TID) of the `iexplore.exe` process. The return value of `OpenThread()` is
     the handle to the thread of `iexplore.exe`:'
+  id: totrans-76
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 它使用 `OpenThread()` API 打开目标进程线程的句柄。在以下截图中，第三个参数 `0xBEC(3052)` 是 `iexplore.exe`
+    进程的线程 ID (TID)。`OpenThread()` 的返回值是 `iexplore.exe` 线程的句柄：
 - en: '![](../images/00243.jpeg)'
+  id: totrans-77
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00243.jpeg)'
 - en: 'The malware process then calls `QueueUserAPC()` to queue the APC function in
     the Internet Explorer thread''s APC queue. In the following screenshot, the 1^(st)
     argument to `QueueUserAPC()` is the pointer to the APC function that the malware
@@ -577,32 +772,49 @@
     is the address in the target process (`iexplore.exe`) memory containing the full
     path to the malicious DLL; this argument will automatically be passed as the parameter
     to the APC function (`LoadLibrary()`) when the thread executes it:'
+  id: totrans-78
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意程序接着调用 `QueueUserAPC()` 将 APC 函数排入 Internet Explorer 线程的 APC 队列。在下图中，`QueueUserAPC()`
+    的第 1 个参数是指向恶意程序希望目标线程执行的 APC 函数的指针。在此案例中，APC 函数是之前确定的 `LoadLibrary()` 地址。第 2 个参数
+    `0x22c` 是 `iexplore.exe` 目标线程的句柄。第 3 个参数 `0x2270000` 是目标进程（`iexplore.exe`）内存中包含恶意
+    DLL 完整路径的地址；当线程执行该 APC 函数时，这个参数会自动作为参数传递给 APC 函数（`LoadLibrary()`）：
 - en: '![](../images/00244.jpeg)'
+  id: totrans-79
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00244.jpeg)'
 - en: 'The following screenshot shows the content of the address `0x2270000` in Internet
     Explorer''s process memory  (this was passed as the 3rd argument to `QueueUserAPC()`);
     this address contains the full path to the DLL that was previously written by
     the malware:'
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图显示了 Internet Explorer 进程内存中地址 `0x2270000` 的内容（这是作为第 3 个参数传递给 `QueueUserAPC()`
+    的地址）；该地址包含恶意软件之前写入的 DLL 的完整路径：
 - en: '![](../images/00245.jpeg)'
+  id: totrans-81
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00245.jpeg)'
 - en: At this point, the injection is complete, and when the thread of the target
     process enters an alertable state, the thread executes `LoadLibrary()` from the
     APC queue, and the full path to the DLL is passed as an argument to `LoadLibrary()`.
     As a result, the malicious DLL gets loaded into the target process address space,
     which in turn invokes the `DLLMain()` function containing the malicious code.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 到此为止，注入过程已经完成，当目标进程的线程进入可警报状态时，线程会从 APC 队列中执行 `LoadLibrary()`，并将 DLL 的完整路径作为参数传递给
+    `LoadLibrary()`。结果，恶意 DLL 被加载到目标进程的地址空间，从而调用包含恶意代码的 `DLLMain()` 函数。
 - en: 3.3 DLL Injection Using SetWindowsHookEx()
+  id: totrans-83
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.3 使用 SetWindowsHookEx() 进行 DLL 注入
 - en: In the previous chapter (refer to *Section 1.3.2, Keylogger Using SetWindowsHookEx*),
     we looked at how malware uses the `SetWindowsHookEx()` API to install a *hook
     procedure* to monitor keyboard events. The `SetWindowsHookEx()` API can also be
@@ -615,8 +827,13 @@
     the hook is installed, the thread of the target process will invoke the hook procedure.
     To invoke a hook procedure defined in the DLL, it must load the DLL (containing
     the hook procedure) into the address space of the target process.
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中（请参阅 *第 1.3.2 节，使用 SetWindowsHookEx 的键盘记录器*），我们研究了恶意软件如何使用 `SetWindowsHookEx()`
+    API 安装 *钩子过程* 来监控键盘事件。`SetWindowsHookEx()` API 还可以用来将 DLL 加载到目标进程的地址空间并执行恶意代码。为了做到这一点，恶意软件首先将恶意
+    DLL 加载到自身的地址空间中。接着，它为特定事件（如 *键盘* 或 *鼠标事件*）安装一个 *钩子过程*（由恶意 DLL 导出的函数），并将该事件与目标进程的线程（或当前桌面上的所有线程）关联。其原理是，当某个特定事件被触发时，目标进程的线程会调用安装的钩子过程。为了调用
+    DLL 中定义的钩子过程，必须将 DLL（包含钩子过程）加载到目标进程的地址空间中。
 - en: In other words, an attacker creates a DLL containing an *export* function. The
     export function containing the malicious code is set as the *hook procedure* for
     a particular event. The hook procedure is associated with a thread of the target
@@ -626,35 +843,47 @@
     the hook for any type of event, as long as that event is likely to occur. The
     point here is that the DLL is loaded into the address space of the target process,
     and performs malicious actions.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 换句话说，攻击者创建一个包含*导出*函数的DLL。包含恶意代码的导出函数被设置为特定事件的*钩子程序*。钩子程序与目标进程的一个线程相关联，当事件触发时，攻击者的DLL被加载到目标进程的地址空间，钩子程序由目标进程的线程调用，从而执行恶意代码。恶意软件可以为任何类型的事件设置钩子，只要该事件有可能发生。关键点在于，DLL被加载到目标进程的地址空间并执行恶意行为。
 - en: 'The following describes the steps used by the malware sample (*Trojan Padador*)
     to load its DLL into the address space of the remote process and to execute the
     malicious code:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下描述了恶意软件样本（*Trojan Padador*）加载其DLL到远程进程的地址空间并执行恶意代码的步骤：
 - en: 'The malware executable drops a DLL named `tckdll.dll` on the disk. The DLL
     contains an entrypoint function, and an export function named `TRAINER`, shown
     as follows. The DLL entry point function does not do much, whereas the `TRAINER` function
     contains the malicious code. This means that whenever a DLL is loaded (its entry
     point function is invoked), no malicious code is executed; only when the `TRAINER` function
     is invoked are the malicious actions performed:'
+  id: totrans-87
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件执行文件将一个名为`tckdll.dll`的DLL文件放置到磁盘上。该DLL包含一个入口点函数和一个名为`TRAINER`的导出函数，如下所示。DLL入口点函数的作用不大，而`TRAINER`函数包含恶意代码。这意味着每当加载DLL时（其入口点函数被调用），恶意代码不会执行；只有当调用`TRAINER`函数时，恶意行为才会被触发：
 - en: '![](../images/00246.jpeg)'
+  id: totrans-88
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00246.jpeg)'
 - en: 'Malware loads the DLL (`tckdll.dll`) into its own address space using the `LoadLibrary()` API,
     but no malicious code is executed at this point. The return value of `LoadLibrary()` is
     the handle to the loaded module (`tckdll.dll`). It then determines the address
     of the `TRAINER` function by using `GetProcAddress()`:'
+  id: totrans-89
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件通过`LoadLibrary()` API将DLL（`tckdll.dll`）加载到自己的地址空间，但此时并未执行任何恶意代码。`LoadLibrary()`的返回值是已加载模块（`tckdll.dll`）的句柄。接着，它使用`GetProcAddress()`来确定`TRAINER`函数的地址：
 - en: '![](../images/00247.jpeg)'
+  id: totrans-90
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00247.jpeg)'
 - en: 'The malware uses the handle to the `tckdll.dll` and the address of the `TRAINER` function
     to register a *hook procedure* for the keyboard event. In the following screenshot,
     the 1^(st) argument, `WH_KEYBOARD` (constant value `2`), specifies the type of
@@ -665,24 +894,32 @@
     procedure must be associated with all of the threads in the current desktop. Instead
     of associating the hook procedure with all of the desktop threads, a malware may
     choose to target a specific thread by providing its thread ID:'
+  id: totrans-91
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件使用`tckdll.dll`的句柄和`TRAINER`函数的地址来为键盘事件注册一个*钩子程序*。在下面的截图中，第一个参数`WH_KEYBOARD`（常量值`2`）指定了触发钩子程序的事件类型。第二个参数是钩子程序的地址，即前一步确定的`TRAINER`函数的地址。第三个参数是`tckdll.dll`的句柄，它包含钩子程序。第四个参数`0`指定钩子程序必须与当前桌面上的所有线程相关联。恶意软件也可以选择通过提供线程ID来将钩子程序与特定线程关联，而不是将其与所有桌面线程关联：
 - en: '![](../images/00248.jpeg)'
+  id: totrans-92
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00248.jpeg)'
 - en: After performing the preceding steps, when the keyboard event is triggered within
     an application, that application will load the malicious DLL and invoke the `TRAINER` function.
     For instance, when you launch *Notepad* and enter some characters (which triggers
     a keyboard event), `tckdll.dll` will be loaded into Notepad's address space, and
     the `TRAINER` function will be invoked, forcing the `notepad.exe` process to execute
     malicious code.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行上述步骤后，当应用程序内触发键盘事件时，该应用程序将加载恶意DLL并调用`TRAINER`函数。例如，当你启动*记事本*并输入一些字符（触发键盘事件）时，`tckdll.dll`将被加载到记事本的地址空间中，并调用`TRAINER`函数，迫使`notepad.exe`进程执行恶意代码。
 - en: 3.4 DLL Injection Using The Application Compatibility Shim
+  id: totrans-94
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4 使用应用程序兼容性补丁的 DLL 注入
 - en: 'The Microsoft Windows *application compatibility infrastructure/framework (application
     shim)* is a feature that allows programs created for older versions of the operating
     system (such as Windows XP) to work with modern versions of the operating system
@@ -699,11 +936,19 @@
     modify the response from the Windows operating system. The following diagram should
     help you to understand the differences in interactions between the normal and shimmed
     applications in the Windows operating system:'
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 微软 Windows *应用程序兼容性框架/基础结构（应用程序补丁）* 是一项功能，允许为旧版本操作系统（如 Windows XP）创建的程序在现代操作系统版本（如
+    Windows 7 或 Windows 10）上运行。这是通过 *应用程序兼容性修复*（*补丁*）来实现的。补丁由微软提供给开发者，以便他们可以在不重写代码的情况下修复程序。当补丁应用到程序时，并且当被补丁处理的程序执行时，补丁引擎会将补丁程序的
+    API 调用重定向到补丁代码；这是通过将 IAT 中的指针替换为补丁代码的地址来完成的。应用程序如何使用 IAT 的详细信息在 *2.1** Windows
+    API 调用流程* 小节中已有说明。换句话说，它挂钩 Windows API，将调用重定向到补丁代码，而不是直接在 DLL 中调用 API。由于 API 重定向，补丁代码可以修改传递给
+    API 的参数、重定向 API，或修改来自 Windows 操作系统的响应。下图应该有助于你理解 Windows 操作系统中普通应用程序与补丁应用程序交互的差异：
 - en: '![](../images/00249.jpeg)'
+  id: totrans-96
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00249.jpeg)'
 - en: To help you understand the functionality of a shim, let's look at an example.
     Suppose that a few years back (before the release of Windows 7), you wrote an
     application (`xyz.exe`) that checked the OS version, before performing some useful
@@ -715,8 +960,14 @@
     XP. To make that application work on Windows 7, you can either fix the code and
     rebuild the program, or you can apply a shim called `WinXPVersionLie` to that
     application (`xyz.exe`).
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了帮助你理解补丁的功能，我们来看一个例子。假设在几年前（Windows 7 发布之前），你编写了一个应用程序（`xyz.exe`），在执行某些有用操作之前，会检查操作系统版本。假设你的应用程序通过调用
+    `kernel32.dll` 中的 `GetVersion()` API 来确定操作系统版本。简而言之，只有在操作系统版本为 Windows XP 时，应用程序才会执行某些有用的操作。现在，如果你将这个应用程序（`xyz.exe`）在
+    Windows 7 上运行，它将不会做任何有用的事情，因为 `GetVersion()` 返回的 Windows 7 操作系统版本与 Windows XP
+    不匹配。为了使该应用程序在 Windows 7 上正常运行，你可以修复代码并重新编译程序，或者你可以对该应用程序（`xyz.exe`）应用一个名为 `WinXPVersionLie`
+    的补丁。
 - en: After applying the shim, when the shimmed application (`xyz.exe`) is executed
     on Windows 7 and when it tries to determine the OS version by calling `GetVersion()`,
     the shim engine intercepts and returns a different version of Windows (Windows
@@ -725,46 +976,68 @@
     call to the shim code (instead of `kernel32.dll`). In other words, the `WinXPVersionLie` shim
     is tricking the application into believing it is running on Windows XP, without
     modifying the code in the application.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 在应用补丁后，当补丁应用程序（`xyz.exe`）在 Windows 7 上执行，并尝试通过调用 `GetVersion()` 来确定操作系统版本时，补丁引擎会拦截并返回一个不同版本的
+    Windows（Windows XP，而非 Windows 7）。具体来说，当补丁应用程序执行时，补丁引擎会修改 IAT（导入地址表），并将 `GetVersion()`
+    API 调用重定向到补丁代码（而非 `kernel32.dll`）。换句话说，`WinXPVersionLie` 补丁通过欺骗应用程序，使其认为自己运行在
+    Windows XP 上，而无需修改应用程序中的代码。
 - en: For detailed information on the workings of the shim engine, refer to Alex Ionescu's
     blog post, *Secrets of the Application Compatibility Database (SDB)* at [http://www.alex-ionescu.com/?p=39](http://www.alex-ionescu.com/?p=39).
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 要了解 shim 引擎的详细信息，请参考 Alex Ionescu 的博客文章，*应用程序兼容性数据库（SDB）的秘密*，网址为 [http://www.alex-ionescu.com/?p=39](http://www.alex-ionescu.com/?p=39)。
 - en: Microsoft provides *hundreds of shims* (like `WinXPVersionLie`) that can be
     applied to an application to alter its behavior. Some of these shims are abused
     by attackers to achieve persistence, to inject code, and for executing malicious
     code with elevated privileges.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 微软提供了*数百个 shim*（如 `WinXPVersionLie`），可以应用于应用程序以改变其行为。这些 shim 中有一些被攻击者滥用，用于实现持久化、注入代码以及以提升的权限执行恶意代码。
 - en: 3.4.1 Creating A Shim
+  id: totrans-101
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4.1 创建一个 Shim
 - en: 'There are many shims that can be abused by attackers for malicious purposes.
     In this section, I will walk you through the process of creating a shim for injecting
     a DLL into a target process; this will help you understand how easy it is for
     an attacker to create a shim and abuse this feature. In this case, we will create
     a shim for `notepad.exe` and make it load a DLL of our choice. Creating a shim
     for an application can be broken down into four steps:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 有许多 shim 可以被攻击者滥用以进行恶意操作。在这一部分，我将带你了解创建一个 shim 以注入 DLL 到目标进程的过程；这将帮助你理解攻击者如何轻松地创建一个
+    shim 并滥用此功能。在这个案例中，我们将为 `notepad.exe` 创建一个 shim，使它加载我们选择的 DLL。为应用程序创建一个 shim 可以分为四个步骤：
 - en: Choosing the application to shim.
+  id: totrans-103
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 选择要 shim 的应用程序。
 - en: Creating the shim database for the application.
+  id: totrans-104
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 为应用程序创建 shim 数据库。
 - en: Saving the database (`.sdb` file).
+  id: totrans-105
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 保存数据库（`.sdb` 文件）。
 - en: Installing the database.
+  id: totrans-106
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安装数据库。
 - en: To create and install a shim, you need to have administrator rights. You can
     perform all of the preceding steps by using a tool provided by Microsoft, called *Application
     Compatibility Toolkit (ACT)*. For Windows 7, it can be downloaded from [https://www.microsoft.com/en-us/download/details.aspx?id=7352](https://www.microsoft.com/en-us/download/details.aspx?id=7352), and
@@ -774,26 +1047,42 @@
     Administrator Tool *(32-bit and 64-bit). To shim a 32-bit program, you must use
     the 32-bit version Compatibility Administrator Tool, and to shim a 64-bit program,
     use the 64-bit version.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 要创建和安装一个 shim，你需要具有管理员权限。你可以使用微软提供的工具，*应用程序兼容性工具包（ACT）*，来执行所有上述步骤。对于 Windows
+    7，可以从 [https://www.microsoft.com/en-us/download/details.aspx?id=7352](https://www.microsoft.com/en-us/download/details.aspx?id=7352)
+    下载；对于 Windows 10，它与 Windows ADK 捆绑在一起；根据版本，下载地址为 [https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit](https://developer.microsoft.com/en-us/windows/hardware/windows-assessment-deployment-kit)。在
+    64 位版本的 Windows 上，ACT 会安装两个版本的 *兼容性管理员工具*（32 位和 64 位）。要对 32 位程序进行 shim 操作，必须使用
+    32 位版本的兼容性管理员工具；要对 64 位程序进行 shim 操作，则使用 64 位版本。
 - en: 'To demonstrate this concept, I will be using a 32-bit version of Windows 7,
     and the target process chosen is `notepad.exe`. We will create an `InjectDll` shim
     to make `notepad.exe` load a DLL named `abcd.dll`. To create a shim, launch the
     Compatibility Administrator Tool (32-bit) from the start menu, and right-click
     on New Database | Application Fix:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示这一概念，我将使用 32 位版本的 Windows 7，选择的目标进程是 `notepad.exe`。我们将创建一个 `InjectDll` shim，使得
+    `notepad.exe` 加载一个名为 `abcd.dll` 的 DLL。要创建一个 shim，请从开始菜单启动兼容性管理员工具（32 位），然后右键点击“新建数据库
+    | 应用程序修复”。
 - en: '![](../images/00250.jpeg)'
+  id: totrans-109
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00250.jpeg)'
 - en: 'In the following dialog, enter the details of the application that you want
     to shim. The name of the program and vendor name can be anything, but the program
     file location should be correct:'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下对话框中，输入你想要 shim 的应用程序的详细信息。程序名称和厂商名称可以随意设置，但程序文件的位置必须正确。
 - en: '![](../images/00251.jpeg)'
+  id: totrans-111
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00251.jpeg)'
 - en: 'After you press the Next button, you will be presented with a**Compatibility
     Modes** dialog; you can simply press the Next button. In the next window, you
     will be presented with a Compatibility Fixes (Shims) dialog; this is where you
@@ -803,60 +1092,92 @@
     Click on OK and press the Next button. An important point to note is that the `InjectDll` shim
     option is available only in the 32-bit Compatibility Administrator Tool, which
     means that you can apply this shim only to a 32-bit process:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你按下“下一步”按钮后，会出现一个**兼容性模式**对话框；你可以直接按“下一步”按钮。在下一个窗口中，会出现一个兼容性修复（Shim）对话框；在这里，你可以选择各种
+    shim。在此案例中，我们关注的是`InjectDll` shim。选择`InjectDll` shim复选框，然后点击“参数”按钮并输入 DLL 的路径（这是我们希望记事本加载的
+    DLL），如下所示。点击“确定”并按“下一步”按钮。需要注意的一点是，`InjectDll` shim选项仅在 32 位兼容性管理员工具中可用，这意味着你只能将这个
+    shim 应用于 32 位进程：
 - en: '![](../images/00252.jpeg)'
+  id: totrans-113
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00252.jpeg)'
 - en: 'Next, you will be presented with a screen that specifies which attributes will
     be matched for the program (*Notepad*). The selected attributes will be matched
     when `notepad.exe` is run, and after the matching condition is satisfied, the
     shim will be applied. To make the matching criteria less restrictive, I have unchecked
     all of the options, shown here:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，你将看到一个屏幕，指定哪些属性将用于匹配程序（*记事本*）。当`notepad.exe`运行时，选定的属性将被匹配，当匹配条件满足后，shim
+    将被应用。为了使匹配标准不那么严格，我取消了所有选项，如下所示：
 - en: '![](../images/00253.jpeg)'
+  id: totrans-115
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00253.jpeg)'
 - en: 'After you click on Finish, a complete summary of the application and the fixes
     applied will be presented to you, as follows. At this point, the shim database
     containing the shim information for `notepad.exe` is created:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 点击“完成”后，你将看到应用程序及其应用的修复程序的完整摘要，如下所示。此时，包含`notepad.exe`的 shim 信息的 shim 数据库已创建：
 - en: '![](../images/00254.jpeg)'
+  id: totrans-117
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00254.jpeg)'
 - en: The next step is to save the database; to do that, click on the Save button,
     and, when prompted, give a name to your database and save the file. In this case,
     the database file is saved as `notepad.sdb` (you are free to choose any filename).
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步是保存数据库；为此，点击“保存”按钮，并在提示时给你的数据库命名并保存文件。在此案例中，数据库文件保存为`notepad.sdb`（你可以选择任何文件名）。
 - en: 'After the database file has been saved, the next step is to install the database.
     You can install it by right-clicking on the saved shim and clicking the Install button,
     as shown here:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据库文件保存后，下一步是安装数据库。你可以通过右键单击已保存的 shim 并点击“安装”按钮来安装它，如下所示：
 - en: '![](../images/00255.jpeg)'
+  id: totrans-120
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00255.jpeg)'
 - en: 'Another method for installing the database is to use a built-in, command-line
     utility, `sdbinst.exe`; the database can be installed by using the following command:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种安装数据库的方法是使用内置的命令行工具`sdbinst.exe`；你可以通过以下命令安装数据库：
 - en: '[PRE2]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Now, if you invoke `notepad.exe`, `abcd.dll` will be loaded from the `c:\test` directory
     into Notepad''s process address space, as shown here:'
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，如果你调用`notepad.exe`，`abcd.dll`将从`c:\test`目录加载到记事本的进程地址空间中，如下所示：
 - en: '![](../images/00256.jpeg)'
+  id: totrans-124
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00256.jpeg)'
 - en: 3.4.2 Shim Artifacts
+  id: totrans-125
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4.2 Shim 工件
 - en: 'At this point, you have an understanding of how a shim can be used to load
     a DLL into the address space of a target process. Before we look at how attackers
     use the shim, it is essential to understand what artifacts are created when you
@@ -865,27 +1186,43 @@
     installer creates a GUID for the database and copies the `.sdb` file into `%SystemRoot%\AppPatch\Custom\<GUID>.sdb` (for
     32-bit shims) or `%SystemRoot%\AppPatch\Custom\Custom64\<GUID>.sdb` (for 64-bit
     shims). It also creates two registry entries in the following registry keys:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 此时，你已经了解了如何使用 shim 将 DLL 加载到目标进程的地址空间。在我们讨论攻击者如何使用 shim 之前，首先必须了解安装 shim 数据库时会创建哪些工件（无论是通过右键单击数据库并选择“安装”，还是使用`sdbinst.exe`工具）。当你安装数据库时，安装程序会为数据库创建一个
+    GUID，并将 `.sdb` 文件复制到`%SystemRoot%\AppPatch\Custom\<GUID>.sdb`（32 位 shim）或`%SystemRoot%\AppPatch\Custom\Custom64\<GUID>.sdb`（64
+    位 shim）。它还会在以下注册表项中创建两个注册表项：
 - en: '[PRE3]'
+  id: totrans-127
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'The following screenshot shows the registry entry created in `HKLM\SOFTWARE\Microsoft\Windows
     NT\CurrentVersion\AppCompatFlags\Custom\`. This registry entry contains the name
     of the program for which the shim is applied, and the associated shim database
     file (`<GUID>.sdb`):'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了在 `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Custom\`
+    中创建的注册表项。此注册表项包含应用 shim 的程序名称以及关联的 shim 数据库文件（`<GUID>.sdb`）：
 - en: '![](../images/00257.jpeg)'
+  id: totrans-129
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00257.jpeg)'
 - en: 'The second registry, `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\InstalledSDB\`, contains
     the database information and the installation path of the shim database file:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 第二个注册表项，`HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\InstalledSDB\`，包含数据库信息和
+    shim 数据库文件的安装路径：
 - en: '![](../images/00258.jpeg)'
+  id: totrans-131
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00258.jpeg)'
 - en: These artifacts are created so that when the shimmed application is executed,
     the loader determines whether the application needs to be shimmed by consulting
     these registry entries, and invokes the shim engine that will use the configuration
@@ -893,120 +1230,184 @@
     One more artifact that is created as a result of installing the shim database
     is that an entry is added to the list of *installed programs* in the *control
     panel*.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些工件的创建目的是，当应用了 shim 的应用程序执行时，加载器会通过查阅这些注册表项来判断应用是否需要被 shim，并调用 shim 引擎，该引擎将使用位于
+    `AppPatch\` 目录中的 `.sdb` 文件配置来 shim 应用程序。另一个结果是，安装 shim 数据库时会将条目添加到 *控制面板* 中的 *已安装程序*
+    列表中。
 - en: 3.4.3 How Attackers Use Shims
+  id: totrans-133
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4.3 攻击者如何使用 Shim
 - en: 'The following steps describe the manner in which an attacker may shim an application
     and install it on a victim system:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下步骤描述了攻击者如何将一个应用程序应用 shim 并将其安装到受害者系统上的方式：
 - en: An attacker creates an *application compatibility database (shim database)*
     for the target application (such as `notepad.exe`, or any legitimate third-party
     application frequently used by the victim). An attacker can choose a single shim,
     such as `InjectDll`, or multiple shims.
+  id: totrans-135
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 攻击者为目标应用程序（如 `notepad.exe` 或受害者常用的任何合法第三方应用程序）创建 *应用程序兼容性数据库（shim 数据库）*。攻击者可以选择一个单独的
+    shim，例如 `InjectDll`，或多个 shim。
 - en: The attacker saves the shim database (`.sdb` file) created for the target application.
+  id: totrans-136
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 攻击者保存为目标应用程序创建的 shim 数据库（`.sdb` 文件）。
 - en: The `.sdb` file is delivered and dropped on the victim system (mostly via malware),
     and it is installed, typically using the `sdbinst` utility.
+  id: totrans-137
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`.sdb` 文件被传送并丢弃在受害者系统上（通常通过恶意软件），并且它被安装，通常使用 `sdbinst` 工具。'
 - en: The attacker invokes the target application or waits for the user to execute
     the target application.
+  id: totrans-138
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 攻击者调用目标应用程序或等待用户执行目标应用程序。
 - en: An attacker may also delete the malware that installed the shim database. In
     that case, you are only left with the `.sdb` file.
+  id: totrans-139
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 攻击者还可以删除安装 shim 数据库的恶意软件。在这种情况下，你只剩下 `.sdb` 文件。
 - en: An attacker can install a shim database just by dropping the `.sdb` file in
     some location on the filesystem and modifying the minimal set of registry entries.
     This technique avoids using the `sdbinst` utility. The `shim_persist` object ([https://github.com/hasherezade/persistence_demos/tree/master/shim_persist](https://github.com/hasherezade/persistence_demos/tree/master/shim_persist))
     is a POC, written by the security researcher Hasherezade (`@hasherezade`), that
     drops a DLL in the `programdata` directory and installs a shim without using the
     `sdbinst` utility to inject the dropped DLL into the `explorer.exe` process.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 攻击者可以通过将 `.sdb` 文件丢到文件系统的某个位置并修改最小的注册表项集合来安装 shim 数据库。这种方法避免了使用 `sdbinst` 工具。`shim_persist`
+    对象（[https://github.com/hasherezade/persistence_demos/tree/master/shim_persist](https://github.com/hasherezade/persistence_demos/tree/master/shim_persist)）是由安全研究员
+    Hasherezade（`@hasherezade`）编写的一个 POC，旨在将 DLL 丢入 `programdata` 目录并安装 shim，而无需使用
+    `sdbinst` 工具，将丢弃的 DLL 注入 `explorer.exe` 进程。
 - en: 'Malware authors have abused shims for different purposes, such as achieving
     persistence, code injection, disabling security features, executing code with
     elevated privileges, and bypassing a *User Account Control (UAC)* prompt. The
     following table outlines some of the interesting shims and their descriptions:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意软件作者已将 shim 滥用用于不同的目的，例如实现持久性、代码注入、禁用安全功能、以提升的权限执行代码，以及绕过 *用户帐户控制 (UAC)* 提示。下表概述了部分有趣的
+    shim 及其描述：
 - en: '| **Shim Name** | **Description** |'
+  id: totrans-142
   prefs: []
   type: TYPE_TB
+  zh: '| **Shim 名称** | **描述** |'
 - en: '| `RedirectEXE` | Redirects execution |'
+  id: totrans-143
   prefs: []
   type: TYPE_TB
+  zh: '| `RedirectEXE` | 重定向执行 |'
 - en: '| `InjectDll` | Injects DLL into an application |'
+  id: totrans-144
   prefs: []
   type: TYPE_TB
+  zh: '| `InjectDll` | 将 DLL 注入应用程序 |'
 - en: '| `DisableNXShowUI` | Disables *Data Execution Prevention* *(DEP)* |'
+  id: totrans-145
   prefs: []
   type: TYPE_TB
+  zh: '| `DisableNXShowUI` | 禁用*数据执行防护*（*DEP*） |'
 - en: '| `CorrectFilePaths` | Redirects filesystem paths |'
+  id: totrans-146
   prefs: []
   type: TYPE_TB
+  zh: '| `CorrectFilePaths` | 重定向文件系统路径 |'
 - en: '| `VirtualRegistry` | Registry redirection |'
+  id: totrans-147
   prefs: []
   type: TYPE_TB
+  zh: '| `VirtualRegistry` | 注册表重定向 |'
 - en: '| `RelaunchElevated` | Launches application with elevated privileges |'
+  id: totrans-148
   prefs: []
   type: TYPE_TB
+  zh: '| `RelaunchElevated` | 以提升的权限重新启动应用程序 |'
 - en: '| `TerminateExe` | Terminates an executable upon launch |'
+  id: totrans-149
   prefs: []
   type: TYPE_TB
+  zh: '| `TerminateExe` | 启动时终止可执行文件 |'
 - en: '| `DisableWindowsDefender` | Disables Windows Defender service for application
     |'
+  id: totrans-150
   prefs: []
   type: TYPE_TB
+  zh: '| `DisableWindowsDefender` | 禁用 Windows Defender 服务以供应用程序使用 |'
 - en: '| `RunAsAdmin` | Marks an application to run with admin privileges |'
+  id: totrans-151
   prefs: []
   type: TYPE_TB
+  zh: '| `RunAsAdmin` | 标记应用程序以管理员权限运行 |'
 - en: For more information on how the shims are used in the attacks, refer to the
     talks presented at various conferences by the security researchers, all of which
     can be found at [https://sdb.tools/talks.html](https://sdb.tools/talks.html).
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 欲了解有关 shim 如何在攻击中使用的更多信息，请参考安全研究人员在各大会议上发布的演讲，所有这些演讲均可在[https://sdb.tools/talks.html](https://sdb.tools/talks.html)找到。
 - en: 3.4.4 Analyzing The Shim Database
+  id: totrans-153
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4.4 分析 Shim 数据库
 - en: To shim an application, an attacker installs the shim database (`.sdb`), which
     resides somewhere on the victim's filesystem. Assuming that you have identified
     the `.sdb` file used in the malicious activity, you can investigate the `.sdb`
     file by using a tool such as `sdb-explorer` ([https://github.com/evil-e/sdb-explorer](https://github.com/evil-e/sdb-explorer))
     or `python-sdb` ([https://github.com/williballenthin/python-sdb](https://github.com/williballenthin/python-sdb)).
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 要为应用程序安装 shim，攻击者会在受害者的文件系统中某个位置安装 shim 数据库（`.sdb`）。假设你已识别出在恶意活动中使用的 `.sdb`
+    文件，你可以使用如`sdb-explorer`（[https://github.com/evil-e/sdb-explorer](https://github.com/evil-e/sdb-explorer)）或`python-sdb`（[https://github.com/williballenthin/python-sdb](https://github.com/williballenthin/python-sdb)）等工具来调查该
+    `.sdb` 文件。
 - en: 'In the following example, `python-sdb` tool was used to investigate the shim
     database (`.sdb`) file that we created earlier. Running `python-sdb` on the shim
     database displays its elements as shown here:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的示例中，使用了`python-sdb`工具来调查我们之前创建的 shim 数据库（`.sdb`）文件。运行`python-sdb`工具查看 shim
+    数据库时，将显示其元素，如下所示：
 - en: '[PRE4]'
+  id: totrans-156
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: In one of the attacks, the `RedirectEXE` shim was used by the *dridex* malware
     to bypass UAC. It installed the shim database and deleted it immediately after
     elevating the privilege. For more details, refer to the blog post at [http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html](http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html).
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 在一次攻击中，*dridex* 恶意软件使用了`RedirectEXE` shim 来绕过 UAC。它安装了 shim 数据库，并在提升权限后立即删除了该数据库。有关详细信息，请参阅博客文章：[http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html](http://blog.jpcert.or.jp/2015/02/a-new-uac-bypass-method-that-dridex-uses.html)。
 - en: 3.5 Remote Executable/Shellcode Injection
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.5 远程可执行文件/恶意代码注入
 - en: In this technique, the malicious code is injected into the target process memory
     directly, without dropping the component on the disk. The malicious code can be
     a *shellcode* or an *executable* whose import address table is configured for
@@ -1016,18 +1417,26 @@
     of this method is that the malware process does not have to drop the malicious
     DLL on the disk; it can extract the code to inject from the *resource section*
     of the binary, or get it over the network and perform code injection directly.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此技术中，恶意代码直接注入到目标进程内存中，而无需将组件写入磁盘。恶意代码可以是*shellcode*或*可执行文件*，其导入地址表已为目标进程配置。通过使用`CreateRemoteThread()`创建远程线程来强制执行注入的恶意代码，并且线程的起始位置指向注入代码块中的代码/函数。这种方法的优点是恶意软件进程无需将恶意
+    DLL 写入磁盘；它可以从二进制文件的*资源区*提取代码进行注入，或者通过网络获取代码并直接进行代码注入。
 - en: 'The following steps describe how this technique is performed, with an example
     of a malware sample named `nsasr.exe` (*W32/Fujack*), which injects the executable
     into the Internet Explorer (`iexplorer.exe`) process:'
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下步骤描述了如何执行此技术，以一个名为`nsasr.exe`（*W32/Fujack*）的恶意软件样本为例，该恶意软件将可执行文件注入到 Internet
+    Explorer（`iexplorer.exe`）进程中：
 - en: The malware process (`nsasr.exe`) opens a handle to the Internet Explorer process
     (`iexplore.exe`) using the `OpenProcess()` API.
+  id: totrans-161
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 恶意软件进程（`nsasr.exe`）使用`OpenProcess()` API 打开 Internet Explorer 进程（`iexplore.exe`）的句柄。
 - en: It allocates memory in the target process (`iexplore.exe`) at a specific address, `0x13150000`,
     using `VirutualAllocEx()` with `PAGE_EXECUTE_READWRITE` protection, instead of
     `PAGE_READWRITE` (as compared to the *remote DLL injection technique*, *covered
@@ -1035,9 +1444,11 @@
     (`nsasr.exe`) to write the code into the target process, and, after writing the
     code, this protection allows the target process (`iexplore.exe`) to read and execute
     code from this memory.
+  id: totrans-162
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用`VirutualAllocEx()`在目标进程（`iexplore.exe`）中的特定地址`0x13150000`分配内存，使用`PAGE_EXECUTE_READWRITE`保护，而不是`PAGE_READWRITE`（与*远程DLL注入技术*相比，*在第3.1节中介绍*）。保护`PAGE_EXECUTE_READWRITE`允许恶意软件进程（`nsasr.exe`）将代码写入目标进程，并且在写入代码后，此保护允许目标进程（`iexplore.exe`）从此内存中读取和执行代码。
 - en: 'It then writes the malicious executable content into the memory allocated in
     the previous step using `WriteProcessMemory()`. In the following screenshot, the
     1^(st) argument, `0xD4`, is the handle to `iexplore.exe`. The 2^(nd) argument,
@@ -1045,12 +1456,16 @@
     the content will be written to. The 3rd argument, `0x13150000`, is the buffer
     in the malware (`nsasr.exe`) process memory; this buffer contains the executable
     content, which will be written to the target process memory:'
+  id: totrans-163
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，使用`WriteProcessMemory()`将恶意可执行内容写入前一步分配的内存中。在下面的截图中，第1个参数`0xD4`是指向`iexplore.exe`的句柄。第2个参数`0x13150000`是目标进程（`iexplore.exe`）内存中将要写入内容的地址。第3个参数`0x13150000`是恶意软件（`nsasr.exe`）进程内存中的缓冲区；该缓冲区包含将要写入目标进程内存的可执行内容：
 - en: '![](../images/00259.jpeg)'
+  id: totrans-164
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00259.jpeg)'
 - en: 'After the malicious executable content is written (at the address `0x13150000`)
     in the `iexplore.exe` process memory, it calls the `CreateRemoteThread()` API
     to create a remote thread, and the start address of the thread is made to point
@@ -1059,9 +1474,11 @@
     (`iexplore.exe`) memory where the thread will start executing; this is the *entry
     point address* of the injected executable. At this point, the injection is complete,
     and the thread in the `iexplore.exe` process starts executing malicious code:'
+  id: totrans-165
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在恶意可执行内容（在地址`0x13150000`处）写入`iexplore.exe`进程内存后，调用`CreateRemoteThread()` API创建一个远程线程，并使线程的起始地址指向注入可执行文件的*入口点地址*。在下面的截图中，第4个参数`0x13152500`指定了目标进程（`iexplore.exe`）内存中线程将开始执行的地址；这是注入可执行文件的*入口点地址*。此时，注入完成，`iexplore.exe`进程中的线程开始执行恶意代码：
 - en: '![](../images/00260.jpeg)*Reflective DLL injection* is a technique similar
     to remote executable/ShellCode injection. In this method, a DLL containing the
     reflective loader component is directly injected, and the target process is made
@@ -1071,12 +1488,17 @@
     function to load the DLL. Since `LoadLibrary()` can only load the library from
     the disk, the injected DLL need not reside on the disk. For more information on
     this technique, refer to *Reflective DLL Injection* by Stephen Fewer at [https://github.com/stephenfewer/ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection).'
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](../images/00260.jpeg)*反射式DLL注入*是一种类似于远程可执行代码/ShellCode注入的技术。在这种方法中，直接注入包含反射式加载器组件的DLL，并使目标进程调用负责解析导入项、将其重定位到适当内存位置并调用`DllMain()`函数的反射式加载器组件。这种技术的优点在于它不依赖于`LoadLibrary()`函数来加载DLL。由于`LoadLibrary()`只能从磁盘加载库，因此注入的DLL无需驻留在磁盘上。有关此技术的更多信息，请参考Stephen
+    Fewer的*反射式DLL注入*，网址为[https://github.com/stephenfewer/ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection)。'
 - en: 3.6 Hollow Process Injection (Process Hollowing)
+  id: totrans-167
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.6 空洞进程注入（进程空洞化）
 - en: '*Process hollowing,* or *Hollow Process Injection,* is a code injection technique
     in which the executable section of the legitimate process in the memory, is replaced
     with a malicious executable. This technique allows an attacker to disguise his
@@ -1088,12 +1510,14 @@
     legitimate executable path (`C:\Windows\system32\svchost.exe`)**,** but, only
     in the memory, the executable section of `svchost.exe` is replaced with the malicious
     code; this allows an attacker to remain undetected from live forensic tools.'
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
 - en: 'The following steps describe the hollow process injection performed by the
     malware sample (*Skeeyah*)*.* In the following description, the malware process
     extracts the malicious executable to be injected from its *resource section* before
     performing these steps:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
 - en: 'The malware process starts a legitimate process in the suspended mode. As a
@@ -1104,10 +1528,12 @@
     In the following screenshot, the malware starts the legitimate `svchost.exe` process
     in suspended mode, and the `svchost.exe`, in this case, is loaded into the address
     `0x01000000`:'
+  id: totrans-170
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '![](../images/00261.jpeg)'
+  id: totrans-171
   prefs: []
   type: TYPE_IMG
 - en: 'The malware determines the address of the `PEB` structure so that it can read
@@ -1124,67 +1550,89 @@
     which contains the pointer to the `PEB` data structure. Once the address of the
     `PEB` is determined, it then reads the `PEB.ImageBaseAddress` to determine the
     base address of the process executable (in other words, `0x01000000`):'
+  id: totrans-172
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '![](../images/00262.jpeg)'
+  id: totrans-173
   prefs: []
   type: TYPE_IMG
 - en: Another method to determine the pointer to PEB is using the `NtQueryInformationProcess()`
     function; details are available at [https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx).
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 确定PEB指针的另一种方法是使用`NtQueryInformationProcess()`函数；有关详细信息，请访问[https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684280(v=vs.85).aspx)。
 - en: 'Once the address of the target process executable in memory is determined,
     it then deallocates the executable section of the legitimate process (`svchost.exe`)
     using the `NtUnMapViewofSection()` API. In the following screenshot, the 1^(st)
     argument is the handle (`0x34`) to the `svchost.exe` process, and the 2^(nd) argument
     is the base address of the process executable (`0x01000000`) to deallocate:'
+  id: totrans-175
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦确定了内存中要操作的目标进程可执行文件的地址，就使用`NtUnMapViewofSection()` API释放合法进程（`svchost.exe`）的可执行部分。在下面的截图中，第一个参数是指向`svchost.exe`进程的句柄（`0x34`），第二个参数是要释放的进程可执行文件的基本地址（`0x01000000`）：
 - en: '![](../images/00263.jpeg)'
+  id: totrans-176
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00263.jpeg)'
 - en: 'After the process executable section is hollowed out, it allocates a new memory
     segment in the legitimate process (`svchost.exe`), with `read`, `write`, and `execute`
     permission. The new memory segment can be allocated in the same address (where
     the process executable resided before hollowing) or in a different region. In
     the following screenshot, the malware uses `VirutalAllocEX()` to allocate memory
     in a different region (in this case, at `0x00400000`):'
+  id: totrans-177
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在进程可执行部分被挖空后，在合法进程（`svchost.exe`）中分配一个具有`读取`、`写入`和`执行`权限的新内存段。新的内存段可以分配在相同的地址（在进程被挖空之前的位置）或不同的区域。在下面的截图中，恶意软件使用`VirutalAllocEX()`在不同的区域（在本例中为`0x00400000`）中分配内存：
 - en: '![](../images/00264.jpeg)'
+  id: totrans-178
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00264.jpeg)'
 - en: 'It then copies the malicious executable and its sections, using `WriteProcessMemory()`,
     into the newly allocated memory address at `0x00400000`:'
+  id: totrans-179
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后使用`WriteProcessMemory()`将恶意可执行文件及其各个部分复制到新分配的内存地址`0x00400000`：
 - en: '![](../images/00265.jpeg)'
+  id: totrans-180
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00265.jpeg)'
 - en: 'The malware then overwrites the `PEB.ImageBaseAdress` of the legitimate process
     with the newly allocated address. The following screenshot shows the malware overwriting
     the `PEB.ImageBaseAdress` of `svchost.exe` with the new address (`0x00400000`);
     this changes the base address of `svchost.exe` in `PEB` from `0x1000000` to `0x00400000`
     (this address now contains the injected executable):'
+  id: totrans-181
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，恶意软件将合法进程的`PEB.ImageBaseAdress`覆盖为新分配的地址。下面的截图显示了恶意软件使用新地址（`0x00400000`）覆盖`svchost.exe`的`PEB.ImageBaseAdress`；这将使`PEB`中`svchost.exe`的基本地址从`0x1000000`更改为`0x00400000`（此地址现在包含注入的可执行文件）：
 - en: '![](../images/00266.jpeg)'
+  id: totrans-182
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00266.jpeg)'
 - en: 'The malware then changes the *start address* of the suspended thread to point
     to the *address of entry point* of the injected executable. This is done by setting
     the `CONTEXT._Eax` value and calling `SetThreadContext()`. At this point, the
     thread of the suspended process points to the injected code. It then resumes the
     suspended thread using `ResumeThread()`. After this, the resumed thread starts
     executing the injected code:'
+  id: totrans-183
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后恶意软件将悬停线程的*起始地址*更改为注入可执行文件的*入口点地址*。这是通过设置`CONTEXT._Eax`值并调用`SetThreadContext()`来实现的。此时，悬停进程的线程指向注入代码。然后使用`ResumeThread()`恢复已悬停的线程。之后，恢复的线程开始执行注入的代码：
 - en: '![](../images/00267.jpeg)A malware process may just use `NtMapViewSection()` 
     to avoid using `VirtualAllocEX()` and `WriteProcessMemory()` to write the malicious
     executable content into the target process; this allows the malware to map a section
@@ -1194,9 +1642,11 @@
     techniques. To get an idea of this, watch *author''s Black Hat presentation* at
     [https://www.youtube.com/watch?v=9L9I1T5QDg4](https://www.youtube.com/watch?v=9L9I1T5QDg4)
     or read the related blog post at [https://cysinfo.com/detecting-deceptive-hollowing-techniques/](https://cysinfo.com/detecting-deceptive-hollowing-techniques/).'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
 - en: 4\. Hooking Techniques
+  id: totrans-185
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1210,24 +1660,30 @@
     to as *hooking***.** By hooking an API, an attacker can control the execution
     path of the program and re route it to the malicious code of his choice. The malicious
     function can then:'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
 - en: Block calls made to the API by legitimate applications (such as security products).
+  id: totrans-187
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Monitor and intercept input parameters passed to the API.
+  id: totrans-188
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Filter the output parameters returned from the API.
+  id: totrans-189
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: In this section, we will look at different types of hooking techniques.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: 4.1 IAT Hooking
+  id: totrans-191
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1236,17 +1692,21 @@
     (legitimate) process, the code in the injected DLL (`Dllmain()` function) hooks
     the IAT entries in the target process. The following gives a high-level overview
     of the steps used to perform this type of hooking:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: Locate the IAT by parsing the executable image in memory.
+  id: totrans-193
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Identify the entry of the function to hook.
+  id: totrans-194
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Replace the address of the function with the address of the malicious function.
+  id: totrans-195
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
@@ -1256,9 +1716,11 @@
     screenshot displays the legitimate process (before hooking), consulting the IAT
     normally to determine the address of `DeleteFileA()`, and then calling `DeleteFileA()`
     in the `kernel32.dll`:'
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00268.jpeg)'
+  id: totrans-197
   prefs: []
   type: TYPE_IMG
 - en: 'When the program''s IAT is hooked, the address of `DeleteFileA()` in the IAT
@@ -1269,18 +1731,26 @@
     function sitting in between can either prevent the legitimate program from deleting
     the file, or monitor the parameter (the file that is being deleted), and then
     take some action:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 当程序的 IAT 被挂钩时，IAT 中 `DeleteFileA()` 的地址被替换为恶意函数的地址，如下所示。现在，当合法程序调用 `DeleteFileA()`
+    时，调用将被重定向到恶意模块中的恶意函数。然后，恶意函数调用原始的 `DeleteFileA()` 函数，使一切看起来正常。中间的恶意函数可以阻止合法程序删除文件，或者监视参数（正在被删除的文件），然后采取一些行动：
 - en: '![](../images/00269.jpeg)'
+  id: totrans-199
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00269.jpeg)'
 - en: In addition to blocking and monitoring, which typically happens before invoking
     the original function, the malicious function can also filter the output parameters,
     which occurs after the re-invocation. This way, the malware can hook APIs that
     display lists of processes, files, drivers, network ports, and so on, and filter
     the output to hide from the tools that use these API functions.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了阻止和监视之外，通常在调用原始函数之前发生，恶意函数还可以过滤输出参数，这发生在重新调用之后。这样，恶意软件可以挂钩显示进程、文件、驱动程序、网络端口等列表的
+    API，并过滤输出以隐藏不希望被使用这些 API 函数的工具发现。
 - en: The disadvantage for an attacker using this technique is that it does not work
     if the program is using *run time linking,* or if the function the attacker wishes
     to hook has been imported as an *ordinal*. Another disadvantage for the attacker
@@ -1292,12 +1762,19 @@
     technology named *PatchGuard* prevents patching the call tables, including IAT.
     Due to these problems, malware authors use a slightly different hooking technique,
     which is discussed next.
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这种技术的攻击者的劣势在于，如果程序使用*运行时链接*，或者攻击者希望挂钩的函数已被导入为*序数*，则此技术无法使用。攻击者的另一个劣势是，IAT
+    hooking 可以很容易被检测到。在正常情况下，IAT 中的条目应该位于其对应模块的地址范围内。例如，`DeleteFile()` 的地址应该在 `kernel32.dll`
+    的地址范围内。为了检测这种挂钩技术，安全产品可以识别在超出模块地址范围之外的 IAT 中的条目。在 64 位 Windows 上，一种名为*PatchGuard*的技术防止对调用表进行打补丁，包括
+    IAT。由于这些问题，恶意软件作者使用了略有不同的挂钩技术，下面将讨论。
 - en: 4.2 Inline Hooking (Inline Patching)
+  id: totrans-202
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4.2 内联挂钩（内联打补丁）
 - en: IAT hooking relies on swapping the function pointers, whereas, in *inline hooking*,
     the API function itself is modified (patched) to redirect the API to the malicious
     code. As in IAT hooking, this technique allows the attacker to intercept, monitor,
@@ -1306,17 +1783,25 @@
     usually overwritten with a *jump* statement that re routes the program control
     to the malicious code. The malicious code can then intercept the input parameters,
     filter output, and redirect the control back to the original function.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: IAT hooking 依赖于交换函数指针，而*内联挂钩*中，API 函数本身被修改（打补丁）以将 API 重定向到恶意代码。与 IAT hooking
+    类似，这种技术允许攻击者拦截、监视和阻止特定应用程序发出的调用，并过滤输出参数。在内联挂钩中，目标 API 函数的前几个字节（指令）通常被覆盖为一个*跳转*语句，将程序控制重新路由到恶意代码。然后，恶意代码可以拦截输入参数，过滤输出，并将控制重新定向回原始函数。
 - en: 'To help you understand, let''s suppose that an attacker wants to hook the `DeleteFileA()`
     function call made by a legitimate application. Normally, when the legitimate
     application''s thread encounters the call to `DeleteFileA()`, the thread starts
     executing from the start of the `DeleteFileA()` function, as shown here:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了帮助您理解，假设一个攻击者想要挂钩合法应用程序调用的 `DeleteFileA()` 函数。通常，当合法应用程序的线程遇到对 `DeleteFileA()`
+    的调用时，线程从 `DeleteFileA()` 函数的开头开始执行，如下所示：
 - en: '![](../images/00270.jpeg)'
+  id: totrans-205
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00270.jpeg)'
 - en: 'To replace the first few instructions of a function with a jump, the malware
     needs to choose which instructions to replace. The `jmp` instruction requires
     at least 5 bytes, so the malware needs to choose instructions that occupy 5 bytes
@@ -1330,9 +1815,11 @@
     lies below the *patch* (below the jump instruction), as shown in the following
     diagram. The replaced instructions, along with the jump statement that returns
     to the target function, are known as the *trampoline*:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00271.jpeg)'
+  id: totrans-207
   prefs: []
   type: TYPE_IMG
 - en: This technique can be detected by looking for unexpected jump instructions at
@@ -1341,6 +1828,7 @@
     the function. Instead of using a `jmp` instruction, malware may use a `call` instruction,
     or a combination of `push` and `ret` instructions, to redirect control; this technique
     bypasses the security tools, which only look for `jmp` instructions.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
 - en: 'With an understanding of inline hooking, let''s take a look at an example of
@@ -1350,18 +1838,22 @@
     payload. Before hooking, the malicious executable (containing various functions)
     is injected into the address space of Internet Explorer. The following screenshot
     shows the address `0x33D0000`, where the executable is injected:'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00272.jpeg)'
+  id: totrans-210
   prefs: []
   type: TYPE_IMG
 - en: 'After injecting the executable, `HttpSendRequestA()` is hooked to redirect
     the program control to one of the malicious functions within the injected executable.
     Before we look at the hooked function, let''s look at the first few bytes of the
     legitimate `HttpSendRequestA()` function (shown here):'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00273.jpeg)'
+  id: totrans-212
   prefs: []
   type: TYPE_IMG
 - en: 'The first three instructions (occupying 5 bytes, highlighted in the preceding
@@ -1370,12 +1862,15 @@
     with the `jmp` instruction (occupying 5 bytes); note how the *jump* instruction
     redirects control to the malicious code at the address `0x33DEC48`, which falls
     within the address range of the injected executable:'
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00274.jpeg)'
+  id: totrans-214
   prefs: []
   type: TYPE_IMG
 - en: 4.3 In-memory Patching Using Shim
+  id: totrans-215
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1392,13 +1887,16 @@
     allow you to inspect in-memory patching by parsing the shim database (`.sdb`)
     files. The following presentations by these researchers contain detailed information
     on in-memory patches, and the tools to analyze them:'
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
 - en: '*Persist It Using and Abusing Microsoft’s Fix It Patches:* [http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf](http://www.blackhat.com/docs/asia-14/materials/Erickson/WP-Asia-14-Erickson-Persist-It-Using-And-Abusing-Microsofts-Fix-It-Patches.pdf)'
+  id: totrans-217
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*The Real* Shim *Shady:* [http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf](http://files.brucon.org/2015/Tomczak_and_Ballenthin_Shims_for_the_Win.pdf)'
+  id: totrans-218
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
@@ -1407,45 +1905,57 @@
     this malware installs various shim database (files) using the `sdbinst` utility.
     The following screenshot shows shims installed for multiple applications, and
     the screenshot shows the `.sdb` file associated with `explorer.exe`:'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00275.jpeg)'
+  id: totrans-220
   prefs: []
   type: TYPE_IMG
 - en: 'The installed `.sdb` files contain the shellcode that will be patched directly
     into the memory of the target process. You can examine the `.sdb` file using the `sdb_dump_database.py`
     script (part of the `python-sdb` tool) by using the command shown here:'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE5]'
+  id: totrans-222
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The output of the preceding command shows the malware targeting `explorer.exe`
     and applying a shim named `patchdata0`. The `PATCH_BITS` below the shim name is
     a raw binary data that contains the shellcode that will be patched into the memory
     of `explorer.exe`:'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00276.jpeg)'
+  id: totrans-224
   prefs: []
   type: TYPE_IMG
 - en: 'To know what the shellcode is doing, we need to be able to parse `PATCH_BITS`,
     which is an undocumented structure. To parse this structure, you can use the `sdb_dump_patch.py`
     script (part of `python-sdb`) by giving the patch name, `patchdata0`, as shown
     here:'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE6]'
+  id: totrans-226
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'Running the preceding command shows various patches applied in `kernel32.dll`,
     within `explorer.exe`. The following screenshot displays the first patch, where
     it matches two bytes, `8B FF (mov edi,edi)`, at the relative virtual address (RVA)
     `0x0004f0f2`, and replaces them with `EB F9 (jmp 0x0004f0ed)`. In other words,
     it redirects control to the RVA `0x0004f0ed`:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00277.jpeg)'
+  id: totrans-228
   prefs: []
   type: TYPE_IMG
 - en: 'The following output shows another patch applied at the RVA `0x0004f0ed` in
@@ -1453,9 +1963,11 @@
     `call 0x000c61a4`, thereby redirecting the program control to function at the
     RVA `0x000c61a4`. This way, the malware patches multiple locations in `kernel32.dll` 
     and performs various redirections, which finally leads it to the actual shellcode:'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00278.jpeg)'
+  id: totrans-230
   prefs: []
   type: TYPE_IMG
 - en: 'To understand what the malware is patching in `kernel32.dll`, you can attach
@@ -1465,51 +1977,63 @@
     it is loaded at `0x76730000`, and then add the RVA `0x0004f0f2` (in other words, `0x76730000
     + 0x0004f0f2 = 0x7677f0f2`). The following screenshot shows that this address `0x7677f0f2`
     is associated with the API function `LoadLibraryW()`:'
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00279.jpeg)'
+  id: totrans-232
   prefs: []
   type: TYPE_IMG
 - en: 'Inspecting the `LoadLibraryW()` function shows the jump instruction at the
     start of the function, which will ultimately reroute the program control to the
     shellcode:'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
 - en: '![](../images/00280.jpeg)'
+  id: totrans-234
   prefs: []
   type: TYPE_IMG
 - en: This technique is interesting, because in this case, the malware does not allocate
     memory or inject code directly, but relies on Microsoft's shim feature to inject
     the shellcode and hook the `LoadLibraryW()` API. It also makes detection difficult
     by jumping to various locations within `kernel32.dll`.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
 - en: 5\. Additional Resources
+  id: totrans-236
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
 - en: 'In addition to the code injection techniques covered in this chapter, security
     researchers have discovered various other means of injecting code. The following
     are some of the new code injection techniques, and resources for further reading:'
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
 - en: '*ATOMBOMBING: BRAND NEW CODE INJECTION FOR WINDOWS:* [https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows](https://blog.ensilo.com/atombombing-brand-new-code-injection-for-windows)'
+  id: totrans-238
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*PROPagate:* [http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/](http://www.hexacorn.com/blog/2017/10/26/propagate-a-new-code-injection-trick/)'
+  id: totrans-239
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*Process Doppelgänging, by Tal Liberman and Eugene Kogan:* [https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf](https://www.blackhat.com/docs/eu-17/materials/eu-17-Liberman-Lost-In-Transaction-Process-Doppelganging.pdf)'
+  id: totrans-240
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*Gargoyle:* [https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html](https://jlospinoso.github.io/security/assembly/c/cpp/developing/software/2017/03/04/gargoyle-memory-analysis-evasion.html)'
+  id: totrans-241
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*GHOSTHOOK:* [https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/](https://www.cyberark.com/threat-research-blog/ghosthook-bypassing-patchguard-processor-trace-based-hooking/)'
+  id: totrans-242
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
@@ -1518,24 +2042,29 @@
     kernel space hooking techniques in *Chapter 11*). The following books should help
     you gain a deeper understanding of the rootkit techniques and Windows internal
     concepts:'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
 - en: '*The Rootkit Arsenal: Escape and Evasion in the Dark Corners of the System
     (2nd Edition),* by Bill Blunden'
+  id: totrans-244
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*Practical Reverse Engineering: x86, x64, ARM, Windows Kernel, Reversing Tools,
     and Obfuscation,* by Bruce Dang, Alexandre Gazet, and Elias Bachaalany'
+  id: totrans-245
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: '*Windows Internals (7th Edition),* by Pavel Yosifovich, Alex Ionescu, Mark
     E. Russinovich, and David A. Solomon'
+  id: totrans-246
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
 - en: Summary
+  id: totrans-247
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1548,5 +2077,6 @@
     filter an API's output, thereby altering a program's behavior. In the next chapter,
     you will learn the various obfuscation techniques used by adversaries to remain
     undetected from security monitoring solutions.
+  id: totrans-248
   prefs: []
   type: TYPE_NORMAL
