@@ -1,157 +1,230 @@
 - en: '12'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '12'
 - en: Exploring the Antimalware Scan Interface (AMSI)
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 探索反恶意软件扫描接口（AMSI）
 - en: In the past, attackers often used scripts or executables to have their malware
     run on client systems. But antivirus products got better and better over the years,
     which meant that file-based malware could be more easily identified and removed.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 过去，攻击者通常使用脚本或可执行文件让恶意软件在客户端系统上运行。但随着反病毒产品逐年提升，基于文件的恶意软件变得更容易被识别和移除。
 - en: For malware authors, this was a serious problem that they tried to circumvent,
     and so they came up with the solution to run their malicious code directly in
     memory, without touching the hard disk. So, specifically, built-in programs such
     as PowerShell, VBScript, JavaScript, and other tools are being used to run their
     malware attacks. Attackers became creative and obfuscated their code so that it’s
     not obviously identified as malware.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于恶意软件作者来说，这是一个严重的问题，他们试图绕过它，因此他们想出了直接在内存中运行恶意代码的解决方案，而不触及硬盘。具体来说，像PowerShell、VBScript、JavaScript等内置程序和其他工具被用来运行恶意软件攻击。攻击者变得富有创意，并混淆他们的代码，使其不容易被识别为恶意软件。
 - en: Microsoft came up with a solution to inspect the code before running it, called
     the **Antimalware Scan Interface** (**AMSI**). AMSI has developed accordingly
     and can even protect against the most obfuscated attacks. However, it’s a constant
     cat-and-mouse game between attackers and defenders.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 微软提出了解决方案，用于在运行代码之前进行检查，这就是**反恶意软件扫描接口**（**AMSI**）。AMSI已相应发展，甚至可以防御最复杂的攻击。然而，攻击者和防御者之间的猫鼠游戏依然在不断进行。
 - en: 'In this chapter, we will learn how AMSI works, and how attackers are trying
     to bypass it. We will cover the following topics:'
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章将介绍AMSI的工作原理，以及攻击者如何试图绕过它。我们将讨论以下内容：
 - en: What is AMSI and how does it work?
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 什么是AMSI，如何工作？
 - en: Why AMSI? A practical example
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 为什么选择AMSI？一个实际的例子
 - en: 'Bypassing AMSI: PowerShell downgrade attacks, configuration tampering, memory
     patching, hooking, and Dynamic Link Library hijacking'
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 绕过AMSI：PowerShell降级攻击、配置篡改、内存补丁、钩子技术和动态链接库劫持
 - en: Obfuscation and Base64 encoding
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 混淆和Base64编码
 - en: Technical requirements
+  id: totrans-10
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: 'To make the most of this chapter, ensure that you have the following:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了最大限度地利用本章内容，请确保你具备以下条件：
 - en: PowerShell 7.3 and above
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: PowerShell 7.3及以上版本
 - en: Visual Studio Code installed
+  id: totrans-13
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安装了Visual Studio Code
 - en: Ghidra installed
+  id: totrans-14
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安装了Ghidra
 - en: Some basic knowledge of assembly code and debuggers
+  id: totrans-15
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一些关于汇编代码和调试器的基本知识
 - en: 'Access to the GitHub repository for this chapter:'
+  id: totrans-16
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 本章的GitHub存储库访问：
 - en: '[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12)'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter12)'
 - en: What is AMSI and how does it work?
+  id: totrans-18
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 什么是AMSI，如何工作？
 - en: AMSI is an interface that was designed to help with malware defense. Not only
     PowerShell but also other languages such as JavaScript and VBScript can profit
     from it. It also gives third-party and self-written applications the option to
     protect their users from dynamic malware. It was introduced with Windows 10/Windows
     Server 2016.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: AMSI是一个旨在帮助防御恶意软件的接口。不仅PowerShell，其他语言如JavaScript和VBScript也可以从中受益。它还为第三方和自定义应用程序提供了保护用户免受动态恶意软件攻击的选项。它是在Windows
+    10/Windows Server 2016中引入的。
 - en: 'Currently, AMSI is supported for the following products:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前，AMSI支持以下产品：
 - en: PowerShell
+  id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: PowerShell
 - en: Office Visual Basic for Applications macros
+  id: totrans-22
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Office Visual Basic for Applications宏
 - en: VBScript
+  id: totrans-23
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: VBScript
 - en: Excel 4.0 (XLM) macros
+  id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Excel 4.0（XLM）宏
 - en: Windows Management Instrumentation
+  id: totrans-25
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Windows管理工具
 - en: Dynamically loaded .NET assemblies
+  id: totrans-26
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 动态加载的.NET程序集
 - en: JScript
+  id: totrans-27
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: JScript
 - en: MSHTA/JScript9
+  id: totrans-28
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: MSHTA/JScript9
 - en: User Account Control
+  id: totrans-29
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 用户帐户控制
 - en: Windows Script Host (**wscript.exe** and **cscript.exe**)
+  id: totrans-30
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Windows脚本宿主（**wscript.exe** 和 **cscript.exe**）
 - en: Third-party products that support AMSI
+  id: totrans-31
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 支持AMSI的第三方产品
 - en: 'Like other APIs, AMSI provides an interface to the Win32 API and the COM API.
     AMSI is an open standard so it is not limited to PowerShell only; any developer
     can develop their application accordingly to support AMSI, and any registered
     antimalware engine can process the contents provided through AMSI, as depicted
     in the following figure of the AMSI architecture:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 像其他API一样，AMSI提供了Win32 API和COM API的接口。AMSI是一个开放标准，因此不限于PowerShell；任何开发者都可以根据需要开发其应用程序以支持AMSI，并且任何注册的反恶意软件引擎都可以处理通过AMSI提供的内容，正如下图所示的AMSI架构：
 - en: '![Figure 12.1 – AMSI architecture](image/B16679_12_001.jpg)'
+  id: totrans-33
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.1 – AMSI 架构](image/B16679_12_001.jpg)'
 - en: Figure 12.1 – AMSI architecture
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.1 – AMSI 架构
 - en: In this chapter, I will only write about what happens when AMSI is initiated
     through PowerShell, but be aware that it works similarly for all other products
     listed before.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我将仅讨论通过 PowerShell 启动 AMSI 时发生的情况，但请注意，对于前面列出的所有其他产品，它的工作原理类似。
 - en: 'When a PowerShell process is created, **amsi.dll** is loaded into its process
     memory space. Now, whenever the execution of a script is attempted or a command
     is about to be run, it is first sent through **amsi.dll**. Within **amsi.dll**,
@@ -159,91 +232,130 @@
     ensuring that all commands or scripts that are about to be run will be first scanned
     for malicious content by the locally installed antivirus solution before anything
     is executed at all:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 当 PowerShell 进程被创建时，**amsi.dll** 被加载到其进程内存空间中。现在，每当尝试执行脚本或即将运行命令时，都会首先经过 **amsi.dll**。在
+    **amsi.dll** 内部，**AmsiScanBuffer()** 和 **AmsiScanString()** 函数负责确保所有即将运行的命令或脚本在执行之前都会通过本地安装的防病毒解决方案扫描是否存在恶意内容：
 - en: '![Figure 12.2 – AMSI functionality](image/B16679_12_002.jpg)'
+  id: totrans-37
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.2 – AMSI 功能](image/B16679_12_002.jpg)'
 - en: Figure 12.2 – AMSI functionality
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.2 – AMSI 功能
 - en: '**Amsi.dll** then logs the behavior for the code and checks with the current
     antivirus whether any signature was created that matches this behavior. By default,
     Windows Defender is configured, but AMSI also provides an interface for other
     third-party antimalware programs to interact with.'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Amsi.dll** 然后记录代码的行为并检查当前的防病毒软件是否创建了与此行为匹配的签名。默认情况下配置了 Windows Defender，但
+    AMSI 也提供了一个接口，用于与其他第三方防恶意软件程序进行交互。'
 - en: If a signature matches, the code is blocked from execution. If everything seems
     to be fine, the code is executed.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果签名匹配，则阻止代码执行。如果一切看起来正常，则执行代码。
 - en: Why AMSI? A practical example
+  id: totrans-41
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 为什么选择 AMSI？一个实际例子
 - en: Before we dive deeper into what exactly AMSI is, let’s first look at the *why*.
     As I mentioned in the introduction of this chapter, it’s an ongoing battle between
     attackers and defenders. Attackers try to launch successful attacks, while defenders
     try to prevent them.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们深入了解 AMSI 是什么之前，让我们先看看 *为什么*。正如我在本章开头提到的，这是攻击者和防御者之间的持续战斗。攻击者试图发动成功的攻击，而防御者则试图阻止它们。
 - en: In the early days, it was quite easy for attackers. Often, they just had to
     write a script to perform their malicious actions, but soon, defenders reacted
     to that so that their malicious intentions were detected and blocked. Attackers
     had to obfuscate their actions to launch successful attacks.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 在早期，攻击者很容易做到。通常，他们只需编写一个脚本来执行其恶意操作，但很快，防御者做出了反应，以便检测和阻止他们的恶意意图。攻击者不得不混淆他们的行动来发动成功的攻击。
 - en: 'In order to analyze the content, antimalware vendors can create their own in-process
     COM server (DLL) that serves as an AMSI provider and register it under the following
     registry paths:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了分析内容，反恶意软件供应商可以创建自己的进程内 COM 服务器（DLL），作为 AMSI 提供程序，并将其注册在以下注册表路径下：
 - en: '**HKLM\SOFTWARE\Microsoft\AMSI\Providers**'
+  id: totrans-45
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**HKLM\SOFTWARE\Microsoft\AMSI\Providers**'
 - en: '**HKLM\SOFTWARE\Classes\CLSID**'
+  id: totrans-46
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**HKLM\SOFTWARE\Classes\CLSID**'
 - en: A vendor can register one or more AMSI provider DLLs.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 供应商可以注册一个或多个 AMSI 提供程序 DLL。
 - en: When an application (such as PowerShell) submits content to AMSI for scanning,
     the vendor’s AMSI provider DLL receives and analyzes the content. The provider
     DLL analyzes the content and returns a decision to the original application with
     an **AMSI_RESULT** enum value, which indicates whether the code is considered
     malicious or not.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 当应用程序（如 PowerShell）将内容提交给 AMSI 进行扫描时，供应商的 AMSI 提供程序 DLL 接收并分析内容。提供程序 DLL 分析内容并以
+    **AMSI_RESULT** 枚举值的形式向原始应用程序返回决策，指示代码是否被视为恶意。
 - en: If the result is **AMSI_RESULT_DETECTED** and no preventative action has been
     taken, it is up to the submitting application to decide how to handle the identified
     malicious content.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果结果是 **AMSI_RESULT_DETECTED** 并且未采取预防措施，则由提交应用程序决定如何处理已识别的恶意内容。
 - en: To detect malicious scripts and activities, antimalware solutions usually utilize
     signatures, which need to be updated frequently to stay ahead of new threats.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了检测恶意脚本和活动，反恶意软件解决方案通常使用签名，需要频繁更新以应对新威胁。
 - en: PowerShell scripts are essentially text files, which means that they must be
     string parsed to identify malicious behavior. When scripts are obfuscated, it
     becomes even more difficult to detect malicious code. Obfuscation techniques can
     vary widely and often require an unpacker to examine the inner workings of software
     to identify any malicious behavior or code to run for each type of obfuscation
     that could occur.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: PowerShell脚本本质上是文本文件，这意味着它们必须经过字符串解析才能识别恶意行为。当脚本被混淆时，检测恶意代码变得更加困难。混淆技术变化多端，通常需要解包器来检查软件的内部工作原理，以识别任何恶意行为或代码，并针对可能发生的每种混淆类型进行处理。
 - en: While hash smashing, changing variables or parameters, and adding layers of
     obfuscation are trivial for adversaries, for defenders, it is hard to detect malicious
     activities by using signatures.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 对攻击者而言，哈希碰撞、修改变量或参数，以及增加混淆层都是微不足道的事情，但对于防御者来说，通过使用签名来检测恶意活动却非常困难。
 - en: In other forms of code (such as byte code or intermediate languages), the instructions
     compile down to a limited set of instructions, making it easier to emulate APIs.
     With scripts, however, the situation is different, and this makes signature writing
     even more difficult.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 在其他形式的代码（如字节码或中间语言）中，指令会被编译成一组有限的指令，这使得模拟API变得更加容易。然而，对于脚本来说，情况则不同，这使得编写签名变得更加困难。
 - en: 'In the following section, we will look at six examples that will help you understand
     why and how a solution such as AMSI can help extend the functionality of a regular
     antimalware engine, and what the challenges in script writing are for defenders
@@ -251,441 +363,655 @@
     standalone example, but rather, read it as a story. I have numbered the examples
     to make them easier to follow. You can also find the code (as well as the code
     for the encoding) in this chapter’s GitHub repository: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1).'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 在接下来的章节中，我们将通过六个示例来帮助你理解为什么以及如何像AMSI这样的解决方案可以扩展常规反恶意软件引擎的功能，以及防御者在试图领先于恶意软件作者时在脚本编写中面临的挑战。请不要将每个示例当作单独的案例来看，而是将其作为一个整体故事来阅读。我已经为示例编号，以便于跟踪。你还可以在本章的GitHub仓库中找到代码（以及编码代码）：[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Examples_whyAMSI.ps1)。
 - en: Example 1
+  id: totrans-55
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 示例 1
 - en: 'Let’s look at a script that should represent malicious code. In this case,
     it’s harmless, as it only writes **Y0u g0t h4ck3d!** to the command line, as shown
     here:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看一个应该代表恶意代码的脚本。在这种情况下，它是无害的，因为它仅在命令行中输出**Y0u g0t h4ck3d!**，如下面所示：
 - en: '[PRE0]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: A defender could now write a very simple detection signature, looking for the
     **Write-Host "Y0u g0t h4ck3d!"** string to stop the execution of this script.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 防御者现在可以编写一个非常简单的检测签名，查找**Write-Host "Y0u g0t h4ck3d!"** 字符串，以阻止该脚本的执行。
 - en: Example 2
+  id: totrans-59
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 示例 2
 - en: 'Suppose attackers need to come up with a new way to execute their scripts successfully.
     So, they may start breaking the string into pieces and work with variables, as
     well as with concatenation:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设攻击者需要想出一种新的方式来成功执行他们的脚本。那么，他们可能会开始将字符串拆分成多个部分，使用变量，并进行拼接：
 - en: '[PRE1]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: The old signature just searching for the string would not match anymore. In
     response, defenders would start building a simple language emulation. For example,
     if it is spotted that a string is concatenated out of multiple substrings, the
     new algorithm would emulate the concatenation and check it against any malicious
     patterns.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 旧的签名通过仅仅搜索字符串已不再匹配。为了应对这一变化，防御者开始构建简单的语言模拟。例如，如果发现某个字符串是由多个子字符串连接而成，新算法会模拟这种连接并与任何恶意模式进行匹配。
 - en: Example 3
+  id: totrans-63
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 示例 3
 - en: 'At this point, attackers would try to move to something more complicated –
     for example, by encoding their payload using Base64 and decoding it when running
     the script, as in the following example. The **"WQAwAHUAIABnADAAdAAgAGgANABjAGsAMwBkACEA"**
     string represents the Base64 encoded version of our former string, **"Y0u** **g0t
     h4ck3d!"**:'
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 此时，攻击者会尝试转向更复杂的方法——例如，通过使用Base64编码他们的有效载荷，并在运行脚本时解码，如下所示。**"WQAwAHUAIABnADAAdAAgAGgANABjAGsAMwBkACEA"**
+    字符串表示我们之前字符串**"Y0u** **g0t h4ck3d!"**的Base64编码版本：
 - en: '[PRE2]'
+  id: totrans-65
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: But most antimalware programs thankfully already have some kind of Base64 decoding
     emulation implemented, so this example would still be caught by most **antivirus**
     (**AV**) engines.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 但大多数反恶意软件程序幸运地已经实现了某种Base64解码仿真，因此大多数**反病毒**（**AV**）引擎仍然会捕捉到这个示例。
 - en: As a result, attackers would try to think of a more difficult way to make detection
     even harder – for example, using algorithmic obfuscation.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 结果，攻击者会尝试想出更困难的方式来使检测变得更加困难 - 例如使用算法混淆。
 - en: Example 4
+  id: totrans-68
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Example 4
 - en: 'For the following example, I have encoded our **"Y0u g0t h4ck3d!"** attack
     string with a simple XOR algorithm, resulting in the **"SyJnMnUiZjJ6JnF5IXYz"**
     encoded string. Using the following function, we convert the string back into
     the original pattern, using the **XOR** key, **0x12**:'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于以下示例，我已经使用简单的异或算法对我们的**"Y0u g0t h4ck3d!"**攻击字符串进行了编码，得到了**"SyJnMnUiZjJ6JnF5IXYz"**编码后的字符串。使用以下函数，我们可以使用**XOR**密钥**0x12**将字符串转换回原始模式：
 - en: '[PRE3]'
+  id: totrans-70
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Now, this example is way more advanced than anything that a normal antimalware
     engine could emulate. So, without any further mechanism (such as AMSI), we won’t
     be able to detect what this script is doing. Of course, defenders could write
     signatures to detect obfuscated scripts.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，这个示例比普通反恶意软件引擎能够仿真的任何内容都要高级得多。因此，如果没有进一步的机制（如AMSI），我们将无法检测到此脚本的操作。当然，防御者可以编写签名来检测混淆的脚本。
 - en: Example 5
+  id: totrans-72
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Example 5
 - en: But what if the script just looks like a normal and well-behaved script but,
     in the end, it downloads the malicious content from the web and executes it locally,
     as in the following example? How would you write a signature for it if you were
     responsible for writing detections for the following example?
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是如果脚本看起来只是一个正常的、行为良好的脚本，但最终却从网络下载并在本地执行恶意内容，就像以下示例一样，你如何为其编写签名呢？
 - en: '[PRE4]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'If this code is run, you still get the output **"Y0u g0t h4ck3d!"**, which
     we initiated through the script that is uploaded on GitHub: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt).'
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果运行此代码，您仍将获得输出**"Y0u g0t h4ck3d!"**，我们通过上传到GitHub的脚本启动了该输出：[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample5.txt)。
 - en: Now we are at a point where it is almost impossible to write a signature to
     detect this malicious behavior without generating too many false positives. False
     positives just cause too much work for analysts, and if too many false positives
     occur, real threats might be missed. So, this is a problem. But this is exactly
     where AMSI comes in to help.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经到了几乎不可能写出签名以检测这种恶意行为而不会生成太多误报的地步。误报只会给分析人员带来太多工作，如果误报太多，可能会错过真正的威胁。所以，这是一个问题。但这正是AMSI发挥作用的地方。
 - en: Example 6
+  id: totrans-77
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Example 6
 - en: 'Now, with AMSI enabled, let’s look at the behavior when we repeat the last
     example, but this time, with a file that would trigger AMSI: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt).
     Don’t worry, for this example, we are also not using real malicious code – we
     are using an example that generates the AMSI test sample string, **''AMSI Test**
     **Sample: 7e72c3ce-861b-4339-8740-0ac1484c1386''**:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，启用了AMSI，让我们看看当我们重复上一个示例时的行为，但这次使用的是会触发AMSI的文件：[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt)。不用担心，对于这个示例，我们也没有使用真正的恶意代码
+    - 我们使用的是生成AMSI测试样本字符串的示例，**'AMSI测试样本：7e72c3ce-861b-4339-8740-0ac1484c1386'**：
 - en: '![Figure 12.3 – The file that generates an AMSI test sample string](image/B16679_12_003.jpg)'
+  id: totrans-79
   prefs: []
   type: TYPE_IMG
+  zh: '![Figure 12.3 – 生成AMSI测试样本字符串的文件](image/B16679_12_003.jpg)'
 - en: Figure 12.3 – The file that generates an AMSI test sample string
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: Figure 12.3 – 生成AMSI测试样本字符串的文件
 - en: 'If we now run a malicious command from the command line or from a script, you
     see that AMSI interferes and blocks the command before it gets executed: **Invoke-Expression
     (****Invoke-WebRequest** https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt**)**:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们现在从命令行或脚本中运行一个恶意命令，你会看到AMSI干预并在命令执行之前将其阻止：**Invoke-Expression (****Invoke-WebRequest**
+    https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/AMSIExample6.txt**)**：
 - en: '![Figure 12.4 – AMSI in action](image/B16679_12_004.jpg)'
+  id: totrans-82
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.4 – AMSI的工作过程](image/B16679_12_004.jpg)'
 - en: Figure 12.4 – AMSI in action
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.4 – AMSI的工作过程
 - en: 'AMSI blocks the execution and, depending on which antimalware engine you are
     using, you can see that an event was generated. If you are using the default Defender
     engine, you can find all AMSI-related event logs in the **Defender/Operational**
     log under the event ID **1116**, as shown in the following screenshot:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: AMSI阻止了执行，取决于你使用的反恶意软件引擎，你可以看到一个事件已经被生成。如果你使用的是默认的Defender引擎，你可以在**Defender/Operational**日志中找到所有AMSI相关的事件日志，事件ID为**1116**，如下所示的截图：
 - en: '![Figure 12.5 – AMSI-related events show up in the Defender/Operational event
     log if the default Defender engine is used](image/B16679_12_005.jpg)'
+  id: totrans-85
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.5 – 如果使用默认的Defender引擎，AMSI相关事件会出现在Defender/Operational事件日志中](image/B16679_12_005.jpg)'
 - en: Figure 12.5 – AMSI-related events show up in the Defender/Operational event
     log if the default Defender engine is used
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.5 – 如果使用默认的Defender引擎，AMSI相关事件会出现在Defender/Operational事件日志中。
 - en: Now that you have understood how AMSI works, why it is needed, and how it can
     help, let’s look deeper into how adversaries are trying to bypass AMSI.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在你已经了解了AMSI的工作原理、为什么它是必要的以及它如何帮助防御，我们接下来将深入探讨对手是如何尝试绕过AMSI的。
 - en: Bypassing AMSI
+  id: totrans-88
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 绕过AMSI
 - en: AMSI is really helpful for defenders when it comes to preventing malicious code
     from getting executed. But attackers would not be attackers if they did not try
     to find a way to bypass AMSI. In this section, we will look at some common techniques.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: AMSI在防止恶意代码执行方面对防御者非常有帮助。但如果攻击者没有尝试找到绕过AMSI的方法，他们就不再是攻击者了。在这一部分，我们将探讨一些常见的技术。
 - en: Most bypasses I have come across are somehow trying to tamper with **amsi.dll**.
     Most of the time, the goal is to either manipulate the result so that malicious
     code appears clean by replacing **amsi.dll** with a custom one or by avoiding
     **amsi.dll** completely.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 我遇到的大多数绕过方法都以某种方式尝试篡改**amsi.dll**。大多数情况下，目标是通过替换**amsi.dll**为自定义版本，或者完全避免使用**amsi.dll**，从而使恶意代码看起来干净。
 - en: Often, when there’s a new bypass found that people blog about, it gets immediately
     fixed and detected shortly after it is released.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，当人们发现新的绕过方法并写博客时，它会在发布后不久被修复并检测到。
 - en: Joseph Bialek originally wrote the **Invoke-Mimikatz.ps1** script to make all
     Mimikatz functions available via PowerShell.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: Joseph Bialek最初编写了**Invoke-Mimikatz.ps1**脚本，以通过PowerShell使所有Mimikatz功能可用。
 - en: '**Invoke-Mimikatz** is a part of the **nishang** module and can be downloaded
     from GitHub: [https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1](https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1).'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: '**Invoke-Mimikatz**是**nishang**模块的一部分，可以从GitHub下载：[https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1](https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1)。'
 - en: 'To demonstrate the examples here, I have created a little module that loads
     the **Invoke-Mimikatz.ps1** script. Just copy and paste the raw code if you want
     to reproduce it in your demo environment:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了展示这里的示例，我创建了一个小模块，加载了**Invoke-Mimikatz.ps1**脚本。如果你想在你的演示环境中复现它，只需复制并粘贴原始代码：
 - en: '[PRE5]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'You can also find the little code snippet in this chapter’s GitHub repository:
     [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1).'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 你也可以在本章的GitHub仓库中找到这个小代码片段：[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Demo_loadMimikatz.ps1)。
 - en: Disclaimer
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 免责声明
 - en: Please make sure that this code is only run in your demo environment and not
     on your production machine.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 请确保此代码仅在你的演示环境中运行，而不是在你的生产机器上。
 - en: I’m using Windows PowerShell for these examples instead of PowerShell Core as
     this would usually be the attacker’s choice. Running Mimikatz from PowerShell
     Core would also cause errors while using the current **Invoke-Mimikatz.ps1** version.
+  id: totrans-99
   prefs: []
   type: TYPE_NORMAL
+  zh: 我在这些示例中使用的是 Windows PowerShell，而不是 PowerShell Core，因为这通常是攻击者的首选。使用 PowerShell
+    Core 运行 Mimikatz 还会导致当前版本的 **Invoke-Mimikatz.ps1** 出现错误。
 - en: 'For the following demos, **Windows Defender real-time protection** was temporarily
     disabled to run the code and load Mimikatz into memory. If everything worked,
     you will now see the typical Mimikatz output while running **Invoke-Mimikatz**,
     as shown in the following screenshot:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于以下演示，**Windows Defender 实时保护** 被临时禁用以运行代码并将 Mimikatz 加载到内存中。如果一切正常，你现在将看到在运行
+    **Invoke-Mimikatz** 时的典型 Mimikatz 输出，如下截图所示：
 - en: '![Figure 12.6 – Running Mimikatz from memory](image/B16679_12_006.jpg)'
+  id: totrans-101
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.6 – 从内存运行 Mimikatz](image/B16679_12_006.jpg)'
 - en: Figure 12.6 – Running Mimikatz from memory
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.6 – 从内存运行 Mimikatz
 - en: After Mimikatz was loaded, Windows Defender real-time protection was enabled
     again. This way, it is easier to demonstrate the impact of AMSI in the following
     examples.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Mimikatz 加载后，Windows Defender 实时保护再次启用。通过这种方式，接下来的示例更容易演示 AMSI 的影响。
 - en: 'Now, if real-time protection was enabled successfully, you will see the following
     output while running Mimikatz:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，如果实时保护成功启用，你将看到运行 Mimikatz 时的以下输出：
 - en: '![Figure 12.7 – Mimikatz is blocked by AMSI](image/B16679_12_007.jpg)'
+  id: totrans-105
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.7 – Mimikatz 被 AMSI 阻止](image/B16679_12_007.jpg)'
 - en: Figure 12.7 – Mimikatz is blocked by AMSI
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.7 – Mimikatz 被 AMSI 阻止
 - en: This output simply means that AMSI is in place to protect this machine and has
     blocked the **Invoke-Mimikatz** command from being executed.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 该输出仅表示 AMSI 已经启用以保护这台机器，并且已阻止 **Invoke-Mimikatz** 命令的执行。
 - en: Okay, now we are ready to start with our demo examples.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，现在我们可以开始演示示例了。
 - en: Preventing files from being detected or disabling AMSI temporarily
+  id: totrans-109
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 防止文件被检测或临时禁用 AMSI
 - en: Most attack attempts try to prevent the malware from being scanned by tampering
     with the AMSI library.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数攻击尝试通过篡改 AMSI 库来防止恶意软件被扫描。
 - en: PowerShell downgrade attack
+  id: totrans-111
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: PowerShell 降级攻击
 - en: One of the easiest ways to avoid AMSI is to downgrade the PowerShell version
     to a former version that did not support AMSI. You can find a detailed explanation
     of a downgrading attack in [*Chapter 4*](B16679_04_Final_PD.xhtml#_idTextAnchor090),
     *Detection – Auditing and Monitoring*, so it won’t be described here further.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免 AMSI 的最简单方法之一是将 PowerShell 版本降级到不支持 AMSI 的早期版本。你可以在 [*第 4 章*](B16679_04_Final_PD.xhtml#_idTextAnchor090)，“*检测
+    – 审计与监控*”中找到降级攻击的详细解释，因此此处不再详细描述。
 - en: When trying to run **Invoke-Mimikatz** from a normal PowerShell console, AMSI
     kicks in and blocks the execution of the command.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 当尝试从普通 PowerShell 控制台运行 **Invoke-Mimikatz** 时，AMSI 会介入并阻止命令的执行。
 - en: 'But if PowerShell version 2 is available on a machine, an attacker would be
     able to run the following commands to avoid AMSI via a downgrade attack:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，如果机器上安装了 PowerShell 版本 2，攻击者将能够通过降级攻击运行以下命令，从而绕过 AMSI：
 - en: '![Figure 12.8 – Invoke-Mimikatz can be executed without AMSI interfering](image/B16679_12_008.jpg)'
+  id: totrans-115
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.8 – Invoke-Mimikatz 可以在没有 AMSI 干扰的情况下执行](image/B16679_12_008.jpg)'
 - en: Figure 12.8 – Invoke-Mimikatz can be executed without AMSI interfering
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.8 – Invoke-Mimikatz 可以在没有 AMSI 干扰的情况下执行
 - en: But if the system is hardened appropriately, downgrade attacks should not be
     possible.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是，如果系统进行了适当的加固，降级攻击应该是不可行的。
 - en: Configuration tampering
+  id: totrans-118
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 配置篡改
 - en: 'One very popular example of changing the AMSI configuration is the bypass from
     Matt Graeber, which he tweeted about in 2016:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中一个非常流行的 AMSI 配置更改示例是 Matt Graeber 的绕过方法，他在 2016 年通过 Twitter 进行了分享：
 - en: '![Figure 12.9 – Matt Graeber’s AMSI bypass in 2016](image/B16679_12_009.jpg)'
+  id: totrans-120
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.9 – Matt Graeber 2016 年的 AMSI 绕过](image/B16679_12_009.jpg)'
 - en: Figure 12.9 – Matt Graeber’s AMSI bypass in 2016
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.9 – Matt Graeber 2016 年的 AMSI 绕过
 - en: 'Matt managed to disable AMSI by just using a one-liner:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: Matt 通过仅使用一行代码成功禁用了 AMSI：
 - en: '[PRE6]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: This bypass would just set the **amsiInitFailed** Boolean to **$true**. This
     simulated the AMSI initialization failing, so that no scans could be performed
     and so that future AMSI scans would be disabled.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个绕过方法只是将 **amsiInitFailed** 布尔值设置为 **$true**。这模拟了 AMSI 初始化失败，因此无法执行扫描，并且将禁用未来的
+    AMSI 扫描。
 - en: In the meantime, the industry was able to write detections to block this particular
     bypass, but it is still a great example to show one method of disabling and circumventing
     AMSI. Remember, if those detections were not in place, the bypass itself would
     still pass through AMSI.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 与此同时，业界能够编写检测规则来阻止这一特定的绕过，但它仍然是一个很好的例子，展示了禁用和绕过AMSI的一种方法。请记住，如果没有这些检测措施，绕过本身仍然能够通过AMSI。
 - en: 'The output shows the one-liner code blocked by AMSI:'
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出显示了被AMSI阻止的单行代码：
 - en: '![Figure 12.10 – AMSI blocks the one-liner](image/B16679_12_010.jpg)'
+  id: totrans-127
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.10 – AMSI阻止了单行代码](image/B16679_12_010.jpg)'
 - en: Figure 12.10 – AMSI blocks the one-liner
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.10 – AMSI阻止了单行代码
 - en: Of course, this method can still work if the command is only obfuscated enough.
     A lot of substrings used here are also considered malicious and therefore detected.
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，如果命令足够混淆，这个方法仍然可以奏效。这里使用的许多子字符串也被认为是恶意的，因此会被检测到。
 - en: 'A lot of signatures were added for certain trigger words, such as **amsiInitFailed**.
     Other researchers have also attempted to find a bypass, inspired by Matt Graeber’s
     one-liner. One of those bypasses was discovered by Adam Chester in 2018:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 很多签名被添加到某些触发词上，比如**amsiInitFailed**。其他研究人员也尝试找到一种绕过方法，灵感来自Matt Graeber的单行代码。其中一个绕过方法由Adam
+    Chester在2018年发现：
 - en: '[PRE7]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: As the former bypass to set **amsiInitFailed** to **$true** is already very
     well known by attackers and defenders, most attempts to interact with this flag
     are highly suspicious and, therefore, will be detected. But if we can enforce
     an error without querying suspicious flags, it would basically have the same effect.
     And this is exactly what Adam’s bypass is doing here.
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于前一个绕过方法通过将**amsiInitFailed**设置为**$true**已经被攻击者和防御者非常熟知，因此大多数尝试与此标志互动的行为都是高度可疑的，因此会被检测到。但如果我们能够强制触发错误，而不查询可疑的标志，它基本上会产生相同的效果。这正是Adam绕过方法在这里所做的。
 - en: He forces an error by tampering with **amsiContext** and **amsiSession**. AMSI
     initialization will fail and future scans within this session won’t happen.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 他通过篡改**amsiContext**和**amsiSession**强制触发错误。AMSI初始化将失败，并且该会话中的未来扫描将无法进行。
 - en: 'You can read how Adam discovered this bypass and other interesting approaches
     in this blog article: [https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/](https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/).'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以阅读Adam如何发现这个绕过方法以及其他有趣的方式，详见这篇博客文章：[https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/](https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/)。
 - en: Of course, in the meantime, there were new signatures added for this particular
     bypass, so it does not work any longer without obfuscation.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，在这段时间里，为了应对这一特定的绕过方法，新的签名已经被添加，因此没有混淆的情况下已经不再有效。
 - en: DLL hijacking
+  id: totrans-136
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: DLL劫持
 - en: Another method to avoid code being scanned by AMSI is **DLL hijacking**. Within
     this attack, **amsi.dll**is basically replaced with another modified version that
     does not interfere with the (malicious) code that is attempted to be executed.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 避免代码被AMSI扫描的另一种方法是**DLL劫持**。在这种攻击中，**amsi.dll**基本上被替换为一个修改过的版本，这个版本不会干扰正在尝试执行的（恶意）代码。
 - en: It’s worth noting that if attackers are able to remove or replace DLLs on a
     system and execute arbitrary code, running PowerShell is probably one of your
     least concerns.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 值得注意的是，如果攻击者能够在系统上删除或替换DLL并执行任意代码，那么运行PowerShell可能是你最不需要担心的问题之一。
 - en: In 2016, Cornelis de Plaa discovered an AMSI bypass using DLL hijacking. He
     created an empty **amsi.dll** file in a folder and copied **powershell.exe** in
     the same directory. Once the copied PowerShell was started, the original **amsi.dll**
     file was not loaded, but the **amsi.dll** fake file was loaded into memory, which
     did not, of course, check the executed code.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 2016年，Cornelis de Plaa发现了一种使用DLL劫持的AMSI绕过方法。他在一个文件夹中创建了一个空的**amsi.dll**文件，并将**powershell.exe**复制到同一目录中。启动复制的PowerShell后，原始的**amsi.dll**文件没有被加载，而是加载了伪造的**amsi.dll**文件进入内存，当然，这个文件并没有检查执行的代码。
 - en: After this bug was reported to Microsoft MSRC on March 28, 2016, they implemented
     a fix, which caused PowerShell not to work properly anymore once executed with
     an empty **amsi.dll** file loaded.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 在2016年3月28日将此漏洞报告给微软MSRC后，他们实施了一个修复程序，这导致PowerShell在加载空的**amsi.dll**文件后无法正常工作。
 - en: '![Figure 12.11 – Broken PowerShell pipeline after loading powershell.exe with
     an empty amsi.dll](image/B16679_12_011.jpg)'
+  id: totrans-141
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.11 – 加载空的amsi.dll文件后，PowerShell管道中断](image/B16679_12_011.jpg)'
 - en: Figure 12.11 – Broken PowerShell pipeline after loading powershell.exe with
     an empty amsi.dll
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.11 – 加载空的amsi.dll文件后，PowerShell管道中断
 - en: In June 2020, Philippe Vogler found a way to revive this old AMSI bypass. He
     created an **amsi.dll** file that could at least call all functions a normal **amsi.dll**
     file would contain, but those functions were just plain dummy functions, so no
     check would be performed. With this file, he managed to bypass AMSI using DLL
     hijacking once more.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 2020年6月，Philippe Vogler找到了复活这个旧AMSI绕过的方法。他创建了一个**amsi.dll**文件，至少可以调用所有正常**amsi.dll**文件中包含的函数，但这些函数只是普通的虚拟函数，因此不会执行任何检查。通过这个文件，他成功地通过DLL劫持再次绕过了AMSI。
 - en: 'You can find more information on his blog: [https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/](https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/).'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在他的博客上找到更多信息：[https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/](https://sensepost.com/blog/2020/resurrecting-an-old-amsi-bypass/)。
 - en: 'Also make sure to check out Cornelis de Plaa’s blog to find out how he discovered
     the original AMSI DLL hijacking bypass: [http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html](http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html).'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 同时，确保查看Cornelis de Plaa的博客，了解他是如何发现原始AMSI DLL劫持绕过的：[http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html](http://cn33liz.blogspot.com/2016/05/bypassing-amsi-using-powershell-5-dll.html)。
 - en: Memory patching
+  id: totrans-146
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 内存补丁
 - en: Memory patching is a technique used by red teamers to modify a program in memory
     without changing its executables or file stamps. When it comes to memory patching
     to avoid AMSI, usually, attackers try to modify memory calls, so that **amsi.dll**
     is not executed correctly and that the check routine would be skipped.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 内存补丁是一种红队人员常用的技术，用于在不改变可执行文件或文件戳的情况下修改程序内存。当涉及到使用内存补丁来绕过AMSI时，攻击者通常尝试修改内存调用，以使**amsi.dll**无法正确执行，从而跳过检查例程。
 - en: Let’s have a look first at what it looks like from a memory perspective. To
     do so, let’s open **amsi.dll** in the debug tool of your choice. In this example,
     I will use the open source tool, Ghidra.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们首先从内存的角度看一下它的样子。为此，我们可以选择一个调试工具打开**amsi.dll**。在这个例子中，我将使用开源工具Ghidra。
 - en: As a first step, import **amsi.dll** into Ghidra, then open it within a project.
     Usually, **amsi.dll** is located under **C:\Windows\System32\amsi.dll**.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一步，将**amsi.dll**导入Ghidra，然后在项目中打开它。通常，**amsi.dll**位于**C:\Windows\System32\amsi.dll**。
 - en: We can see all functions that are available within **amsi.dll** – for our experiment.
     The **AmsiScanBuffer** and **AmsiScanString** functions are of special interest.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以看到**amsi.dll**中所有可用的函数——这是为了我们的实验。**AmsiScanBuffer**和**AmsiScanString**函数特别值得关注。
 - en: '![Figure 12.12 – Functions within amsi.dll](image/B16679_12_012.jpg)'
+  id: totrans-151
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.12 – amsi.dll中的函数](image/B16679_12_012.jpg)'
 - en: Figure 12.12 – Functions within amsi.dll
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.12 – amsi.dll中的函数
 - en: 'Ghidra offers an amazing function to decompile code. So, if we first look at
     the **AmsiScanString** function, we can quickly spot that this function also calls
     the **AmsiScanBuffer** function. So, **AmsiScanBuffer** might be the most attractive
     target as it seems as if changing the memory for this function covers both use
     cases: **AmsiScanBuffer** and **AmsiScanString**.'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: Ghidra提供了一个非常强大的反编译功能。所以，如果我们首先查看**AmsiScanString**函数，我们可以很快发现这个函数也调用了**AmsiScanBuffer**函数。因此，**AmsiScanBuffer**可能是最有吸引力的目标，因为看起来如果我们修改这个函数的内存，就可以同时覆盖两个用例：**AmsiScanBuffer**和**AmsiScanString**。
 - en: '![Figure 12.13 – Decompiled AmsiScanString function](image/B16679_12_013.jpg)'
+  id: totrans-154
   prefs: []
   type: TYPE_IMG
+  zh: '![图12.13 – 反编译后的AmsiScanString函数](image/B16679_12_013.jpg)'
 - en: Figure 12.13 – Decompiled AmsiScanString function
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 图12.13 – 反编译后的AmsiScanString函数
 - en: So, what we basically need to do is first find out the start address of the
     **AmsiScanBuffer** function within the currently loaded **amsi.dll** file.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以，我们基本上需要做的就是首先找出当前加载的**amsi.dll**文件中**AmsiScanBuffer**函数的起始地址。
 - en: Once we know this address, we can try to manipulate the memory, so that it does
     not jump into the actual **AmsiScanBuffer** function but skips it. When we operate
     on the memory/assembly level, there is one thing that we can use to achieve this.
@@ -693,271 +1019,404 @@
     that called it initially. So, if we overwrite the first bytes of the **AmsiScanBuffer**
     subroutine with the **RET** instruction, the function will be terminated without
     scanning anything.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我们知道了这个地址，我们可以尝试操作内存，使得它不会跳转到实际的**AmsiScanBuffer**函数，而是跳过它。当我们在内存/汇编级别进行操作时，有一个技巧可以帮助我们实现这一目标。**RET**指令表示子程序的结束并返回到最初调用它的代码。所以，如果我们用**RET**指令覆盖**AmsiScanBuffer**子程序的前几个字节，这个函数就会被终止而不扫描任何内容。
 - en: Once we have achieved this, we can execute all PowerShell code that we like
     in the current session without having it checked. But, similarly, if an attacker
     is able to edit arbitrary memory in processes in your system, you likely have
     bigger problems.
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我们完成这一步，我们就可以在当前会话中执行所有想要的 PowerShell 代码，而不会被检查。但是，类似地，如果攻击者能够编辑系统中进程的任意内存，你可能会面临更大的问题。
 - en: 'Let’s see how we can achieve this with PowerShell. The **kernel32.dll** file
     provides functions to access the memory using PowerShell – especially the **GetModuleHandle**,
     **GetProcAddress**, and **VirtualProtect** functions. So, let’s import those functions
     into our current PowerShell session:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看如何在 PowerShell 中实现这一点。**kernel32.dll**文件提供了使用 PowerShell 访问内存的函数，特别是**GetModuleHandle**、**GetProcAddress**和**VirtualProtect**函数。因此，让我们将这些函数导入到当前的
+    PowerShell 会话中：
 - en: '[PRE8]'
+  id: totrans-160
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'Using the **GetModuleHandle** function from **Kernel32**, we’ll retrieve the
     handle of the **amsi.dll** file that was loaded into the current process. A handle
     is the base address of a module, so with this step, we’ll find out where the module
     starts in the memory:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用**Kernel32**中的**GetModuleHandle**函数，我们将获取加载到当前进程中的**amsi.dll**文件的句柄。句柄是模块的基址，因此通过这一步，我们将找出模块在内存中的起始位置：
 - en: '[PRE9]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'Many AV products will detect scripts that attempt to manipulate the **AmsiScanBuffer**
     function. Therefore, to avoid detection, we will need to split the function name
     into two commands:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多 AV 产品将检测到试图篡改**AmsiScanBuffer**函数的脚本。因此，为了避免被检测到，我们需要将函数名拆分为两个命令：
 - en: '[PRE10]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Once this is done, we can retrieve the process address of **AmsiScanBuffer**
     so that we can attempt to overwrite it later:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦完成此操作，我们可以检索**AmsiScanBuffer**的进程地址，以便稍后尝试覆盖它：
 - en: '[PRE11]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'As a next step, we need to unprotect the memory region that we want to overwrite:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 下一步，我们需要取消保护要覆盖的内存区域：
 - en: '[PRE12]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'Finally, we overwrite the first byte of the **AmsiScanBuffer** function with
     **RET**, which indicates the end of a subroutine. In assembly, **0xC3** equals
     **RET**:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们将**AmsiScanBuffer**函数的第一个字节覆盖为**RET**，这表示子例程的结束。在汇编中，**0xC3**等于**RET**：
 - en: '[PRE13]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Now it should be possible to run any command you like without having it checked
     by AMSI.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在应该可以运行任何你喜欢的命令，而不被 AMSI 检查。
 - en: 'The **''AMSI Test Sample: 7e72c3ce-861b-4339-8740-0ac1484c1386''** string can
     also be used for AMSI testing. It is like the **EICAR** file, which you can use
     to test the functionality of your AV, but for AMSI instead. If AMSI is enabled,
     the AMSI test sample will trigger an error.'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: '**''AMSI 测试样本：7e72c3ce-861b-4339-8740-0ac1484c1386''**字符串也可用于 AMSI 测试。它类似于
+    EICAR 文件，您可以使用它来测试您的 AV 的功能，但用于 AMSI。如果启用了 AMSI，AMS'
 - en: 'The following screenshot shows how an error is first triggered when using the
     AMSI test sample, but after the AMSI bypass is executed, the AMSI test sample
     runs without an error:'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示在使用 AMSI 测试样本时首先触发错误，但在执行 AMSI 绕过后，AMSI 测试样本可以正常运行：
 - en: '![Figure 12.14 – Bypassing AMSI using memory patching](image/B16679_12_014.jpg)'
+  id: totrans-174
   prefs: []
   type: TYPE_IMG
+  zh: '![图 12.14 – 使用内存修补绕过 AMSI](image/B16679_12_014.jpg)'
 - en: Figure 12.14 – Bypassing AMSI using memory patching
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.14 – 使用内存修补绕过 AMSI
 - en: Since this bypass was only developed for this book to demonstrate how adversaries
     can come up with new bypass ideas, this bypass was reported to Microsoft prior
     to releasing this book. By the time this book is released, this bypass should
     not work any longer.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于此绕过方法仅用于本书中演示对手如何提出新的绕过方法的示例，此绕过方法已报告给 Microsoft，在发布本书之前，此绕过方法应该不再有效。
 - en: This is, of course, not the only way that memory patching can be done. There
     are various other examples out there in the field. But this is one example that
     should help you to understand better how this bypass works.
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 当然，并不是唯一的内存修补方法。现场还有各种其他例子。但这个例子应该能帮助你更好地理解这种绕过方法的工作原理。
 - en: 'There’s a really great overview of AMSI bypasses that were spotted in the wild,
     created by **S3cur3Th1sSh1t**: [https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell](https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell).'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 在野外发现的 AMSI 绕过方法有一个非常棒的概述，由**S3cur3Th1sSh1t**创建：[https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell](https://github.com/S3cur3Th1sSh1t/Amsi-Bypass-Powershell)。
 - en: Most of them try to tamper with AMSI to temporarily disable or break the functionality.
     But all of them are already broadly known and will be detected if not further
     obfuscated.
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 大多数尝试篡改 AMSI 以暂时禁用或破坏其功能。但所有这些方法都已广为人知，如果没有进一步混淆，将会被检测到。
 - en: Obfuscation
+  id: totrans-180
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 混淆
 - en: 'Obfuscation is another way to bypass AV detections. There are many automatic
     obfuscation tools in the wild – for example, **Invoke-Obfuscation**, which was
     written by Daniel Bohannon: [https://github.com/danielbohannon/Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation).'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 混淆是绕过反病毒检测的另一种方法。现在市面上有许多自动化的混淆工具——例如，**Invoke-Obfuscation**，这是由 Daniel Bohannon
+    编写的：[https://github.com/danielbohannon/Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)。
 - en: But automatic tools like this are very well known and scripts obfuscated with
     it are very likely to be detected.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是像这样的自动化工具非常知名，经过这种混淆的脚本很可能会被检测到。
 - en: 'There are also tools such as **AMSI fail**, which generates obfuscated PowerShell
     snippets to temporarily disable AMSI in the current session: [https://amsi.fail/](https://amsi.fail/).'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 还有一些工具，例如 **AMSI fail**，它生成混淆的 PowerShell 代码片段，用于临时禁用当前会话中的 AMSI：[https://amsi.fail/](https://amsi.fail/)。
 - en: The snippets generated by **AMSI fail** are randomly selected from a pool of
     methods and are obfuscated at runtime. That means that generated output should
     not yet be known by antimalware products, but in reality, many of those generated
     bypasses were detected by AMSI, as antimalware vendors are constantly improving
     their algorithms and signatures.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: '**AMSI fail** 生成的代码片段是从一个方法池中随机选择的，并且在运行时进行了混淆。这意味着生成的输出应该还没有被反恶意软件产品所识别，但实际上，许多这些生成的绕过方法已经被
+    AMSI 检测到，因为反恶意软件供应商不断改进他们的算法和签名。'
 - en: Also, as soon as a certain payload is used within a campaign, it does not usually
     take long until its signatures are detected. But it could be one approach for
     your next red team engagement to avoid AMSI.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 同时，一旦某个有效载荷在某个攻击中被使用，通常不会太久它的签名就会被检测到。但它可能是你下次红队行动中避免 AMSI 的一种方法。
 - en: 'In the end, depending on your maturity level, it might make sense to understand
     how signatures can be bypassed and write manual obfuscation methods. Explaining
     how to do that in a proper way would exceed the content of this book. But there
     is a great blog post by **s3cur3th1ssh1t** that gives you an introduction to how
     to bypass AMSI manually: [https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/).'
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 最终，根据你的成熟度，理解如何绕过签名并编写手动混淆方法可能是有意义的。以适当的方式解释如何做到这一点超出了本书的内容。不过，**s3cur3th1ssh1t**
+    有一篇很棒的博客文章，介绍了如何手动绕过 AMSI：[https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/)。
 - en: Base64 encoding
+  id: totrans-187
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Base64 编码
 - en: Base64 is a method to encode binary data into ASCII strings. So, if you remember
     the bypass from Matt Graeber that we discussed earlier in the configuration, the
     actual bypass is blocked by AMSI nowadays. But if the strings (**AmsiUtils** and
     **amsiInitFailed**) used in this bypass are encoded with Base64 and decoded while
     running the command, the bypass still works.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: Base64 是一种将二进制数据编码为 ASCII 字符串的方法。因此，如果你记得我们之前在配置中讨论的 Matt Graeber 绕过方法，实际的绕过如今已经被
+    AMSI 阻止了。但如果在这个绕过中使用的字符串（**AmsiUtils** 和 **amsiInitFailed**）经过 Base64 编码，并在运行命令时解码，那么绕过仍然有效。
 - en: 'First, let’s encode the two strings with Base64:'
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，让我们使用 Base64 对这两个字符串进行编码：
 - en: '![](image/B16679_12_015.jpg)'
+  id: totrans-190
   prefs: []
   type: TYPE_IMG
+  zh: '![](image/B16679_12_015.jpg)'
 - en: 'Then, we replace the strings with the commands to decode them and run the commands:'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我们用解码这些字符串的命令来替换它们并运行命令：
 - en: '![](image/B16679_12_016.jpg)'
+  id: totrans-192
   prefs: []
   type: TYPE_IMG
+  zh: '![](image/B16679_12_016.jpg)'
 - en: Often, encoding and decoding strings can work to avoid bypassing AMSI and other
     detections. But chances are that AV programs can detect it nevertheless.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，编码和解码字符串可以避免绕过 AMSI 和其他检测。但反病毒程序仍然有可能检测到它。
 - en: Summary
+  id: totrans-194
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: AMSI is a great tool that helps you to secure your environment. It already protects
     you against most malicious code and since malware vendors constantly improve their
     solutions, it will help you against most known (and probably even some unknown)
     threats as long as you keep your antimalware software up to date.
+  id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: AMSI 是一个很棒的工具，帮助你保护你的环境。它已经能够防御大多数恶意代码，并且由于恶意软件供应商不断改进他们的解决方案，只要你保持反恶意软件软件的更新，它将帮助你抵御大多数已知（甚至可能是一些未知）的威胁。
 - en: But similar to other solutions, it’s of course not the solution to everything
     and there are ways to bypass it. However, since antimalware vendors are always
     looking out for new discoveries to improve their products, there will be a detection
     shortly after a bypass is discovered.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: 但是与其他解决方案类似，这当然不是解决所有问题的方法，而且有方法可以绕过它。然而，由于反恶意软件供应商总是在寻找新的发现来改进他们的产品，绕过一旦被发现，检测通常会很快出现。
 - en: AMSI is one part of the solution but not the entire picture, and to keep your
     environment as secure as possible, there are many other ways that you need to
     keep in mind. In [*Chapter 13*](B16679_13_Final_PD.xhtml#_idTextAnchor341), *What
     Else? – Further Mitigations and Resources*, we will look at what else you can
     do to secure your environment.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: AMSI是解决方案的一部分，但不是全部，要保持你的环境尽可能安全，你需要记住还有许多其他方式。在[*第13章*](B16679_13_Final_PD.xhtml#_idTextAnchor341)，“还有什么？——进一步的缓解措施和资源”中，我们将探讨你还能做些什么来确保你的环境安全。
 - en: Further reading
+  id: totrans-198
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 进一步阅读
 - en: 'If you want to explore some of the topics that were mentioned in this chapter,
     check out these resources:'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想深入了解本章中提到的一些主题，可以查看以下资源：
 - en: 'IAntimalwareProvider interface (**amsi.h**): [https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider](https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider)'
+  id: totrans-200
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: IAntimalwareProvider接口（**amsi.h**）：[https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider](https://learn.microsoft.com/en-us/windows/win32/api/amsi/nn-amsi-iantimalwareprovider)
 - en: 'AMSI for the developer audience, and sample code: [https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience](https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience)'
+  id: totrans-201
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '面向开发者的AMSI及示例代码: [https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience](https://learn.microsoft.com/en-us/windows/win32/amsi/dev-audience)'
 - en: 'Better know a data source: Antimalware Scan Interface: [https://redcanary.com/blog/amsi/](https://redcanary.com/blog/amsi/)'
+  id: totrans-202
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 更好地了解数据源：恶意软件扫描接口：[https://redcanary.com/blog/amsi/](https://redcanary.com/blog/amsi/)
 - en: 'Fileless threats: [https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats](https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats)'
+  id: totrans-203
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 无文件威胁：[https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats](https://docs.microsoft.com/en-us/windows/security/threat-protection/intelligence/fileless-threats)
 - en: Bypass AMSI by manual modification
+  id: totrans-204
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过手动修改绕过AMSI
 - en: 'Part 1: [https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/)'
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: '第1部分: [https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/](https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/)'
 - en: 'Part 2: [https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/](https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/)'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: '第2部分: [https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/](https://s3cur3th1ssh1t.github.io/Bypass-AMSI-by-manual-modification-part-II/)'
 - en: 'Revoke-Obfuscation: PowerShell Obfuscation Detection Using Science: [https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf](https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf)'
+  id: totrans-207
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Revoke-Obfuscation：使用科学方法检测PowerShell混淆：[https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf](https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf)
 - en: 'Tampering with Windows Event Tracing: Background, Offense, and Defense (also
     with an AMSI event tracing context): [https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63](https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63)'
+  id: totrans-208
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 篡改Windows事件追踪：背景、攻击与防御（也包含AMSI事件追踪的上下文）：[https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63](https://medium.com/palantir/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63)
 - en: 'Antimalware Scan Interface (AMSI) – Microsoft documentation: [https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal](https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal)'
+  id: totrans-209
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 恶意软件扫描接口（AMSI）– 微软文档：[https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal](https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal)
 - en: 'Hunting for AMSI bypasses: [https://blog.f-secure.com/hunting-for-amsi-bypasses/](https://blog.f-secure.com/hunting-for-amsi-bypasses/)'
+  id: totrans-210
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 寻找AMSI绕过方法：[https://blog.f-secure.com/hunting-for-amsi-bypasses/](https://blog.f-secure.com/hunting-for-amsi-bypasses/)
 - en: 'Antimalware Scan Interface Detection Optics Analysis Methodology: Identification
     and Analysis of AMSI for WMI: [https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383](https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383)'
+  id: totrans-211
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '恶意软件扫描接口检测光学分析方法：WMI中的AMSI识别与分析: [https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383](https://posts.specterops.io/antimalware-scan-interface-detection-optics-analysis-methodology-858c37c38383)'
 - en: 'Tools for bypassing AMSI:'
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 绕过AMSI的工具：
 - en: 'Seatbelt: [https://github.com/GhostPack/Seatbelt](https://github.com/GhostPack/Seatbelt)'
+  id: totrans-213
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Seatbelt：[https://github.com/GhostPack/Seatbelt](https://github.com/GhostPack/Seatbelt)
 - en: 'AMSI fail: [https://amsi.fail/](https://amsi.fail/)'
+  id: totrans-214
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: AMSI失败：[https://amsi.fail/](https://amsi.fail/)
 - en: 'AMSITrigger: [https://github.com/RythmStick/AMSITrigger](https://github.com/RythmStick/AMSITrigger)'
+  id: totrans-215
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: AMSITrigger：[https://github.com/RythmStick/AMSITrigger](https://github.com/RythmStick/AMSITrigger)
 - en: 'Memory patching AMSI bypass:'
+  id: totrans-216
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 内存修补AMSI绕过：
 - en: '[https://github.com/rasta-mouse/AmsiScanBufferBypass](https://github.com/rasta-mouse/AmsiScanBufferBypass)'
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://github.com/rasta-mouse/AmsiScanBufferBypass](https://github.com/rasta-mouse/AmsiScanBufferBypass)'
 - en: '[https://rastamouse.me/memory-patching-amsi-bypass/](https://rastamouse.me/memory-patching-amsi-bypass/)'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: '[https://rastamouse.me/memory-patching-amsi-bypass/](https://rastamouse.me/memory-patching-amsi-bypass/)'
 - en: 'You can also find all links mentioned in this chapter in the GitHub repository
     for [*Chapter 12*](B16679_12_Final_PD.xhtml#_idTextAnchor324) – no need to manually
     type in every link: [https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md)'
+  id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 你还可以在本章的GitHub仓库中找到所有提到的链接：[*第12章*](B16679_12_Final_PD.xhtml#_idTextAnchor324)
+    – 无需手动输入每个链接：[https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter12/Links.md)
