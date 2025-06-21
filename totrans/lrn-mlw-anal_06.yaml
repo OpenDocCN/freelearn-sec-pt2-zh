@@ -725,6 +725,7 @@
   id: totrans-80
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00138.jpeg)'
 - en: In the case of a 32-bit function, the stack grows as the arguments are *pushed*,
     and shrinks when the items are *popped*. In a 64-bit function, the stack space
     is allocated at the beginning of the function, and does not change until the end
@@ -743,6 +744,10 @@
   id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于 32 位函数，堆栈在参数被 *压入* 时增长，在项被 *弹出* 时收缩。对于 64 位函数，堆栈空间在函数开始时分配，并且直到函数结束之前不会改变。分配的堆栈空间用于存储局部变量和函数参数。在前面的截图中，注意第一条指令
+    `sub rsp,48` 如何在堆栈上分配了 `0x48`（`72`）字节的空间，在函数中间之后没有再分配堆栈空间；此外，`push` 和 `pop` 指令没有使用，改为使用
+    `mov` 指令将第 5、6、7、8 个参数放入堆栈（在前面的截图中已突出显示）。没有 `push` 和 `pop` 指令使得确定函数接受的参数数量变得困难，而且也很难判断内存地址是作为局部变量还是作为函数的参数使用。另一个挑战是，如果在函数调用之前，值已经移入了寄存器
+    `rcx` 和 `rdx`，那么很难判断它们是作为参数传递给函数的，还是被移入寄存器用于其他目的。
 - en: Even though there are challenges in reverse engineering a 64-bit binary, you
     should not have too much difficulty analyzing the API calls, because the API documentation
     tells you the *number of function parameters*, the *data types of the parameters,*
@@ -752,6 +757,8 @@
   id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使在反向工程一个 64 位二进制文件时遇到一些挑战，你也不应该遇到太多困难来分析 API 调用，因为 API 文档告诉你 *函数参数的数量*、*参数的数据类型*
+    以及它们返回的 *数据类型*。一旦你知道在哪里找到函数参数和返回值，你可以在 API 调用处设置断点，检查其参数，以了解恶意软件的功能。
 - en: 'Let''s look at an example of a 64-bit malware sample that calls `RegSetValueEx` to
     set some value in the registry. In the following screenshot, the breakpoint is
     triggered before the call to the `RegSetValueEx`. You will need to look at the
@@ -766,10 +773,15 @@
   id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看一个 64 位恶意软件示例，它调用 `RegSetValueEx` 来设置注册表中的某些值。在下图中，断点在调用 `RegSetValueEx`
+    之前被触发。你需要查看寄存器和堆栈窗口中的值（如前所述），以检查传递给函数的参数；这将帮助你确定恶意软件设置了哪个注册表值。在 *x64dbg* 中，获取函数参数的最快方法是查看默认窗口（在寄存器窗口下方），该窗口在以下截图中被突出显示。你可以在默认窗口中设置一个值来显示参数的数量。在下图中，值设置为
+    `6`，因为从 API 文档中（[https://msdn.microsoft.com/en-us/library/windows/desktop/ms724923(v=vs.85).aspx](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724923(v=vs.85).aspx)）可以看出，`RegSetValueEx`
+    API 有 `6` 个参数：
 - en: '![](../images/00139.jpeg)'
   id: totrans-84
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00139.jpeg)'
 - en: 'The first parameter value, `0x2c`, is the handle to the open registry key.
     Malware can open a handle to the registry key by calling either the `RegCreateKey` or `RegOpenKey` API.
     From the handles window, you can tell that the handle value `0x2c` is associated
@@ -785,21 +797,26 @@
   id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个参数值`0x2c`是打开注册表键的句柄。恶意软件可以通过调用`RegCreateKey`或`RegOpenKey`API打开注册表键的句柄。从句柄窗口中，您可以看到句柄值`0x2c`与以下截图中显示的注册表键相关联。通过句柄信息，并检查第1、2和5个参数，您可以知道恶意软件修改了注册表键`HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon\shell`，并添加了一个条目`"explorer.exe,logoninit.exe"`。在干净的系统上，此注册表键指向`explorer.exe`（默认的Windows
+    shell）。当系统启动时，`Userinit.exe`进程使用此值启动Windows shell（`explorer.exe`）。通过添加`logoninit.exe`，以及`explorer.exe`，恶意软件确保`Userinit.exe`也启动了`logoninit.exe`；这是恶意软件使用的另一种持久性机制：
 - en: '![](../images/00140.jpeg)'
   id: totrans-86
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00140.jpeg)'
 - en: At this point, you should have an understanding of how to debug a malicious
     executable to understand its functionality. In the next section, you will learn
     how to debug a malicious DLL to determine its behavior.
   id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 此时，您应该已经了解如何调试恶意可执行文件以了解其功能。在下一节中，您将学习如何调试恶意DLL以确定其行为。
 - en: 2.8 Debugging a Malicious DLL Using x64dbg
   id: totrans-88
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.8 使用x64dbg调试恶意DLL
 - en: In [chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485),* Dynamic
     Analysis*, you learned techniques to execute a DLL to perform dynamic analysis.
     In this section, you will use some of the concepts that you learned in [chapter
@@ -811,6 +828,7 @@
   id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第3章](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485)，*动态分析*中，您学习了执行DLL以执行动态分析的技术。在本节中，您将使用在[第3章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522)，*动态分析*中学到的一些概念来使用*x64dbg*调试DLL。如果您还不熟悉DLL的动态分析，强烈建议在继续之前阅读[第3章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522)，*动态分析*中的*第6节*，*动态链接库（DLL）分析*。
 - en: 'To debug a DLL, launch *x64dbg* (preferably with administrator privileges)
     and load the DLL (via File | Open). When you load the DLL, *x64dbg* drops an executable
     (named `DLLLoader32_xxxx.exe`, where `xxxx` are random hexadecimal characters)
@@ -825,15 +843,18 @@
   id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 要调试DLL，请启动*x64dbg*（最好具有管理员权限）并加载DLL（通过文件 | 打开）。当您加载DLL时，*x64dbg*会在与DLL位于同一目录的地方放置一个可执行文件（名为`DLLLoader32_xxxx.exe`，其中`xxxx`是随机的十六进制字符），此可执行文件充当通用主机进程，将用于执行您的DLL（与`rundll32.exe`相同的方式）。加载DLL后，调试器可能会在`系统断点`，`TLS回调`或`DLL入口点`函数处暂停，具体取决于配置设置（在*在x64dbg中启动新进程*部分中提到）。如果未选中`系统断点`和`TLS回调`选项，则在加载DLL时会在*DLL的入口点*处暂停执行，如下截图所示。现在，您可以像调试其他程序一样调试DLL：
 - en: '![](../images/00141.jpeg)'
   id: totrans-91
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00141.jpeg)'
 - en: 2.8.1 Using rundll32.exe to Debug the DLL in x64dbg
   id: totrans-92
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.8.1 使用rundll32.exe在x64dbg中调试DLL
 - en: 'Another effective method is to use `rundll32.exe` to debug the DLL (let''s
     suppose that you want to debug a malware DLL named `rasaut.dll`). To do so, first
     load `rundll32.exe` from the system32 directory (via File | Open) into the debugger,
@@ -916,11 +937,14 @@
   id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，您可能希望调试仅在特定进程（如`explorer.exe`）中运行的DLL。该过程类似于前一节中介绍的过程。首先，使用x64dbg*启动进程*或*附加*到所需的主机进程；这将暂停调试器。通过选择Debug
+    | Run (*F9*)允许进程运行。接下来，选择Breakpoints选项卡，在Breakpoints窗口内右键单击，并选择Add DLL breakpoint选项，这将弹出一个对话框提示您输入模块名称。输入DLL名称（如前一节中介绍的），这将告诉调试器在加载DLL时中断。现在，您需要将DLL注入到主机进程中。可以使用类似*RemoteDLL*（[https://securityxploded.com/remotedll.php](https://securityxploded.com/remotedll.php)）的工具来完成此操作。当DLL加载时，调试器将在`ntdll.dll`中的某处暂停；只需连续运行（*F9*）直到达到注入的DLL的入口点（可能需要多次运行才能到达入口点）。您可以通过查看断点地址旁边或前一节中提到的`eip`寄存器旁边的注释来跟踪每次运行（*F9*）时暂停的执行位置。
 - en: 2.9 Tracing Execution in x64dbg
   id: totrans-101
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.9 在x64dbg中跟踪执行
 - en: '*Tracing* allows you to log events while the process is executing. x64dbg supports *trace
     into* and *trace over* conditional tracing options. You can access these options
     via Trace | Trace into (*Ctrl*+*Alt*+*F7*) and **Trace | Trace over** (*Ctrl+Alt+F8*).
@@ -935,14 +959,19 @@
   id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '*跟踪*允许您在进程执行时记录事件。x64dbg支持*跟踪进入*和*跟踪覆盖*条件跟踪选项。您可以通过Trace | Trace into (*Ctrl*+*Alt*+*F7*)和**Trace
+    | Trace over** (*Ctrl+Alt+F8*)访问这些选项。在*跟踪进入*中，调试器通过设置*步入*断点内部跟踪程序，直到条件满足或达到最大步数。在*跟踪覆盖*中，调试器通过设置*步过*断点跟踪程序，直到条件满足或达到最大步数。以下屏幕截图显示了跟踪进入对话框（跟踪覆盖对话框中提供相同选项）。要跟踪日志，至少需要指定*log
+    text*和将跟踪事件重定向到的日志文件的完整路径（通过Log File按钮）：'
 - en: '![](../images/00145.jpeg)'
   id: totrans-103
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00145.jpeg)'
 - en: 'The following includes brief descriptions of some of the fields:'
   id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下包括一些字段的简要描述：
 - en: '**Breakpoint Condition**: You can specify a condition in this field. This field
     defaults to a value of `0` (`false`). To specify the condition, you need to specify
     any valid expression ([http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html](http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html))
@@ -955,6 +984,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**断点条件**：您可以在此字段中指定条件。此字段默认为`0`（`false`）。要指定条件，您需要指定任何有效表达式（[http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html](http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html)）来评估为非零值（`true`）。评估为非零值的表达式被视为`true`，从而触发断点。调试器通过评估提供的表达式继续跟踪，并在满足指定条件时停止。如果条件不满足，则跟踪将继续直到达到*最大跟踪计数*。'
 - en: '**Log Text**: This field is used to specify the format that will be used to
     log the trace events in the log file. The valid formats that can be used in this
     field are mentioned at [http://help.x64dbg.com/en/latest/introduction/Formatting.html](http://help.x64dbg.com/en/latest/introduction/Formatting.html)'
@@ -962,6 +992,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**日志文本**：此字段用于指定将用于记录日志文件中跟踪事件的格式。此字段可以使用的有效格式在[http://help.x64dbg.com/en/latest/introduction/Formatting.html](http://help.x64dbg.com/en/latest/introduction/Formatting.html)中列出。'
 - en: '**Log Condition**: This field defaults to a value of `1`. You can optionally
     provide a log condition that will tell the debugger to log an event only when
     a specific condition is met. The log condition needs to be a valid expression
@@ -970,6 +1001,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**日志条件**：此字段的默认值为`1`。你可以选择性地提供一个日志条件，这样调试器只有在特定条件满足时才会记录事件。日志条件需要是有效的表达式（[http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html](http://x64dbg.readthedocs.io/en/latest/introduction/Expressions.html)）。'
 - en: '**Maximum Trace Count**: This fields specifies the maximum step count to trace
     before the debugger gives up. The default value is set to `50000`, and you can
     increase or decrease this value, as required.'
@@ -977,12 +1009,14 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**最大跟踪次数**：此字段指定调试器放弃之前可以跟踪的最大步骤数。默认值设置为`50000`，你可以根据需要增加或减少此值。'
 - en: '**Log File Button**: You can use this button to specify the full path to the
     log file where the trace logs will be saved.'
   id: totrans-109
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**日志文件按钮**：你可以使用此按钮指定日志文件的完整路径，跟踪日志将保存在此文件中。'
 - en: 'x64dbg does not have specific *instruction tracing* and *function tracing*
     features, but the *trace into* and *trace over* options can be used to perform
     instruction tracing and function tracing. You can control the tracing by adding
@@ -996,15 +1030,19 @@
   id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: x64dbg 没有特定的*指令跟踪*和*函数跟踪*功能，但可以使用*追踪进入*和*追踪跳过*选项来执行指令跟踪和函数跟踪。你可以通过添加断点来控制跟踪。在下面的截图中，`eip`
+    指向第 1 条指令，并且在第 5 条指令处设置了断点。当跟踪开始时，调试器从第一条指令开始跟踪，并在断点处暂停。如果没有断点，跟踪将继续，直到程序结束，或者直到达到最大跟踪次数。如果你想跟踪函数内部的指令，可以选择*追踪进入*，或者选择*追踪跳过*来跳过该函数并跟踪其余的指令：
 - en: '![](../images/00146.jpeg)'
   id: totrans-111
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00146.jpeg)'
 - en: 2.9.1 Instruction Tracing
   id: totrans-112
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.9.1 指令跟踪
 - en: 'To perform *instruction tracing* (for example, *trace into*) on the previous
     program, you can use the following settings in the Trace into dialog. As mentioned
     previously, to capture the trace events in a log file, you need to specify the
@@ -1012,10 +1050,12 @@
   id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在前面的程序中执行*指令跟踪*（例如，*追踪进入*），你可以在“追踪进入”对话框中使用以下设置。如前所述，为了在日志文件中捕获跟踪事件，你需要指定日志文件的完整路径和日志文本：
 - en: '![](../images/00147.jpeg)'
   id: totrans-114
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00147.jpeg)'
 - en: 'The Log Text value in the preceding screenshot (`0x{p:cip} {i:cip}`) is in
     the string format, which specifies the debugger to log the *address* and the *disassembly*
     of all the traced instructions. The following is the trace log of the program.
@@ -1025,6 +1065,7 @@
   id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 上述截图中的日志文本值（`0x{p:cip} {i:cip}`）是字符串格式，指定调试器记录所有跟踪指令的*地址*和*反汇编*。以下是程序的跟踪日志。由于选择了*追踪进入*选项，函数内部的指令（`0xdf1000`）也被捕获（在下面的代码中高亮显示）。指令跟踪有助于快速了解程序的执行流程：
 - en: '[PRE2]'
   id: totrans-116
   prefs: []
@@ -1035,6 +1076,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.9.2 函数跟踪
 - en: 'To demonstrate *function tracing*, consider the program shown in the following
     screenshot. In this program, the `eip` is pointing to the first instruction, the
     breakpoint is set at the fifth instruction (to stop tracing at this point), and
@@ -1043,10 +1085,12 @@
   id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示*函数跟踪*，请看以下截图中的程序。在这个程序中，`eip`指向第一条指令，断点设置在第五条指令（以在此点停止追踪），第三条指令调用了`0x311020`地址的函数。我们可以使用函数跟踪来确定`0x311020`函数调用了哪些其他函数：
 - en: '![](../images/00148.jpeg)'
   id: totrans-119
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00148.jpeg)'
 - en: 'To perform function tracing (Trace into was chosen in this case), the following
     setting is used. This is similar to *instruction tracing*, except that in the
     Log Condition field, an expression, telling the debugger to log only the function
@@ -1054,16 +1098,19 @@
   id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了执行函数跟踪（在此案例中选择了“进入追踪”），使用了以下设置。这类似于*指令跟踪*，不同之处在于在日志条件字段中，指定了一个表达式，指示调试器仅记录函数调用：
 - en: '![](../images/00149.jpeg)'
   id: totrans-121
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00149.jpeg)'
 - en: 'The following are the events captured in the log file, as a result of *function
     tracing*. From the following events, you can tell that the function `0x311020` calls
     two other functions, at `0x311000` and `0x311010`:'
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是通过*函数跟踪*在日志文件中捕获的事件。从这些事件中，你可以看出，函数`0x311020`调用了两个其他函数，分别位于`0x311000`和`0x311010`：
 - en: '[PRE3]'
   id: totrans-123
   prefs: []
@@ -1076,11 +1123,13 @@
   id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的例子中，使用了断点来控制追踪。当调试器到达断点时，执行暂停，且*指令/函数*在断点之前会被记录。当你恢复调试器时，剩下的指令会被执行，但不会被记录。
 - en: 2.10 Patching in x64dbg
   id: totrans-125
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 2.10 在x64dbg中修补
 - en: 'While performing malware analysis, you may want to modify the binary to change
     its functionality or reverse its logic to suit your needs. x64dbg allows you to
     modify data in the memory or instructions of a program. To modify the data in
@@ -1091,10 +1140,13 @@
   id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 在进行恶意软件分析时，你可能想修改二进制文件以改变其功能或逆向其逻辑，以满足你的需求。x64dbg允许你修改程序的内存数据或指令。要修改内存中的数据，导航到内存地址，选择你要修改的字节序列，然后右键点击并选择“二进制
+    | 编辑”（*Ctrl* + *E*），这将弹出一个对话框（如下所示），你可以用它来修改数据为ASCII、UNICODE或一系列十六进制字节：
 - en: '![](../images/00150.jpeg)'
   id: totrans-127
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00150.jpeg)'
 - en: 'The following screenshot shows the code excerpt from the *TDSS rootkit* DLL
     (this is the same binary that was covered in the previous chapter, in the section
     *Patching the Binary Using IDA*). If you recall, this DLL used string comparison
@@ -1111,10 +1163,13 @@
   id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了*TDSS rootkit* DLL的代码片段（这与前一章中涉及的相同二进制文件，在*使用IDA修补二进制文件*的部分有介绍）。如果你记得的话，这个DLL使用字符串比较来检查它是否在`spoolsv.exe`进程下运行。如果字符串比较失败（也就是说，DLL没有在`spoolsv.exe`进程下运行），代码就会跳转到函数的末尾，并在不表现出恶意行为的情况下返回函数。如果你希望这个二进制文件能够在任何进程下运行（而不仅仅是`spoolsv.exe`），你可以用`nop`指令修改*条件跳转*指令（`JNE
+    tdss.10001Cf9`），以去除进程限制。为此，右键点击条件跳转指令并选择“汇编”，这将弹出如下对话框，使用它可以输入指令。请注意，在截图中，已勾选“填充NOP”的选项，以确保指令对齐正确：
 - en: '![](../images/00151.jpeg)'
   id: totrans-129
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00151.jpeg)'
 - en: 'After you have modified the data in the memory or the instruction, you can
     apply the patch to the file by choosing File | Patch file, which will bring up
     a patches dialog showing all of the modifications made to the binary. Once you
@@ -1122,15 +1177,19 @@
   id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 在修改了内存中的数据或指令之后，你可以通过选择 **文件 | 补丁文件** 来将补丁应用到文件中，这将弹出一个补丁对话框，显示对二进制文件所做的所有修改。满意修改后，点击
+    **补丁文件** 并保存文件：
 - en: '![](../images/00152.jpeg)'
   id: totrans-131
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00152.jpeg)'
 - en: 3\. Debugging a Binary Using IDA
   id: totrans-132
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3\. 使用 IDA 调试二进制文件
 - en: In the previous chapter, we looked at the disassembly features of *IDA Pro*.
     In this chapter, you will learn about IDA's debugging capabilities. The commercial
     version of IDA can debug both 32-bit and 64-bit applications, whereas the demo
@@ -1140,11 +1199,14 @@
   id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们查看了 *IDA Pro* 的反汇编功能。在本章中，你将了解 IDA 的调试能力。IDA 的商业版本可以调试 32 位和 64 位应用程序，而演示版只允许调试
+    32 位 Windows 二进制文件。在本节中，你将看到 IDA Pro 提供的一些调试功能，并将学习如何使用它调试恶意二进制文件。
 - en: 3.1 Launching a New Process in IDA
   id: totrans-134
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.1 在 IDA 中启动新进程
 - en: There are different ways to launch a new process; one method is to directly
     launch the debugger, without initially loading the program. To do that, launch
     IDA (without loading the executable), then select Debugger | Run | Local Windows
@@ -1155,10 +1217,14 @@
   id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 启动新进程有不同的方法；一种方法是直接启动调试器，而不先加载程序。要做到这一点，启动 IDA（不加载可执行文件），然后选择 **调试器 | 运行 | 本地
+    Windows 调试器**；这将弹出一个对话框，你可以在其中选择要调试的文件。如果可执行文件需要任何参数，你可以在 **参数** 字段中指定它们。此方法将启动一个新进程，调试器将在程序的
+    *入口点* 暂停执行：
 - en: '![](../images/00153.jpeg)'
   id: totrans-136
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00153.jpeg)'
 - en: The second method of launching a process is to first load the executable in
     IDA (which performs the initial analysis and displays the disassembled output).
     First, choose the correct debugger via Debugger | Select debugger (or *F9*); then,
@@ -1169,11 +1235,14 @@
   id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 启动进程的第二种方法是先在 IDA 中加载可执行文件（这将执行初步分析并显示反汇编输出）。首先，通过 **调试器 | 选择调试器**（或 *F9*）选择正确的调试器；然后，你可以将光标放在第一个指令上（或你希望执行暂停的指令），并选择
+    **调试器 | 运行到光标处**（或 *F4*）。这将启动一个新进程，并将执行直到当前光标位置（在这种情况下，断点会自动设置在当前光标位置）。
 - en: 3.2 Attaching to an Existing Process Using IDA
   id: totrans-138
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.2 使用 IDA 附加到现有进程
 - en: 'The way you attach to a process depends on whether the program has already
     loaded or not. When a program has not loaded, select Debugger | Attach | Local
     Windows debugger. This will list all of the running processes. Simply select the
@@ -1185,10 +1254,13 @@
   id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 你附加到进程的方式取决于程序是否已经加载。当程序没有加载时，选择 **调试器 | 附加 | 本地 Windows 调试器**。这将列出所有正在运行的进程。只需选择要附加的进程即可。附加后，进程将立即暂停，给你机会在继续执行之前检查进程的资源并设置断点。在这种方法中，IDA
+    无法执行其初始的自动分析，因为 IDA 的加载器没有机会加载可执行映像：
 - en: '![](../images/00154.jpeg)'
   id: totrans-140
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00154.jpeg)'
 - en: An alternate method of *attaching to a process* is loading the executable associated
     with a process into IDA before attaching to that process. To achieve this, load
     the associated executable using IDA; this allows IDA to perform its initial analysis.
@@ -1198,26 +1270,32 @@
   id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种*附加到进程*的方法是将与进程关联的可执行文件加载到IDA中，然后再附加到该进程。要实现这一点，首先使用IDA加载相关的可执行文件，这样IDA就可以执行初步分析。然后，选择**调试器**
+    | **选择调试器**，勾选Local Win32调试器（或Local Windows调试器）选项，并点击确认。接着，再次选择**调试器** | **附加到进程**，并选择要附加调试器的进程。
 - en: 3.3 IDA's Debugger Interface
   id: totrans-142
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.3 IDA的调试器界面
 - en: 'After you launch the program in the IDA debugger, the process will pause, and
     the following debugger display will be presented to you:'
   id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 启动程序后，进程会暂停，并会向你展示以下调试器界面：
 - en: '![](../images/00155.jpeg)'
   id: totrans-144
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00155.jpeg)'
 - en: 'When the process is under debugger control, the disassembly toolbar is replaced
     with the debugger toolbar. This toolbar consists of buttons related to the debugging
     functionality (such as *process control* and *breakpoint*):'
   id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 当进程在调试器控制下时，反汇编工具栏会被调试器工具栏替代。此工具栏包含与调试功能相关的按钮（例如*进程控制*和*断点*）：
 - en: '**Disassembly Window**: This window is synchronized with the current value
     of the *instruction pointer* register (`eip` or `rip`). The disassembly windows
     offer the same functionality that you learned in the previous chapter. You can
@@ -1227,6 +1305,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**反汇编窗口**：此窗口与当前*指令指针*寄存器（`eip`或`rip`）的值同步。反汇编窗口提供了你在前一章节中学到的相同功能。你还可以通过按下*空格键*在*图形视图*和*文本视图*模式之间切换。'
 - en: '**Register Window**: This window displays the current contents of the CPU''s
     general-purpose register. You can right-click a register value and click Modify
     value, Zero value, Toggle value, Increment, or Decrement value. Toggling a value
@@ -1241,6 +1320,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**寄存器窗口**：此窗口显示CPU通用寄存器的当前内容。你可以右键单击寄存器值，点击修改值、清零值、切换值、增值或减值。切换值特别有用，尤其是当你想要更改CPU标志位的状态时。如果寄存器的值是一个有效的内存位置，则寄存器值旁边的*右箭头*会变为可用状态；点击该箭头可以将视图移动到对应的内存位置。如果你发现自己导航到了其他位置，并希望返回到*指令指针*指向的位置，只需点击指令指针寄存器（`eip`或`rip`）值旁的*右箭头*。'
 - en: '**Stack View**: The *stack view* displays the data contents of the process''s
     runtime stack. Inspecting the stack before calling a function can yield information
     about the number of function arguments and the types of function arguments.'
@@ -1248,6 +1328,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**栈视图**：*栈视图*显示进程运行时栈的数据信息。在调用函数之前检查栈可以获取有关函数参数数量和类型的信息。'
 - en: '**Hex View**: This displays the standard hex dump of the memory. *Hex view*
     is useful if you want to display the contents of a valid memory location (contained
     within a *register*, a *stack*, or the *instruction*).'
@@ -1255,6 +1336,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**十六进制视图**：此视图显示内存的标准十六进制转储。*十六进制视图*在你想要显示有效内存位置的内容时很有用（该位置可能在*寄存器*、*栈*或*指令*中）。'
 - en: '**Modules View**: This displays the list of modules (*executables* and their *shared
     libraries*) loaded into the process memory. Double-clicking any module in the
     list displays a list of symbols exported by that module. This is an easy way to
@@ -1263,12 +1345,14 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**模块视图**：此视图显示加载到进程内存中的模块列表（*可执行文件*及其*共享库*）。双击列表中的任何一个模块，都会显示该模块导出的符号列表。这是一个方便的方式，可以快速跳转到加载库中的函数。'
 - en: '**Threads View**: Displays a list of threads in the current process. You can
     right-click on this window to *suspend a thread* or *resume a suspended thread*.'
   id: totrans-151
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**线程视图**：显示当前进程中线程的列表。你可以右键单击此窗口来*挂起线程*或*恢复挂起的线程*。'
 - en: '**Segments Window**: The *s**egments window* is available via View | Open Subviews
     | Segments (or *Shift* + *F7*). When you are debugging a program, the segments
     window provides information regarding the allocated memory segments in a process.
@@ -1284,10 +1368,13 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**段窗口**：*段窗口*可以通过 视图 | 打开子视图 | 段（或 *Shift* + *F7*）打开。当你调试一个程序时，段窗口提供有关进程中已分配内存段的信息。此窗口显示可执行文件及其各个部分在内存中的加载位置的信息，还包含所有已加载
+    DLL 及其段信息。双击任何条目将会将你带到相应的内存位置，进入 *反汇编窗口*或 *十六进制窗口*。你可以控制内存地址的内容应该显示在哪里（在反汇编窗口或十六进制窗口中）；只需将光标放在反汇编或十六进制窗口中的任何位置，然后双击该条目。根据光标的位置，内存地址的内容将显示在相应的窗口中：'
 - en: '![](../images/00156.jpeg)'
   id: totrans-153
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00156.jpeg)'
 - en: '**Imports and Exports Window**: When the process is under debugger control,
     the Imports and Exports windows are not displayed by default. You can bring up
     these windows via Views | Open subviews. The Imports window lists all of the functions
@@ -1298,16 +1385,20 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**导入和导出窗口**：当进程在调试器控制下时，导入和导出窗口默认情况下不会显示。你可以通过 视图 | 打开子视图来显示这些窗口。导入窗口列出了二进制文件导入的所有函数，导出窗口列出了所有导出的函数。导出的函数通常位于
+    DLL 文件中，因此在调试恶意 DLL 时，这个窗口特别有用。'
 - en: The other IDA windows, explained in the previous chapter, can also be accessed
     via Views | Open Subviews.
   id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 前一章中解释的其他 IDA 窗口，也可以通过 视图 | 打开子视图进行访问。
 - en: 3.4 Controlling Process Execution Using IDA
   id: totrans-156
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.4 使用 IDA 控制进程执行
 - en: 'In *Section 1.2*, *Controlling Process Execution*, we looked at the different
     execution control features provided by the debuggers. The following table outlines
     the common execution control functionalities that you can use in IDA when debugging
@@ -1315,31 +1406,38 @@
   id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 *第1.2节*，*控制进程执行* 中，我们讨论了调试器提供的不同执行控制功能。下表概述了在调试程序时，你可以在 IDA 中使用的常见执行控制功能：
 - en: '| Functionality | Hotkey | Menu Option |'
   id: totrans-158
   prefs: []
   type: TYPE_TB
+  zh: '| 功能 | 热键 | 菜单选项 |'
 - en: '| Continue (Run) | *F9* | Debugger &#124; Continue process |'
   id: totrans-159
   prefs: []
   type: TYPE_TB
+  zh: '| 继续（运行） | *F9* | 调试器 &#124; 继续进程 |'
 - en: '| Step into | *F7* | Debugger &#124; Step into |'
   id: totrans-160
   prefs: []
   type: TYPE_TB
+  zh: '| 单步进入 | *F7* | 调试器 &#124; 单步进入 |'
 - en: '| Step over | *F8* | Debugger &#124; Step over |'
   id: totrans-161
   prefs: []
   type: TYPE_TB
+  zh: '| 单步跳过 | *F8* | 调试器 &#124; 单步跳过 |'
 - en: '| Run to cursor | *F4* | Debugger &#124; Run to cursor |'
   id: totrans-162
   prefs: []
   type: TYPE_TB
+  zh: '| 跳转到光标 | *F4* | 调试器 &#124; 跳转到光标 |'
 - en: 3.5 Setting a Breakpoint in IDA
   id: totrans-163
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.5 在 IDA 中设置断点
 - en: To set a software breakpoint in IDA, you can navigate to the location where
     you want the program to pause, and press the *F2 *key (or right-click and select Add
     breakpoint). After you set the breakpoint, the addresses where breakpoints are
@@ -1348,6 +1446,7 @@
   id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在 IDA 中设置软件断点，你可以导航到希望程序暂停的地点，按下 *F2* 键（或右键点击并选择 添加断点）。设置断点后，断点所在的地址会以红色高亮显示。你可以通过按 *F2* 键删除设置的断点。
 - en: 'In the following screenshot, the breakpoint was set at the address `0x00401013` (`call
     sub_401000`). To pause the execution at the breakpoint address, first, choose
     the debugger (such as Local Win32 Debugger), as mentioned previously, and then
@@ -1357,10 +1456,13 @@
   id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下面的截图中，断点被设置在地址 `0x00401013` （`call sub_401000`）处。要在断点地址处暂停执行，首先选择调试器（例如本地
+    Win32 调试器），然后通过选择 调试器 | 启动进程 （或 *F9* 热键）来运行程序。这样会执行所有指令，直到到达断点，并在断点地址处暂停：
 - en: '![](../images/00157.gif)'
   id: totrans-166
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00157.gif)'
 - en: 'In IDA, you can set hardware and conditional breakpoints by editing the breakpoint
     that is already set. To set a hardware breakpoint, right-click on an existing
     breakpoint and select Edit breakpoint. In the dialog that pops up, check the Hardware
@@ -1369,10 +1471,13 @@
   id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 IDA 中，你可以通过编辑已经设置的断点来设置硬件断点和条件断点。要设置硬件断点，右键单击一个已有的断点，然后选择编辑断点。在弹出的对话框中，勾选硬件复选框，如下所示。IDA
+    允许你设置超过四个硬件断点，但只有四个断点会生效；额外的硬件断点将会被忽略：
 - en: '![](../images/00158.jpeg)'
   id: totrans-168
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00158.jpeg)'
 - en: You can use hardware breakpoints to specify whether to *break on execute* (default),
     *break on write,* or *break on read/write*. The *break on write* and *break on read/write* options
     allow you to create memory breakpoints when the specified memory location is accessed
@@ -1385,6 +1490,8 @@
   id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用硬件断点来指定是否在*执行时断点*（默认），*写入时断点*，或*读/写时断点*。*写入时断点* 和 *读/写时断点* 选项允许你在任何指令访问指定的内存位置时创建内存断点。如果你想知道程序何时从内存位置读取或写入数据，这个断点非常有用。*执行时断点*
+    选项允许你在指定的内存位置被执行时设置断点。除了指定模式外，你还必须指定大小。硬件断点的大小与其地址结合，形成一个字节范围，这个范围内的地址可能会触发断点。
 - en: You can set a conditional breakpoint by specifying the condition in the condition
     field. The condition can be an actual condition, or IDC or IDAPython expressions.
     You can click on the ... button next to the condition field, which will open up
@@ -1393,17 +1500,22 @@
   id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过在条件字段中指定条件来设置条件断点。条件可以是一个实际条件，或者是 IDC 或 IDAPython 表达式。你可以点击条件字段旁边的`...`按钮，这将打开编辑器，在编辑器中你可以使用
+    IDC 或 IDAPython 脚本语言来评估条件。你可以在 [https://www.hex-rays.com/products/ida/support/idadoc/1488.shtml](https://www.hex-rays.com/products/ida/support/idadoc/1488.shtml)
+    查找到设置条件断点的一些示例。
 - en: You can view all of the active breakpoints by navigating to Debugger | Breakpoints
     | Breakpoint List (or typing *Ctrl* + *Alt* + *B*). You can right-click on the
     breakpoint entry and *disable* or *delete* the breakpoint.
   id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过导航到 调试器 | 断点 | 断点列表 （或按 *Ctrl* + *Alt* + *B*）来查看所有活动断点。你可以右键点击断点条目并*禁用*或*删除*该断点。
 - en: 3.6 Debugging Malware Executables
   id: totrans-172
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.6 恶意软件可执行文件调试
 - en: 'In this section, we will look at how to use IDA to debug a malware binary.
     Consider the disassembly listing from a 32-bit malware sample. The malware calls
     the `CreateFileW` API to create a file, but, just by looking at the disassembly
@@ -1422,6 +1534,7 @@
   id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将介绍如何使用IDA调试恶意二进制文件。考虑一个32位恶意软件样本的反汇编列表。恶意软件调用`CreateFileW`API创建文件，但仅从反汇编列表中并不清楚恶意软件创建了哪个文件。通过查看`CreateFile`的MSDN文档，你可以了解到`CreateFile`的第一个参数将包含文件名；此外，`CreateFile`中的`W`后缀表示文件名是一个UNICODE字符串（有关该API的详细信息，请参阅前一章）。为了确定文件名，我们可以在调用`CreateFileW`的位置设置一个断点，然后运行程序（*F9*）直到程序达到断点。当程序达到断点时（即在调用`CreateFileW`之前），所有函数的参数将被推送到栈上，因此我们可以检查栈中的第一个参数来确定文件名。在调用`CreateFileW`之后，文件的句柄将通过`eax`寄存器返回，并在➋处被复制到`esi`寄存器中：
 - en: '[PRE4]'
   id: totrans-174
   prefs: []
@@ -1438,10 +1551,13 @@
   id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下图中，执行在调用`CreateFileW`时已暂停（这是通过设置断点并运行程序实现的）。函数的第一个参数是UNICODE字符串（`filename`）的地址（`0x003F538`）。你可以使用IDA中的十六进制视图窗口来检查任何有效内存位置的内容。通过右键点击地址`0x003F538`并选择“Follow
+    in hex dump”选项，可以显示文件名的十六进制内容，如下所示。在此情况下，恶意软件正在`C:\Users\test\AppData\Local\Temp`目录中创建一个文件`SHAMple.dat`：
 - en: '![](../images/00159.jpeg)'
   id: totrans-176
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00159.jpeg)'
 - en: 'The malware, after creating the file, passes the file handle as the first argument
     to the `WriteFile` function. This indicates that the malware writes some content
     to the file `SHAmple.dat`. To determine what content it writes to the file, you
@@ -1452,15 +1568,18 @@
   id: totrans-177
   prefs: []
   type: TYPE_NORMAL
+  zh: 恶意软件在创建文件后，将文件句柄作为第一个参数传递给`WriteFile`函数。这表明恶意软件将某些内容写入文件`SHAmple.dat`。要确定它写入文件的内容，可以检查`WriteFile`函数的第二个参数。在这种情况下，它将字符串`FunFunFun`写入文件，如下图所示。如果恶意软件正在将可执行内容写入文件，你也可以通过这种方法查看：
 - en: '![](../images/00160.jpeg)'
   id: totrans-178
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00160.jpeg)'
 - en: 3.7 Debugging a Malicious DLL Using IDA
   id: totrans-179
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.7 使用IDA调试恶意DLL
 - en: In [Chapter 3](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485), *Dynamic
     Analysis*, you learned the techniques to execute a DLL to perform dynamic analysis.
     In this section, you will use some of the concepts that you learned in [Chapter
@@ -1472,6 +1591,8 @@
   id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第3章](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485)，*动态分析*中，你学习了执行DLL进行动态分析的技巧。在本节中，你将使用在[第3章](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485)，*动态分析*中学到的一些概念，通过IDA调试DLL。如果你不熟悉DLL的动态分析，强烈建议在继续之前阅读[第3章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522)，*动态分析*中的*S**ection
+    6*，*动态链接库（DLL）分析*。
 - en: 'To debug a DLL using the IDA debugger, you first need to designate the executable
     (such as `rundll32.exe`) that will be used to load the DLL. To debug a DLL, first,
     load the DLL into IDA, which will likely display the disassembly of the `DLLMain` function.
@@ -1483,10 +1604,12 @@
   id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用IDA调试器调试DLL，首先需要指定将用于加载DLL的可执行文件（如`rundll32.exe`）。要调试DLL，首先将DLL加载到IDA中，IDA可能会显示`DLLMain`函数的反汇编代码。在`DLLMain`函数的第一条指令上设置断点（*F2*），如以下截图所示。这样，当你运行DLL时，执行将会在`DLLMain`函数的第一条指令处暂停。你也可以通过IDA的导出窗口，导航到DLL导出的任何函数上并设置断点。
 - en: '![](../images/00161.jpeg)'
   id: totrans-182
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00161.jpeg)'
 - en: 'After you have set the breakpoint on the desired address (where you want the
     execution to pause), select the debugger via Debugger | Select debugger | Local
     Win32 debugger (or **Debugger** | **Select debugger** | **Local Windows debugger**)
@@ -1504,15 +1627,22 @@
   id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 在你设置了期望的地址断点（即你希望程序暂停执行的地方）之后，通过选择调试器菜单 Debugger | Select debugger | Local Win32
+    debugger（或者**Debugger** | **Select debugger** | **Local Windows debugger**）并点击OK，来选择调试器。接下来，选择 Debugger
+    | Process options，打开如下截图所示的对话框。在 Application 字段中，输入用于加载DLL的可执行文件的完整路径（`rundll32.exe`）。在 Input
+    file 字段中，输入你想要调试的DLL的完整路径，在 Parameters 字段中，输入传递给`rundll32.exe`的命令行参数，然后点击OK。现在，你可以运行程序，直到程序到达断点，之后你可以像调试任何其他程序一样调试它。你传递给`rundll32.exe`的参数应该具有正确的语法，以成功调试DLL（参考[第3章](part0065.html#1TVKI0-ac10ba3f98854c44bac1c2c5641ca485)，*动态分析*中的*Working
+    of rundll32.exe*部分）。需要注意的一点是，`rundll32.exe`同样可以用来执行64位DLL，方法相同：
 - en: '![](../images/00162.jpeg)'
   id: totrans-184
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00162.jpeg)'
 - en: 3.7.1 Debugging a DLL in a Specific Process
   id: totrans-185
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.7.1 在特定进程中调试DLL
 - en: 'In *[Chapter 3](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522), Dynamic
     Analysis*, you learned how some DLLs can perform process checks to determine whether
     they are running under a particular process, such as `explorer.exe` or `iexplore.exe`.
@@ -1531,10 +1661,17 @@
   id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 *[第3章](https://cdp.packtpub.com/learning_malware_analysis/wp-admin/post.php?post=885&action=edit#post_522)，动态分析*
+    中，您学到了如何通过一些 DLL 执行进程检查，以判断它们是否在特定进程下运行，比如 `explorer.exe` 或 `iexplore.exe`。在这种情况下，您可能希望在特定的宿主进程内调试
+    DLL，而不是 `rundll32.exe`。为了在 DLL 的入口点暂停执行，您可以选择 *启动* 一个新的宿主进程实例，或使用调试器 *附加* 到目标宿主进程，然后选择
+    调试器 | 调试器选项，并勾选“在库加载/卸载时暂停”选项。该选项会告诉调试器每当加载或卸载一个新模块时暂停执行。在进行这些设置后，您可以通过按 *F9*
+    快捷键恢复暂停的宿主进程并让它继续运行。现在，您可以使用像 *RemoteDLL* 这样的工具将 DLL 注入到调试的宿主进程中。当 DLL 被宿主进程加载时，调试器会暂停，给您一个机会在加载模块的地址设置断点。您可以通过查看“段”窗口来了解
+    DLL 已经加载到内存的地址，如下所示：
 - en: '![](../images/00163.jpeg)'
   id: totrans-187
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00163.jpeg)'
 - en: In the preceding screenshot, you can see that the injected DLL (`rasaut.dll`) has
     loaded into the memory at the address `0x10000000` (the base address). You can
     set a breakpoint at the address of the entry point by adding the base address (`0x10000000`) with
@@ -1548,11 +1685,17 @@
   id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的截图中，您可以看到被注入的 DLL (`rasaut.dll`) 已加载到内存中的地址 `0x10000000`（基址）。您可以通过将基地址（`0x10000000`）与
+    `PE 头` 中的 `AddressOfEntryPoint` 字段的值相加来在入口点的地址设置断点。您可以通过将 DLL 加载到如 *pestudio*
+    或 *CFFexplorer* 等工具中来确定入口点的地址值。例如，如果 `AddressOfEntryPoint` 的值为 `0x1BFB`，那么 DLL
+    的入口点地址可以通过将基地址（`0x10000000`）与值 `0x1BFB` 相加得到，结果是 `0x10001BFB`。现在，您可以跳转到地址 `0x10001BFB`（或者按
+    *G* 键跳转到该地址），并在该地址设置断点，然后恢复暂停的进程。
 - en: 3.8 Tracing Execution Using IDA
   id: totrans-189
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.8 使用 IDA 跟踪执行
 - en: '*Tracing* allows you to record (log) specific events while a process is executing.
     It can provide detailed execution information on a binary. IDA supports three
     types of tracing:* instruction tracing*, *function tracing,* and *b**asic block
@@ -1571,10 +1714,16 @@
   id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: '*跟踪* 允许你在进程执行时记录（日志）特定的事件。它可以提供二进制文件的详细执行信息。IDA 支持三种类型的跟踪：*指令跟踪*、*函数跟踪*和 *基本块跟踪*。要在
+    IDA 中启用跟踪，你需要设置一个断点，然后右键点击断点地址并选择“编辑断点”，这会弹出一个断点设置对话框。在对话框中，勾选“启用跟踪”选项，并选择合适的跟踪类型。然后，通过
+    **调试器** | **选择调试器** 菜单（如前所述）选择调试器，并运行（*F9*）程序。以下截图中的位置字段指定了正在编辑的断点，它将作为起始地址执行跟踪。跟踪会一直持续，直到达到一个断点或程序结束。为了指示哪些指令已被跟踪，IDA
+    通过颜色编码高亮显示指令。跟踪完成后，你可以通过选择 **调试器** | **跟踪** | **跟踪窗口** 来查看跟踪结果。你可以通过 **调试器** |
+    **跟踪** | **跟踪选项** 控制跟踪选项：'
 - en: '![](../images/00164.jpeg)'
   id: totrans-191
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00164.jpeg)'
 - en: '***Instruction tracing*** records the execution of each instruction and displays
     the modified register values. Instruction tracing is slower, because the debugger
     internally *single-steps* through the process, to monitor and log all of the register
@@ -1584,6 +1733,8 @@
   id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: '***指令跟踪*** 记录每条指令的执行并显示修改后的寄存器值。指令跟踪较慢，因为调试器会通过单步执行（*single-step*）进程来监控和记录所有寄存器的值。*指令跟踪*
+    对于确定程序的执行流非常有用，并可以了解在执行每条指令期间哪些寄存器被修改。你可以通过添加断点来控制跟踪。'
 - en: 'Consider the program in the following screenshot. Let''s assume that you want
     to trace the first four instructions (which also includes a function call, in
     the third instruction). To do that, first, set a breakpoint at the first instruction
@@ -1595,10 +1746,13 @@
   id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下截图中的程序。假设你想跟踪前四条指令（其中第三条指令包含一个函数调用）。为此，首先，在第一条指令处设置一个断点，在第五条指令处设置另一个断点，如下图所示。然后，编辑第一个断点（地址为
+    `0x00401010`），并启用指令跟踪。现在，当你开始调试时，调试器会跟踪前四条指令（包括函数内的指令），并在第五条指令处暂停。如果没有指定第二个断点，调试器将跟踪所有指令：
 - en: '![](../images/00165.jpeg)'
   id: totrans-194
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00165.jpeg)'
 - en: 'The following screenshot shows the *instruction tracing* events in the trace
     window, when the debugger paused at the fifth instruction. Note how the execution
     flows from `main` to `sub_E41000`, and then back to `main`. If you wish to trace
@@ -1606,10 +1760,13 @@
   id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图显示了在调试器暂停于第五条指令时，*指令跟踪* 事件在跟踪窗口中的表现。注意执行流是如何从 `main` 流向 `sub_E41000`，然后又返回到
+    `main`。如果你希望跟踪剩余的指令，可以通过恢复暂停的进程来实现：
 - en: '![](../images/00166.jpeg)'
   id: totrans-196
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00166.jpeg)'
 - en: '**Function Tracing**: This records all of the function calls and the return,
     no register values are logged for function trace events. *Function tracing* is useful for determining
     which *functions* and *sub-functions* are called by the program. You can perform
@@ -1618,6 +1775,7 @@
   id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: '**函数跟踪**：这会记录所有的函数调用和返回，但不会记录函数跟踪事件中的寄存器值。*函数跟踪*对于确定程序调用了哪些*函数*和*子函数*非常有用。你可以通过将跟踪类型设置为函数，并按照与*指令跟踪*相同的步骤进行函数跟踪。'
 - en: 'In the following example, the malware sample calls two functions. Let''s suppose
     that we want to get a quick overview of what other functions are called by the
     first function call. To do that, we can set the first breakpoint at the *first
@@ -1628,10 +1786,12 @@
   id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 在以下示例中，恶意软件样本调用了两个函数。假设我们想快速了解第一个函数调用时调用了哪些其他函数。为了做到这一点，我们可以在*第一条指令*处设置第一个断点，并启用函数跟踪（通过编辑断点），然后可以在*第二条指令*处设置另一个断点。第二个断点将作为停止点（跟踪将一直进行到达第二个断点）。以下截图展示了这两个断点：
 - en: '![](../images/00167.jpeg)'
   id: totrans-199
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00167.jpeg)'
 - en: 'The following screenshot shows the results of function tracing. From the traced
     events, you can see that the function `sub_4014A0` calls registry-related API
     functions; this tells you that the function is responsible for performing registry
@@ -1639,10 +1799,12 @@
   id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下截图展示了函数跟踪的结果。从跟踪的事件中，你可以看到函数`sub_4014A0`调用了与注册表相关的 API 函数；这表明该函数负责执行注册表操作：
 - en: '![](../images/00168.jpeg)'
   id: totrans-201
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00168.jpeg)'
 - en: Sometimes, your tracing may take a long time and seem to never end; this happens
     if the function is not returning to its caller and is running in a loop, waiting
     for an event to occur. In such a case, you will still be able to see the trace
@@ -1650,6 +1812,7 @@
   id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，你的跟踪可能需要很长时间，并且似乎永远不会结束；如果函数没有返回到其调用者并且在等待事件发生的循环中运行，就会发生这种情况。在这种情况下，你仍然可以在跟踪窗口中看到跟踪日志。
 - en: '**Block Tracing**: IDA allows you to perform *block tracing*, which is useful
     for knowing which blocks of code were executed during runtime. You can enable
     block tracing by setting the Tracing type to Basic blocks. In the case of block
@@ -1660,11 +1823,13 @@
   id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: '**块跟踪**：IDA 允许你进行*块跟踪*，这对于了解在运行时哪些代码块被执行非常有用。你可以通过将跟踪类型设置为基本块来启用块跟踪。在块跟踪的情况下，调试器将在每个函数的每个基本块的*最后一条指令*处设置断点，并且还会在跟踪块中间的任何调用指令处设置断点。*基本块跟踪*比正常执行慢，但比*指令*或*函数跟踪*要快。'
 - en: 3.9 Debugger Scripting Using IDAPython
   id: totrans-204
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.9 使用 IDAPython 的调试器脚本
 - en: You can use debugger scripting to automate routine tasks related to malware
     analysis. In the previous chapter, we looked at examples of using IDAPython for
     static code analysis. In this section, you will learn how to use IDAPython to
@@ -1674,6 +1839,9 @@
   id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用调试器脚本来自动化与恶意软件分析相关的常规任务。在上一章中，我们介绍了如何使用 IDAPython 进行静态代码分析。在本节中，你将学习如何使用
+    IDAPython 执行与调试相关的任务。本节中展示的 IDAPython 脚本使用了新的 IDAPython API，这意味着如果你使用的是旧版本的 IDA（低于
+    IDA 7.0），这些脚本将无法工作。
 - en: 'The following resources should help you get started with IDAPython debugger
     scripting. Most of these resources (except the IDAPython documentation) demonstrate
     scripting capabilities using the old IDAPython API, but they should be good enough
@@ -1681,26 +1849,32 @@
   id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下资源应帮助你开始使用 IDAPython 调试器脚本。这些资源中的大部分（除了 IDAPython 文档）使用旧版 IDAPython API 演示脚本功能，但它们足够帮助你理解。如果你遇到困难，可以参考
+    IDAPython 文档：
 - en: '**IDAPython API Documentation**: [https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html](https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html)'
   id: totrans-207
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**IDAPython API 文档**：[https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html](https://www.hex-rays.com/products/ida/support/idapython_docs/idc-module.html)'
 - en: '**Magic Lantern Wiki**: [http://magiclantern.wikia.com/wiki/IDAPython](http://magiclantern.wikia.com/wiki/IDAPython)'
   id: totrans-208
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**魔灯 Wiki**：[http://magiclantern.wikia.com/wiki/IDAPython](http://magiclantern.wikia.com/wiki/IDAPython)'
 - en: '**IDA Scriptable Debugger**: [https://www.hex-rays.com/products/ida/debugger/scriptable.shtml](https://www.hex-rays.com/products/ida/debugger/scriptable.shtml)'
   id: totrans-209
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**IDA 可脚本化调试器**：[https://www.hex-rays.com/products/ida/debugger/scriptable.shtml](https://www.hex-rays.com/products/ida/debugger/scriptable.shtml)'
 - en: '**Using IDAPython to Make Your Life Easier (Series)**: [https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/](https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/)'
   id: totrans-210
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**使用 IDAPython 让你的生活更轻松（系列）**：[https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/](https://researchcenter.paloaltonetworks.com/2015/12/using-idapython-to-make-your-life-easier-part-1/)'
 - en: This section will give you a feel for how to use IDAPython for debugging-related
     tasks. First, load the executable in IDA, and select the debugger (via Debugger
     | Select debugger). For testing the following script commands, Local Windows debugger
@@ -1712,6 +1886,10 @@
   id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 本节将帮助你了解如何使用 IDAPython 进行调试相关任务。首先，在 IDA 中加载可执行文件，并选择调试器（通过 Debugger | Select
+    debugger）。在测试以下脚本命令时，选择了本地 Windows 调试器。可执行文件加载后，你可以在 IDA 的 Python 控制台中执行以下提到的
+    Python 代码片段，或者通过选择 File | Script Command (*Shift* + *F2*) 并从下拉菜单中选择 Python 作为脚本语言。如果你希望将其作为独立脚本运行，你可能需要导入适当的模块（例如，`import
+    idc`）。
 - en: 'The following code snippet sets a breakpoint at the current cursor location,
     starts the debugger, waits for the `suspend debugger` event to occur, and then
     prints the *address* and the *disassembly text* associated with the breakpoint
@@ -1719,6 +1897,7 @@
   id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码片段在当前光标位置设置一个断点，启动调试器，等待 `suspend debugger` 事件发生，然后打印与断点地址相关的 *地址* 和 *反汇编文本*：
 - en: '[PRE5]'
   id: totrans-213
   prefs: []
@@ -1729,6 +1908,7 @@
   id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行上述脚本命令后，生成的输出如下：
 - en: '[PRE6]'
   id: totrans-215
   prefs: []
@@ -1740,6 +1920,7 @@
   id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码片段 *单步进入* 下一条指令，并打印 *地址* 和 *反汇编文本*。同样，你可以使用 `idc.step_over()` 来 *单步跳过* 指令：
 - en: '[PRE7]'
   id: totrans-217
   prefs: []
@@ -1749,6 +1930,7 @@
   id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行上述脚本命令后的结果如下所示：
 - en: '[PRE8]'
   id: totrans-219
   prefs: []
@@ -1759,6 +1941,7 @@
   id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取寄存器的值，你可以使用 `idc.get_reg_value()`。以下示例获取 `esp` 寄存器的值，并在 *输出窗口* 中打印它：
 - en: '[PRE9]'
   id: totrans-221
   prefs: []
@@ -1771,6 +1954,8 @@
   id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取地址 `0x14fb04` 处的 `dword` 值，可以使用以下代码。同样，你可以使用 `idc.read_dbg_byte(ea)`、`idc.read_dbg_word(ea)`
+    和 `idc.read_dbg_qword(ea)` 来获取特定地址处的 `byte`、`word` 和 `qword` 值：
 - en: '[PRE10]'
   id: totrans-223
   prefs: []
@@ -1781,6 +1966,8 @@
   id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取地址 `0x01373000` 处的 ASCII 字符串，可以使用以下方法。默认情况下，`idc.get_strlit_contents()` 函数会获取给定地址处的
+    ASCII 字符串：
 - en: '[PRE11]'
   id: totrans-225
   prefs: []
@@ -1793,6 +1980,8 @@
   id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取 UNICODE 字符串，你可以通过设置 `strtype` 参数为常量值 `idc.STRTYPE_C_16`，使用 `idc.get_strlit_contents()`
+    函数，如下所示。你可以在 `idc.idc` 文件中找到已定义的常量值，文件位于你的 IDA 安装目录：
 - en: '[PRE12]'
   id: totrans-227
   prefs: []
@@ -1803,6 +1992,7 @@
   id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下代码列出所有加载的模块（可执行文件和 DLL）及其基地址：
 - en: '[PRE13]'
   id: totrans-229
   prefs: []
@@ -1812,6 +2002,7 @@
   id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行前面脚本命令的结果如下所示：
 - en: '[PRE14]'
   id: totrans-231
   prefs: []
@@ -1822,6 +2013,7 @@
   id: totrans-232
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取`CreateFileA`函数在`kernel32.dll`中的地址，请使用以下代码：
 - en: '[PRE15]'
   id: totrans-233
   prefs: []
@@ -1831,6 +2023,7 @@
   id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 要恢复暂停的进程，可以使用以下代码：
 - en: '[PRE16]'
   id: totrans-235
   prefs: []
@@ -1841,6 +2034,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 3.9.1 示例 – 确定恶意软件访问的文件
 - en: In the previous chapter, while discussing IDAPython, we wrote an IDAPython script
     to determine all of the cross-references to the `CreateFileA` function (the address
     where `CreateFileA` was called). In this section, let's enhance that script to
@@ -1849,6 +2043,7 @@
   id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们讨论了IDAPython，并编写了一个IDAPython脚本来确定所有指向`CreateFileA`函数的交叉引用（即`CreateFileA`被调用的地址）。在本节中，让我们增强该脚本，执行调试任务并确定恶意软件创建（或打开）的文件名。
 - en: 'The following script sets a breakpoint on all of the addresses where `CreateFileA` is
     called within the program, and runs the malware. Before running the following
     script, the appropriate debugger is selected (Debugger | Select debugger | Local
@@ -1866,6 +2061,8 @@
   id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下脚本会在程序中调用`CreateFileA`的所有地址处设置断点，并运行恶意软件。在运行以下脚本之前，选择适当的调试器（调试器 | 选择调试器 |
+    本地Windows调试器）。当此脚本执行时，它将在每个断点暂停（也就是说，在调用`CreateFileA`之前），并打印第一个参数（`lpFileName`）、第二个参数（`dwDesiredAccess`）和第五个参数（`dwCreationDisposition`）。这些参数将告诉我们文件名、表示对文件执行操作的常量值（如*读取*/*写入*），以及表示将执行的操作的另一个常量值（如*创建*或*打开*）。当断点被触发时，第一个参数可以通过`[esp]`访问，第二个参数通过`[esp+0x4]`访问，第五个参数通过`[esp+0x10]`访问。除了打印一些参数外，脚本还通过获取`EAX`寄存器的值来确定文件的`handle`（*返回值*），该值是在*步进过*`CreateFile`函数后获得的：
 - en: '[PRE17]'
   id: totrans-239
   prefs: []
@@ -1880,6 +2077,7 @@
   id: totrans-240
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是执行前面脚本的结果。`DesiredAccess`值`0x40000000`和`0x80000000`分别表示`GENERIC_WRITE`和`GENERIC_READ`操作。`createDisposition`值`0x2`和`0x3`分别表示`CREATE_ALWAYS`（始终创建一个新文件）和`OPEN_EXISTING`（仅在文件存在时打开文件）。如您所见，通过使用调试器脚本，可以快速确定恶意软件创建/访问的文件名：
 - en: '[PRE18]'
   id: totrans-241
   prefs: []
@@ -1890,6 +2088,7 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 4\. 调试.NET应用程序
 - en: 'When performing malware analysis, you will have to deal with analyzing a wide
     variety of code. You are likely to encounter malware created using *Microsoft
     Visual C/C++*, *Delphi*, and the *.NET framework*. In this section, we will take
@@ -1904,10 +2103,15 @@
   id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 在进行恶意软件分析时，您将需要分析各种不同的代码。您很可能会遇到使用*Microsoft Visual C/C++*、*Delphi*和*.NET框架*创建的恶意软件。在本节中，我们将简要介绍一个名为*dnSpy*的工具（[https://github.com/0xd4d/dnSpy](https://github.com/0xd4d/dnSpy)），它使得分析
+    .NET 二进制文件变得更加简单。它在反编译和调试.*NET应用程序*方面非常有效。要加载 .NET 应用程序，您可以将应用程序拖放到*dnSpy*中，或者启动*dnSpy*并选择“文件
+    | 打开”，然后提供二进制文件的路径。一旦 .NET 应用程序加载完成，dnSpy 将反编译该应用程序，您可以在左侧窗口（名为“程序集浏览器”）中访问程序的各个方法和类。以下截图显示了反编译后的
+    .NET 恶意二进制文件（名为`SQLite.exe`）的`main`函数：
 - en: '![](../images/00169.jpeg)'
   id: totrans-244
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00169.jpeg)'
 - en: 'Once the binary has decompiled, you can either read the code (*static code
     analysis*) to determine the malware''s functionality, or debug the code and perform
     *dynamic code analysis*. To debug the malware, you can either click on the Start
@@ -1916,10 +2120,13 @@
   id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦二进制文件被反编译，您可以通过阅读代码（*静态代码分析*）来确定恶意软件的功能，或者通过调试代码进行*动态代码分析*。要调试恶意软件，您可以点击工具栏上的“开始”按钮，或者选择“调试
+    | 调试程序集”(*F5*)；这将弹出如下所示的对话框：
 - en: '![](../images/00170.jpeg)'
   id: totrans-246
   prefs: []
   type: TYPE_IMG
+  zh: '![](../images/00170.jpeg)'
 - en: 'Using the Break at drop-down option, you can specify where to *break* when
     the debugger starts. Once you are satisfied with the options, you can click on OK, which
     will start the process under debugger control and pause the debugger at the entry
@@ -1931,17 +2138,21 @@
   id: totrans-247
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用“Break at drop-down”选项，您可以指定在调试器启动时*断点*的位置。设置好选项后，您可以点击“确定”按钮，这将启动调试过程并在入口点暂停调试器。现在，您可以通过“调试”菜单访问各种调试器选项（如“步过”、“步入”、“继续”等），如以下截图所示。您还可以通过双击某行或选择**调试
+    | 切换断点**（*F9*）来设置断点。在调试过程中，您可以使用本地窗口检查一些局部变量或内存位置：
 - en: '![](../images/00171.jpeg)To get an idea of .NET binary analysis, and for a
     detailed analysis of the previously mentioned binary (named `SQLite.exe`), you
     can read the author''s blog post at [https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/](https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/).'
   id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](../images/00171.jpeg)要了解 .NET 二进制分析，并对前面提到的二进制文件（名为`SQLite.exe`）进行详细分析，您可以阅读作者的博客文章：[https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/](https://cysinfo.com/cyber-attack-targeting-cbi-and-possibly-indian-army-officials/)。'
 - en: Summary
   id: totrans-249
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: The debugging techniques covered in this chapter are effective methods for understanding
     the inner workings of a malicious binary. The debugging features provided by code
     analysis tools such as IDA, x64dbg, and dnSpy can greatly enhance your reverse
@@ -1951,8 +2162,10 @@
   id: totrans-250
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章介绍的调试技术是理解恶意二进制文件内部工作原理的有效方法。像IDA、x64dbg和dnSpy等代码分析工具提供的调试功能，可以大大增强您的逆向工程过程。在恶意软件分析中，您通常会结合反汇编和调试技术来确定恶意软件的功能，并从恶意二进制文件中获取有价值的信息。
 - en: In the next chapter, we will use the skills that we have learned so far to understand
     various malware characteristics and functionalities.
   id: totrans-251
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将运用到目前为止学到的技能，理解各种恶意软件的特征和功能。
