@@ -3,12 +3,14 @@
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '*第13章*：利用SUID二进制文件'
 - en: We will conclude the privilege escalation process on Linux by exploring the
     process of searching for and exploiting SUID binaries on Linux, which helps elevate
     the privileges on the target system.
   id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将通过探索在Linux上查找和利用SUID二进制文件的过程来结束Linux上的权限提升过程，这有助于提升目标系统的权限。
 - en: We will start this chapter by looking at how filesystem permissions work on
     Linux, after which we will look at how SUID permissions work and how they are
     applied. We will then look at how to search for and identify vulnerable or misconfigured
@@ -17,44 +19,53 @@
   id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章将从查看Linux上文件系统权限的工作原理开始，接下来我们将了解SUID权限的工作方式以及它们是如何应用的。然后我们将了解如何搜索和识别易受攻击或配置错误的SUID二进制文件，最后探讨可以利用配置不当的SUID二进制文件提升权限的各种技术。
 - en: 'In this chapter, we''re going to cover the following main topics:'
   id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖以下主要内容：
 - en: Introduction to filesystem permissions on Linux
   id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Linux文件系统权限简介
 - en: Searching for SUID binaries
   id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 查找SUID二进制文件
 - en: Escalation via shared object injection
   id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过共享对象注入提升权限
 - en: Technical requirements
   id: totrans-7
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: To follow along with the demonstrations in this chapter, you will need to ensure
     that you are familiar with Linux Terminal commands.
   id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 要跟随本章中的演示，您需要确保熟悉Linux终端命令。
 - en: 'You can view this chapter''s code in action here: [https://bit.ly/39Kdn1t](https://bit.ly/39Kdn1t)'
   id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以在此查看本章代码的实际操作：[https://bit.ly/39Kdn1t](https://bit.ly/39Kdn1t)
 - en: Introduction to filesystem permissions on Linux
   id: totrans-10
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Linux文件系统权限简介
 - en: Before we begin exploring the process of exploiting SUID binaries to elevate
     our privileges, we need to take a brief look at filesystem permissions on Linux
     and how they can be used to provide or limit access to files and directories.
@@ -63,71 +74,85 @@
   id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们开始探索利用SUID二进制文件提升权限的过程之前，我们需要简要了解Linux上的文件系统权限以及它们如何用于授予或限制对文件和目录的访问。这将为我们深入研究SUID二进制文件，它们是如何配置的以及如何利用它们提供帮助。
 - en: Filesystem permissions on Linux are used to grant or limit access to files and
     directories. This is a very useful feature as it allows users to restrict access
     to particular files or directories, thus preventing any unauthorized access.
   id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Linux上，文件系统权限用于授予或限制对文件和目录的访问。这是一个非常有用的功能，因为它允许用户限制对特定文件或目录的访问，从而防止任何未经授权的访问。
 - en: 'We can list the permissions of a file or folder on Linux by running the following
     command:'
   id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过运行以下命令列出文件或文件夹的权限：
 - en: ls -al
   id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: ls -al
 - en: 'As highlighted in the following screenshot, this command will output a list
     of all the files in a directory and all their attributes, including their access
     permissions and ownership details:'
   id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下截图所示，此命令将输出目录中所有文件及其所有属性的列表，包括它们的访问权限和所有权详细信息：
 - en: '![Figure 13.1 – File permissions'
   id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图13.1 – 文件权限'
 - en: '](Images/B17389_13_001.jpg)'
   id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_001.jpg)'
 - en: Figure 13.1 – File permissions
   id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.1 – 文件权限
 - en: 'Linux provides multi-user support. Due to this, access to files and data is
     restricted based on the following key elements:'
   id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux提供多用户支持。由于这一点，文件和数据的访问基于以下关键元素进行限制：
 - en: '**File ownership**: This refers to the specific user or group that owns the
     file.'
   id: totrans-20
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**文件所有权**：指拥有文件的特定用户或组。'
 - en: '**Access permissions**: This refers to the specific permissions that are used
     to allow or restrict access to specific files.'
   id: totrans-21
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**访问权限**：指用于允许或限制对特定文件的访问的具体权限。'
 - en: Every file and directory on Linux has an owner and specific file permissions
     that are used to prevent unauthenticated or unauthorized access to it.
   id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 每个Linux文件和目录都有一个所有者和特定的文件权限，用于防止未经认证或未经授权的访问。
 - en: 'In the case of ownership, Linux divides file ownership into three main categories:'
   id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 就所有权而言，Linux将文件所有权分为三个主要类别：
 - en: '**User**: This is used to specify the owner of the file. Typically, the creator
     of a file becomes the owner of the file.'
   id: totrans-24
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**用户**：用于指定文件的所有者。通常，文件的创建者成为文件的所有者。'
 - en: '**Group**: This is used to specify the group ownership or access to a file,
     whereby all users of a group will have the same permissions and access to the
     file. Only members of the group will be able to read, write, or execute the file
@@ -136,6 +161,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**组**：这是用来指定文件的组所有权或访问权限，组内的所有用户将拥有相同的权限和对该文件的访问权限。只有该组的成员才能根据文件的访问权限读取、写入或执行文件。'
 - en: '**Other**: This is used to refer to read, write, or execute permissions for
     other users on the system who are not the owner or part of a group that has ownership
     of the file.'
@@ -143,6 +169,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**其他**：这是指系统中非文件所有者或不属于拥有文件所有权的组的其他用户的读、写或执行权限。'
 - en: 'The following screenshot outlines the file ownership categorization of a file
     on Linux, whereby the access permissions are used to dictate the type of access
     the owner, group, and other users on the system have to a specific file on the
@@ -150,23 +177,28 @@
   id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了 Linux 中文件所有权的分类，其中访问权限用于决定系统上特定文件的所有者、组和其他用户对该文件的访问权限类型：
 - en: '![Figure 13.2 – Linux file ownership'
   id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.2 – Linux 文件所有权'
 - en: '](Images/B17389_13_002.jpg)'
   id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_002.jpg)'
 - en: Figure 13.2 – Linux file ownership
   id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.2 – Linux 文件所有权
 - en: Now that we have an understanding of how file ownership is handled and implemented
     on Linux, let's take a look at how access permissions are configured.
   id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经了解了文件所有权在 Linux 中的处理和实现方式，接下来我们来看看如何配置访问权限。
 - en: 'Every file and directory on Linux has specific access permissions attributed
     to it that determine whether the file can be read, modified, or executed. Linux
     divides these access permissions into three categories based on the type of access
@@ -174,63 +206,75 @@
   id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 上的每个文件和目录都有特定的访问权限，用于决定该文件是否可以被读取、修改或执行。Linux 根据你希望提供给系统上用户和组的访问类型，将这些权限分为三类：
 - en: '**Read**: This permission provides users with the ability to read a file and
     is denoted by the letter **r**.'
   id: totrans-33
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**读取**：此权限允许用户读取文件，用字母**r**表示。'
 - en: '**Write**: This permission provides users with the ability to modify or make
     changes to a file and is denoted by the letter **w**.'
   id: totrans-34
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**写入**：此权限允许用户修改或更改文件，用字母**w**表示。'
 - en: '**Execute**: This permission provides users with the ability to execute or
     run a file and is denoted by the letter **x**.'
   id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**执行**：此权限允许用户执行或运行一个文件，并用字母**x**表示。'
 - en: 'The following screenshot outlines the access permissions of a particular file
     for the owner, group, and other users on the system:'
   id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了系统中某个文件的所有者、组和其他用户的访问权限：
 - en: '![Figure 13.3 – File access permissions'
   id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.3 – 文件访问权限'
 - en: '](Images/B17389_13_003.jpg)'
   id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_003.jpg)'
 - en: Figure 13.3 – File access permissions
   id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.3 – 文件访问权限
 - en: In this case, the owner of the file has read, write, and execute permissions
     and both the group and other users only have read and execute permissions, thus
     restricting them from making changes to the file.
   id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此示例中，文件的所有者具有读、写和执行权限，而组和其他用户仅具有读和执行权限，从而限制他们修改文件。
 - en: This example demonstrates the importance of file ownership and access permissions
     on Linux, as well as how they can be used to limit or grant access to files and
     resources on a system.
   id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个例子展示了 Linux 中文件所有权和访问权限的重要性，以及它们如何用于限制或授予对系统中文件和资源的访问。
 - en: Changing permissions
   id: totrans-42
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 更改权限
 - en: To change file and directory permissions, we can use the **chmod** command,
     which is an abbreviation for change mode.
   id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 要更改文件和目录权限，我们可以使用**chmod**命令，简称为更改模式。
 - en: 'The syntax of the **chmod** command can be defined by various formats. One
     of the most commonly used formats is the symbolic mode format. It provides users
     with a simple and easy-to-understand syntax for modifying, setting, and removing
@@ -239,69 +283,83 @@
   id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: '**chmod** 命令的语法可以通过多种格式定义，其中最常用的格式是符号模式格式。它为用户提供了一个简单易懂的语法，用于修改、设置和移除权限。下表展示了所有参数及其对应的功能：'
 - en: '![](Images/B17389_13_Table_001.jpg)'
   id: totrans-45
   prefs: []
   type: TYPE_IMG
+  zh: '![](Images/B17389_13_Table_001.jpg)'
 - en: Let's take a look at how to use **chmod** to modify file and directory permissions.
   id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们看看如何使用**chmod**修改文件和目录的权限。
 - en: I will be using a simple Bash script as a test file to demonstrate how permissions
     can affect access.
   id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我将使用一个简单的 Bash 脚本作为测试文件，演示权限如何影响访问。
 - en: 'If we want to add permissions to the file, we can use the **+** symbol. Let''s
     give the script executable permissions. We can do this by using the following
     syntax:'
   id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们想要给文件添加权限，我们可以使用 **+** 符号。让我们给脚本赋予可执行权限。我们可以通过以下语法来实现这一点：
 - en: chmod +x script.sh
   id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: chmod +x script.sh
 - en: 'If we want to give the executable permission to all users, we can use the following
     command:'
   id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们想要给所有用户赋予可执行权限，我们可以使用以下命令：
 - en: chmod u+x script.sh
   id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: chmod u+x script.sh
 - en: 'We can also use multiple permissions in a single command and use a comma to
     separate the options. This command will give groups executable permissions and
     will give all users and groups write permissions:'
   id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以在单个命令中使用多个权限，并使用逗号分隔选项。此命令将给组赋予可执行权限，并将所有用户和组赋予写权限：
 - en: chmod g+x, a+w script.sh
   id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: chmod g+x, a+w script.sh
 - en: 'If we want to remove permissions from a file, we can use the **-** symbol.
     This command will remove all the executable permissions for all users. This will
     prevent the script from being executed:'
   id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们想要从文件中删除权限，我们可以使用 **-** 符号。此命令将删除所有用户的可执行权限。这将阻止脚本的执行：
 - en: chmod a-x script.sh
   id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: chmod a-x script.sh
 - en: Now that you have a functional understanding of how filesystem permissions work
     on Linux, we can begin exploring the SUID permission, how it works, and how it
     is used.
   id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您已经对 Linux 上的文件系统权限工作原理有了功能性的理解，我们可以开始探讨 SUID 权限的工作方式及其用途。
 - en: Understanding SUID permissions
   id: totrans-57
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 理解 SUID 权限
 - en: In addition to the three main file access permissions (read, write, and execute),
     Linux also provides users with specialized permissions that can be utilized in
     specific situations. One of these access permissions is the **Set Owner User ID**
@@ -309,12 +367,14 @@
   id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了三个主要的文件访问权限（读取、写入和执行）外，Linux 还为用户提供了特定情况下可用的专用权限。其中一个访问权限是 **设置所有者用户 ID**（**SUID**）权限。
 - en: When applied, this permission allows users to execute a script or binary with
     the permissions of the file owner, as opposed to the user who is running the script
     or binary.
   id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 应用此权限时，允许用户以文件所有者的权限执行脚本或二进制文件，而不是运行脚本或二进制文件的用户。
 - en: SUID permissions are typically used to provide unprivileged users with the ability
     to run specific scripts or binaries with *root* permissions. However, note that
     the provision of elevated privileges is limited to the execution of the script
@@ -324,6 +384,7 @@
   id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: SUID 权限通常用于为非特权用户提供以 *root* 权限运行特定脚本或二进制文件的能力。然而，请注意，提供的提升权限仅限于执行脚本，并不转换为提升的权限。然而，如果它们没有被正确配置，非特权用户可以利用二进制文件或脚本中的配置错误或漏洞来获得提升的会话。
 - en: 'Files or binaries with the SUID access permission can easily be identified
     by listing the respective ownership permissions of the file. If applied to a file
     or binary, the execute permission (denoted by the letter **x**) will be replaced
@@ -332,18 +393,23 @@
   id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以通过列出文件的相应所有权权限来轻松识别具有 SUID 访问权限的文件或二进制文件。如果应用于文件或二进制文件，执行权限（由字母 **x** 表示）将被替换为
+    SUID 权限，由字母 **s** 表示，如下面的截图所示：
 - en: '![Figure 13.4 – SUID permission'
   id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.4 – SUID 权限'
 - en: '](Images/B17389_13_004.jpg)'
   id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_004.jpg)'
 - en: Figure 13.4 – SUID permission
   id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.4 – SUID 权限
 - en: As highlighted in the preceding screenshot, the owner of the file has the SUID
     access permission applied, while the members of the group and other users on the
     system have read and execute permissions, but not write permissions. In this case,
@@ -352,12 +418,15 @@
   id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前面的截图所示，文件的所有者具有 SUID 访问权限，而组的成员和系统上的其他用户具有读取和执行权限，但没有写权限。在这种情况下，组的成员和系统上的其他用户将能够以
+    root 权限执行二进制文件，因为文件的所有者是 root 用户。
 - en: This permission can be extremely useful as it provides administrators with granular
     control over files or binaries, who can access them, whether they can be executed,
     and the permissions they will be executed with.
   id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 此权限非常有用，因为它为管理员提供了对文件或二进制文件的细粒度控制，可以控制谁可以访问它们，是否可以执行以及执行时的权限。
 - en: 'This is the functionality that we will be attempting to exploit in this chapter
     to elevate our privileges. However, as you have probably noticed, the success
     of our attack will depend on the following factors:'
@@ -652,18 +721,22 @@
   id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下图所示，脚本将枚举系统信息并显示目标系统上 SUID 二进制文件的列表：
 - en: '![Figure 13.10 – linPEAS SUID binaries'
   id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.10 – linPEAS SUID 二进制文件](Images/B17389_13_012.jpg)'
 - en: '](Images/B17389_13_010.jpg)'
   id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_010.jpg)'
 - en: Figure 13.10 – linPEAS SUID binaries
   id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.10 – linPEAS SUID 二进制文件
 - en: In this case, we can identify the same SUID binaries we found with our manual
     search. However, linPEAS also provides us with additional information regarding
     potential vulnerabilities for each SUID binary that can be exploited. This information
@@ -671,17 +744,20 @@
   id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们可以识别出与手动搜索中找到的 SUID 二进制文件相同的文件。然而，linPEAS 还为我们提供了每个 SUID 二进制文件的潜在漏洞信息，这些漏洞可以被利用。在本章的后续部分，这些信息将非常有用。
 - en: Now that we have been able to search for and identify all the SUID binaries
     on the target system, we can start exploring the process of identifying the SUID
     binaries that are vulnerable and can be exploited.
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经能够搜索并识别目标系统上的所有 SUID 二进制文件，我们可以开始探索识别易受攻击且可以被利用的 SUID 二进制文件的过程。
 - en: Identifying vulnerable SUID binaries
   id: totrans-123
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 识别易受攻击的 SUID 二进制文件
 - en: Identifying vulnerable SUID binaries that can be exploited to provide us with
     elevated privileges can be a very manual process and differs from system to system,
     based on the SUIDs that are available. However, we can streamline this process
@@ -689,52 +765,64 @@
   id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 识别可以用来提升我们权限的易受攻击的 SUID 二进制文件可能是一个非常手动的过程，并且因系统而异，具体取决于可用的 SUID 文件。然而，我们可以通过利用名为
+    **GTFOBins** 的资源来简化这个过程。
 - en: GTFOBins is a curated list of Unix binaries that can be exploited to bypass
     local security restrictions and, in our case, elevate our privileges.
   id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: GTFOBins 是一个经过精心策划的 Unix 二进制文件列表，可以利用这些文件绕过本地安全限制，在我们的案例中，用于提升我们的权限。
 - en: 'More information about GTFOBins can be found here: [https://gtfobins.github.io/](https://gtfobins.github.io/).'
   id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 更多关于 GTFOBins 的信息可以在此找到：[https://gtfobins.github.io/](https://gtfobins.github.io/)。
 - en: We can use the information outlined on the GTFOBins website to identify binaries
     on our target system that can be exploited to elevate our privileges.
   id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 GTFOBins 网站上提供的信息来识别目标系统上的可被利用的二进制文件，以提升我们的权限。
 - en: 'The GTFOBins website has a dedicated SUID category that provides us with a
     list of SUID binaries that are vulnerable and can be accessed by clicking on the
     SUID category, as highlighted in the following screenshot:'
   id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: GTFOBins 网站有一个专门的 SUID 类别，为我们提供了一份包含易受攻击的 SUID 二进制文件的列表，可以通过点击 SUID 类别访问，如以下截图所示：
 - en: '![Figure 13.11 – GTFOBins SUID category](Images/B17389_13_011.jpg)'
   id: totrans-129
   prefs: []
   type: TYPE_IMG
+  zh: '![图 13.11 – GTFOBins SUID 类别](Images/B17389_13_011.jpg)'
 - en: Figure 13.11 – GTFOBins SUID category
   id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.11 – GTFOBins SUID 类别
 - en: 'The SUID category will provide you with an alphabetically sorted list of vulnerable
     SUID binaries and their respective functions, as highlighted in the following
     screenshot:'
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: SUID 类别将为你提供一个按字母顺序排列的易受攻击的 SUID 二进制文件及其相应功能的列表，如以下截图所示：
 - en: '![Figure 13.12 – GTFOBins vulnerable SUID binaries'
   id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.12 – GTFOBins 易受攻击的 SUID 二进制文件](Images/B17389_13_010.jpg)'
 - en: '](Images/B17389_13_012.jpg)'
   id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_012.jpg)'
 - en: Figure 13.12 – GTFOBins vulnerable SUID binaries
   id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.12 – GTFOBins 易受攻击的 SUID 二进制文件
 - en: We can use this list of vulnerable SUID binaries to identify any potential matches
     with the SUID binaries on our target system. However, in our case, we weren't
     able to identify any matches. As a result, we will have to analyze the SUID binaries
@@ -742,22 +830,27 @@
   id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用这份易受攻击的 SUID 二进制文件列表，来识别与目标系统上 SUID 二进制文件的潜在匹配项。然而，在我们的案例中，我们未能识别出任何匹配项。因此，我们将需要分析目标系统上的
+    SUID 二进制文件，以识别可能存在的漏洞，这些漏洞可以被利用。
 - en: Also, note that you should not disregard the GTFOBins resource in your future
     assessments as you may come across targets that do have a vulnerable SUID binary
     that can be exploited.
   id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，请注意，在以后的评估中不要忽视 GTFOBins 资源，因为你可能会遇到某些目标系统，其中确实存在可以被利用的易受攻击的 SUID 二进制文件。
 - en: In this case, we will have to take on a much more manual approach that will
     require analyzing the SUID binaries on the target system.
   id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们将不得不采取更为手动的方法，这需要分析目标系统上的 SUID 二进制文件。
 - en: Escalation via shared object injection
   id: totrans-138
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 通过共享对象注入进行权限提升
 - en: In the previous section, *Searching for SUID binaries*, we identified the SUID
     binaries on the target system with linPEAS. However, in addition to listing the
     SUID binaries, linPEAS also performed additional vulnerability checks on the SUID
@@ -889,50 +982,61 @@
   id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令将使用**strace**实用程序运行**suid-so**二进制文件，并使用grep限制**strace**产生的输出，这将确保仅显示二进制文件使用的共享对象：
 - en: '![Figure 13.15 – strace SUID binary shared objects'
   id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.15 – 使用strace SUID二进制文件的共享对象'
 - en: '](Images/B17389_13_015.jpg)'
   id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_015.jpg)'
 - en: Figure 13.15 – strace SUID binary shared objects
   id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.15 – 使用strace SUID二进制文件的共享对象
 - en: As highlighted in the preceding screenshot, we can identify the **libcal.so**
     shared object in the **user** account's home directory, as we did when we used
     the linPEAS script.
   id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前述截图中所示，我们可以在**用户**帐户的主目录中找到**libcal.so**共享对象，就像我们使用linPEAS脚本时一样。
 - en: 'We can also search for useful strings in the binary by using the built-in **strings**
     utility. This can be done by running the following command:'
   id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以通过使用内置的**strings**实用程序在二进制文件中搜索有用的字符串。可以通过运行以下命令来完成此操作：
 - en: strings /usr/local/bin/suid-so
   id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: strings /usr/local/bin/suid-so
 - en: 'As highlighted in the following screenshot, the **strings** utility will output
     a list of strings that were found in the **suid-so** binary:'
   id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下截图所示，**strings**实用程序将输出在**suid-so**二进制文件中找到的字符串列表：
 - en: '![Figure 13.16 – Finding useful strings'
   id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 13.16 – 查找有用的字符串'
 - en: '](Images/B17389_13_016.jpg)'
   id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_016.jpg)'
 - en: Figure 13.16 – Finding useful strings
   id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 13.16 – 查找有用的字符串
 - en: In this case, we can determine that the application utilizes the **libcalc.so**
     shared object in the **user** account's home directory. The **strings** utility
     can prove to be very useful if you do not have access to the **strace** utility
@@ -940,16 +1044,19 @@
   id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们可以确定应用程序在**用户**帐户的主目录中使用了**libcalc.so**共享对象。如果您无法访问**strace**实用程序或任何自动枚举脚本（如linPEAS），**strings**实用程序可能非常有用。
 - en: Now that we have an idea of what the **suid-so** binary does, what shared objects
     it utilizes, and have identified a vulnerable shared object, we can begin the
     privilege escalation process.
   id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们对**suid-so**二进制文件的功能有了一个概念，知道它使用了哪些共享对象，并且已经确定了一个存在漏洞的共享对象，我们可以开始特权提升过程。
 - en: 'The privilege escalation process can be performed by following these steps:'
   id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以按照以下步骤执行特权提升过程：
 - en: 'The first step in this process involves checking whether the **libcalc.so**
     file exists. This can be done by listing the contents of the **user** account''s
     home directory:'
@@ -957,11 +1064,13 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在此过程中的第一步涉及检查**libcalc.so**文件是否存在。可以通过列出**用户**帐户的主目录内容来完成此操作：
 - en: '**ls -al /home/user/**'
   id: totrans-174
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**ls -al /home/user/**'
 - en: 'As shown in the following screenshot, the user account''s home directory does
     not contain the **.config** directory, which contains the **libcalc.so** shared
     object file. As a result, we will have to create the **.config** directory and
@@ -970,43 +1079,51 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下截图所示，用户帐户的主目录中不包含**.config**目录，其中包含**libcalc.so**共享对象文件。因此，我们需要自己创建**.config**目录并编译共享对象文件：
 - en: '![Figure 13.17 – The user''s home directory'
   id: totrans-176
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 13.17 – 用户的主目录'
 - en: '](Images/B17389_13_017.jpg)'
   id: totrans-177
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_017.jpg)'
 - en: Figure 13.17 – The user's home directory
   id: totrans-178
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 13.17 – 用户的主目录
 - en: 'We can create the **.config** directory in the **user** account''s home directory
     by running the following command:'
   id: totrans-179
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 运行以下命令可以在**用户**帐户的主目录中创建**.config**目录：
 - en: '**mkdir /home/user/.config**'
   id: totrans-180
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**mkdir /home/user/.config**'
 - en: 'Once we have created the **.config** directory, we need to create the **libcalc.c**
     file. This can be done by running the following command:'
   id: totrans-181
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 创建完**.config**目录后，需要创建**libcalc.c**文件。可以通过运行以下命令来完成此操作：
 - en: '**touch /home/user/.config/libcalc.c**'
   id: totrans-182
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**touch /home/user/.config/libcalc.c**'
 - en: 'The next step involves adding our custom C code to the **libcalc.c** file that
     we will compile. Open the **libcalc.c** file we just created with your terminal
     text editor of choice. In my case, I will use VIM and add the following C code:'
@@ -1014,36 +1131,43 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 下一步涉及将我们的自定义C代码添加到我们将要编译的**libcalc.c**文件中。使用你选择的终端文本编辑器打开刚刚创建的**libcalc.c**文件。在我的情况下，我将使用VIM并添加以下C代码：
 - en: '#include <stdio.h>'
   id: totrans-184
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '#include <stdio.h>'
 - en: '#include <stdlib.h>'
   id: totrans-185
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '#include <stdlib.h>'
 - en: static void inject() __attribute__((constructor));
   id: totrans-186
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: static void inject() __attribute__((constructor));
 - en: void inject() {
   id: totrans-187
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: void inject() {
 - en: system("cp /bin/bash /tmp/bash && chmod +s /tmp/bash && /tmp/bash -p");
   id: totrans-188
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: system("cp /bin/bash /tmp/bash && chmod +s /tmp/bash && /tmp/bash -p");
 - en: '}'
   id: totrans-189
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '}'
 - en: This C code utilizes a custom function called **inject** that runs a system
     command that copies the Bash binary into the Linux **temp** directory. After doing
     this, it will assign SUID permissions to the Bash binary and execute it from the
@@ -1055,38 +1179,45 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这段C代码利用了一个名为**inject**的自定义函数，该函数运行一个系统命令，将Bash二进制文件复制到Linux的**temp**目录。完成这一步后，它会为Bash二进制文件赋予SUID权限，并从**temp**目录执行它。由于**suid-so**二进制文件以root用户身份运行，并调用**libcalc.so**共享库，自定义的**libcalc.so**共享库文件也会以root权限执行，从而为我们提供提升的Bash会话。
 - en: Note
   id: totrans-191
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 注意
 - en: You can also use your own C reverse shellcode in **libcalc.c**, which will connect
     to a reverse listener and provide you with an elevated reverse shell.
   id: totrans-192
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 你还可以在**libcalc.c**中使用你自己的C反向Shell代码，它将连接到反向监听器，并为你提供一个提升的反向Shell。
 - en: 'Once you have added the custom code, ensure that you indent it correctly, as
     shown in the following screenshot:'
   id: totrans-193
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 一旦你添加了自定义代码，确保按照以下截图所示正确缩进：
 - en: '![Figure 13.18 – Custom libcalc.c code'
   id: totrans-194
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图13.18 – 自定义的libcalc.c代码'
 - en: '](Images/B17389_13_018.jpg)'
   id: totrans-195
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_018.jpg)'
 - en: Figure 13.18 – Custom libcalc.c code
   id: totrans-196
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图13.18 – 自定义的libcalc.c代码
 - en: After indenting and formatting the code accordingly, ensure that you save it
     before continuing. Now, we need to compile the **libcalc.c** file so that we have
     the **libcalc.so** shared object file.
@@ -1094,17 +1225,20 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在按要求缩进并格式化代码后，确保保存代码再继续。现在，我们需要编译**libcalc.c**文件，以便获得**libcalc.so**共享库文件。
 - en: 'We can compile the custom **libcalc.c** file with **Gnu C Compiler** (**GCC**)
     by running the following command:'
   id: totrans-198
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们可以通过运行以下命令用**Gnu C Compiler**（**GCC**）编译自定义的**libcalc.c**文件：
 - en: '**gcc -shared -o /home/user/.config/libcalc.so -fPIC /home/user/.config/libcalc.c**'
   id: totrans-199
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**gcc -shared -o /home/user/.config/libcalc.so -fPIC /home/user/.config/libcalc.c**'
 - en: This command will compile the custom **libcalc.c** file and provide us with
     the custom **libcalc.so** shared object file, which will provide us with an elevated
     session.
@@ -1112,11 +1246,13 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这个命令将编译自定义的**libcalc.c**文件，并为我们提供自定义的**libcalc.so**共享库文件，从而为我们提供提升的会话。
 - en: Note
   id: totrans-201
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 注意
 - en: When compiling our custom code with the GNU C Compiler (**gcc**), we used the
     **-fPIC** flag, which ensures that the code in our shared library is position-independent
     and can be loaded by any address in memory.
@@ -1124,6 +1260,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在用GNU C编译器(**gcc**)编译自定义代码时，我们使用了**-fPIC**标志，这可以确保我们的共享库中的代码是位置无关的，并且可以在内存中的任何地址加载。
 - en: 'After compiling the **libcalc.c** file, you should now have the custom **libcalc.so**
     file in the **user** account''s home directory, as highlighted in the following
     screenshot:'
@@ -1131,38 +1268,45 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 编译**libcalc.c**文件后，你现在应该在**user**账户的主目录中拥有自定义的**libcalc.so**文件，如下图所示：
 - en: '![Figure 13.19 – Compiled libcalc.so shared object'
   id: totrans-204
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图13.19 – 编译后的libcalc.so共享库'
 - en: '](Images/B17389_13_019.jpg)'
   id: totrans-205
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_019.jpg)'
 - en: Figure 13.19 – Compiled libcalc.so shared object
   id: totrans-206
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图13.19 – 编译后的libcalc.so共享库
 - en: Now that we have our custom **libcalc.so** shared file ready, we can execute
     the **suid-so** binary.
   id: totrans-207
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 现在我们已经准备好了自定义的**libcalc.so**共享文件，我们可以执行**suid-so**二进制文件。
 - en: 'To execute the custom **libcalc.so** shared object file, we need to execute
     the **suid-so** binary. This can be done by running the following command:'
   id: totrans-208
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 要执行自定义的**libcalc.so**共享库文件，我们需要执行**suid-so**二进制文件。这可以通过运行以下命令来完成：
 - en: '**suid-so**'
   id: totrans-209
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**suid-so**'
 - en: 'If you have followed the previous steps correctly, running the **suid-so**
     binary should provide you with a Bash session, as highlighted in the following
     screenshot:'
@@ -1170,62 +1314,74 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果你按照前面的步骤正确操作，运行**suid-so**二进制文件应该会为你提供一个Bash会话，如下图所示：
 - en: '![Figure 13.20 – Bash session](Images/B17389_13_020.jpg)'
   id: totrans-211
   prefs:
   - PREF_IND
   type: TYPE_IMG
+  zh: '![图13.20 – Bash会话](Images/B17389_13_020.jpg)'
 - en: Figure 13.20 – Bash session
   id: totrans-212
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图13.20 – Bash会话
 - en: 'We can confirm that we have an elevated session with root access by running
     the following command:'
   id: totrans-213
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们可以通过运行以下命令来确认自己是否已经获得root权限的提升会话：
 - en: '**id**'
   id: totrans-214
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**id**'
 - en: 'Alternatively, you can identify the user you are currently logged on as by
     running the following command:'
   id: totrans-215
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 另外，你也可以通过运行以下命令来确定你当前登录的用户：
 - en: '**whoami**'
   id: totrans-216
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**whoami**'
 - en: 'As highlighted in the following screenshot, we should have an elevated session
     as the root user:'
   id: totrans-217
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，我们应该以root用户身份拥有提升的会话：
 - en: '![Figure 13.21 – Elevated Bash session'
   id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图13.21 – 提升的Bash会话'
 - en: '](Images/B17389_13_021.jpg)'
   id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_13_021.jpg)'
 - en: Figure 13.21 – Elevated Bash session
   id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 图13.21 – 提升的Bash会话
 - en: With that, we successfully elevated our privileges by exploiting an improperly
     configured SUID binary, which utilized a shared object file that was stored in
     an unprivileged user account's home directory.
   id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这过程中，我们成功地通过利用配置不当的SUID二进制文件来提升权限，该文件使用了存储在一个非特权用户账户主目录中的共享对象文件。
 - en: Various techniques can be used to exploit SUID binaries. However, the most important
     factor in this process involves thoroughly enumerating and gathering as much information
     as possible from the target SUID, and then analyzing it for potential misconfigurations
@@ -1235,11 +1391,13 @@
   id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: 可以使用多种技术来利用SUID二进制文件。然而，过程中最重要的因素是彻底地枚举和收集目标SUID的尽可能多的信息，然后分析这些信息以查找潜在的配置错误或漏洞。这个过程因目标而异，因此需要敏锐的眼光和系统的方法来帮助识别SUID二进制文件中的配置错误或漏洞。
 - en: Summary
   id: totrans-223
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, we started by looking at how filesystem permissions work on
     Linux and how SUID permissions are used. We then took an in-depth look at how
     to search for and identify SUID binaries on the target system, both manually and
@@ -1249,18 +1407,21 @@
   id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们首先了解了Linux上的文件系统权限如何工作以及如何使用SUID权限。然后我们深入探讨了如何手动和自动地搜索和识别目标系统上的SUID二进制文件。我们还简要地介绍了识别易受攻击的SUID二进制文件的过程，然后讨论了如何通过利用配置错误的SUID二进制文件来提升权限。
 - en: If you have made it this far, congratulations! You should now be well-versed
     in elevating your privileges on both Windows and Linux by leveraging and exploiting
     various vulnerabilities on both operating systems.
   id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你已经读到这里，恭喜你！你现在应该能够熟练地利用各种漏洞来提升Windows和Linux系统上的权限。
 - en: If this was your initial foray into the process of privilege escalation, you
     should now have the necessary skills to identify and exploit vulnerabilities on
     target systems to elevate your privileges.
   id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果这是你首次接触权限提升的过程，你现在应该具备了识别和利用目标系统漏洞来提升权限所需的技能。
 - en: This book was designed to be a practical guide on how to enumerate as much information
     as possible from Windows and Linux targets, as well as how to use this information
     to identify vulnerabilities that can be exploited to elevate your privileges.
@@ -1269,15 +1430,18 @@
   id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 本书旨在成为一本实用指南，指导您如何从Windows和Linux目标中枚举尽可能多的信息，以及如何利用这些信息识别可以被利用来提升权限的漏洞。本书通过提供实践练习来验证您在每一章中学到的内容，以实现这一目标。
 - en: This book covered all of the most important privilege escalation vectors for
     both Windows and Linux systems, and it also provided you with real-world scenarios
     where these vectors can be exploited.
   id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 本书涵盖了Windows和Linux系统中最重要的权限提升向量，并为您提供了可以利用这些向量的实际场景。
 - en: I hope you enjoyed this book, found value in every chapter, regardless of your
     skill level, and have been able to improve your privilege escalation skills to
     enhance your skillset as a penetration tester.
   id: totrans-229
   prefs: []
   type: TYPE_NORMAL
+  zh: 希望你喜欢本书，并且无论你的技能水平如何，都能从每一章中获得价值，并且能够提升你的权限提升技能，增强作为渗透测试员的能力。
