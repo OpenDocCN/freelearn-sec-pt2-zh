@@ -1,0 +1,458 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">SQL Injection Vulnerabilities</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we are going to study <strong>SQL Injection</strong> (<strong>SQLi</strong>) vulnerabilities. To gain insight into these vulnerabilities, we will first learn about SQL, look at the reasons why we are studying SQL, and how</p>
+<p>dangerous SQLi is exactly. Moving ahead, we will learn some techniques to discover SQL injections. Then, we will learn how we can bypass SQLi authorization and how to discover SQLi using the <kbd>GET</kbd> method. We will also see how we can work around SQL commands and discover tables using commands. In the <kbd>loadfile</kbd> section, we will see how we can implement SQLi on server files. Then, we are going to learn how we can use a tool called <kbd>sqlmap</kbd>. Finally, will look at techniques we can use to prevent dangerous SQL injections.</p>
+<p>In this chapter, we'll cover the following topics:</p>
+<ul>
+<li>What is SQL?</li>
+<li>The dangers of SQLi</li>
+<li>Discovering SQLi</li>
+<li>SQLi authorization bypass</li>
+<li>Discovering SQL using the <kbd>GET</kbd> method </li>
+<li><span>B</span>asic <kbd>SELECT</kbd> statements</li>
+<li><span>D</span>iscovering tables</li>
+<li>Reading columns and their data</li>
+<li>Reading and writing files on the server</li>
+<li>The <kbd>sqlmap</kbd> tool</li>
+<li>Preventing SQLi </li>
+</ul>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">What is SQL?</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We are going to be learning about a popular type of vulnerability called SQLi. Before we discuss how it occurs and how to exploit it, let's first learn what SQL is. For example, if we are performing a pen test on a certain website, the chances are the website is a little bit bigger than other websites and so probably uses a database. Most websites, other than very simple ones use databases to store data, such as usernames, passwords, news articles, blog posts, pictures, and anything that happens on the website. The web application reads the database and then displays the data to us or to the users. When the user performs an action on the website, the application will either update, delete, or modify the data that exists in the database. This interaction between the web application and the database happens using a language called SQL.</p>
+<p class="mce-root">Let's see what we mean by a database. This is just an example of a database; we are just going to log in to the database that is installed on our Metasploitable machine to see what's being stored on it. We will not perform any hacking or anything fancy; we will just log in to MySQL and then we will input the username as <kbd>root</kbd><span>—</span>Metasploitable doesn't use a password for <kbd>root</kbd>, which is really bad, but obviously it's a vulnerable system. We are just going to log in; we are not hacking anything or doing any SQL injections, we are just working on the Terminal for MySQL, which the web application would use to interact with the database. The following is the command:</p>
+<pre><strong>mysql -u root -h 10.20.14.204<br/></strong></pre>
+<p>The following is the output of the command:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1877 image-border" src="assets/f095273e-4288-4d1e-8b2c-0e0bef3a8de1.png" style="width:41.50em;height:14.25em;"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p class="mce-root">In this example, we are just trying to see what we mean by databases and what's saved in them. Now, type in <kbd>show databases</kbd> and that will show us the databases that exist on our target server. In the following screenshot, we can see that we have the <kbd>information_schema</kbd> database, which is a default database that holds default information about all the other databases:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1879 image-border" src="assets/89a694ed-d3c1-4137-af3e-f25685013a8f.png" style="width:14.92em;height:12.58em;"/></p>
+<p class="mce-root">It gets installed by default when we install MySQL, and the rest have been installed for each web application. We can see we have one for <kbd>tikiwiki</kbd> and one for <kbd>owasp10</kbd>.<span> We also have one called <kbd>mysql</kbd>, another called <kbd>metasploit</kbd>, and one for <kbd>dvwa</kbd>, which is the one that we've been using for the web application. We can see that, for each web application, we have a database, which holds the information that is used by that web application.</span></p>
+<p>Let's see what's inside the database. We are going to use the <kbd>owasp10</kbd> database. We will type the <kbd>Use owasp10</kbd> command in the Terminal to read the information from this table. Each database has a table, which contains information, so we launch the <kbd>show tables</kbd> command to see the tables that we have:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1880 image-border" src="assets/f04e0253-515b-4ea6-842f-b3cd9f82d87a.png" style="width:30.42em;height:15.25em;"/></p>
+<p>We have a table for <kbd>accounts</kbd>, so we can assume that this table has information about the usernames, passwords, and users. We have a table called <kbd>blogs_table</kbd>, so it probably has the blog input, such as the posts and comments in there. We can see <kbd>captured_data</kbd> and <kbd>credit_cards</kbd>, so there's a table that contains credit card details. This is huge for shopping websites, they actually would have a <kbd>credit_cards</kbd> table and the information for the credit cards would be stored there. Basically, a database will store everything, all the data that is used on the website, because they doesn't get stored on files; it's not efficient. </p>
+<p>Let's have a look at the <kbd>accounts</kbd> table; if we just type <kbd>select</kbd>, that is exactly how the web application will retrieve information from the database. The application can either select, update, or delete;  we are doing a <kbd>select</kbd> statement for our example. Again, this is not hacking—we are just going to <kbd>select</kbd> everything from the <kbd>accounts</kbd> table, with the command <kbd>select * from accounts</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1881 image-border" src="assets/e3c052db-a887-423d-bcd9-a89e0077a99b.png" style="width:38.17em;height:21.42em;"/></p>
+<p>We have columns for the account ID, the username, the password, the signature for the user, and whether that user is an administrator. Now, the columns depend on the table, so the person who designs the database designs the table and the columns, and then the data gets inserted by the web application.<span> We can see in the preceding screenshot that we have a user called <kbd>admin</kbd> and their password is <kbd>adminpass</kbd>. We can also see that we have a user called <kbd>adrian</kbd> and their password is <kbd>somepassword</kbd>.</span></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>This example is just to understand what databases look like and to get a feel for them; in later sections, we're going to try to exploit these databases and get access similar to this. So, here, we just logged in with a username and a password. Now, usually we wouldn't have access, and only the web admin would. In the upcoming sections, we're going to try to run some attacks in order to gain access, so that we'll have full control over the database in order to read and write (or modify) data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The dangers of SQLi</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section of the chapter, we will focus on why SQL injections are so important and so dangerous. The reason is because they are found everywhere; a lot of big websites have these kind of exploits, such as Yahoo and Google. They're very hard to protect against and it's very easy to make a mistake and make these exploits available for misuse. The other reason that they're very dangerous is because they give the hacker access to the database. In many scenarios, if we find an SQLi, we don't need to upload a <kbd>PHP</kbd> shell or get a reverse connection. There is really no need to upload anything and increase the danger of being caught because, if we have access to the database, we pretty much have everything we need. We have usernames and passwords, and we can log in with a normal username and password as a normal user; if we are looking for sensitive data, we have access to credit cards. We can do pretty much anything we want, so there's really no point in trying to further exploit the system.</p>
+<p>If we find an SQLi, that's great! That's all we need. In many scenarios, we use a PHP shell to gain access to the database and see whether we can read it. Say we managed to upload a PHP shell on the Metasploitable server, but then we couldn't access the database; there isn't much we can see. We can't see credit cards, usernames, and passwords; we do have control over the server, but we can't read information, so sometimes when we upload a PHP shell, the next step is to gain access to the database. SQL injections can be used to do many things, so if we manage to find one in a website that is not our target but is in the same server, then we can use it to read files outside the <kbd>/www/root</kbd> directory. Similar to file-inclusion vulnerabilities, we can use the admin account, and its username and password, to see whether we can upload some information. Usually the admin can upload a lot of things, so we can upload a PHP shell or a backdoor from there, and navigate to the target website or, in some cases, we can use an SQLi to upload a PHP shell. So, SQL injections can be used as file-inclusion vulnerabilities and file-upload vulnerabilities and they can also give us access to the whole database. That's why they are very dangerous and useful if we manage to find one.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Discovering SQLi</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, let's try to discover some SQL injections. We need to browse through our target and try to break each page. Whenever we see a textbox or a parameter on the form, such as <kbd>page.php</kbd>, then something is equal to something; try to inject stuff there, try to use a single quote, try to use an and, or the <kbd>orderby</kbd> statement to break the page and make it look different. For example, we will be using the Mutillidae vulnerable website from Metasploit. We are going to go into the <span class="packt_screen">Login/Register</span> page first, as we can see in the following screenshot, and it will ask us to log in. Now, the site is registered with your name so you can just click on <span class="packt_screen">Please register here</span> and register:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1882 image-border" src="assets/131e5aaf-bc9b-4f2f-819e-192815857c5c.png" style="width:67.33em;height:19.00em;"/></p>
+<p>After registering, go to the login page. At the moment, we are using the example of injecting into textboxes, so we can try to inject into the <span class="packt_screen">Name</span> and into the <span class="packt_screen">Password</span> textboxes. For example, suppose we put the <span class="packt_screen">Name</span> as <kbd>zaid</kbd> and then a single quote mark (<kbd>'</kbd>) into <span class="packt_screen">Password</span>, and click <span class="packt_screen">Login</span>. As you can see in the following screenshot, there is an error being displayed to us and it doesn't look like a normal error. It looks like it's a database error, and usually you'd be very lucky to you get an error such as this:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1883 image-border" src="assets/fb21599c-3a8a-45c0-90c2-8f47ff3ef008.png" style="width:105.17em;height:36.08em;"/></p>
+<p>Usually the error won't be as informative as this; sometimes we will just see that the page is not acting as expected or sometimes it'll just be a page that does not look as it should. For example, if it's a news page, maybe the article will be missing or, if it's a blog, one of the posts will be missing, or different kinds of posts, so we need to keep an eye on what's changing. In this example, we are actually getting a really nice error; it's telling us which file it has, that there's an error in the statement—the error is near the quote mark that we added—and the statement that's been executed. This is really good for learning because now we can see the statement that the system is trying to run, and the system is trying to do <kbd>SELECT *</kbd>, so it's trying to select everything: <kbd>FROM accounts WHERE username='zaid' AND the password='''</kbd>. Note that the system, the web application, is already adding quote marks around the name. When we said <kbd>zaid</kbd>, it added <kbd>zaid</kbd> between two quotes and it added the single quote (<kbd>'</kbd>) that we added between another two quotes, so that's why we have three quotes. From this error, we can assume that 70% of the target website has an SQL injection.</p>
+<p>We are still not sure whether it can execute what we want, so can we actually inject code and get it executed? Let's see if this can be done; <kbd>username</kbd> is going to be <kbd>zaid</kbd> again, and we are going to put <kbd>password</kbd> as <kbd>123456</kbd>. Once this is done, just close down the site. We closed down the site because the current statement in the system is <kbd>Select * from accounts where username = 'zaid' and password ='$PASSWORD'</kbd>, and it's going to open a single quote by itself, followed by the <kbd>$PASSWORD</kbd>, which we will provide. So, we're treating <kbd>password</kbd> as a variable; it takes in whatever we put in the <span class="packt_screen">Password</span> textbox, and it replaces <kbd>$PASSWORD</kbd>, which is a variable. It takes whatever we put in the <span class="packt_screen">Password</span> textbox and puts it between two single quotes, and that will be executed on the system. So, we will put <kbd>123456'</kbd>. We are going to add a quote ourselves, and the code is as follows:</p>
+<pre><strong>select * from accounts where username = 'zaid' and password ='123456''</strong></pre>
+<p>The application is going to <kbd>select</kbd> from <kbd>accounts</kbd>, <kbd>password</kbd> is equal to <kbd>123456</kbd>, and we have two quotes at the end. Then, we are going to put <kbd>and 1=1</kbd>. We are just trying to see whether it's going to execute what we want it to. Our statement is going to be as follows:</p>
+<pre><strong>Select * from accounts where username = 'zaid' and password='123456' and 1=1'</strong></pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>We are going to insert <kbd>123456' and 1=1</kbd> ourselves. The system is going to complain that we have an extra quote because we have inserted the password into the textbox our self; it's going to say that there is an open quote and it never got closed. Now, we are going to add a comment and after we do so, everything that comes in after the comment will not be executed. We are going to use the hash (<kbd>#</kbd>) as the comment, so the system will ignore anything that comes in after the hash; it's going to ignore the last quote that will be inserted by the command. So, our code is going to look as follows:</p>
+<pre><strong>Select * from accounts where username='zaid' and password ='123456' and 1=1#'</strong></pre>
+<p>We need to paste the <kbd>123456 and 1=1#</kbd> password in the <span class="packt_screen">Password</span> textbox and we should be able to log in as <kbd>zaid</kbd>, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1885 image-border" src="assets/d2dc1d2e-d6a1-4c9c-b5f6-2be8a8508b6d.png" style="width:52.42em;height:29.92em;"/></p>
+<p>Let's try something different: let's try to add a false statement. We did <kbd>1=1</kbd> and that was correct and it executed what we wanted. Let's try <kbd>1=2</kbd>, which is incorrect, so we have the right password and we have the right username, and we will add <kbd>1=2#</kbd> <span>–</span> this should be problematic because it's <kbd>false</kbd>, <kbd>1</kbd> is not equal to <kbd>2</kbd>, and we are using <kbd>and</kbd>, so everything has to be true. It should give us an error even though we are going to put in the right username and the right password. So, we enter the <span class="packt_screen">Password</span> as <kbd>123456 and 1=2#</kbd>, and it should give us an error:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1886 image-border" src="assets/4c920ef6-68b5-4686-afa9-d819c35748fa.png" style="width:24.17em;height:11.92em;"/></p>
+<p>The site has given us an <span class="packt_screen">Authentication Error: Bad user name or password</span> error, even though we are using the right password and username. This confirms that the website is actually injecting anything we want in the password, so we can use the <kbd>password</kbd> field to inject SQL code. </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">SQLi authorization bypass</h1>
+                </header>
+            
+            <article>
+                
+<p>Now we know that we can put in any code we want and it's going to be executed on the system. So, let's have another look at the statement, which says <kbd>select * from accounts where username = username</kbd>, and <kbd>password = password</kbd>, which we put in the <span class="packt_screen">Password</span> textbox. We will now see whether we can use that to log in without using a password, and we are going to be doing that with the admin. So, <kbd>username</kbd> is going to be <kbd>admin</kbd>, and we don't know what <kbd>password</kbd> is for <kbd>admin</kbd>, so we are going to enter any random password, for example, <kbd>aaa</kbd>. In the code that we were previously running, we put <kbd>and 1=1</kbd>, now instead of <kbd>and</kbd>, we are going to say <kbd>or 1=1</kbd>. So, once we inject the command, it is going to let us log in without even knowing the password of <kbd>admin</kbd>. Our code is going to look as follows:</p>
+<pre><strong>select * from accounts where username = 'admin' and password='aaa' or 1=1'</strong></pre>
+<p>When we log in using the <kbd>admin</kbd> <span class="packt_screen">Username</span> and paste <kbd>aaa' or 1=1</kbd> in the <span class="packt_screen">Password</span> textbox, we can see that we logged in successfully and the signature for admin is <span class="packt_screen">Monkey!</span>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1888 image-border" src="assets/aa0b430f-aff2-435b-b7a4-20226ce78d6b.png" style="width:42.83em;height:8.33em;"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>So, any time we have an <kbd>or</kbd> condition, if the <kbd>or</kbd> condition is true, everything is true—that's the way the <kbd>or</kbd> statement works.</p>
+<p>Bypassing logins can be done in many ways, depending on the code that's written on the page and how we are imagining the code. In a lot of cases, when we put in the single quote, we won't see the error message. </p>
+<p>So, we are going to show another example of bypassing. Instead of injecting the code, the <kbd>admin</kbd> parameter is injectable as well, as we saw when we put in the single quote, in exactly the same way as the <kbd>password</kbd> parameter, so we can inject code in <kbd>username</kbd> as well.</p>
+<p>Try to inject something in <kbd>username</kbd>; we are going to say <kbd>username</kbd> is equal to <kbd>admin</kbd>, then we are going to close the quote and add a comment. So, when we run the <kbd>select * from accounts where username = 'admin'#' and password='aaa'</kbd> statement, it's going to inject that in <kbd>username</kbd>. </p>
+<p>It's going to let me log in without even entering anything in the password field. So, we are going to put <span class="packt_screen">Username</span> as <kbd>admin'#</kbd>, and then we can put in any <span class="packt_screen">Password</span> we want to use. We are just going to put <kbd>1</kbd> and then log in; we can see we managed to log in as <kbd>admin</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1889 image-border" src="assets/32e06529-9c0e-4ec0-a5c0-a96844b077fb.png" style="width:57.17em;height:32.08em;"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>Again, this is black-box testing, so we don't really see the code. In many cases, we want to play around with it and see how it works, but the main thing we want to test is whether the SQLi exists and we do that using the method from the previous section. So, try single quotes, try the <kbd>and</kbd> statement, try a true <kbd>and</kbd> statement, such as <kbd>1=1</kbd>, and then a false <kbd>and</kbd> statement, such as <kbd>1=0</kbd> or <kbd>2=0</kbd>, and, if they work as expected, your target has an SQLi and you can start playing around with it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Discovering an SQLi using the GET method</h1>
+                </header>
+            
+            <article>
+                
+<p>Now we will study an SQLi in a different file, on a different page, and see a few different things that we can do to exploit that vulnerability. So, first, go to the login page, which is in <span class="packt_screen">OWASP Top 10</span> | <span class="packt_screen">A1-Injection </span>| <span class="packt_screen">SQL-Extract Data</span> | <span class="packt_screen">User Info</span>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1890 image-border" src="assets/411b57be-1245-4cff-bcdf-e8bc36c80c04.png" style="width:43.58em;height:23.00em;"/></p>
+<p class="mce-root"/>
+<p>In the previous section, we went to the login page by clicking on the <span class="packt_screen">Login/Register</span> option on the page; this time we're going to go through the <span class="packt_screen">User Info</span> page, so the page will show us information about the user, provided we give the <span class="packt_screen">Name</span> and <span class="packt_screen">Password</span>. Enter all the credentials, such as <kbd>username</kbd> and <kbd>password</kbd>, and the page will show us all the <kbd>username</kbd> and <kbd>password</kbd> details and our signature, as shown:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1891 image-border" src="assets/41a31b53-f88f-41a0-bb08-308a57e7a349.png" style="width:39.17em;height:20.00em;"/></p>
+<p>The statement that's been executed here is similar to what was executed when we logged in. As we can see in the following code, <kbd>select * from accounts where $USERNAME</kbd> is what we put in the <kbd>username</kbd> field, and <kbd>$PASSWORD</kbd> is what we put in the <kbd>password</kbd> field:</p>
+<pre><strong>select * from accounts where username = '$USERNAME' and password='$PASSWORD'</strong></pre>
+<p>Now we're going to see a different way of exploiting this kind of vulnerability. In the previous section, we were doing it using a <kbd>POST</kbd> textbox, so whatever you put in the textbox was being posted to the web application using a <kbd>POST</kbd> method. Now, these vulnerabilities can exist in the <kbd>GET</kbd> method too, and what we mean by <kbd>GET</kbd> is that, when something is sent using <kbd>GET</kbd>, we will see it in the URL. So, if we look at the following URL, we see it's being sent as <kbd>username=zaid&amp;password= 123456</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1893 image-border" src="assets/8fa6e038-3415-43d3-9019-84b560ee0957.png" style="width:58.00em;height:3.58em;"/></p>
+<p class="mce-root"/>
+<p>Copy the URL and we will start playing with it from the URL instead of on the web page. We just want to show a different example, because in many places there might not even be textboxes. It could be something such as <kbd>news.php</kbd>. In our example, it's <kbd>index.php</kbd>, and in our pen testing, you might see something such as <kbd>news.php</kbd> and <kbd>id=2</kbd>, and then we can try to inject it in there. So, we're going to be injecting things into the <kbd>username</kbd> field, and we will enter information in the URL. When we are doing our pen test, any time we see parameters such as <kbd>username</kbd> and <kbd>password</kbd>, we should try to inject them; any time we see <kbd>something.php</kbd> and then we have a parameter that equals something, always try to inject it in there and see if it works for us.</p>
+<p>We've also seen a way of discovering the injection using a quotation mark and an <kbd>and</kbd> statement. So we do a false <kbd>and</kbd>, and a true <kbd>and</kbd>, <kbd>and 1=1</kbd>, and then <kbd>and 1=2</kbd>, and if the server executes what we want, we're going to know there's an SQLi. We are going to see another way of discovering these exploits, by using the <kbd>order by</kbd> statement. The <kbd>order by</kbd> statement is used to limit the amount or the number of records that are going to be displayed onscreen. Our injection is going to do <kbd>order by 1</kbd>. If the injection exists, this should work because <kbd>order by 1</kbd>. There should be at least one record being selected in the page because we know this page is communicating with the database. So, <kbd>order by 1</kbd> should always work and return true or something we expect. We also need to add the comment and execute a code, so it's exactly as before. Basically <span>what's going to happen on the database is that the code that will be executed on it will look as follows</span>:</p>
+<pre><strong>select * from accounts where username = 'zaid' order by 1#' password='$PASSWORD'</strong></pre>
+<p>The command for the URL will be as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' order by 1#&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p>For this example, it's going to be <kbd>select * from accounts where username = 'zaid'</kbd>, and note how a single quote (<kbd>'</kbd>) ends the statement; we're going to do <kbd>order by 1</kbd>. The comment will tell the SQL interpreter to ignore anything that comes in after it, which is all of commands after hashtag (<kbd>#</kbd>). Copy the preceding code and paste it in the <span class="packt_screen">Name</span> textbox of the login page. This will work, but we are just looking at a different way of doing it by injecting it through the browser. Another thing to note is that, when we are injecting stuff into the browser, the code should be encoded so, for example, the hashtag (<kbd>#</kbd>) sign should be written as <kbd>%23</kbd>. Spaces, for example, get converted to <kbd>%20</kbd>, and <kbd>%23</kbd> is the comment that we're using, so we are going to copy that and replace our comment sign with it in the URL space. So, the URL changes to the following:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' order by 1%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p>Paste the URL in the address bar and hit <em>Enter</em>, and we will something that's acceptable. Then it will show us the information about <span class="packt_screen">zaid</span>, <span class="packt_screen">123456</span>, and and also the <span class="packt_screen">Signature</span>, so it is ignoring the password, so the injection worked—it's ordering by <kbd>1</kbd>, so it's not showing any error:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1894 image-border" src="assets/ade40e2a-d3ad-4177-afef-f4e23772fe6c.png" style="width:66.08em;height:27.58em;"/></p>
+<p>Let's try to make <kbd>1</kbd> a very large number, for example, we can put <kbd>10000</kbd> or <kbd>100000</kbd> in the URL section. It will show us <kbd>1000000</kbd> records on the login page. The chances are the page will not display <kbd>1000000</kbd> records and there aren't <kbd>1000000</kbd> records in the database, so when we execute it, we will see that there is an error. The error is in the order clause and there is an <kbd>Unknown</kbd> column for <kbd>1000000</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1895 image-border" src="assets/2d32d79d-f13c-4596-8b8a-96e5b848dd1a.png" style="width:40.83em;height:19.08em;"/></p>
+<p class="mce-root"/>
+<p>So, there aren't <kbd>1000000</kbd> columns in the database, and this is great because now we know that the database is executing what we want. So, when we told it to show <kbd>1</kbd> record, it show us one record, and when we told it to showed us a very large number of records, it complained about that, so it's obviously vulnerable to SQL injections.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Basic SELECT statements</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's try to determine how many columns are being selected into page in the preceding screenshot. How much information is being selected and displayed on the login page that we got when we fired the query in the previous section? To do that, we're going to use the <kbd>order by</kbd> statement. We used <kbd>order by 1</kbd> in the preceding section and that returned something acceptable, and <kbd>order by 1000000</kbd> gave us an error, so let's try <kbd>order by 10</kbd>; we will see that we still get an error.</p>
+<p>Try an <kbd>order by 5</kbd> and we will see whether that it works. By performing this, we know that there are five columns being selected from a certain table, and it's the <kbd>accounts</kbd> table, which is then displayed on the login page. Let's build our own <kbd>select</kbd> statement and get it executed on the target computer. At the moment, the statement is <kbd>Select * from accounts where username = 'zaid'</kbd> and we're doing <kbd>order by 1</kbd>. Let's see whether we can fix that and get it to <kbd>select</kbd> something that we like. As we are trying to do multiple <kbd>select</kbd> statements and we're trying to do it from the URL, we're going to have to use a union and then we're going to say <kbd>select</kbd>. In this web application, we know that there are five records being selected, so there are five columns that are being selected, so we're doing <kbd>1,2,3,4,5</kbd>; let's run the command in the URL and see what happens:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,2,3,4,5%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p>We can see that the selection was right and we got the first selection:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1896 image-border" src="assets/10d9c4a1-20d6-4719-a09d-0c7266989cea.png" style="width:38.42em;height:18.67em;"/></p>
+<p>This line has done the first selection and then it did <kbd>union</kbd>, so it combined that selection with another selection and it showed us something else. As we can see in the preceding screenshot, we're only seeing <span class="packt_screen">2</span>, <span class="packt_screen">3</span>, and <span class="packt_screen">4</span>, which means that whatever value we enter instead of <kbd>2</kbd>, <kbd>3</kbd>, or <kbd>4</kbd>, or whatever we want to <kbd>select</kbd>. Is going to be displayed in the page if we put it in the URL, and we can see that we have results for <kbd>2</kbd>, so whatever you put in <kbd>2</kbd> will also be shown in the page.</p>
+<p>So, let's try to see our database. Instead of <kbd>2</kbd> we're going to say <kbd>database</kbd>, instead of <kbd>3</kbd> we're going to say <kbd>username</kbd> or <kbd>user</kbd>, and instead of <kbd>4</kbd> we're going to do <kbd>version</kbd>; this will <kbd>select</kbd> the current database, the current user privileges that we have, and the version of the database. So, let's execute the following command:</p>
+<pre><strong>union select 1,database(),user(),version(),5</strong></pre>
+<p>The URL command changes as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,database(),user(),version(),5%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p>The output of the command is in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/104437f6-dc76-4701-b224-6276d8ea3a65.png" style="width:41.08em;height:19.42em;"/></p>
+<p>The <span class="packt_screen">Username</span> is showing up as <span class="packt_screen">owasp10</span> and <kbd>2</kbd>, so <kbd>owasp</kbd> is the database that we're looking for. The current user that we're logged in as is <span class="packt_screen">root@localhost</span>, so we're the <kbd>root</kbd> user. We injected the version and we can see this is the version of MySQL, so it's <span class="packt_screen">5.0.51</span>. We know that the database we're connected to is <kbd>owasp</kbd><kbd>10</kbd>. In most real-world scenarios, each database is assigned to a certain user, so you're usually only able to <kbd>select</kbd> details, tables, columns, and data located in this current database. However, we are logged in as <kbd>root</kbd> and the web application has been connected to the database as <kbd>root</kbd>, so we can access other databases, but this doesn't happen in real-world scenarios. Usually each user has their own database, so when they connect a web application to a database, they connect it to one database and therefore you won't to be able to access other databases. So, we're going to imagine that we only have access to <kbd>owasp10</kbd>, which is our current database for this current website, and that the password is <kbd>root@localhost</kbd>.</p>
+<p>In the next section, we'll see how we can further exploit SQL injections and perform more powerful <kbd>select</kbd> statements.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Discovering tables</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we know our target database is called <kbd>owasp10</kbd>, let's try to discover the tables that exist in that database. So, our <kbd>select</kbd> statement is <kbd>union select 1, database(),user(),version(),5</kbd>. Delete <kbd>user()</kbd> and <kbd>version()</kbd>, or change it to <kbd>null</kbd> because we only want to <kbd>select</kbd> one thing now, and in <kbd>2</kbd>, we're going to <kbd>select table_name</kbd> from the <kbd><span>information_schema</span></kbd> database. We know that <kbd><span>information_schema</span></kbd> is a default database created by MySQL and it contains information about all the other databases. We select <kbd>table_name</kbd> from <kbd>information_schema.</kbd> and after the dot, we put <kbd>tables</kbd>. Basically, we're selecting a table called <kbd>tables</kbd> from a database called <kbd>information_schema</kbd>, and the column that we're selecting is called <kbd>table_name</kbd>, so we are selecting <kbd>table_name</kbd> from the <kbd>information_schema</kbd> database from the <kbd>tables</kbd> table. The command is as follows:</p>
+<pre><strong>union select 1,table_name,null,null,5 from information_schema.tables</strong></pre>
+<p>The URL command changes as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,table_name,null,null,5 from information_schema.tables%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p>Execute the command to see whether we can get all the tables that exist in the <kbd>owasp10</kbd> database. We can see that we got 237 records; following are all the tables that we have access to:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1898 image-border" src="assets/c8960776-f376-4ae1-9d76-7ba8ec3b9ff1.png" style="width:36.92em;height:29.67em;"/></p>
+<p>We are logged in as <kbd>root</kbd>, therefore, we can see tables from other web applications, such as tikiwiki, but in real-world scenarios, we'll only see tables related to the current database, which is Mutillidae.</p>
+<p>Now we are going to use a <kbd>where</kbd> clause and say <kbd>where table_schema = 'owasp10'</kbd>. We got the <kbd>owasp10</kbd> databases when we executed the command, so we got <kbd>owasp10</kbd>, which is the current database that Mutillidae is working on. We're usi<span>ng the same statement: we're selecting <kbd>table_name</kbd> from the <kbd>information_schema</kbd> table where <kbd>table_schema</kbd> is <kbd>owasp10</kbd>. The command is as follows:</span></p>
+<pre><strong>union select 1,table_name,null,null,5 from information_schema where table_schema = 'owasp10'</strong></pre>
+<p>The URL command changes as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,table_name,null,null,5 from information_schema where table_schema='owasp10'%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p>Execute it and, as we can see in the following screenshot, we only have the tables that we're interested in:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2026 image-border" src="assets/7cd4232a-8e83-4099-af76-cda858ed94fb.png" style="width:35.67em;height:25.33em;"/></p>
+<p>We have the <kbd>accounts</kbd>, <kbd>blogs_table</kbd>, <kbd>captured_data</kbd>, <kbd>credit_cards</kbd>, <kbd>hitlog</kbd>, and <kbd>pen_test_tools</kbd> tables. Now, in the <em>What is SQL?</em> section, <span>we saw the content of the <kbd>owasp10</kbd> table and the preceding screenshot also shows the same tables of the <kbd>owasp</kbd> database.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Reading columns and their data</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, lets see whether we can <kbd>select</kbd> and have a look at all the details that exist within the <kbd>accounts</kbd> table. Let's see whether we can query the database and read the information stored in the <kbd>accounts</kbd> table. To do that, we need to know the names of the columns that exist within the <kbd>accounts</kbd> table because, if we look at the way we're using our statement, we're performing <kbd>union select table_name from information_schema.tables</kbd>, so we still don't know what columns exist in the <kbd>accounts</kbd> table. We can guess that there is a username and a password, but sometimes they could have different names, so we're going to see how we can <kbd>select</kbd> the columns for a certain table.</p>
+<p>The command is going to be very similar to the <kbd>tables</kbd> command we used in the preceding section, the only difference is instead of <kbd>table_name</kbd>, we're going to type <kbd>column_name</kbd>, and instead of selecting it from <kbd>information_schema.tables</kbd>, we're going to select it from <kbd>information_schema.columns</kbd>. We're going to type <kbd>where table_name = 'accounts'</kbd>, because we're only interested in the <kbd>accounts</kbd> table. If we wanted to get columns for another table, we just substitute <kbd>accounts </kbd>with the required table, or column, that we want. So, our command is going to be as follows:</p>
+<pre><strong>union select 1,column_name from information_schema.columns where table_name = 'accounts'</strong></pre>
+<p>The URL command changes to the following:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,column_name from information_schema.columns where table_name = 'accounts'%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p>The command should show us all the columns that exist within the <kbd>accounts</kbd> table. Run the command and, once we execute it in the address bar, we will see the same columns that we saw before when we saw the structure of the <kbd>accounts</kbd> database at the start of this chapter, and its <kbd>cid</kbd>, <kbd>username</kbd>, <kbd>password</kbd>, <kbd>mysignature</kbd>, and <kbd>is_admin</kbd> columns, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2029 image-border" src="assets/59b0eb82-cff2-4768-b309-b2d50e507227.png" style="width:35.58em;height:21.67em;"/></p>
+<p class="mce-root"/>
+<p>Let's take this one step further and <kbd>select</kbd> the <kbd>usernames</kbd> and <kbd>passwords</kbd> columns from the <kbd>accounts</kbd> table. So, again, the command is going to be very similar to what we're running at the moment:</p>
+<pre><strong>union select 1,usernames,passwords,is_admin,5 from accounts</strong></pre>
+<p>Now, remember, we can't select anything instead of <kbd>1</kbd> and <kbd>5</kbd> in the command because they never displayed for us on the screen. The only thing that displayed were <kbd>2</kbd>, <kbd>3</kbd>, and <kbd>4</kbd>, so we're only substituting values for <kbd>2</kbd>, <kbd>3</kbd>, and <kbd>4</kbd>. Our URL command changes to the following:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select 1,usernames,passwords,is_admin,5 from accounts%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p>We're selecting <kbd>username</kbd>, <kbd>password</kbd>, and <kbd>is_admin</kbd> columns from the <kbd>accounts</kbd> database, and it should return all the usernames and passwords that exist within the <kbd>accounts</kbd> table. As we can see in the following screenshot, we got all the usernames and passwords:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2030 image-border" src="assets/4ae314a7-f781-4d52-a27a-85c32e50a4ff.png" style="width:36.25em;height:25.58em;"/></p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>We have the <kbd>admin</kbd>, and the password is <kbd>adminpass</kbd>; we also have other usernames and their passwords. This is very useful because, on most websites, when we log in as <kbd>admin</kbd>, we have more privileges than a normal person, and then we have to be able to upload PHP shells or backdoors, viruses, whatever we want, and then further exploit the system. So, at the moment, we can actually log in with the <kbd>admin</kbd> username and the <kbd>adminpass</kbd> password, and it's going to accept that because it's correct. No matter how complicated the password, we're just going to be logged in because we're reading the password straight from the database.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Reading and writing files on the server</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will look at how we can use SQLi to read any file in the server. So, even if the file exists outside the <kbd>/www</kbd> directory, we'll be able to read it exactly as with a file-disclosure vulnerability, and we'll see how we can use it to write files and upload them to the system, just as with a file-upload vulnerability.</p>
+<p>First, let's take a look at reading the file; we are going to set everything to <kbd>null</kbd>. So, our statement is going to be as follows:</p>
+<pre><strong>union select null,load_file('/etc/passwd'),null,null,null</strong></pre>
+<p>Instead of selecting a column or a table, we want to run a function called <kbd>load_file()</kbd>, and we are going to set the file that we want to load. We're going to use the same file that we had a look at in the file-inclusion vulnerability, which was <kbd>/etc/passwd</kbd>. The URL command is as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select null,load_file('/etc/passwd'),null,null,null%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>Running the preceding URL, we can see from the following screenshot that we managed to read all the information and all the content of <kbd>/etc/passwd</kbd> file, even though it's not in the web root:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2031 image-border" src="assets/7891021d-71f8-4ec2-a006-f5db0d61bd80.png" style="width:63.17em;height:18.75em;"/></p>
+<p>It's stored in <kbd>/etc/passwd</kbd>, so we can read anything in the server from other websites, or other files, by specifying the full path of that file in the <kbd>load_file()</kbd> function.</p>
+<p>Now, we are going write to the server. This is very useful because we will be able to write any code we want. We can write the code for a PHP script, we can even write code for a shell, a virus, or a PHP code to get a reverse connection—code that will basically just act like a file-upload vulnerability. To do that, we are going to write the code that we want here and we are going to call it <kbd>example example</kbd>. We're going to use a function called <kbd>into outfile</kbd>, and then we're going to specify where we want to store that file. In the best-case scenario, we will be able to write to our web root and that will mean that we can access the file through the browser and execute it, so we can upload a Weevely file and then connect to it. We're going to save the file in the <kbd>/var/www/</kbd> directory (that's our web root) so we'll be able to access things through it, or you can put it in the <kbd>/var/www/mutillidae</kbd> directory. Make sure you set everything to <kbd>null</kbd> so that nothing gets written to the file except what you put in <kbd>2</kbd>, which is the <kbd>example example</kbd> text, and it's going to be stored into a file in <kbd>/var/www/mutillidae/example.txt</kbd>. Following is the command:</p>
+<pre><strong>union select null,'example example',null,null,null into outfile '/var/www/mutillidae/example.txt'</strong></pre>
+<p>Let's try to run the statement. The URL command is as follows:</p>
+<pre>index.php?page=user-info.php&amp;username=zaid' union select null,'example example',null,null,null into outfile '/var/www/multillidae/example.txt'%23&amp;password=123456&amp;user-info-php-submit-button=View+Account+Details</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p class="mceNonEditable"/>
+<p>If we see the following screenshot, we'll know that the command didn't work because SQL or MySQL is not allowed to create or write to the <kbd>/mutillidae</kbd> directory. The problem is that we don't have permissions that allow us to write to the <kbd>/mutillidae</kbd> location:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2032 image-border" src="assets/1ab3102c-848a-4440-a2fb-214c6c152644.png" style="width:57.50em;height:11.83em;"/></p>
+<p>To test this exploit, we're going to change this location to <kbd>/tmp</kbd> and running the code, and we will see that we can actually write to the <kbd>/tmp</kbd> directory:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2033 image-border" src="assets/473071a6-92b8-4cea-bd38-72af4dc1fdd7.png" style="width:23.42em;height:12.25em;"/></p>
+<p>In the preceding screenshot, it displays error but if we list using <kbd>ls /tmp/</kbd>, we can see in the following screenshot that we have something called <kbd>example.txt</kbd>. If we try to read the file, we will see that it contains the content of our <kbd>select</kbd> command and the <kbd>example example</kbd> text written in the file:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2034 image-border" src="assets/bb76ddca-3f29-4582-996f-103ef8c2661c.png" style="width:38.50em;height:5.42em;"/></p>
+<p>We can get rid of <kbd>admin</kbd> and <kbd>adminpass</kbd> by just putting in the wrong username and nothing will be displayed. The only thing that we will see is the output, which is <kbd>example example</kbd>. Again, this is only useful if we are able to write to our web server so we can access it, and then use our shell or our payload to further exploit the system.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The sqlmap tool</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we are going to learn about a tool called <kbd>sqlmap</kbd>, which allows us to do everything we've learned so far and even more. This tool can be used against MySQL databases, which is the one that we used in our examples. It can also be used against Microsoft SQL, Oracle, and other databases. The tool is very useful; sometimes the injections aren't as nice as the ones we've seen, and sometimes we only get one output for each record and we have to loop through all the output. The tool can automate that and just do everything for us, which is much easier and much simpler.</p>
+<p>This is the URL that we were using for the injection; <kbd>http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details</kbd>. So, the URL is using the <kbd>user-info.php</kbd> page where the username is <kbd>admin</kbd>, and the password is <kbd>adminpass</kbd>. We don't really need to use the username and password, so we can put anything there, just to assume that we don't know the password and we're only injecting SQL injections. Copy the URL and insert it into the following <kbd>sqlmap</kbd> command:</p>
+<pre class="CDPAlignLeft CDPAlign"><strong>sqlmap -u "http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details"</strong></pre>
+<p>We're using the <kbd>-u</kbd> option to specify the URL; make sure that you put the URL between two quotation marks so that it doesn't ignore anything between them. We have some signs and characters in the middle that we want to be treated as one URL.</p>
+<p>Hit <em>Enter</em>, and the tool will automatically look through all the parameters:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2035 image-border" src="assets/8ac200ff-e701-4739-b3c6-596b236d22ca.png" style="width:97.42em;height:38.33em;"/></p>
+<p class="mce-root"/>
+<p>It's going to look through <kbd>user-info.php</kbd>, the username, and the password, to see whether any of them are injectable; once it does that, it's going to store it in its memory. So, it's going to know that if anything is injectable and then we'll be able to further exploit the target.</p>
+<p>As we can see in the following image, it thinks that our target could be MySQL or PostgreSQL, it's asking us whether it should skip other tests, we're going to say <em>yes</em> because we know it's MySQL. Later it will ask us whether it should do all the tests for both databases, and we are going to say yes, assuming that we are not sure which one it is, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2036 image-border" src="assets/bd60de61-abd9-4014-b9d2-726ab7fabe9b.png" style="width:94.25em;height:29.75em;"/></p>
+<p>We know it's MySQL but we are just going to let it do its thing, and we'll see whether it can do it properly or not. It checks whether it's PostgreSQL and we are assuming it's going to, and then it's going to know that it's MySQL, it just found out that <kbd>username</kbd> seems to be injectable, and sure enough it's telling us here that the <kbd>username</kbd> parameter is vulnerable and we can inject it:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2037 image-border" src="assets/660b6b4c-98e1-4f5b-bf7e-d08e0e8c014f.png" style="width:96.92em;height:23.33em;"/></p>
+<p class="mce-root"/>
+<p>So, it's asking us whether we want to check the other parameters, we can say yes and let it do it, but we are going to say <em>no</em> because we don't mind if it just uses the <kbd>username</kbd> for the injection:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2038 image-border" src="assets/06c9dfa7-abf3-4512-b7ed-18f29bc07892.png" style="width:97.33em;height:35.92em;"/></p>
+<p>Now, <kbd>sqlmap</kbd> knows that the target is injectable and that it's going to use the <kbd>username</kbd> parameter to inject. As we can see in the preceding screenshot, it's figured out that it's running <kbd>Linux Ubuntu</kbd>, it's using <kbd>PHP 5.2.4</kbd> with <kbd>Apache 2.2.8</kbd>, and it's using the <kbd>MySQL 5.0</kbd> server as the database server.</p>
+<div class="packt_tip"><kbd>sqlmap</kbd> is a really big tool and, in this section, we are just going to take a quick look at some of the things it can do. I suggest you spend more time with it and see what else it can do.</div>
+<p> </p>
+<p><span>So, let's run <kbd>sqlmap --help</kbd>:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2039 image-border" src="assets/217b8f4f-711b-40e7-9576-1afa03a06cb7.png" style="width:34.42em;height:21.75em;"/></p>
+<p>Now let's try to get <kbd>current-user</kbd> and <kbd>current-db</kbd>, so we're going to use the same command that we used before. We'll add to the command <kbd>-- <span>dbs</span></kbd> to get the current databases:</p>
+<pre><strong>sqlmap -u "http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details" --dbs</strong></pre>
+<p>As we can see in the following screenshot, we got all the databases that we needed. There's <kbd>dvwa</kbd>, <kbd>information_schema</kbd>, <kbd>metasploit</kbd>, <kbd>mysql</kbd>, <kbd>owasp10</kbd>, and <kbd>tikiwiki</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2040 image-border" src="assets/0fd7cf5a-e104-4b3a-b250-e087411bd06b.png" style="width:47.50em;height:11.08em;"/></p>
+<p class="mce-root"/>
+<p>Now, if we run the same command replacing <kbd>--dbs</kbd> with <kbd>--current-user</kbd>, we can see that we are <kbd>root</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2041 image-border" src="assets/30015ef0-8624-40f8-9408-f7c1a31350f8.png" style="width:34.50em;height:7.00em;"/></p>
+<p>And if we replace <kbd>--current-user</kbd> with <kbd>--current-db</kbd>, we'll see that <kbd>owasp10</kbd> is our current database:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2042 image-border" src="assets/c762126b-f5b2-4cd1-9f45-85f492670ffa.png" style="width:33.33em;height:6.58em;"/></p>
+<p>So, now let's try to get the tables for <kbd>owasp10</kbd>. <span>We're also going to use the <kbd>--tables</kbd> and <kbd>D</kbd> option to specify the database, and our database is going to be called <kbd>owasp10</kbd>, </span>so the command is going to be as follows:</p>
+<pre><strong>sqlmap -u "http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details" --tables -D owasp10</strong></pre>
+<p>As we can see in the following screenshot, the command got us all the tables that exist in the <kbd>owasp10</kbd> database, such as, <kbd>accounts</kbd>, <kbd>blogs_table</kbd>, and <kbd>credit_cards</kbd> tables:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2043 image-border" src="assets/21a3210e-9329-4e67-b2c6-92ee0faebae0.png" style="width:32.92em;height:15.92em;"/></p>
+<p>Now, if we want to get the columns, we can use the same command again, and we're going to say get  <kbd>--columns</kbd> from <kbd>-T accounts -D owasp10</kbd>. Following is the command:</p>
+<pre><strong>sqlmap -u "http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details" --columns -T accounts -D owasp10</strong></pre>
+<p>Following is the output of the command:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2044 image-border" src="assets/ef54dd84-cc2c-491f-8fef-c9e273708dd5.png" style="width:14.92em;height:11.42em;"/></p>
+<p>So, we have <kbd>is_admin</kbd>, <kbd>password</kbd>, and <kbd>username</kbd>, and we can get their data using the <kbd>--dump</kbd> option. It's the same command that we used before, so we're getting it from the <kbd>accounts</kbd> table and the <kbd>owasp10</kbd> database. Following is the command:</p>
+<pre><strong>sqlmap -u "http://10.20.14.204/mutillidae/index.php?page=user-info.php&amp;password=aaa&amp;user-info-php-submit-button=View+Account+Details" -T accounts -D owasp10 --dump</strong></pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>Following is the output of the preceding command:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-2045 image-border" src="assets/c9d0babf-536f-4438-9854-c9d73f894280.png" style="width:37.17em;height:23.08em;"/></p>
+<p>In the preceding screenshot we have<span><span> </span></span><kbd>admin</kbd>, its <kbd>adminpass</kbd> password, and we have <kbd>adrian</kbd> and his password is <kbd>somepassword</kbd>. So, as we said, this tool is very useful. It can make our life much easier and it does everything automatically.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Preventing SQLi </h1>
+                </header>
+            
+            <article>
+                
+<p>So far, we have seen that SQL injections are very dangerous; they also occur very easily and are very easy to find. We will find them everywhere, even in really famous websites. People try to prevent these vulnerabilities using filters. Filters can make it look like there are no exploits, but if we actually try harder, by using different types of encoding, or a proxy, we will be able to bypass most of these filters. Some programmers use a blacklist so, for example, they prevent the use of <kbd>union</kbd> and the <kbd>insert</kbd> statement. Again, it's not 100% secure, and it can be bypassed. Using a whitelist has exactly the same issues as a blacklist.</p>
+<p class="mce-root"/>
+<p>The best way to prevent SQLi is to program our web application so that it does not allow code to be injected into it and then executed. So, the best way to do that is to use parameterized statements, where the data and the code are separated. Let's look at an example, we are keeping the least amount of programming in this example. We don't want it to be a programming example (there are actually mistakes in the programming), but we are trying to look at the concept more than how to program it. Following is the example code:</p>
+<pre>$textbox1 = admin' union select #<br/>Select @ from accounts where username='admin' union select #'</pre>
+<p>The vulnerable code used <kbd>Select * from accounts</kbd> where <kbd>username</kbd> is equal to whatever we put in <kbd>textbox1</kbd>, and then we put in <kbd>textbox1</kbd>, say <kbd>admin</kbd>, and then close the quote. Then we're able to do <kbd>union select</kbd> and execute something else; once we're done, we add the comment (<kbd>#</kbd>), which basically ignores everything that comes in after it. The code looks like this:</p>
+<pre><strong>Select * from accounts where username ='admin' union select #'</strong></pre>
+<p>This is very bad and very difficult to protect against. Using filters will only hide the problem, it will not fix it. The best way to fix the vulnerability is using parameterize statements, as in the following example:</p>
+<pre>prepare("Select * from accounts where username = ?")<br/>execute(array('textbox1'))</pre>
+<p>This is the safe way to do it. First, we <kbd>prepare</kbd> our statement. Most languages, such as PHP, actually have a function where you can <kbd>prepare ("Select * from accounts where username = ?")</kbd> and then we send the values. So, PHP now knows the SQL statement is <kbd>Select * from accounts where username</kbd> is equal to something, and then it's going to take the value of <kbd>textbox1</kbd>. Even if we come in and use our very sneaky statement, which is <kbd>'$admin' union select #'</kbd>, and paste it in the <kbd>execute</kbd> function, the web application will know that the value for <kbd>textbox1</kbd> is <kbd>admin union select</kbd>. It will actually try to use <kbd>Select * from accounts where</kbd> the <kbd>username</kbd>, and then it actually will add its own quotes and try to find <kbd>username</kbd> with the inserted <kbd>username</kbd>. So, it will be <kbd>select * from accounts where username ="'$admin' union select#</kbd>. Therefore, whatever we put in <kbd>textbox</kbd>, it will be sent as a value, and the web application will know that this should be a value not code, and it will never execute it. This will protect us against SQL injections.</p>
+<p class="mce-root"/>
+<p>We can use the filters as a second line of defense. It's also advised that we use the least privilege possible. So, for each database, use one user with the least amount of privileges required; don't allow users to do anything that they want; unless it's a simple website that only does selection, then only allow the user to <kbd>select</kbd>. If they only need to <kbd>select</kbd> and <kbd>insert</kbd>, then only allow them to <kbd>select</kbd> and <kbd>insert</kbd>; this is a rule we should keep with everything, even with Linux systems. Make sure the permissions are always as minimal as possible, that each user doesn't have any extra permissions they don't need.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary </h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we covered a vulnerability that can be exploited, which are SQL injections. This SQLi can be used to perform a wide range of very dangerous attacks on the databases of a machine and the server. First, we saw how we can discover these injections. We also learned how we can log in to a system using a URL<span>—</span>all we had to do was launch a few lines of code in which we had to mention the password and username. Then, we saw how to bypass SQLi without using login credentials. We even used the <kbd>GET</kbd> method to discover SQLi. After that, we learned how to fire basic <kbd>select</kbd> statements on a database. We even learned how to use the <kbd>sqlmap</kbd> tool, which is capable of performing a lot of things, but we only covered the basics in this chapter. Finally, we covered methods to prevent SQLi. In the next chapter, we are going to exploit cross-site scripting vulnerabilities.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

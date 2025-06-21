@@ -1,0 +1,463 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Man-in-the-Middle Attacks</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous chapter, we covered the ways we can gather information and analyze it with the help of various tools. In this chapter, we will learn about the <strong>man-in-the-middle framework </strong>(<strong>MITMf</strong>), which is a toolkit for one of the most powerful attacks. In order to implement MITMf we are going to use ARP spoofing, bypassing HTTPS, and <span>DNS spoofing. W</span>e will also use keyloggers, and look at the code injection technique for MITMf implementation.</p>
+<p>Towards the end of the chapter, we will learn about a special tool called Wireshark, which is very efficient when it comes to analyzing a network. With it, we can capture packets and learn the information they carry within them. In this section of the chapter, we are going to learn how to operate this tool and also how to use a few filters. </p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>Man-in-the-middle-attacks</li>
+<li>Wireshark</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Man-in-the–middle attacks</h1>
+                </header>
+            
+            <article>
+                
+<p>In the next few sections, we're going to talk about what are known as <strong>man-in-the-middle</strong> (<strong>MITM</strong>) attacks. This is one of the most dangerous and effective attacks that we can carry out in a network. We can only do it once we have connected to the network. It can be used to redirect the flow of packets from any client to our device. This means that any packet that is sent to or from the client will have to go through our device, and since we know the password we know the key to the network, so we will be able to read those packets. They won't be encrypted, and we will be able to modify them, drop them, or just read them to see if they contain passwords or important information. This attack is so effective because it's very hard to protect against. We're going to talk about the ways to protect against it, but it's very hard to fully protect against this attack. This is due to the way the ARP protocol works. It was programmed in a way that's very simple and very effective, but it's not secure enough.</p>
+<p>ARP has two main security issues. The first one is that each ARP request or response is trusted, so whatever our device says to other devices that are in our network will be trusted. We can just tell any device that's on our network that we are the router and the device will trust us. It will not try to make sure that we are actually the router. It will not run any tests to ensure our identity. If we tell any device that we are the router, the device will believe us. In the same way, if we tell the router that we are someone else on the network, the router will trust us and will start treating us as that device; so, that's the first security issue. The second security issue is that clients can accept responses even if they didn't send a request. So, for example, when a device connects to the network, the first thing it's going to ask is, who is the router? And then the router will send a response saying "I am the router." Now, we can just send a response without the device asking who the router is. We can just tell the device we are the router, and because the devices trust anyone, they will trust us start sending us packets instead of sending the packets to the router.</p>
+<p>So, let's have a deeper look at how this MITM attack works. It's going to work using a technique called ARP poisoning, or ARP spoofing. This is done by exploiting the two security issues that we talked about in the previous paragraph. That's a typical Wi-Fi network, and we can see in the following diagram that when the client requests something it will send the request to the <strong>Wi-Fi router</strong>, and then the router will get the request from the internet and come back with the responses to the <strong>Client</strong>: </p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1365 image-border" src="assets/e3024871-2d17-49ff-abee-62061787b54a.png" style="width:23.25em;height:10.42em;"/></div>
+<p><span>Now, all this is d</span><span>one using packets. </span>So, what we are going to do is we're going to send an ARP response to the <strong>Client </strong>so that we can send responses without the <strong>Client</strong> asking them. The <strong>Client</strong> didn't ask for anything, but we can still send it a response. We're going to say that our IP is the router IP. So, the router, for example, has the <span>IP</span><span> </span><kbd>192.168.1.1</kbd><span>; we're going to tell the <strong>Client</strong></span><strong> </strong><span>the device with</span> the IP <kbd>192.168.1.1</kbd> <span>has our MAC address, so we're going to tell the <strong>Client </strong></span><span>that we are the router, basically.</span></p>
+<p><span>This will cause the <strong>Client</strong></span><strong> </strong><span>to </span><span>start sending the packets to us</span><span> </span><span>instead of sending the packets to the router</span><span>.</span> <span>The following diagram illustrates this:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1366 image-border" src="assets/056b43b2-b11c-4b6e-93e0-c6f6c2b2e89b.png" style="width:21.75em;height:14.75em;"/></div>
+<p>After that, we're going to do the opposite to the Wi-Fi router. We're going to tell the router that we are the client. We'll do this by telling the router that our IP is the <strong>Client</strong> IP, and that <strong>Client</strong> has our MAC address, so the communication of packets will be done through the MAC address, and the <strong>Wi-Fi router</strong> will start sending any packet that's meant to go to the <strong>Client</strong> to us instead. <span>This will redirect the flow of packets through our device, so when the <strong>Client</strong> wants to send a request it will send the request to us:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1367 image-border" src="assets/ff245c34-1aa8-4a95-9cb8-953e355e48a3.png" style="width:23.75em;height:14.42em;"/></div>
+<p class="mce-root"><span>So, for example, as seen in the following screenshot, when the</span> <strong>Client</strong> <span>wants to open Google it will send the request to our device instead of</span> sending <span>it to the</span> <strong>Wi-Fi router</strong><span>:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1368 image-border" src="assets/90804c5c-bc63-4e5f-b028-0431c0b05bda.png" style="width:25.83em;height:13.33em;"/></div>
+<p>Now, our device will go to the <strong>Wi-Fi router</strong>, it'll get Google, the <strong>Wi-Fi router</strong> will send the response to our device instead of the <strong>Client</strong>, and then we will send the packet back. So, this means that each packet that is sent to the <strong>Client</strong> or from the <strong>Client</strong>, will have to go through us. Since it's going through us and we have the key, we can read these packets, we can modify them, or we can just drop them. </p>
+<p><span>So, that's the basic principle of the MITM attack and ARP poisoning. Basically, we're going to tell the <strong>Client</strong> that we are the <strong>Wi-Fi router</strong>, and then we're going to tell the router that we are the <strong>Client</strong>. This will put us in the middle of the packet flow, between the <strong>Client</strong> and the <strong>Wi-Fi router</strong>, and all the packets will start flowing through our device. Then we can read the packets, modify them, or drop them.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">ARP spoofing using arpspoof</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, let's see how to run an actual ARP poisoning attack, redirecting the flow of packets and making it flow through our device. We're going to talk about a tool called arpspoof, which is part of a suite called dsniff. dsniff is a suite that contains a number of programs that can be used to launch MITM attacks. We're just going to talk about arpspoof, and we're going to see how to use it to carry out ARP poisoning, which redirects the flow of packets through our device. The arpspoof tool is old, but it still works, and because it's so simple it's been ported to Android, iOS, and other smaller operating systems. There's a lot of people that actually like to use it to do ARP poisoning, which is why we're going to show you how to use this tool. In the next section and all the sections after that, we're going to use a tool called ettercap. We'll see how we use it and how to do ARP poisoning with it, but for this section we just want to show how to use arpspoof because it's going to be used a lot, so we need to know how to use it. It's very simple, anyway.</p>
+<p>So, we are connected now to the target network. Let's see how we use the tool. It's going to be <kbd>arpspoof -i</kbd>, to choose our internet card (virtual card), so it's <kbd>eth0</kbd>. Then we're going to put in the target IP address. So, our target is the Windows device, with its IP, <kbd>10.0.2.5</kbd>. Then we will put the IP address for the access point, which is <kbd>10.0.2.1</kbd>. We will tell the access point that the client IP address has our MAC address, so basically, we're going to tell the access point that we are the target client:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1369 image-border" src="assets/a3bb8c09-629b-4c38-a142-bee72bdc0e8a.png" style="width:41.67em;height:4.33em;"/></div>
+<p>After this, we're going to have to run arpspoof again, and instead of telling the access point that we the target client, we are going to tell the client that we are the access point, so we're just going to flip the IPs:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1370 image-border" src="assets/8e39a64b-7eb8-4902-a6ce-f5ca3cd96567.png" style="width:43.25em;height:4.33em;"/></div>
+<p>So, by running both the preceding commands we're going to fool the access point and the client, and we're going to let the packets flow through our device.</p>
+<p>Now, let's see, at the target, Windows is the target device, so we are going to the ARP table. So, if we just run the <kbd>arp -a</kbd> command in the Windows machine, it's going to show us the ARP table. So, we can see in the following screenshot that the IP address for the access point is <kbd>10.0.2.1</kbd>, and we can see its MAC address is <kbd>52-54-00-12-35-00</kbd>. It's stored in this ARP table:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1372 image-border" src="assets/5d665766-737b-483d-bad6-d44784a3d519.png" style="width:26.42em;height:13.17em;"/></div>
+<p>Now, once we do the attack, we will see that the MAC address <kbd><span>08-00-27-0b-91-66</span></kbd> for the target access point is going to change, and it's going to be the attacker's MAC address:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1371 image-border" src="assets/94954742-fb67-474e-8879-18e53518b7db.png" style="width:27.50em;height:13.50em;"/></div>
+<p>We'll also need to do something called enabling IP forwarding. We do that so that when the packets flow through our device they don't get dropped, so that each packet that goes through our device gets actually forwarded to its destination. So, when we get a packet from the router it goes to the client, and when a packet comes from the client it should go to the router without being dropped in our device. So, we're going to enable it using this command:</p>
+<pre><strong>echo 1 &gt; /proc/sys/net/ipv4/ip_forward</strong></pre>
+<p>The Windows device now thinks the attacker device is the access point, and every time it tries to to access the internet, or every time it tries to communicate with the access point, it's going to send these requests to the attacker device instead of sending it to the actual access point. This will place our attacker device in the middle of the connection, and we will be able to <span>read the packets, modify them, or drop them</span>.</p>
+<p><span>We're going to see how we do that in the next sections; for now we just need to know how to do basic ARP poisoning. We're going to need to do this every time we try to do a MITM attack.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">ARP spoofing using MITMf</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, and the next few sections, we're going to talk about a tool called MITMf, and as the name suggests, this tool allows you to run a number of MITM attacks. So, let's run the tool, see how we use it, and we're going to do a basic ARP poisoning attack, exactly like we did in the previous section. We are also going to be using our Ethernet internal virtual cards instead of the Wi-Fi card, so we can actually run these attacks against Wi-Fi or wired networks, and we can do it using your wireless card.</p>
+<p>We connect it to the network, to the target network, and then do the attack like we did with arpspoof, or you can do it using an Ethernet virtual card.</p>
+<p>If we do <kbd>ifconfig</kbd> just to see our interfaces, we'll see that we have the <kbd>eth0</kbd> card connected to the internal network at <kbd>10.0.2.15</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1373 image-border" src="assets/6305c1e8-bf0b-4c8c-964d-cabadffad6b7.png" style="width:37.83em;height:18.92em;"/></div>
+<p>Now, go to the Windows machine and run <kbd>arp -a</kbd> to see our MAC addresses, and we can see in the following screenshot that we have the gateway at <kbd>10.0.2.1</kbd>, and the MAC address ends with <kbd>35-00</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1374 image-border" src="assets/92afce7b-0e77-4228-a56c-bb864af95f0a.png" style="width:27.25em;height:13.58em;"/></div>
+<p>So, we're going to run the ARP poisoning attack and see whether the MAC address changes and whether we can become the MITM.</p>
+<p class="mce-root"/>
+<p>To use the tool, the name of which is MITMf, we're going to put the command first. Then we're going to tell it to do ARP poisoning, then we're going to give it the gateway (the IP of the router), then we're going to give it the IP of our target, and then give it the interface. The command is as follows:</p>
+<pre><strong>mitmf --arp --spoof --gateway 10.0.2.1 --target 10.0.2.5 -i eth0</strong></pre>
+<p><span>If we don't specify a target, it will default to the whole network, to the whole subnet. The interface is specifying our virtual interface, but we can specify our wireless card if it's connected to the wireless network. So, we are just going to hit <em>Enter</em>, and the tool will be running now:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1375 image-border" src="assets/e23e5fbc-5500-406c-a35d-f3023c6528ab.png" style="width:34.83em;height:29.92em;"/></div>
+<p>Let's go to the Windows machine, run <kbd>arp -a</kbd>, and see whether we managed to become the center of the connection. We can see in the following screenshot the MAC address has changed from <kbd>35-00</kbd> to <kbd>91-66</kbd>, and that is the same MAC address as the virtual interface that we have in Kali, so it ends up with <kbd>91-66</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1377 image-border" src="assets/7ced38b6-6382-4fd5-9db4-1dfc3d62a6a1.png" style="width:25.83em;height:12.67em;"/></div>
+<p>So, that means we're the MITM at the moment, and the tool automatically starts a sniffer for us. So instead of arpspoof, which only places us in the middle, this tool actually starts a sniffer, which captures the data that is sent by the devices in our network.</p>
+<p>We are going to go to a website. Now, first, we are going to go to a HTTP website and see how to capture a username and a password, and then we'll see how we can capture passwords from websites that use HTTPS.</p>
+<p>So, on a Windows machine, we are going to go to a website called Hack.me, and then we are going to go to the login page to log in to an account while the MITM attack is running, and then we are just going to use a username and a password. We are going to put the <span class="packt_screen">Email Address</span> as <kbd>zaid@isecur1ty.org</kbd>, and then we are going to use, for <span class="packt_screen">Password</span>, a false password; but we'll just see how we can capture this password. So, we are going to put <kbd>123456</kbd>. Now, if we go back to the MITMf console, we will see what we have; the username has been captured, which is <kbd>zaid@isecur1ty.org</kbd>, and the password has been captured, which is <kbd>123456</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1380 image-border" src="assets/c4722f36-7d88-418a-9a75-33fcb4450b9b.png" style="width:60.92em;height:3.08em;"/></div>
+<p>So, basically, we are able to capture any username and any password that is entered by the computers that we're ARP spoofing. We can also see all the URLs that the person has requested. So, for example, we can see that they requested <kbd>me.hack.me</kbd>. We can also see the URLs that Hack.me requested. These are only the URLs requested by the ads that are displayed on the website.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bypassing HTTPS</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous section, we saw how to sniff and capture anything sent over HTTP requests. Most famous websites use HTTPS instead of HTTP. This means that when we try to become the MITM, when the person goes to that website, the website will display a warning saying that the certificate of that website is invalid. That way, the person will be suspicious and probably won't log in to that page. So, what we're going to do is use a tool called SSLstrip, which will downgrade any HTTPS request to HTTP; so whenever the target person tries to go to <a href="https://hotmail.com" target="_blank">https://hotmail.com</a>, for example, they'll be redirected to the HTTP of <kbd>hotmail.com</kbd>. Let's go the browser on the target, and we are going to try to go to <kbd>hotmail.com</kbd>. Now, as we can see in the following screenshot, on the top in the address bar you will see that the website uses HTTPS, so if we try to become the MITM, this website will display a warning:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1381 image-border" src="assets/606c1427-affe-4434-9b37-10da824c4c5c.png" style="width:88.25em;height:6.08em;"/></div>
+<p>To bypass the warning, we're going to use a tool called SSLstrip to downgrade any request to the HTTPS website and get it redirected to the HTTP version of this website. Once we go to the HTTP version, sniffing the data will be trivial, exactly like what happened in the previous section.</p>
+<p>We can use SSLstrip manually, but luckily, MITMf starts it automatically for us. We are actually going to run exactly the same command that we saw in the previous section. We are not going to change anything in it.</p>
+<p>If we look at the following screenshot, once we run this program we will see that it will actually tell us that SSLstrip has been started and it's online:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1382 image-border" src="assets/5b6af66b-5cdc-4031-aaad-e9eacea9f044.png" style="width:38.50em;height:31.17em;"/></div>
+<p>So, we are going to go back and we are going to try to go to <kbd>hotmail.com</kbd>, and we will see in the following screenshot that, instead of the HTTPS version that we're getting here, we're actually going to go to a HTTP version of hotmail.com. Now, notice the address bar here. There is no HTTPS, so we're actually at the HTTP version of the website. We will also notice that we didn't see any warnings, so it just looks like exactly a normal website, looking exactly like hotmail.com.</p>
+<p>So, we are going to put in our email, and again we are going to use a false password. We are just going to put <kbd>123456</kbd>, and we are going to sign in. Now, if we go to the Kali machine, we will see that we managed to capture an email from <kbd>zaid@hotmail.com</kbd>, and we also managed to capture the password, which is <kbd>123456</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1412 image-border" src="assets/f7fd9198-ae3e-456a-bf2c-23bea798dbe1.png" style="width:39.50em;height:1.08em;"/></div>
+<p>Websites such as Facebook and Google are actually using something called HSTS, and what that does is this; basically, the browser comes in with a pre-hardcoded list of websites that have to be browsed as HTTPS. So, even if we try to downgrade the HTTPS connection to HTTP, the browser will just refuse to show the website, or just show a HTTPS version of it. This is because, without connecting to anything, the browser has a list stored locally on the local computer saying that it shouldn't open Facebook, Gmail, and such websites as HTTP. So, whatever way we try to do it, the website will just refuse to open in HTTP.</p>
+<p>Now, MITMf actually has, an HSTS plugin that attempts to bypass HSTS, but it only works against old browsers. It used to use an old vulnerability, which is patched now in new browsers. With new browsers, <span>there is no way of bypassing </span><span>the HTTPS connection to </span><span>Gmail and Facebook at the moment because they use HSTS, which basically means they come in with a hardcoded list, so the browser refuses to open these websites as HTTP.</span></p>
+<p> </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Session hijacking</h1>
+                </header>
+            
+            <article>
+                
+<p>So far, we've seen how we can capture passwords from any computer that is on our network, and we've seen how we can even bypass HTTPS to capture passwords from famous websites that try to use encryption. What if the target person never actually entered their password? What if they use the <strong>Remember Me</strong> feature, so when they go to the website they already get logged in into that website? That way, they never enter the password, the password is never sent to the server, and therefore we'll never be able to capture the password because it's not even sent. So, let's have a look at that.</p>
+<p>So, we are on our target Windows computer. If we go to Dailymotion, we have already logged in there before and we clicked on the Remember Me feature. So, if we go to that website, <a href="https://www.dailymotion.com/ie" target="_blank">https://www.dailymotion.com/ie</a>, we will see that we will already be logged in to our account without having entered our password. In this case, the users actually get authenticated based on their cookies. The cookies are stored in the browser, and every time the person tries to go to the website they will be authenticated to the website based on the cookies. What we can do is sniff out these cookies and inject them into our browser, and therefore we'll be able to log into the account without entering the password, exactly the same way that the target person is being authenticated to their account.</p>
+<p>To do that, we're going to use a tool called ferret, and ferret doesn't come installed with Kali. To install it, we are going to have to run <kbd>apt-get install ferret-sidejack</kbd>. Once we have that, first of all we're going to become the MITM using the same command that we've been using in the previous sections, using MITMf. Now, we<span> can become the MITM any way we want, using arpspoof or any other tool.</span></p>
+<p>Once we are the MITM, we're going to use ferret to capture the cookies. There is a ferret plugin that comes in with MITMf, but we are going to do it on the command line just to see how the whole process works together with another tool called hamster. We are going to run ferret, and running ferret is very simple. All we have to do is just type in <kbd>ferret</kbd>, and then we put our interface, which is <kbd>eth0</kbd> in our case. Again, if we are using our wireless card, then put as the interface the name of our wireless card. The command is as follows:</p>
+<pre><strong>ferret -i eth0</strong></pre>
+<p>Ferret is running now and it's ready to capture cookies. In fact, it's already capturing cookies:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1384 image-border" src="assets/f6dc2a30-b78a-4654-b6f9-25c3ffd4b158.png" style="width:39.75em;height:23.83em;"/></div>
+<p>We're also going to start a graphical interface, a web GUI, that will allow us, to inject the cookies and navigate into our system's session. To do that, we're going to use a tool called hamster, and running hamster is even simpler than ferret. All we have to do is just run <kbd>hamster</kbd>, and we're ready to go:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1385 image-border" src="assets/79c7ad68-38a6-4ff6-a794-61fa204a1b6d.png" style="width:20.58em;height:6.25em;"/></div>
+<p><span>So, everything is ready now. We are going to go into our target and log in to our account. So, we are just going to pretend that we are browsing the internet. We're going to go to Udemy. We will just go to the website, and we'll authenticated automatically without having to enter anything such as a username or a password. Now, let's come back to the Terminal, and as we can see, we have managed to capture the cookies:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1386 image-border" src="assets/17d6f932-6d19-4bd1-9c20-0e5e79124805.png" style="width:41.67em;height:24.08em;"/></div>
+<p><span>We are going to copy the proxy link that hamster gave us, which is <kbd>http://127.0.0.1:1234</kbd>, and we are going to go to our browser. Now, we need to modify our proxy settings to use hamster, so in our Kali browser we're going to go to <span class="packt_screen">Preferences</span> | <span class="packt_screen">Advanced</span> | <span class="packt_screen">Network</span> | <span class="packt_screen">Settings</span>, and we're going to set it to use a manual configuration, and we're going to set the port to <kbd>1234</kbd>.</span></p>
+<p><span>So, we're using <kbd>127.0.0.1</kbd>, which is our local address, and the port is <kbd>1234</kbd>:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1387 image-border" src="assets/b13a48e5-4052-4459-b05e-7629e2f934e9.png" style="width:29.00em;height:29.58em;"/></div>
+<p><span>Click <span class="packt_screen">OK</span>, and then we're going to navigate to the URL given to us by ferret, which is <kbd>127.0.0.1:1234</kbd>:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1388 image-border" src="assets/6e4c0818-d499-476f-a44b-29b2e0de974e.png" style="width:104.17em;height:37.75em;"/></div>
+<p><span>We go and select our adapter by going into <span class="packt_screen">adapters</span> and entering <kbd>eth0</kbd>. Then, click <span class="packt_screen">Submit Query</span>:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1389 image-border" src="assets/6e1df58b-6264-4a07-931c-5ab2c3355668.png" style="width:104.67em;height:20.58em;"/></div>
+<p><span>We can see that here we have two targets:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1390 image-border" src="assets/328bbdda-af43-4263-aa04-3ba4c25717b8.png" style="width:104.33em;height:31.75em;"/></div>
+<p><span>Our target is <kbd>10.0.2.5</kbd>; that's our target IP. We are going to click on it, and as we can see in the following screenshot, on the left we have all the URLs that contain cookies related to our target:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1391 image-border" src="assets/0bc76621-beec-4954-8cad-1fb47136cce0.png" style="width:106.17em;height:60.58em;"/></div>
+<p><span>Obviously, a lot of URLs listed are ad websites or ad URLs, but we can see that one of the URLs is for Udemy.com, and if we click on it, we will be actually logged in without having to enter a username or password. So, we can go into the channel and do anything that the target person is able to do without using the username and the password, and this is all possible because we stole the cookies that the person actually used to authenticate themselves with the website.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">DNS spoofing</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to learn what DNS spoofing is and how to perform it. DNS is basically a server that converts domain names, such as www.google.com, to the IP address of the device where the Google website is stored. Since we're the MITM, we can have a DNS server running on our computer and resolve DNS requests the way we want. For example, whenever a person requests Google, we can actually take them to another website, because we're in the middle. So, when someone requests it, we'll actually give them an IP that we want and then they'll see a completely different website than what they're expecting. So, we can have a fake website running on our own web server and get requests, for example, from live.com to that website.</p>
+<p>We can have a website requesting the target person to download a backdoor; we can do anything we want, really, when we're pretending to be another website. The possibilities <span>of what we can do with this attack </span>are endless.</p>
+<p>Let's see how we can do this. The first thing we are going to do is redirect people to our web server. The web server is going to be running on our local Kali machine. We can redirect people to any web server anywhere we want, but in this section we're redirecting them to our local web server. To do that, we're going to start Apache web server. It comes preinstalled with Kali, so all we have to do is run <kbd>service apache2 start</kbd>, and the web server will start.</p>
+<p>The files for the web server are stored in the <kbd>/var/www/html</kbd> directory. We are going to open our file manager, and we are going to go to the <kbd>/var/www/html</kbd> directory, and the page that is seen in the following screenshot will be displayed to people who browse our web server:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1413 image-border" src="assets/d43d2a00-b00b-4a55-b511-1f97f2485855.png" style="width:30.00em;height:7.67em;"/></div>
+<p>We can have a whole complete website installed in here and it will be displayed whenever a person visits our web server. If we go to our browser and browse to <kbd>10.0.2.15</kbd>, which is our own IP address, our internal IP, we will see that we can see the <kbd>index.html</kbd> page there. Let's configure the DNS server that comes in with MITMf; to do that we're going to use Leafpad, which is just a text editor, and then we're going to run <kbd>leafpad /etc/mitmf/mitmf.conf</kbd>. Then, we going to scroll down to where the <kbd>A</kbd> records are, as seen in the following screenshot; the <kbd>A</kbd> records are basically the records that are responsible for transforming or translating domain names to IP addresses:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1418 image-border" src="assets/f543ef37-1367-4192-9d90-0a690b8cd9c0.png" style="width:40.17em;height:8.50em;"/></div>
+<p>We're going to be targeting <kbd>live.com</kbd> and using the <kbd>*</kbd> as a wildcard. So, basically we're saying any subdomain to <kbd>live.com</kbd> should be redirected to <kbd>10.0.2.15</kbd>—our IP address. We can replace this with any IP address. For example, we can put the IP address of a remote website that we have hosted on any hosting company, or we can have it redirecting to Google, for example, if we put Google's IP. Any IP we put here will redirect <kbd>live.com</kbd>. Save the file and close it, and we are going to run our command. It is very similar to the commands that we were running before in previous sections. The only difference is I'm going to add one extra option, which is <kbd>--dns</kbd>. So it's exactly the same commands, <kbd>mitmf --arp --spoof --gateway --target --i</kbd>, and then we added one extra option, which is <kbd>--dns</kbd>. The command is as follows:</p>
+<pre><strong>mitmf --arp --spoof --gateway 10.0.2.1 --target 10.0.2.5 -i eth0 --dns</strong></pre>
+<p>After hitting <em>Enter</em>, DNS spoofing is enabled. Let's go to the target and try to go to <kbd>live.com</kbd> and see what happens. As we can see in the following screenshot, <kbd>live.com</kbd> actually uses HTTPS, and it has been redirected to our own website, which displays some simple text, but we can install anything we want. We can ask them to download something, or we can have a fake page, steal stuff, and steal credentials: </p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1419 image-border" src="assets/ed0c86dd-9f54-4d91-bead-4b6752cce683.png" style="width:95.67em;height:13.50em;"/></div>
+<p><span>It can also be used to serve fake updates to the target person, for example, or for backdoor downloads on the fly. There are so many uses to DNS spoofing. This is just the basic way to do DNS spoofing, and then we can use it and combine it with other attacks or with other ideas to achieve really powerful attacks.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">MITMf screenshot keylogger</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to have an example of a simple plugin that comes in with MITMf. We are going to run <kbd>mitmf --help</kbd>, and after scrolling down past <kbd>help</kbd>, we will see a lot of plugins, as we can see in the following screenshot, that we can use to do various things on the target computer:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1420 image-border" src="assets/c8b2c45f-2054-47d4-95ba-e529346e0ed4.png" style="width:36.75em;height:21.83em;"/></div>
+<p>We can use the <kbd>--inject</kbd> plugin to inject code into the web pages that the target person loads, and we'll have an example of that later. What we want to do now is just see an example of a simple plugin, and then we'll do more in the future. Now, for example, as we can see in the following screenshot, we have a <kbd>ScreenShotter</kbd> plugin, and this plugin takes screenshots of each of the pages that the person uses. Whenever the person uses a page, it takes a screenshot of that page:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1421 image-border" src="assets/d4197229-f288-40d6-b0da-eff7dc5482b1.png" style="width:43.08em;height:5.42em;"/></div>
+<p>We can set up the <kbd>--interval</kbd>; that's the amount of time in which the program should take a screenshot. It defaults to 10 seconds, so it takes a screenshot every 10 seconds, but we can modify it using the <kbd>--interval</kbd> option.</p>
+<p>We're having a basic look at how we can use the plugins, so the first thing we do is use the plugin name, and then we put the option that we want to set. We're going to use the same command that we always use, and then we're going to put the plugin name after it. The plugin name is going to be <kbd>--screen</kbd>, and if we want to change the interval we can put the <kbd>--interval</kbd> option. Then, we put the interval for taking the screenshots. We are going to keep it at 10 seconds, so we are not going to do anything. Here is the command:</p>
+<pre><strong>mitmf --arp --spoof --gateway 10.0.2.1 --target 10.0.2.5 -i eth0 --screen</strong></pre>
+<p>We should go to the target computer and browse the internet.</p>
+<p>Go to Bing or Google and search anything, go on <span class="packt_screen">Images</span> and so on. The plugin has started taking screenshots of everything now; every ten seconds it's taking a screenshot, and we can see in the following screenshot that it's actually injecting the code in here every time:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1422 image-border" src="assets/ce690b1b-5877-4509-a2cf-7e59c324a7a0.png" style="width:105.33em;height:12.25em;"/></div>
+<p>Stop the process with <em>Ctrl</em> + <em>C</em>, and then we're going to go and have a look on the screenshots that plugin has captured in the <kbd>/var/log/mitmf</kbd> directory:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1423 image-border" src="assets/b7b373c7-2271-4814-9728-97a205ae4046.png" style="width:106.58em;height:31.75em;"/></div>
+<p>We can see we have the pictures we Googled on the target:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1424 image-border" src="assets/63419c7f-45d0-41d5-b8a9-bcf7e4549c4c.png" style="width:90.50em;height:62.17em;"/></div>
+<p>All the images will be stored in the <kbd>/var/log/mitmf</kbd> directory, and we can see them and get an idea of what the person is doing on their computer. There are other plugins that you can use.</p>
+<p>We have <kbd>--jskeylogger</kbd>, which will basically inject a keylogger into the target page, but it's kind of useless because since we are the MITM, we can see the usernames and passwords anyway, as well as anything else that gets sent on the target computer. But if for any reason we wanted to have some sort of a keylogger injected into the target computer, or into the target website, then all we have to do is the same command that we always run and just type in <kbd>--jskeylogger</kbd> after it, and that's the keylogger injected. Here is the command:</p>
+<pre class="mce-root CDPAlignLeft CDPAlign"><strong>mitmf --arp --spoof --gateway 10.0.2.1 --target 10.0.2.5 -i eth0 --jskeylogger</strong></pre>
+<p>So again, we can go on the target web browser and search for something else. Let's go to Carzone.ie and try to log in with fake credentials. We put the email <kbd>zaid@isecurity.org</kbd> and the password <kbd>123456</kbd>. Now, obviously, again this has been captured because we're the in the middle of the connection. If we go to the MITMf Terminal, we can see that our JSKeylogger is detecting that stuff is being entered into the fields called <kbd>email</kbd> and <kbd>password</kbd>:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1426 image-border" src="assets/ae67cb5a-49f0-44b0-a157-7c2fce6d79db.png" style="width:105.08em;height:42.17em;"/></div>
+<p>So again, if the target person is writing anything on any page, we will be able to capture it using the keylogger, but since we are the MITM we can do that using Wireshark, and analyze all the packets and see what the person is typing.</p>
+<p>This is another method of doing it. It's an example of how we can use the plugins that come with MITMf. Now again, typing <kbd>mitmf --help</kbd> will give we all the options, all the plugins that we can use, and using them is very similar to what we have been doing. So we usually just put the option, or the plugin name, and if we are going to set any options for it then we set the options.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">MITMf code injection</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to be talking about how to inject code into the browser, into the target computer. Since we're the MITM and since everything flows through our device, when someone requests a page we can actually insert any type of code that we want into that page. Browsers can run two types of code; they can run HTML code, and they can run JavaScript code. HTML code is the code responsible for the way that the page looks, so it's the code for the buttons, for the text, for the images, all of that. It can't really be used to do anything that will allow us to gain any access to the target computer. JavaScript, on the other hand, is a programming language that can be used to do many things, and we'll see that in later sections. In this section, we'll see how to inject JavaScript code into the target browser. We can use the same method to inject HTML, but JavaScript is more useful. That's why we're going to use our example to inject JavaScript.</p>
+<p>So, let's first of all run MITMf with the <kbd>--help</kbd> command, and it will show us what options we have with the <kbd>--inject</kbd> plugin, as shown in the following screenshot:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1427 image-border" src="assets/ab955394-3c83-4357-b868-562ba9c24cd4.png" style="width:37.00em;height:22.08em;"/></div>
+<p>We're going to be using the same command that we always use. The only difference is we're going to insert the <kbd>--inject</kbd> plugin, and then we have different options for injection. There are three main options:</p>
+<ul>
+<li>We can have our code stored into a file, and we can use <kbd>--js-file</kbd> or <kbd>--html-file</kbd> to inject the code stored in the file that you specify.</li>
+<li>Code can be stored online, and it has a URL. We can use that URL using the <kbd>--js-url</kbd> or the <kbd>--html-url</kbd> options.</li>
+<li> We can actually supply the code itself through the command using the <kbd>--js-payload</kbd> or the <kbd>--html-payload</kbd> options.</li>
+</ul>
+<p>We're going to be supplying the code through the command the first time, and then do it using a file. <span>We're going to be using <kbd>--inject payload</kbd>, and then we're going to be doing <kbd>--js-payload</kbd>.</span></p>
+<p><span>Our command is going to be the same as always, <kbd>mitmf</kbd>, and then we're going to add the option, the plugin, which is <kbd>--inject</kbd>, and then we're going to tell it that we want to specify the code through the command. We're going to use the <kbd>--js-payload</kbd>, as then we can put the JavaScript code after the <kbd>--js-payload</kbd> option. We are going to put in our JavaScript code, and we are going to use very simple code that will only display a message on the target computer. Our code is not going to try to hack anything; all it's going to do is just display a message box on the target computer, and in further</span> sections<span> we'll see how we can use this option to do more powerful attacks. So, basically, our code is going to do an <kbd>alert()</kbd> function in JavaScript, and the alert is just going to say <kbd>test</kbd>. So, our command is the same, it's <kbd>mitmf --arp --spoof</kbd>; our interface, <kbd>-i</kbd>; the <kbd>--gateway</kbd>; the <kbd>--target</kbd>; and then we loaded the <kbd>--inject</kbd> plugin; and we're telling it we're specifying the code through the command. The code that we want to run is <kbd>alert('test')</kbd>, and that's it. The command is as follows:</span></p>
+<pre><strong>mitmf --arp --spoof -i eth0 --gateway 10.0.2.1 --target 10.0.2.5 --inject --js-payload "alert('test')"</strong></pre>
+<p><span>We can check the result by going to the target system, browsing to a normal web page, and seeing what happens. We are just going to go to Carzone.ie, and as we can see in the following screenshot, the page displays a message box, and that message box says <span class="packt_screen">test</span>:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1429 image-border" src="assets/5a1ea9d7-32e2-4d0c-a7ce-46bcdb33d258.png" style="width:96.92em;height:38.00em;"/></div>
+<p><span>So again, this is very simple code that doesn't really allow us to do anything on the target computer, but we can use it in further sections to do more powerful attacks.</span></p>
+<p><span>Again, we can actually Google JavaScript codes and see codes that will be useful for us. For example, there are JavaScript keyloggers, there are codes that can take screenshots of the target computer, and there are a lot of other codes. You can redirect the target computer somewhere else, steal their cookies; you can do a lot of these powerful attacks.</span></p>
+<p><span>Another way to run an <kbd>inject</kbd> attack is by using a file. If we are using one of these more complicated codes, it's going to be hard to write it through the command, so we would be better off storing the code into a file and using the <kbd>--js-file</kbd> option. All we will have to do is open our Leafpad and get our code. We are actually just going to run <kbd>leafpad</kbd>, and we are going to write the same code<span> </span>that we did in the preceding example </span><span>into a file</span><span>. We are going to make an alert pop up, </span><kbd>alert('test2');</kbd><span>. We are going to save the file as</span> <kbd>alert.js</kbd><span>, and we are going to store that in our</span> <kbd>/root</kbd> <span>directory:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1430 image-border" src="assets/08fd77fd-0e3c-436a-a396-66b2a2ecfe71.png" style="width:22.50em;height:4.92em;"/></div>
+<p><span>So again, if we are Googling or if we are using a more complicated code, we can have it all in this file, and then inject it. Run the command as we did before; the only difference is that  instead of using the <kbd>--js-payload</kbd>, we're going to use <kbd>--js-file</kbd>, and we're going to specify the file, the full path to the file. We stored it in the <kbd>/root</kbd> directory as <kbd>alert.js</kbd>. If we download a file from the internet that contains a keylogger, for example, or a file that will redirect the target computer to some other site, then again we use the same command, but make sure we put <kbd>--js-file</kbd> and then the full path to where that file is stored. The command is as follows:</span></p>
+<pre><strong>mitmf --arp --spoof -i eth0 --gateway 10.0.2.1 --target 10.0.2.5 --inject --js-file /root/alert.js</strong></pre>
+<p><span>We will then launch this command, and MITMf will start the process. We are going to come back to the target. Let's browse for something. We will see that our code, the second code that we injected, which was called <kbd>test2</kbd>, was executed on the target machine. The result of the attack can be seen in the following screenshot:</span></p>
+<div class="CDPAlignCenter CDPAlign"><span><img class="aligncenter size-full wp-image-1431 image-border" src="assets/4f0dbb92-f056-43a1-a693-23e0c9065d32.png" style="width:96.17em;height:29.75em;"/></span></div>
+<p><span>Now, again, these are really simple codes just displaying a message box, but we can download or look for more complicated JavaScript codes, or just follow up in the further sections and see how we can use this feature to carry out more powerful attacks.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">MITMf against a real network</h1>
+                </header>
+            
+            <article>
+                
+<p>MITMf can be used against real networks exactly the same way that we were using it against virtual networks; the only difference is we want to make sure that you specify the right IPs, the right interface, and connect to the same network that the target person is connected to. We should also go over a few points that might prevent MITMf from working properly.</p>
+<p>The first thing to do now is run the <kbd>ifconfig</kbd> command to see our configuration. We can see in the following screenshot that we have <kbd>eth0</kbd> and it's connected to our NAT network, because we configured the Kali machine to use a NAT network:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1555 image-border" src="assets/4cf88fdd-d423-44c0-b86b-5c786724cd68.png" style="width:35.33em;height:17.58em;"/></p>
+<p>First of all, the thing we want to do before we target a real network is make sure that that's the only network that Kali is connected to. The first thing that we need to do is disconnect from the network with the IP <kbd>10.0.2.15</kbd>, which is our virtual network. This is very important, and it's actually the main thing that seems to be interfering with MITMf. The attack might work but we will have DNS issues, or the target machine will experience a very slow internet connection, or they'll lose their internet connection completely. Go to <span class="packt_screen">Devices</span> | <span class="packt_screen">Network</span>, and look for the tick next to the <span class="packt_screen">Connect Network Adapter</span> option:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1552 image-border" src="assets/a36a4731-e12e-450b-9b47-fe628166a0b9.png" style="width:31.00em;height:9.33em;"/></p>
+<p>The tick indicates we're connected to the network, because it connects the network adapter. We're going to click on <span class="packt_screen">Connect Network Adapter</span>, and that's going to disconnect us from the NAT network, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1553 image-border" src="assets/fc93efd9-6a51-42ae-ba3f-acffe7f171ae.png" style="width:30.75em;height:9.25em;"/></p>
+<p>Now, if we run the <kbd>ifconfig</kbd> command in our Kali machine, we will see that <kbd>eth0</kbd> is not connected to anything, which indicates we are offline in the Kali machine. We can't even <kbd>ping</kbd> anything:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1554 image-border" src="assets/d9335258-1c1b-48ef-b005-fd3363af4605.png" style="width:33.00em;height:15.83em;"/></p>
+<p>The next thing that we need to do is connect to the same network that the target machine is connected to. We are going to be targeting a Windows machine. It's a physical computer connected to a physical Wi-Fi network, and the name of the network is <kbd>Test</kbd>. As we mentioned before, we can't use the internal wireless card inside VirtualBox, inside virtual machines, so to connect to a Wi-Fi network we're going to need to use an external wireless adapter. We are going to connect our wireless adapter through a USB port, and then go to <span class="packt_screen">Devices</span> | <span class="packt_screen">USB</span>, and connect a wireless card called ATHEROS:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1556 image-border" src="assets/86cea1ca-d23e-4489-9e82-7c69e9dc8bce.png" style="width:33.33em;height:10.17em;"/></p>
+<p>Now, if we run the <kbd>ifconfig</kbd> command, we will see that we have a new interface called <kbd>wlan0</kbd>. It is a wireless card, but as we can see in the following screenshot, the wireless card is not connected to any network:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1557 image-border" src="assets/61d00ae7-98bb-481e-83f9-ad070d092559.png" style="width:35.00em;height:7.00em;"/></p>
+<p>We need to connect to the same network that the Windows machine is connected to. After connecting, if we run <kbd>ifconfig</kbd> we will see that <kbd>wlan0</kbd> has an IP address, and notice that the first three parts of the IP address on Kali are the same as the first three parts of the IP address in Windows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1559 image-border" src="assets/f60b6571-cb63-4ec2-853c-432124601299.png" style="width:36.83em;height:25.25em;"/></p>
+<p>Here is the IP of the Windows machine:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1560 image-border" src="assets/483c5517-2c3c-4581-8a05-91c94c57dc0a.png" style="width:33.67em;height:7.33em;"/></p>
+<p>Basically, it means that both wireless cards are on the same subnet, on the same network, and now we can use <kbd>wlan0</kbd> to target the Windows computer.</p>
+<p>If we run <kbd>arp -a</kbd>, notice the MAC address now. Here is the correct MAC address of the router, and when we run MITMf it should change to the attacker's MAC address:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1561 image-border" src="assets/50a0840c-5393-41e7-8e51-11ea560ba88b.png" style="width:26.08em;height:12.92em;"/></p>
+<p>Let's run MITMf exactly the same way as before. We're going to run <kbd>mitmf</kbd>. We're going to do <kbd>--arp --spoof</kbd>, give it the interface, and this time we're targeting a real computer. We're targeting a real network, and the <kbd>wlan0</kbd> interface is connected to that real network. So we're going to use <kbd>wlan0</kbd> for the interface instead of <kbd>eth0</kbd>. Then we are going to set the <kbd>--gateway</kbd>, and that's usually the first IP in the subnet, so it'll be <kbd>192.168.0.1</kbd>, and then we are going to specify <kbd>--target</kbd>, which is the Windows machine, and it had an IP of <kbd>192.168.0.3</kbd>. The command is as follows:</p>
+<pre><strong>mitmf --arp --spoof -i wlan0 --gateway 192.168.0.1 --target 192.168.0.3</strong></pre>
+<p>The only difference is we're using different arguments; we're using <kbd>wlan0</kbd> because <kbd>wlan0</kbd> is the wireless card that's connected to the target network, we're using the <kbd>--gateway</kbd> that is the first IP of the same IP that we have, and then we're using the <kbd>--target</kbd>, which is this Windows machine, and we've set it to <kbd>192.168.0.3</kbd>. After hitting <em>Enter</em>, we can see the old MAC address of the router used to be <kbd>ec:1a:59:5a:ce:de</kbd>; now if we run the <kbd>--arp -a</kbd> command, the MAC address should change to the Kali machine's MAC address:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1562 image-border" src="assets/68cf6235-de74-4880-b320-95bcde40303a.png" style="width:25.50em;height:10.83em;"/></p>
+<p>This could actually take up to a minute and a half for the changes to be reflected. Just give it some time and then check the MAC address again if it's not reflected.</p>
+<p>Go and browse to a website just so that we generate some traffic on the Windows computer, so that it will go ahead and update its ARP table. MITMf is sniffing data and it's capturing data that's sent by the Windows machine:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1564 image-border" src="assets/3cf2977d-54e9-4cc0-82c6-b099d467a9c6.png" style="width:67.92em;height:27.42em;"/></p>
+<p>Try to log in to an HTTP website with fake credentials on the Windows machine. As we can see in the following screenshot, we managed to get the email, which is <kbd>zaid@isecurity.org</kbd>, and the password, which is <kbd>123456</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1565 image-border" src="assets/60b041aa-8df5-48fa-a051-1777a0be79f4.png" style="width:64.50em;height:3.33em;"/></p>
+<p>MITMf worked against a computer that is connected to a real network. The main thing to keep in mind is make sure that we are connected to the same network as the target person. If that person is connected to a Wi-Fi network, make sure we are using an external wireless adapter and we are not using a bridged or NAT network. We need to connect through the network manager of Kali Linux, so we need to attach the wireless card and then connect to the target network. Also keep in mind that we should disconnect the Kali machine from the NAT network, if it was connected to one, by going to <span class="packt_screen">Devices </span>| <span class="packt_screen">Network</span>, and then uncheck the virtual adapter, because we want to make sure that the Kali machine is isolated. We don't want it connected to any network other than the target network.</p>
+<p>If we run <kbd>ifconfig</kbd>, we can see that <kbd>eth0</kbd> does not have any IP addresses. The only device that has an IP address and that's connected to the internet is <kbd>wlan0</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1600 image-border" src="assets/a13c0f83-11fb-4e26-ac54-beb0862f9e1b.png" style="width:36.92em;height:25.08em;"/></p>
+<p>Once we are are done running attacks, and if we wanted to go back to using the NAT network to target other virtual machines, or if we just wanted to get our internet connection through the host machine, all we have to do is just go to <span class="packt_screen">Devices</span> | <span class="packt_screen">Network</span>, and click on <span class="packt_screen">Connect Network Adapter</span>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1601 image-border" src="assets/1be5caca-10f4-41ff-83fe-9c11a9da6267.png" style="width:29.33em;height:8.75em;"/></p>
+<p>That'll again connect our <kbd>eth0</kbd> to the NAT network, and it will allow us to use it as we were using it before. So, if we run <kbd>ifconfig</kbd> now, we will see that <kbd>eth0</kbd> has an IP address and it's connected again to the NAT network:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1602 image-border" src="assets/68de1ef1-fa09-4a08-a5a1-22dd778d74d0.png" style="width:37.00em;height:27.25em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Wireshark</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to talk about a tool called Wireshark. Wireshark is a network protocol analyzer. It's not designed for hackers, and it's not designed for hacking and spying on other people on the network. It's designed for network administrators so that they can see what's happening in their network and make sure that everything is working properly, and that nobody is doing anything bad or suspicious on the network. The way that Wireshark works is it allows you to select an interface and then logs all the packets, or all the traffic, that flows through that interface. So, we are selecting an interface (it could be a wireless card, or it could be a wired card on our current computer), and then it'll start logging all the information that flows through that interface. It also has a really nice graphical interface that allows us to analyze this traffic, so it allows us to filter these packets based on the protocol used in them, such as HTTP or TCP. It also allows us to look for certain things, such as cookies or <kbd>POST</kbd> or <kbd>GET</kbd> requests, and it also allows us to search through these packets. We can search through the information that's stored in the packets, and find the things that we are looking for. This tool has a vast number of applications, and we might need a entire book to cover them all, so in this book we're actually going to use it in just a few sections, just covering the basics and the things that are related to us.</p>
+<p>The main idea here is that Wireshark is not a hacking tool. It only allows us to capture the traffic that flows through our own computer, or interface. So, we are just going to go to Kali, and we're going to start Wireshark. We can run the <kbd>wireshark</kbd> command from the Terminal. First of all, you can actually just go to <span class="packt_screen">File</span> | <span class="packt_screen">Open</span>, and in here you can open a file that we've already captured. For example, you may have captured packets using a different sniffer, such as Airodump, MITMf, or TShark, which is the Terminal part of Wireshark.</p>
+<p class="mce-root"/>
+<p>If we captured packets using any of these programs and you stored it in a file, we can just come in here, open it, and start analyzing that file:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1432 image-border" src="assets/da1258f1-f27a-4f9d-b00d-23f7eed45b37.png" style="width:40.50em;height:30.08em;"/></div>
+<p>This is really handy because sometimes we don't really want to analyze the traffic on the fly. Sometimes we just want to capture traffic from a small laptop, or from our phone, and we may not even be at home. We may be somewhere else doing our pen test, and then we go back home and then we want to analyze what we captured. In such cases, we can store that in a file and then just open Wireshark and open the file that we want to analyze. The main idea here is that Wireshark is not a hacking tool, it's not going to capture things happening in another device. It will only capture things that flow through our own interface.</p>
+<p>So, we can see in the following screenshot that we have all the interfaces in our computer. We can see that we have <span class="packt_screen">eth0</span>, and we have all the other ones, some of which are created by VirtualBox:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1433 image-border" src="assets/e9c1e98e-2852-4090-bd4b-4b14671c34d8.png" style="width:81.00em;height:17.50em;"/></div>
+<p>The main one in the preceding screenshot is <span class="packt_screen">eth0</span>, which is the virtual interface connected to our NAT network. </p>
+<p>Now, open a browser and go to a normal website, such as Google. Now, as we can see in the following screenshot, we can see the traffic in the <span class="packt_screen">eth0</span> interface graph is spiking, so there was some traffic generated through that interface:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1434 image-border" src="assets/86e18233-0ebb-4dc1-858a-13ca9629392e.png" style="width:81.67em;height:11.92em;"/></div>
+<p>So, if we're sniffing on <span class="packt_screen">eth0</span>, we will be able to capture the packets that were sent.</p>
+<p>Now, go to our Windows machine just to prove that point; browse to the website, and we will see that <span class="packt_screen">eth0</span> will not be affected. The traffic that's generated on this Windows machine, which is in the same network as the Kali machine, will not be captured by the Kali machine.</p>
+<p>So, why is Wireshark so useful, why are we even talking about it if we can only see things that go through our own computer? Why are we talking about it? Well, we're talking about it because we've seen that there are many ways that we can become the MITM.</p>
+<p>Now, we talked about two methods of becoming the MITM. We talked about doing it using ARP spoofing, and if we create a fake access point then we'll naturally be the MITM because all the requests will be going through the fake access point and start sniffing on the interface that's used to become the MITM. We'll be able to capture all the traffic generated by the people that we're targeting in our MITM attack. So, if we start a fake access point, we can start sniffing on the interface that's broadcasting the signal, and we can capture all the packets sent to or received by anyone who is connected to that fake access point. If we become the MITM using ARP spoofing, then just select the interface that we used when we launched our ARP spoofing attack. We are going to perform this with ARP spoofing because it's quicker and easier than generating a fake access point, but again, this works on both ways. It even works if we manage to become the MITM using a different method. Just make sure we select the interface that's used to launch that attack.</p>
+<p><span>So, we are going to look at ARP spoofing. W</span>e can do it using arpspoof, or you can you do it using MITMf. We're going to do it using MITMf, and our command is going to be <kbd>mitmf --arp --spoof -i</kbd>, which is going to be <kbd>eth0</kbd>, then we're going to specify the <kbd>--gateway</kbd>, <kbd>10.0.2.1</kbd>, and then the <kbd>--target</kbd>, which is <kbd>10.0.2.5</kbd>. So, we performed this command before. It will just put us as the MITM. It'll redirect the traffic from the computer that has the IP <kbd>10.0.2.5</kbd> to our computer, placing us in the middle. Run the attack using the following command:</p>
+<pre><strong>mitmf --arp --spoof -i eth0 --gateway 10.0.2.1 --target 10.0.2.5</strong></pre>
+<p>Go to the Windows machine. If we do any browsing here, it is going to affect the traffic in <span class="packt_screen">eth0</span>. We'll see whether Wireshark will be able to capture traffic generated by this Windows machine. Browse to Google, or a different website, and if we come back to the tool, in the following screenshot you will see that we have traffic being generated here. We can see that <span class="packt_screen">eth0</span> is actually capturing packets in a completely different device, a device that's not even connected to our network:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1435 image-border" src="assets/605cda8c-9a09-40e0-87c5-8e4b348f11d4.png" style="width:81.08em;height:16.00em;"/></div>
+<p>This is happening because when we are the MITM and all the packets that are generated by the Windows device are actually being redirected to our Kali device, and then Wireshark is sniffing them from the Kali machine, it's sniffing it from own local machine. It's not sniffing it from the network, it's not sniffing it from the target computer, it's only listening on current interface, which is <span class="packt_screen">eth0</span>, and it can capture packets that are flowing through <span class="packt_screen">eth0</span> because MITMf has redirected the traffic of the Windows machine to flow through the Kali machine.</p>
+<p>So, again, if an attack is performed with the fake access point, then just listen on the interface that we are broadcasting from. If we are performing this attack with a real wireless network, if we are connected to our home wireless network using <span class="packt_screen">wlan0</span>, then we can perform it with <span class="packt_screen">wlan0</span>. But with ARP spoofing, we have to first redirect the traffic. Then we can use Wireshark. Now, this is just to show what Wireshark is and how it works, and we just want to stress the idea that Wireshark is not a hacking tool. It's only a program that allows us to log packets flowing through a certain interface and then analyze these packets. So, in the next section, we'll see how we can sniff and analyze packets using Wireshark.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Wireshark basics </h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous section, we saw how to launch Wireshark, and we said that we can open a file that contains packets that we have already captured, and we can start analyzing them using Wireshark. In this section, we want to start sniffing packets and then generate some traffic in our Windows machine, and then we'll see how to analyze these packets using Wireshark. As we know, we first have to be the MITM to use Wireshark, and then the traffic that's generated in the Windows machine and is actually flowing through the <span class="packt_screen">eth0</span> interface, as we saw in the previous section. So, before we start capturing the packets, we need to go to the options by clicking the cog icon:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1437 image-border" src="assets/cf437545-b7bc-4ba0-b765-69ea8662d45f.png" style="width:15.08em;height:3.08em;"/></div>
+<p>We can see all the options we can set, all the interfaces that we have, and we can see the traffic generated on them, as shown in the following screenshot:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1438 image-border" src="assets/39f5872d-a7e8-4b5e-b860-f11e146f155a.png" style="width:78.83em;height:40.58em;"/></div>
+<p>The <span class="packt_screen">eth0</span> interface is generating some traffic every now and then because it's coming from the Windows machine. We can select the interfaces that we want to start capturing on, and we can actually select more than one interface, and all we have to do is just hold the <em>Ctrl</em> key and then click the other interface we have. If we go on the <span class="packt_screen">Output</span> tab, we have an option to store the packets:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1439 image-border" src="assets/eabc97b5-5f94-461c-ab7f-f826088e3cfc.png" style="width:45.25em;height:27.17em;"/></div>
+<p>If we only want to sniff and don't want to analyze things, then we can just go to <span class="packt_screen">Browse</span> and store the packets that we are going to sniff somewhere, and then we can analyze them whenever we have the time at a different time. We can just open them with Wireshark like we saw in the previous section. We can just go on <span class="packt_screen">File</span> | <span class="packt_screen">Open</span> and then open the packets and start analyzing them.</p>
+<p>Now, we have <span class="packt_screen">eth0</span> selected and we are just going to click on <span class="packt_screen">Start</span>, and that'll start capturing packets. Anything that's going to flow through <span class="packt_screen">eth0</span> will be captured and will be displayed in Wireshark:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1441 image-border" src="assets/a33aa469-4292-4cf9-a8aa-532544837d43.png" style="width:106.58em;height:60.50em;"/></div>
+<p>Anything (we mean images, pictures, messages, cookies) that that computer does on the internet will flow through <span class="packt_screen">eth0</span>, and therefore will be captured by Wireshark. It's not like MITMf, which was only showing us the important information. In Wireshark, we will see everything, all the traffic that's generated. So, let's first of all generate some traffic and try to analyze the packets, or the traffic that we generated.</p>
+<p>In the main interface of Wireshark, as shown in the following screenshot, we can see that each record is a packet:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-1443 image-border" src="assets/7fb3e307-3aed-40cd-8f54-2453fd6cea6e.png" style="width:106.58em;height:48.42em;"/></div>
+<p>We can see the columns. First of all is the <span class="packt_screen">No.</span> column for packet numbering. In the <span class="packt_screen">Time</span> column, we will see the time that this packet was captured. The time increases as we go down, and it shows when these packets were captured. We can also see the <span class="packt_screen">Source</span> column, which indicates which device the packet was sent from. The <span class="packt_screen">Destination</span> column shows the receiving device IP. The <span class="packt_screen">Protocol</span> column shows the name of the protocol used by the packet. In the <span class="packt_screen">Length</span> column we can see the length, which is the size. We can also see more information about the packet in the <span class="packt_screen">Info</span> column:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/39518339-72d8-42c4-98da-efcb1b22f7e1.png"/></p>
+<p>We can also see that packets have different colors. Usually, green is TCP packets and dark blue is DNS packets. Light blue is usually UDP, but we don't have any UDP packets at the moment, and we can also see we have some black packets, and these are TCP packets that had issues. If we double-click on any of the packets, it will display more information for us. It's the same information that's being displayed at the bottom of the main interface. We can see in the following screenshot that we have the Frame, the Ethernet, the Internet Protocol, and the Transmission Control Protocol, and using that we can just click on the arrow and see more information that's stored in here. Now, if we just double-click the packet, we will get the exact same information and we will be able to get information about the packet that we have selected:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/e36be318-6531-4b9f-ae79-de698b6c2467.png"/></p>
+<p>Now, most of the traffic that we have generated was HTTP traffic, so to get rid of all this information that's hard for us to read we're just going to type <span>HTTP </span><span>in the filters, and hit</span> <em>Enter</em><span>. As we can see, that filtered all the packets to HTTP traffic. So, for example, we have a <kbd>POST</kbd> request sent from our target computer to a server. We still don't know what that server is, but it's a server on the internet. When we double-click that, we'll get more information about this packet. We're going to make this smaller here. So, under Frame we can see the interface that's used. We can see information about the packet itself. In Ethernet II, as we can see in the following screenshot, is the information about the Destination and the Source, so we can see that the MAC address is used. In the Internet Protocol, we will see information such as the geolocation of the target, wherein we will see where that packet is sent. In the Transmission, we can see information about the ports used:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/f52c280b-2ab1-4c1e-bc47-dd469a61d795.png"/></p>
+<p class="mce-root"/>
+<p>Now, a really interesting part for us is the Hypertext Transfer Protocol, as this is where we really see the interesting information. In here, we can see that the request was sent to bing.com, and we will see that this request was searching for www, and we can see that the Content Type was text. So, we can get this information, as we can see in the following screenshot, about each packet that's sent, and can see that Wireshark logs everything that happens. It doesn't only show the interesting information, it literally logs everything. It contains the interesting stuff plus much more:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/da65d88a-70b3-448f-a349-27a891983779.png"/></p>
+<p>So, again, we can see all the searches that we did. We can see all the URLs that the user has entered so far. If we scroll down, we will be able to see all the other URLs that we visited.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Wireshark filters</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we'll see how to use more Wireshark filters and capture a username and a password, and we'll <span>also</span><span> </span><span>see how to see the cookies of a person if they're already logged into a service and they haven't entered their username and password. So, we are going to start a new capture. We will just go to Hotmail, and we are going to log in with a username, which is</span> <kbd>zaid@hotmail.com</kbd><span>, and then we'll enter the password, which is going to be a random password that's going to be captured. So, we're going to enter </span><kbd>123456</kbd><span>, and hit</span> <em>Enter</em><span>. When we go to the Wireshark tool, we will see it has managed to capture the traffic, as we can see in the following screenshot. In the traffic we are going to look for HTTP, and we're going to look for POST requests:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/fe5d6789-db68-457b-90ba-ced713415986.png"/></p>
+<p>We see a POST request, sent from the target computer to the server. We are going to open it and see what's inside it. We will scan through such captures to see which session has our username and passwords.</p>
+<p>We will open all the HTTPS URLs, and also one that has a POST request. In the following screenshot, we have found the session that has captured our login credentials. We have go to HTML form to see them. We have the login session captured, which is <kbd>zaid@hotmail.com</kbd>, so this is what we entered, and you can also see the password that was sent, <kbd>123456</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/838756e8-10af-496d-8cad-9bfe3e4e9c82.png"/></p>
+<p>So, again, MITMf was sniffing all the data for us, and it was showing the information. It was filtering the important information. We can see that we can capture anything that's sent on the network using Wireshark.</p>
+<p>Another thing that we can do is search through the whole packets. We can just go to the <span class="packt_screen">Edit</span> option and then select <span class="packt_screen">Find Packet</span>, and we can search in the packet list, or in the packet details. If we search in the packet details, we're going to keep this <kbd>Narrow &amp; Wide</kbd>, and we will get a string. We can actually put in a display filter if we want, but we are searching for a string, which is just the normal text. If we search for <kbd>Zaid</kbd> it'll actually go straight to the packet that contains our username. Again, when we find it we can double-click it, whichever is easier for us. We can see in the following screenshot that we managed to capture the username, which is <kbd>zaid@hotmail.com</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/83d2ee7f-82f6-4bea-bc34-6c07faf3be69.png"/></p>
+<p>Now, we can do <span class="packt_screen">Find Next</span> and we will get the next one, which actually has our password in it. Again, the search right here is really useful function that will allow us to navigate through all of these packets and find what we are looking for.</p>
+<p>Now, let's start a new capture and see if we can actually capture the cookies. So, we are going to go to our Windows machine, and then we will go to Dailymotion, which we already logged into before. As we can see, it's not asking me to log in because we are already logged in, and it already has a name here, so we are just going to go to this channel. It's just a fake channel that we created. We go to Wireshark and stop the capture, and instead of HTTP we are going to look for <span class="packt_screen">http.cookie</span>: </p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/b5fad3b9-2c0e-484c-bc76-f42e3a11a69c.png"/></p>
+<p class="mce-root"/>
+<p>So if we go down, the person got to their home page, which is the username, the fake username that we had. Now, if we go to the <kbd>POST</kbd> request before that and look at the hypertext, we can see the cookie that was sent to authenticate that person. We can just download a plugin for our browser and inject these cookies into that browser. We will be able to log in to that username, to that account, without using the password, the same way as the user. This is the same as we did with ferret and hamster. Again, we are just doing this to see that Wireshark can be used to do all of the attacks that we did before, plus much more, because basically, it can capture anything that flows through our device. Any request sent or received to or from the target computers will flow through our interface, and then Wireshark will capture anything. Regardless of whether it thinks it's important or not, it's going to capture everything, so it's a really, really handy and useful tool.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The first section of the chapter was about the MITM framework, which can be used for one of the most powerful attacks we can perform on a network. We performed a MITM attack using arpspoof, we bypassed HTTPS, we indulged in session hijacking, we looked at DNS-spoofing, we saw keyloggers, and we covered code injection.</p>
+<p>Later, we learned about the Wireshark tool, which is a very effective tool for gathering information about clients by analyzing the packets that are sent in and out through a particular target. It lets users decode the information it carries. We learned the basics of how to use it, and we also learned how to apply and analyze a few filters.</p>
+<p>The next chapter covers the ARP poisoning attack, as well as how to detect and prevent this attack. We will be using Wireshark for detection. </p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

