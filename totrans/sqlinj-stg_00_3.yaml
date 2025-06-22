@@ -1,0 +1,1292 @@
+- en: '*Chapter 2*: Manipulating SQL – Exploiting SQL Injection'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'After dealing more generally with **Structured Query Language** (**SQL**) and
+    its characteristics and peculiarities, we are now focusing more on the main crux
+    of this book: the injection vulnerability. We''ve already seen, in a broader sense,
+    what SQL injection is, and gave a glimpse of what could be done with it, and why.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, as a follow-up to the previous one, we are continuing with
+    the theoretical approach to the matter, getting more in touch with the practical
+    aspects of SQL injection attacks. This chapter includes, in fact, examples of
+    input strings that could be used for triggering SQL injection for many different
+    purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will lay the foundation for the practical part, which will instead
+    focus on the execution of SQL injection attacks in a controlled setup, putting
+    into practice what we will see in this part.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After discussing SQL injection with SQL syntax, this chapter will also describe
+    the injection vulnerability in some non-relational settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, the following topics will be covered:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Exploitable SQL commands and syntax**: We''ll highlight the SQL commands
+    and syntactic structures most open to abuse that could be exploited for carrying
+    out SQL injection attacks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Common SQL injection commands and manipulation**: An overview of the main
+    SQL attack techniques, showing actual commands used by attackers and their possible
+    effects on an application or a system.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Not only SQL injection: non-relational repositories**: A brief introduction
+    to the non-relational context.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The injection vulnerability in non-relational repositories**: An explanation
+    of the impact of SQL injection in the non-relational environment, showing some
+    possible techniques.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Wrapping up: (No-)SQL injection in theory**: A final recap of the theoretical
+    part of this book, to fix the main topics and approach the practical section with
+    more confidence.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For this chapter, we recommend that you are familiar with SQL and its main
+    commands. If you have not already done so, we suggest reading the SQL technical
+    documentation from the previous chapter, available at the following links:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://dev.mysql.com/doc/refman/8.0/en/](https://dev.mysql.com/doc/refman/8.0/en/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://docs.oracle.com/en/database/oracle/oracle-database/index.html](https://docs.oracle.com/en/database/oracle/oracle-database/index.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://docs.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver15](https://docs.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver15)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploitable SQL commands and syntax
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We have already seen that the main problem that makes applications and systems
+    vulnerable to SQL injection is the lack of controls on user-provided input. By
+    default, input sources need to be considered as untrusted so that everything sent
+    to our application or system is verified prior to processing. You may now ask:
+    *how exactly could a malicious user insert an instruction within our code?* SQL,
+    being a very powerful language, permits many different operations on a database;
+    tricking an application into executing arbitrary commands could lead to someone
+    who wants to damage or obtain access to a system being given a serious advantage.
+    In this section, we will see the main enablers for SQL injection, underlining
+    how important correctly preprocessing input is, thus saving our systems and applications
+    from being compromised through a simple input string.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SQL injection-enabling characters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before dealing with SQL statements and constructions, we should first examine
+    what, given the lack of controls on the input, makes inserting arbitrary instructions
+    possible in the first place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a similar fashion to what happens in most machine-interpreted languages,
+    SQL maps some specific characters to corresponding purposes within code text.
+    The most trivial character a person would try to exploit is the single quote (**'**)
+    or the double quote (**"**), as it is used as a delimiter for text values within
+    queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One example is the semicolon character (**;**) that is used to separate different
+    commands (the same as in most programming languages).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another quite abused character in SQL injection is the comment separator, which
+    in most syntaxes corresponds to the **–** sequence, because it can render the
+    next part of a SQL query useless, as the system will consider it a comment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Think, just as a general example, of a text input used in a naïve **SELECT**
+    query for the color of an object, for which a regular user would have inserted
+    **red**, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT color, shape FROM objects WHERE color='red'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Things could go quite differently if, instead of **red**, the following were
+    inserted as text input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: red'; DROP TABLE objects --
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This would result in the query looking like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT color, shape FROM objects WHERE color='red'; DROP TABLE objects –-'
+  prefs: []
+  type: TYPE_NORMAL
+- en: User-provided input, not having been sanitized, would trick the system into
+    processing, alongside the command that uses an expected syntax, another SQL command
+    that removes the **objects** table entirely from the database. The addition of
+    the comment separator removes the second single-quote character automatically
+    inserted by the application, thus making it possible for a malicious user to insert
+    any SQL command they like while keeping the syntax correct.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To better understand the level of manipulation that would be possible in the
+    case of unchecked input, we will see how SQL statements are usually constructed
+    within an application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SQL statement construction
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we mentioned earlier, the most common SQL statements used in applications
+    are **SELECT** statements. Many times, when you encounter a web form used for
+    searching an item, it is linked to a database running within the application so
+    that data can be accessed in a structured and reliable way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Think of a regular login form, made of the text inputs of a given username and
+    password. What the application does is match the information inserted to see if
+    the provided username and password pair exists within the same record of a database
+    (linked to a single user). Thus, if the result exists, the application knows that
+    the user has access to it and grants the necessary permission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we inserted **Overlord** as the username and **pass** as the password, the
+    resulting **SELECT** statement would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT * FROM users WHERE username='Overlord' AND password='pass'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The application inserts the strings collected, stored as variables, as text
+    within another text string that constitutes the general body of the query. Of
+    course, those variables could be acquired as input in various ways in a web context
+    (as parameters in **HyperText Transfer Protocol** (**HTTP**) **GET** requests—which
+    we would not recommend: it''s not the 90s anymore—or in **POST** requests). For
+    simplicity, in this example, we will consider variables acquired through a **GET**
+    request to the (made-up) address [sqlexample.com/login.php?username=Overlord&password=pass](http://sqlexample.com/login.php?username=Overlord&password=pass).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, the application code would look something like the following **PHP:
+    Hypertext Preprocessor** (**PHP)** example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: $user=$_GET[username]; //$_GET extracts data from parameters $pass=$_GET[password];
+    //in the address (after the "?") $query="SELECT * FROM users WHERE username='"
+    + $user +"' AND password='" + $pass + "'";
+  prefs: []
+  type: TYPE_NORMAL
+- en: By constructing the query in this way, it becomes apparent how a statement could
+    be altered using user-provided input, as described earlier. This is why being
+    careful when handling user-provided input is important not only when using SQL
+    but in general, as we can't assume anybody to have benign intentions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now examine some examples of SQL injection commands and their purpose
+    for attackers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Common SQL injection commands and manipulation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'SQL injection can be used in many different ways for many different purposes,
+    due to the wide range of possible actions that can be performed through SQL. The
+    most trivial use is trying to obtain otherwise inaccessible information, querying
+    the database in ways that are not usually envisioned by the regular flow of the
+    application logic. Other uses involve the bypass of *authentication gates* within
+    applications, thus effectively escalating privileges, or alternatively gaining
+    more control on the affected system in the case of stored credentials. Other common
+    attacks include blind SQL injection: in most cases, the database console or output
+    is not shown to an attacker, as the operations happen behind the so-called *frontend*;
+    however, it is possible for an attacker to identify and exploit SQL injection
+    by observing the application behavior. We will now see some examples of notorious
+    attack techniques.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Information gathering and schema extraction – UNION queries
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Step 0 of any attack is collecting useful information, in order to gather enough
+    data to identify the target, such as system configuration, possible intrinsic
+    vulnerabilities, and attack points. While not strictly SQL injection, the act
+    itself of gathering information using SQL is a form of attack, which is of course
+    useful for attackers who would need to exploit SQL injection on a system, especially
+    considering the subtle differences in the main SQL **database management systems**
+    (**DBMSs**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The simplest way to get to know the target system better is by triggering an
+    error message, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.1 – An error message from a test application caused by erroneous
+    SQL syntax'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_001.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.1 – An error message from a test application caused by erroneous SQL
+    syntax
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, by entering a purposely wrong syntax (namely, we inserted a **'wrong**
+    string within the username field of a form), we got a useful error message stating
+    that we're dealing with a MySQL database. Nowadays, only badly coded applications
+    display error information in case of a syntax error, but it's definitely worth
+    a try.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Continuing our exploration of the tools at our disposal, we will now focus
+    on an advanced SQL command that is used a lot in SQL injection: **UNION**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **UNION** command is one of the most powerful tools available for database
+    discovery and dumping through SQL injection. Logically, it is used to concatenate
+    the results of two or more queries within the same result table. Let''s refer
+    to the following examples from [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020)*,
+    Structured Query Language for SQL Injection*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT color, shape FROM objects WHERE color='blue' UNION SELECT color, shape
+    FROM objects WHERE color='red'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The previous query shows the **color** and **shape** attributes of records
+    from the **objects** table that have a **blue** value for attribute color, and
+    also puts in the same results table records with **red** as the color. Keep in
+    mind that **UNION** only works if the attributes of the two queries are of the
+    same dimension. Arbitrary values could also be inserted in a **UNION** section,
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT color, shape FROM objects WHERE color='blue' UNION SELECT 1,2
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, we are showing the arbitrary values **1** and **2** in the
+    same output table as for the first query. This trick can in addition be used to
+    display arbitrary values as output, and also to fit **UNION** sections in the
+    same format as a previous query, possibly displaying hidden information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Do you remember the **@@VERSION** command from the previous chapter? This useful
+    command can be used by an attacker to see the version of the database running.
+    The **SELECT @@VERSION** query shows, in fact, the system version of the target.
+    Let''s see it in an example, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.2 – The result of a UNION query displaying the database system'
+  prefs: []
+  type: TYPE_NORMAL
+- en: version to be inserted after a query
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_002.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.2 – The result of a UNION query displaying the database system version
+    to be inserted after a query
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although this command is mostly useful in the case of MS SQL, due to the fact
+    that it may also show relevant information about the Windows operating system
+    for the existence of important vulnerabilities, it can also report some information
+    about other systems (note: **@@VERSION** is not supported in Oracle Database).
+    The example is taken from another purposely vulnerable web app from the **Open
+    Web Application Security Project** (**OWASP**) (Vicnum). The reported version
+    is **5.1.41-3ubuntu12.6-log**, indicating a MySQL installation on Ubuntu 12\.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another important component of information gathering through SQL injection is
+    the enumeration of tables and databases included within the schema. Once again,
+    the **UNION** command will prove to be very useful, as it provides enough flexibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take advantage of the default tables available, shown in the previous
+    chapter. Let''s try showing all the schemas available within a database. We will
+    once again target **OWASP Vicnum** for example purposes. Have a look at the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.3 – The result of a UNION query displaying the schema names on the
+    database'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_003.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.3 – The result of a UNION query displaying the schema names on the
+    database
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice how we can see many schemas from the same system? This is because our
+    target resides on an emulated system that has multiple applications present on
+    it. You can imagine how targeting an application on a shared database could reveal
+    much information, not only on the target application but on the system in general.
+    Just to make you more enticed: this emulated environment will be the one you will
+    be able to set up after [*Chapter 3*](B15632_03_Final_JC_ePub.xhtml#_idTextAnchor050),
+    *Setting Up the Environment*, and it will be one of our main targets during the
+    practical part.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s insist on using the **information_schema** default table, as it contains
+    all the information about how the schema is organized within a MySQL system. One
+    of the preceding results is the schema related to a WordPress application, so
+    we will try to inject this query using another **UNION** keyword to show all tables
+    in a target schema, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT table_schema,table_name FROM information_schema.tables WHERE  table_schema
+    = 'wordpress'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result of such a query, inserted after the **UNION** keyword, would have
+    the following result in a vulnerable application that openly displays query results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.4 – The result of a UNION query displaying schema and table names
+    on target schema'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_004.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.4 – The result of a UNION query displaying schema and table names on
+    target schema
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be done for all schemas found within the database. We have seen these
+    information-gathering techniques using MySQL default tables, but let's now also
+    consider the other two main DBMS systems with a client-server architecture. Each
+    has some peculiarities that introduce some differences with respect to MySQL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft SQL Server
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Microsoft SQL Server, as we said in [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020)*,
+    Structured Query Language for SQL Injection,* also has some default tables and
+    databases. One that is very helpful for attackers is the database named **master**,
+    which contains information about the whole database system. In the same fashion
+    as we did for MySQL, by querying the **sysdatabases** table, it is possible to
+    obtain the list of all databases, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM master..sysdatabases
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This query mirrors exactly our **SELECT schema_name FROM information_schema.schemata**
+    statement we first made in MySQL. From there, **UNION** queries can be used to
+    extend information gathering to tables contained in databases with the help of
+    the **sysobjects** table, showing elements contained within, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM databasename..sysobjects
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This query would show a lot of information, including noise. Luckily, the search
+    can be refined by focusing on specific types of data. Selecting the f**xtype**
+    field with the **U** value, for example, will filter only user-defined tables.
+    Here is a list of possible values for the **xtype** field in **sysobjects**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**C**: CHECK constraint'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**D**: Default or DEFAULT constraint'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**F**: FOREIGN KEY constraint'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**L**: Log'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**P**: Stored procedure'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**PK**: PRIMARY KEY constraint (type is K)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**RF**: Replication filter stored procedure'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**S**: System table'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**TR**: Trigger'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**U**: User table'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**UQ**: UNIQUE constraint (type is K)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**V**: View'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**X**: Extended stored procedure'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Oracle Database
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As for Oracle Database, despite it having default tables and databases too,
+    results could be a bit more limited with respect to MySQL and Microsoft SQL Server,
+    as enumeration (as we have seen before) is not completely possible due to its
+    structure. However, fear not: much information could still be obtained from an
+    Oracle Database, despite having access.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Database names, due to the compartmentalized nature of Oracle Database, can
+    only be obtained within a specific context. To return the current database, there
+    are some options available in terms of queries an attacker could try, such as
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM v$database;
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This query would return the name stored in **v$database**, which stores information
+    about—you guessed it—the database, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT global_name FROM global_name
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**global_name** is a one-row table that stores the name of the current database,
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT SYS.DATABASE_NAME FROM DUAL
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **DUAL** table is a default table that serves as a dummy: it only contains
+    a single value, set at **x**. It is mostly used when computing constant expressions,
+    due to the fact that it is visible to any user. In this case, **SYS.DATABASE_NAME**
+    is not linked to the **DUAL** table, but it is a constant.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Oracle, a user''s access to information depends on how privileges are set.
+    The following query returns all the tables the current user has access to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT table_name,owner FROM all_tables;
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To retrieve all available columns, the following query can be used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT column_name FROM all_tab_columns
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, since it would return a very high number of results, it is best to
+    refine the search (for example, using **WHERE** or **LIKE**, which acts as a less
+    strict **WHERE**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: An attacker could identify interesting tables containing private information.
+    Speaking of which… let's move to the next subsection! This will focus more on
+    MySQL due to the presence of some interesting examples, but the reasoning could
+    also apply to other DBMSs, with the exception of the notes we mentioned earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dumping the database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using the information that we can extract from the database schema, we have
+    the power to view all the information we want from an injectable database. Once
+    again, **UNION** comes to our aid, this time allowing us to go deeper so that
+    we can extract the complete contents of any tables we need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The idea is to perform enumeration of fields within a table, then, with the
+    same approach, to extract all the content we need once we have discovered the
+    full schema of the database. The entire database, if vulnerable to SQL injection,
+    can be fully visible to an attacker, who can also extract sensitive information
+    contained therein.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For explanatory reasons, we are now targeting the **wp_users** table from the
+    previous example. We are now interested in retrieving the full structure of the
+    table, enumerating its fields. An attacker could use this to explore the database
+    and detect the presence of potentially useful information. The query we now need
+    to insert after **UNION** is something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT table_schema,table_name,column_name FROM information_schema.columns WHERE  table_name
+    = 'wp_users'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By performing the **UNION** query as in the previous example, by inserting
+    the missing value to make our columns the same as the original query, we now have
+    access to the field names of the selected table, as illustrated in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.5 – The result of a UNION query displaying field names of target'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_005.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.5 – The result of a UNION query displaying field names of target
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Well, that''s awkward: we found the **user_login** and **user_pass** fields,
+    which definitely contain login information. Let''s try to query those in a simple
+    query, using the information we collected before, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT ID,display_name,user_login,user_pass FROM wordpress.wp_users
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This results in the following response, giving us information about user profiles
+    within the WordPress instance that relies on the database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.6 – The result of a UNION query displaying the wp_users table'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_006.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.6 – The result of a UNION query displaying the wp_users table
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a common practice, passwords are hashed. This means that such passwords are
+    unusable unless they are cracked. In this case, we have MD5 hashes that could
+    be easily broken by specialized software. This means that an attacker could easily
+    obtain login information for such accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This drill-down approach can be used in principle to obtain all the information
+    an attacker could wish for on a database. Default databases, such as MySQL's **information_schema**
+    database, could lead to a full map of the information contained in a database
+    system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escalating privileges and gaining access
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's now move on to another purpose of SQL injection attacks. We already mentioned
+    in [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020), *Structured
+    Query Language for SQL Injection,* how SQL can be used for privilege escalation
+    or to gain access to applications and/or systems. We will now go deeper into this
+    aspect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Databases are often used for authentication purposes: whenever you insert your
+    login information into a web form, in most cases this data is compared to information
+    stored within a specific database. This way, the system knows whether you have
+    the right to go through the authentication gate of an application. I know what
+    you''re thinking: if it''s a database we are interacting with, someone can definitely
+    try performing injection; right? Absolutely true. An application vulnerable to
+    SQL injection can, in fact, allow an attacker to obtain more privileges than intended.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Remember the example in the previous subsection, where we obtained the information
+    stored in the **wp_login** table of the WordPress instance in the database schema?
+    This is shown here again for your reference:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.7 –Record from the WordPress wp_login table corresponding to the
+    admin user'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_006.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.7 –Record from the WordPress wp_login table corresponding to the admin
+    user
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For security purposes, in an attempt to prevent password attacks facilitated
+    by database dumping, the password is not stored in the database as is. The database
+    contains instead the MD5 hashing of it, still useable for comparing with the application.
+    MD5 is a hashing function that produces a specific *message digest* of 128 bits,
+    expressed as 32 hexadecimal digits (0-9, a-f) for a given input. This hashing
+    function has been replaced with more complex and secure ones (such as SHA-256)
+    because it is now deemed too weak. In this case, the password itself was quite
+    predictable, and it was obtainable in relatively little time. The hash corresponds
+    to the **admin** password. Let''s try it in the WordPress application of our local
+    emulated environment. This is illustrated in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.8 – Successful attempt at authenticating the WordPress admin account'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_008.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 2.8 – Successful attempt at authenticating the WordPress admin account
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another less complicated way to obtain access using SQL injection is by totally
+    bypassing authentication forms that are vulnerable to SQL injection. The most
+    infamous example of SQL injection for authentication bypass exploits the fact
+    that usually, SQL queries used for authenticating rely simply on the presence
+    of a record satisfying the condition stating that such a record exists in the
+    database. Thus, our final result needs to be "true". For this reason, we are talking
+    about **tautologies**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Boolean logic, a tautology is a logical expression that is always true, no
+    matter the conditions. Putting any logical statement with a true statement in
+    the binary **OR** operation, which returns true if either of the two operands
+    is true, means always having **TRUE** as a result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This also applies to SQL injection: SQL also supports Boolean operands for
+    conditions, which we always find in the **WHERE** part of a **SELECT** statement.
+    If we were to write this SQL query, for example, we will always satisfy the **WHERE**
+    condition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT * FROM table1 WHERE field='x' OR '1=1'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is one of the most basic queries an attacker could, in principle, use
+    to bypass authentication. Thus, an attacker could insert the following string
+    in a vulnerable login form—for example, in the **user** text input:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: x' OR '1=1'--
+  prefs: []
+  type: TYPE_NORMAL
+- en: By making the statement always true, an attacker could bypass the authentication
+    of an application vulnerable to SQL injection. As we saw in the previous examples,
+    commenting out the following part of the query helps in letting the system evaluate
+    only what we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on the underlying query, some additional considerations should be
+    made. For example, the attacker should know which DBMS the database is running
+    on in order to select the correct characters to be used as injection enablers.
+    Other login forms could check that both text inputs, for username and password,
+    are not empty, thus the attacker should insert information in both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the end, excluding the trial-and-error aspect, SQL injection can, in principle,
+    allow an attacker to bypass authentication screens and obtain much higher privileges
+    than intended.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now analyze other common attack techniques—this time, probably the most
+    widely used one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blind SQL injection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Most of the time, interaction with databases does not provide record output—unlike
+    we have seen in the Vicnum example. Thus, attackers do not have a direct feedback
+    of the actions that they perform on the database in terms of records or tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this scenario, we are talking about **blind SQL injection** because attackers
+    are interacting with databases without seeing, at least directly, the results
+    of their actions. The authentication bypass is of course an example of blind SQL
+    injection, but it's not the only one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blind SQL injection is used to uncover information with the so-called **inference**
+    attack. Basically, it consists, through various attempts, of disclosing information
+    about the database through logical assumptions based on the web response. While
+    in tautologies and contradictions, we chose our statements to have a predictable
+    result—always true or always false—this time, we will be using conditions that
+    *could* be true, and, if they are, they can disclose some information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Without seeing the output from the database, an attacker this way still has
+    some ways to tell whether an application is vulnerable to SQL injection. One of
+    the most common ways to test for SQL injection in a blind setting is the introduction
+    of an arbitrary time delay in the query submission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A common way to see the *injectability* of an application working with databases
+    is by using logical expressions, in a similar way to what we saw with tautologies.
+    In some cases, depending on the response that the application might return, it
+    is possible to tell if it is injectable by making assumptions about how it treats
+    logical expressions, or even leak some information. Here, we are dealing with
+    **Boolean-based blind injection**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we try a tautology (adding, for example, **'' OR ''1=1''--** to our query),
+    then try an always false expression—a contradiction—by using the **AND** operation
+    (**'' AND ''1=2''--**), we might see different results in the appearance of the
+    response. In this case, we might have the cue we need to spot SQL injection: the
+    SQL snippet we injected is successfully evaluated, changing the result of our
+    query. In terms of database results, the first attempt ensures that, if successfully
+    evaluated, all results are returned because the condition is always satisfied;
+    vice versa, the second one would return an empty result.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The trick is, by knowing the difference in output between true and false results,
+    we can see whether a logical statement is true or false by putting it in an **AND**
+    operation. This way, we could investigate about database information using this
+    comparison, since we can''t directly query the database as we did in the case
+    of non-blind SQL injection. A useful trick, besides comparing entire strings to
+    a field value, is the use of **SUBSTRING()** to check for a specific character
+    in a specific position, thus reconstructing the information we need. If we were
+    to extract the first letter of the value of a string field, we would insert the
+    following condition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SUBSTRING(fieldname,1,1)= 'x'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This, of course, could be iterated to obtain the entire information we seek,
+    but performing it manually would definitely be a chore. An attacker would probably
+    use some script to automate the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another way to perform a blind SQL injection is through the use of **time-based
+    SQL injection**. Sometimes, the output for true or false results does not differ
+    enough, so an attacker needs to introduce some artificial difference in the output.
+    This is done through some nifty functions supported by the main SQL database systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MySQL supports the **SLEEP()** and the **BENCHMARK(count, expression)** functions,
+    which could be integrated in any statement. For example, the following snippet
+    inserts a time delay in the query of **15** seconds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SLEEP(15)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This one, instead, performs the **SELECT @@VERSION** query **10000** times,
+    introducing an indirect time delay depending on the execution time, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: BENCHMARK(10000, SELECT @@VERSION)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Microsoft SQL Server instead supports the **WAITFOR DELAY()** and **WAITFOR
+    TIME()** functions. The same result as the preceding **SLEEP()** function can
+    be obtained with the following snippets. **DELAY** introduces a time delay (relative),
+    while **TIME** specifies the actual clock time in which the wait ends. For the
+    following example, let''s imagine that the actual time is 9:00:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WAITFOR DELAY(0:0:15)
+  prefs: []
+  type: TYPE_NORMAL
+- en: WAITFOR TIME(9:0:15)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Oracle SQL has a slightly trickier way to perform time-based queries. There
+    actually is a **SLEEP()** function, but it can only inserted within the Oracle
+    SQL programming code, as it''s not supported by regular dynamic queries. The code
+    snippet should be like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: BEGIN DBMS_LOCK.SLEEP(15); END;
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are, however, some tricks for introducing time delays. This is made possible
+    through time-consuming queries, including network-dependent tasks (such as reverse
+    **Domain Name Systems** (**DNS**) queries) or querying data using multiple (or
+    replicated) tables. The following code snippets are two examples of such queries
+    that could be injected. However, the effectiveness of these may change depending
+    on the target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT UTL_INADDR.get_host_name('10.10.10.10') FROM dual
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SELECT count(*) FROM all_users A, all_users B, all_users C, all_users D # and
+    so on…'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By verifying the time delay after a request has been made, an attacker can see
+    whether the functions are evaluated by the backend system, thus confirming that
+    SQL instruction can be successfully injected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Time delays and Boolean queries could also be combined: nobody said that we
+    cannot use time delays to see if a condition is true or not. The following query,
+    in fact, is also legal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT IF SUBSTRING(fieldname,1,1)='x' SLEEP(15)
+  prefs: []
+  type: TYPE_NORMAL
+- en: This way, our signal is given by the passing of time before the response, instead
+    of using logical conditions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another important technique in the spectrum of blind SQL injection is called
+    **splitting and balancing**. The main intuition is trying queries that, according
+    to SQL, are functionally the same, and ensuring that the opening and closing of
+    parentheses and quotes are perfectly balanced within the query, thus generating
+    legal SQL. Let''s consider two very basic **SELECT** queries, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE id=3
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE id=2+1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The two queries are functionally identical, due to the obvious arithmetic involved.
+    This can also be used with string data with operations possible on strings, such
+    as concatenating (**||**), if the DBMS allows for it, as illustrated in the following
+    code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE name='Jonathan'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE name='Jo'||'nathan'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s the catch: by using equivalent queries, other queries could also be
+    injected, like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE id=3
+  prefs: []
+  type: TYPE_NORMAL
+- en: SELECT name FROM customers WHERE id=3+(SELECT 2-2)
+  prefs: []
+  type: TYPE_NORMAL
+- en: By exploiting this possibility provided by SQL, more complex sub-queries could
+    also be inserted between parentheses, possibly inserting harmful attack payloads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have now seen an overview—without examples—of the main examples of SQL injection
+    attacks against SQL systems. Let''s now move on to an aspect that is not always
+    considered: does SQL injection also apply to NoSQL? By the name, you might be
+    able to tell that it doesn''t, but the reality is a bit more complex than just
+    a misleading name.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not only SQL injection – non-relational repositories
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The term *NoSQL* has been debated over the years. Someone, probably not careful
+    enough, would tell you it means *No SQL*, as in there is *positively nothing SQL-related
+    about this matter*. While it is true that such databases use different approaches
+    from the relational model (as we saw in [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020),
+    *Structured Query Language for SQL Injection*), some underlying logic is shared.
+    The term NoSQL stems from the need to underline the differences with respect to
+    the dominant database model. Going on, the term NoSQL, due to the fact that it
+    generates some misunderstandings, is less preferred to the more general term **non-relational**,
+    or **no-rel** for short.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we already mentioned in [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020),
+    *Structured Query Language for SQL Injection*, the principles of SQL injection
+    also impact, in some form or another, databases that do not incorporate SQL or
+    the relational model. A trivial explanation is that the principle of injection,
+    as it happens with code injection, can apply to every piece of software in charge
+    of interpreting some piece of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the claims of non-relational database developers is that, by not using
+    standard strings to build actual queries, non-SQL databases are not vulnerable
+    to injection. Alas, there have been examples of this vulnerability, mostly in
+    the case of document-based databases such as MongoDB.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In short: just because your database is not SQL-based, it doesn''t mean that
+    it is invulnerable to injection attacks. It''s true that it''s called **SQL injection**,
+    but that''s just because it was discovered in a SQL setting. And, more importantly,
+    it doesn''t mean at all that the only database systems vulnerable to injection
+    are SQL ones.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The injection vulnerability in non-relational repositories
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The problem of injectability is strictly dependent on trusting input, which
+    could include interpretable code. This is also true in some cases of NoSQL database
+    systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Document-based databases still use formatted text to be inserted in a structured
+    format. Most applications that use such databases rely mostly on text, be it in
+    **JavaScript Object Notation** (**JSON**) format, or in any case from user-provided
+    input. Thus, if not adequately sanitized, specific input could trigger some issues,
+    in a similar fashion to how these happen in SQL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s for now consider a fictitious website that relies on a document-based
+    database, MongoDB, for authentication purposes. An attacker could send an HTTP
+    **GET** request, **https://targetsite.org/login?user=admin&password[%24ne]=**.
+    The target website, coded using a framework of **Node.js**, unfortunately has
+    a very naïve way to check for credentials. Have a look at the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: db.collection('users').find({
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"user": req.query.user,'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"password": req.query.password'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '});'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this format, the website still accepts the malevolent content, and thus
+    will grant access to the malicious user. Why? Because no matter the technology,
+    an unsanitized input could still be inserted. The request will be interpreted
+    in this way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: db.collection('users').find({
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"user": "admin",'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"password": {"$ne": ""}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '});'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**$ne** in MongoDB is a specific operator that defines the *not equal* relation.
+    Put into practice, it is read as such in MongoDB and makes the **find()** function
+    successful, thus granting access in a similar way as in SQL injection. This is
+    because MongoDB expects input in a specific string format—namely, JSON.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **GET** example was made just for explanatory purposes, but this attack
+    could also work in a **POST** request, as illustrated in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: POST /login HTTP/1.1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Host: [targetsite.org](http://targetsite.org)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Content-Type: application/x-www-form-urlencoded'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Content-Length: 27'
+  prefs: []
+  type: TYPE_NORMAL
+- en: user=admin&password[%24ne]=
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Being just text, the content could also be written in a JSON format request,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: POST /login HTTP/1.1
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Host: [targetsite.org](http://targetsite.org)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Content-Type: application/json'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Content-Length: 36'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '{''user'': ''admin'', ''password'': {''$ne'': ''''}}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this example, it's apparent how the principles of SQL injection can apply
+    to a non-relational database model. Of course, not having queries written in a
+    powerful querying language limits the scope of possible attacks so that information
+    gathering and database dumping are rendered impossible. However, by knowing the
+    semantic of the server-side code, an attacker could exploit it to their advantage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In general, an attacker could insert within an input objects that alter the
+    semantics of queries, thus resulting in unexpected behavior. The solution for
+    this is always the same: sanitizing input properly, and expecting possible compromise
+    attempts from users.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this brief example, we hope that, at least in theory, SQL injection, and
+    its possible use outside of the realm of SQL, are clear and that you have the
+    necessary tools to put your knowledge into practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wrapping up – (No-)SQL injection in theory
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: OK; that was quite a lot of information. Let's have a recap of what we were
+    dealing in this theoretical section so far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SQL injection can be used by attackers in a variety of scenarios. In this chapter,
+    we have seen examples regarding two common purposes, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obtaining undisclosed information about the database or its content, through
+    database exploration or inference techniques
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gaining privileged access to applications that use a shared database system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Limiting application functionality could also be possible using SQL statements
+    such as **DROP**, or through modification of vital information in a database,
+    such as login information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we added another very important tool to be used within SQL
+    statements, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**UNION** can be added to existing statements to return results pertaining
+    to another query within the same result table. To function properly, it''s necessary
+    that the second query has the same number of fields as the first one, but this
+    is easily obtainable by adding arbitrary static values, such as fixed numbers.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'SQL injection, especially using **UNION**, can be used for information gathering.
+    Much information can be extracted from a vulnerable database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The database schema can be queried to get information about databases within
+    the system, tables, and table fields.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The resulting information can be used to directly query the database, knowing
+    exactly which tables and fields to extract.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**UNION** queries can retrieve a great deal of information, especially in MySQL
+    and MSSQL, as many databases can be queried, especially if the system runs many
+    database-relying applications on them.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'SQL-based systems, due to some variations in implementation, can have some
+    slight differences, as seen in [*Chapter 1*](B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020),
+    *Structured Query Language for SQL Injection*. Here are some of them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Among default databases, some are more interesting than others in terms of contained
+    information.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tables can be accessed in different ways—for example, MSSQL uses **..** to access
+    tables within our default databases.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Oracle Database accesses a single database in a single connection, so an attacker
+    can retrieve information about one database at a time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We prepared the following quick reference table, highlighting some basic differences
+    between the main database systems, which can turn out to be useful during information
+    gathering in terms of databases and tables to query for information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.9 – Reference table for information gathering in the three main
+    DBMS we’ve seen'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](image/B15632_02_Table_08.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'SQL injection can also help an attacker in gaining privileges and accessing
+    otherwise inaccessible application functionalities, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extracting information from a database can sometimes lead to password disclosure,
+    as password hashes are stored in databases, and those might be decrypted by offline
+    password attacks if a weak hashing algorithm is used.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using tautologies, also known as always true expressions (such as **1=1**),
+    you could make the login query always true, thus gaining access within a vulnerable
+    authentication form in an application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'One of the most common SQL attack techniques is called blind SQL injection,
+    as most of the time, attackers do not have access to direct database output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All the previous examples that do not involve viewing database output, including
+    authentication bypassing, are de facto blind SQL injections.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Time-based SQL injection can be used to determine whether or not a database
+    can be vulnerable to SQL injection: the attacker inserts a time delay within the
+    query and checks whether this is correctly interpreted by the database system.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Boolean-based SQL injection uses logical statements in order to reconstruct
+    hidden database information, as an attacker cannot see the actual database content
+    through queries. This is done by observing the behavior of the application in
+    the context of true and false statements. If different, an attacker might try
+    to inject conditions and see whether they are true or not based on the response.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Time-based queries and Boolean-based queries can be combined: an attacker might
+    insert, with a **UNION** statement, an **IF** condition that, depending on the
+    result, might cause a set time delay. This way, an attacker can perform inference
+    by studying the application behavior in terms of response time instead of content.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Splitting and balancing is another blind SQL injection technique that abuses
+    the equivalence of some queries, which can also, if the application is vulnerable,
+    include in some cases arbitrary sub-queries using parentheses and ensure the syntax
+    is correct.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Despite being called SQL injection, this vulnerability is also relevant to
+    non-relational databases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While databases do not always rely on query languages as powerful as SQL, that
+    does not mean that commands or alterations can't be injected at all.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In case of NoSQL databases, we can talk about NoSQL injection. While the huge
+    array of attacks we have seen so far cannot usually be performed, such as database
+    dumping and arbitrary queries, some of the semantics can be altered at will by
+    attackers who can access a way to insert an input within an application.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As in the login bypass example we have seen, NoSQL databases can be altered
+    in a simple way by inserting elements that can alter the syntax and trick the
+    underlying database in to evaluating specific conditions that could result in
+    harmful behavior.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'While SQL injection can be more harmful, it''s better not to underestimate
+    the injection vulnerability in other database contexts: if an application that
+    relies on a database does not sanitize user input, it may still be subject to
+    injection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To recap, in this chapter, we saw that SQL can be exploited to insert malicious
+    code, using specific constructs and symbols. Some of these can be particularly
+    useful for gathering information, but also for gaining privileged access to applications
+    and databases themselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also saw that the concept of injection in database systems not only involves
+    SQL databases but also some non-relational ones, for which we've seen some examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter will be the first one of the practical section, and will focus
+    on the setup of the same virtual environment we have seen in the examples involving
+    Mutillidae II and Vicnum (by querying the **information_schema** database, you
+    probably noticed the presence of various applications, including the vulnerable
+    WordPress version we saw earlier). While the practical examples shown in this
+    chapter served only an explanatory role, the second part of this book is instead
+    intended to have a more practical approach and is presented in a step-by-step
+    manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This first part was intended to be a full introduction to the topic of SQL
+    injection. Theory, however, is not always enough: mastering a topic requires practice,
+    and this is why the following practical part is the core of this book.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We hope you will enjoy what we have in store for you!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Questions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: How is it usually possible to trigger SQL injection?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Describe, without going too much into detail, how it could be possible to extract
+    information from a database using an application vulnerable to SQL injection.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Describe how a malicious user could use SQL injection to defeat user authentication
+    and gain access to an application.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: What is blind SQL injection? Describe two ways to perform blind SQL injection.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You are facing an application that relies on a database. You suspect that a
+    web form relies on a SQL database, but the application does not return meaningful
+    output after a query. Which SQL injection technique would you use to determine
+    whether the application form is vulnerable to SQL injection?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Is it true that only SQL databases are vulnerable to injection?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
