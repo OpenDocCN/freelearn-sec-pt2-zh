@@ -1,0 +1,317 @@
+<html><head></head><body>
+		<div id="_idContainer026">
+			<h1 id="_idParaDest-29"><a id="_idTextAnchor031"/><em class="italic">Chapter 2</em>: Manipulating SQL – Exploiting SQL Injection</h1>
+			<p>After dealing more generally with <strong class="bold">Structured Query Language</strong> (<strong class="bold">SQL</strong>) and its characteristics and peculiarities, we are now focusing more on the main crux of this book: the injection vulnerability. We've already seen, in a broader sense, what SQL injection is, and gave a glimpse of what could be done with it, and why.</p>
+			<p>In this chapter, as a follow-up to the previous one, we are continuing with the theoretical approach to the matter, getting more in touch with the practical aspects of SQL injection attacks. This chapter includes, in fact, examples of input strings that could be used for triggering SQL injection for many different purposes. </p>
+			<p>This chapter will lay the foundation for the practical part, which will instead focus on the execution of SQL injection attacks in a controlled setup, putting into practice what we will see in this part.</p>
+			<p>After discussing SQL injection with SQL syntax, this chapter will also describe the injection vulnerability in some non-relational settings.</p>
+			<p>In this chapter, the following topics will be covered:</p>
+			<ul>
+				<li><strong class="bold">Exploitable SQL commands and syntax</strong>: We'll highlight the SQL commands and syntactic structures most open to abuse that could be exploited for carrying out SQL injection attacks.</li>
+				<li><strong class="bold">Common SQL injection commands and manipulation</strong>: An overview of the main SQL attack techniques, showing actual commands used by attackers and their possible effects on an application or a system.</li>
+				<li><strong class="bold">Not only SQL injection: non-relational repositories</strong>: A brief introduction to the non-relational context.</li>
+				<li><strong class="bold">The injection vulnerability in non-relational repositories</strong>: An explanation of the impact of SQL injection in the non-relational environment, showing some possible techniques.</li>
+				<li><strong class="bold">Wrapping up: (No-)SQL injection in theory</strong>: A final recap of the theoretical part of this book, to fix the main topics and approach the practical section with more confidence.</li>
+			</ul>
+			<h1 id="_idParaDest-30"><a id="_idTextAnchor032"/>Technical requirements</h1>
+			<p>For this chapter, we recommend that you are familiar with SQL and its main commands. If you have not already done so, we suggest reading the SQL technical documentation from the previous chapter, available at the following links:</p>
+			<ul>
+				<li><a href="https://dev.mysql.com/doc/refman/8.0/en/">https://dev.mysql.com/doc/refman/8.0/en/</a></li>
+				<li><a href="https://docs.oracle.com/en/database/oracle/oracle-database/index.html">https://docs.oracle.com/en/database/oracle/oracle-database/index.html</a></li>
+				<li><a href="https://docs.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver15">https://docs.microsoft.com/en-us/sql/sql-server/?view=sql-server-ver15</a></li>
+			</ul>
+			<h1 id="_idParaDest-31"><a id="_idTextAnchor033"/>Exploitable SQL commands and syntax</h1>
+			<p>We have already seen that the main problem that makes applications and systems vulnerable to SQL injection is the lack of controls on user-provided input. By default, input sources <a id="_idIndexMarker045"/>need to be considered as untrusted so that everything sent to our application or system is verified prior to processing. You may now ask: <em class="italic">how exactly could a malicious user insert an instruction within our code?</em> SQL, being a very powerful language, permits many different operations on a database; tricking an application into executing <a id="_idIndexMarker046"/>arbitrary commands could lead to someone who wants to damage or obtain access to a system being given a serious advantage. In this section, we will see the main enablers for SQL injection, underlining how important correctly preprocessing input is, thus saving our systems and applications from being compromised through a simple input string.</p>
+			<h2 id="_idParaDest-32"><a id="_idTextAnchor034"/>SQL injection-enabling characters</h2>
+			<p>Before dealing with SQL statements and constructions, we should first examine what, given the lack of <a id="_idIndexMarker047"/>controls on the input, makes inserting arbitrary instructions possible in the first place.</p>
+			<p>In a similar fashion to what happens in most machine-interpreted languages, SQL maps some specific characters to corresponding purposes within code text. The most trivial character a person would try to exploit is the single quote (<strong class="source-inline">'</strong>) or the double quote (<strong class="source-inline">"</strong>), as it is used as a delimiter for text values within queries.</p>
+			<p>One example is the semicolon character (<strong class="source-inline">;</strong>) that is used to separate different commands (the same as in most programming languages). </p>
+			<p>Another quite abused character in SQL injection is the comment separator, which in most syntaxes corresponds to the <strong class="source-inline">–</strong> sequence, because it can render the next part of a SQL query useless, as the system will consider it a comment.</p>
+			<p>Think, just as a general example, of a text input used in a naïve <strong class="source-inline">SELECT</strong> query for the color of an object, for which a regular user would have inserted <strong class="source-inline">red</strong>, as follows:</p>
+			<p class="source-code">SELECT color, shape FROM objects WHERE color='red' </p>
+			<p>Things could <a id="_idIndexMarker048"/>go quite differently if, instead of <strong class="source-inline">red</strong>, the following were inserted as text input: </p>
+			<p class="source-code">red'; DROP TABLE objects --</p>
+			<p>This would result in the query looking like this:</p>
+			<p class="source-code">SELECT color, shape FROM objects WHERE color='red'; DROP TABLE objects –-'</p>
+			<p>User-provided input, not having been sanitized, would trick the system into processing, alongside the command that uses an expected syntax, another SQL command that removes the <strong class="source-inline">objects</strong> table entirely from the database. The addition of the comment separator removes the second single-quote character automatically inserted by the application, thus making it possible for a malicious user to insert any SQL command they like while keeping the syntax correct.</p>
+			<p>To better understand the level of manipulation that would be possible in the case of unchecked input, we will see how SQL statements are usually constructed within an application.</p>
+			<h2 id="_idParaDest-33"><a id="_idTextAnchor035"/>SQL statement construction</h2>
+			<p>As we mentioned earlier, the most common SQL statements used in applications are <strong class="source-inline">SELECT</strong> statements. Many times, when you encounter a web form used for searching an item, it is linked <a id="_idIndexMarker049"/>to a database running within the application so that data can be accessed in a structured and reliable way.</p>
+			<p>Think of a regular login form, made of the text inputs of a given username and password. What the application does is match the information inserted to see if the provided username and password pair exists within the same record of a database (linked to a single user). Thus, if the result exists, the application knows that the user has access to it and grants the necessary permission.</p>
+			<p>If we inserted <strong class="source-inline">Overlord</strong> as the username and <strong class="source-inline">pass</strong> as the password, the resulting <strong class="source-inline">SELECT</strong> statement would look like this:</p>
+			<p class="source-code">SELECT * FROM users WHERE username='Overlord' AND password='pass'</p>
+			<p>The application inserts the strings collected, stored as variables, as text within another text string that <a id="_idIndexMarker050"/>constitutes the general body of the query. Of course, those variables could be acquired as input in various ways in a web context (as parameters in <strong class="bold">HyperText Transfer Protocol </strong>(<strong class="bold">HTTP</strong>) <strong class="source-inline">GET</strong> requests—which we would not <a id="_idIndexMarker051"/>recommend: it's not the 90s anymore—or in <strong class="source-inline">POST</strong> requests). For simplicity, in this example, we will consider variables acquired through a <strong class="source-inline">GET</strong> request to the (made-up) address <a href="http://sqlexample.com/login.php?username=Overlord&amp;password=pass">sqlexample.com/login.php?username=Overlord&amp;password=pass</a>. </p>
+			<p>Therefore, the <a id="_idIndexMarker052"/>application code would look something like the following <strong class="bold">PHP: Hypertext Preprocessor</strong> (<strong class="bold">PHP)</strong> example:</p>
+			<p class="source-code">$user=$_GET[username]; //$_GET extracts data from parameters $pass=$_GET[password]; //in the address (after the "?") $query="SELECT * FROM users WHERE u<a id="_idTextAnchor036"/>sername='" + $user +"' AND password='" + $pass + "'";</p>
+			<p>By constructing the query in this way, it becomes apparent how a statement could be altered using user-provided input, as described earlier. This is why being careful when handling user-provided input is important not only when using SQL but in general, as we can't assume anybody to have benign intentions.</p>
+			<p>We will now examine some examples of SQL injection commands and their purpose for attackers.</p>
+			<h1 id="_idParaDest-34"><a id="_idTextAnchor037"/>Common SQL injection commands and manipulation</h1>
+			<p>SQL injection can be used in many different ways for many different purposes, due to the wide range <a id="_idIndexMarker053"/>of possible actions that can be performed through SQL. The most trivial use is trying to obtain otherwise inaccessible information, querying <a id="_idIndexMarker054"/>the database in ways that are not usually envisioned by the regular flow of the application logic. Other uses involve the bypass of <em class="italic">authentication gates</em> within applications, thus effectively escalating privileges, or alternatively gaining more control on the affected system in the case of stored credentials. Other common attacks include blind SQL injection: in most cases, the database console or output is not shown to an attacker, as the operations happen behind the so-called <em class="italic">frontend</em>; however, it is possible for an attacker to identify and exploit SQL injection by observing the application behavior. We will now see some examples of notorious attack techniques.</p>
+			<h2 id="_idParaDest-35"><a id="_idTextAnchor038"/>Information gathering and schema extraction – UNION queries</h2>
+			<p>Step 0 of any attack is collecting useful information, in order to gather enough data to identify the target, such as system configuration, possible intrinsic vulnerabilities, and attack points. While <a id="_idIndexMarker055"/>not strictly SQL injection, the act itself of <a id="_idIndexMarker056"/>gathering information using SQL is a form of attack, which is of course useful for attackers who would need to exploit SQL injection on a system, especially <a id="_idIndexMarker057"/>considering the subtle differences in the main SQL <strong class="bold">database management systems</strong> (<strong class="bold">DBMSs</strong>).</p>
+			<p>The simplest way to get to know the target system better is by triggering an error message, as follows:</p>
+			<div>
+				<div id="_idContainer017" class="IMG---Figure">
+					<img src="image/B15632_02_001.jpg" alt="Figure 2.1 – An error message from a test application caused by erroneous SQL syntax&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.1 – An error message from a test application caused by erroneous SQL syntax</p>
+			<p>In this case, by entering a purposely wrong syntax (namely, we<a id="_idTextAnchor039"/> inserted a <strong class="source-inline">'wrong</strong> string within the username field of a form), we got a useful error message stating that we're dealing with a MySQL database. Nowadays, only badly coded applications display error information in case of a syntax error, but it's definitely worth a try.</p>
+			<p>Continuing our exploration of the tools at our disposal, we will now focus on an advanced SQL command that is used a lot in SQL injection: <strong class="source-inline">UNION</strong>. </p>
+			<p>The <strong class="source-inline">UNION</strong> command is one of the most powerful tools available for database discovery and dumping through SQL injection. Logically, it is used to concatenate the results of two or more queries within the same result table. Let's refer to the following examples from <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a><em class="italic">, Structured Query Language for SQL Injection</em>:</p>
+			<p class="source-code">SELECT color, shape FROM objects WHERE color='blue' UNION SELECT color, shape FROM objects WHERE color='red'</p>
+			<p>The previous query shows the <strong class="source-inline">color</strong> and <strong class="source-inline">shape</strong> attributes of records from the <strong class="source-inline">objects</strong> table that have a <strong class="source-inline">blue</strong> value for attribute color, and also puts in the same results table records with <strong class="source-inline">red</strong> as the color. Keep in mind that <strong class="source-inline">UNION</strong> only works if the attributes of the two queries are of the same dimension. Arbitrary values could also be inserted in a <strong class="source-inline">UNION</strong> section, like this: </p>
+			<p class="source-code">SELECT color, shape FROM objects WHERE color='blue' UNION SELECT 1,2</p>
+			<p>In this <a id="_idIndexMarker058"/>example, we are showing the arbitrary values <strong class="source-inline">1</strong> and <strong class="source-inline">2</strong> in the same output table as for the first query. This trick can in addition be used to <a id="_idIndexMarker059"/>display arbitrary values as output, and also to fit <strong class="source-inline">UNION</strong> sections in the same format as a previous query, possibly displaying hidden information.</p>
+			<p>Do you remember the <strong class="source-inline">@@VERSION</strong> command from the previous chapter? This useful command can be used by an attacker to see the version of the database running. The <strong class="source-inline">SELECT @@VERSION</strong> query shows, in fact, the system version of the target. Let's see it in an example, as follows:</p>
+			<div>
+				<div id="_idContainer018" class="IMG---Figure">
+					<img src="image/B15632_02_002.jpg" alt="Figure 2.2 – The result of a UNION query displaying the database system &#13;&#10;version to be inserted after a query&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.2 – The result of a UNION query displaying the database system version to be inserted after a query</p>
+			<p>Although this command is mostly useful in the case of MS SQL, due to the fact that it may also show relevant information about the Windows operating system for the existence of important vulnerabilities, it can also report some information about other systems (note: <strong class="source-inline">@@VERSION</strong> is not supported in Oracle Database). The example is taken from another purposely <a id="_idIndexMarker060"/>vulnerable web app from the <strong class="bold">Open Web Application Security Project</strong> (<strong class="bold">OWASP</strong>) (Vicnum). The reported version is <strong class="source-inline">5.1.41-3ubuntu12.6-log</strong>, indicating a MySQL installation on Ubuntu 12. </p>
+			<p>Another important component of information gathering through SQL injection is the enumeration of tables and databases included within the schema. Once again, the <strong class="source-inline">UNION</strong> command will prove to be very useful, as it provides enough flexibility.</p>
+			<p>Let's take <a id="_idIndexMarker061"/>advantage of the default tables available, shown in the previous chapter. Let's try showing all the schemas available within a database. We will <a id="_idIndexMarker062"/>once again target <strong class="bold">OWASP Vicnum</strong> for example purposes. Have a look at the following screenshot:</p>
+			<div>
+				<div id="_idContainer019" class="IMG---Figure">
+					<img src="image/B15632_02_003.jpg" alt="Figure 2.3 – The result of a UNION query displaying the schema names on the database&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.3 – The result of a UNION query displaying the schema names on the database</p>
+			<p>Notice how we can see many schemas from the same system? This is because our target resides on an emulated system that has multiple applications present on it. You can imagine how targeting an application on a shared database could reveal much information, not only on the target application but on the system in general. Just to make you more enticed: this emulated environment will be the one you will be able to set up after <a href="B15632_03_Final_JC_ePub.xhtml#_idTextAnchor050"><em class="italic">Chapter 3</em></a>, <em class="italic">Setting Up the Environment</em>, and it will be one of our main targets during the practical part.</p>
+			<p>Let's insist on using the <strong class="source-inline">information_schema</strong> default table, as it contains all the information about how the schema is organized within a MySQL system. One of the preceding results is the schema related to a WordPress application, so we will try to inject this query using another <strong class="source-inline">UNION</strong> keyword to show all tables in a target schema, as follows:</p>
+			<p class="source-code">SELECT table_schema,table_name FROM information_schema.tables WHERE  table_schema = 'wordpress'</p>
+			<p>The result <a id="_idIndexMarker063"/>of such a query, inserted after the <strong class="source-inline">UNION</strong> keyword, would <a id="_idIndexMarker064"/>have the following result in a vulnerable application that openly displays query results:</p>
+			<div>
+				<div id="_idContainer020" class="IMG---Figure">
+					<img src="image/B15632_02_004.jpg" alt="Figure 2.4 – The result of a UNION query displaying schema and table names on target schema&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.4 – The result of a UNION query displaying schema and table names on target schema</p>
+			<p>This can be done for all schemas found within the database. We have seen these information-gathering techniques using MySQL default tables, but let's now also consider the other two main DBMS systems with a client-server architecture. Each has some peculiarities that introduce some differences with respect to MySQL.</p>
+			<h3>Microsoft SQL Server</h3>
+			<p>Microsoft SQL Server, as we said in <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a><em class="italic">, Structured Query Language for SQL Injection,</em> also has <a id="_idIndexMarker065"/>some default tables and databases. One that is very helpful for attackers is the database named <strong class="source-inline">master</strong>, which contains information about the whole database system. In the same fashion as we did for MySQL, by querying the <strong class="source-inline">sysdatabases</strong> table, it is possible to obtain the list of all databases, as follows:</p>
+			<p class="source-code">SELECT name FROM master..sysdatabases</p>
+			<p>This query mirrors exactly our <strong class="source-inline">SELECT schema_name FROM information_schema.schemata</strong> statement we first made in MySQL. From there, <strong class="source-inline">UNION</strong> queries can be used to extend information gathering to tables contained in databases with the help of the <strong class="source-inline">sysobjects</strong> table, showing elements contained within, as follows:</p>
+			<p class="source-code">SELECT name FROM databasename..sysobjects</p>
+			<p>This query would show a lot of information, including noise. Luckily, the search can be refined by <a id="_idIndexMarker066"/>focusing on specific types of data. Selecting the f<strong class="source-inline">xtype</strong> field with the <strong class="source-inline">U</strong> value, for example, will filter only user-defined tables. Here is a list of possible values for the <strong class="source-inline">xtype</strong> field in <strong class="source-inline">sysobjects</strong>:</p>
+			<ul>
+				<li><strong class="source-inline">C</strong>: CHECK constraint</li>
+				<li><strong class="source-inline">D</strong>: Default or DEFAULT constraint</li>
+				<li><strong class="source-inline">F</strong>: FOREIGN KEY constraint</li>
+				<li><strong class="source-inline">L</strong>: Log</li>
+				<li><strong class="source-inline">P</strong>: Stored procedure</li>
+				<li><strong class="source-inline">PK</strong>: PRIMARY KEY constraint (type is K)</li>
+				<li><strong class="source-inline">RF</strong>: Replication filter stored procedure</li>
+				<li><strong class="source-inline">S</strong>: System table</li>
+				<li><strong class="source-inline">TR</strong>: Trigger</li>
+				<li><strong class="source-inline">U</strong>: User table</li>
+				<li><strong class="source-inline">UQ</strong>: UNIQUE constraint (type is K)</li>
+				<li><strong class="source-inline">V</strong>: View</li>
+				<li><strong class="source-inline">X</strong>: Extended stored procedure</li>
+			</ul>
+			<h3>Oracle Database</h3>
+			<p>As for Oracle Database, despite it <a id="_idIndexMarker067"/>having default tables and databases too, results could be a bit more limited with respect to MySQL and Microsoft SQL Server, as enumeration (as we have seen before) is not completely possible due to its structure. However, fear not: much information could still be obtained from an Oracle Database, despite having access.</p>
+			<p>Database names, due to the compartmentalized nature of Oracle Database, can only be obtained within a specific context. To return the current database, there are some options available in terms of queries an attacker could try, such as the following: </p>
+			<p class="source-code">SELECT name FROM v$database;</p>
+			<p>This query would return the name stored in <strong class="source-inline">v$database</strong>, which stores information about—you guessed it—the database, as follows:</p>
+			<p class="source-code">SELECT global_name FROM global_name</p>
+			<p><strong class="source-inline">global_name</strong> is a one-row table that stores the name of the current database, like this:</p>
+			<p class="source-code">SELECT SYS.DATABASE_NAME FROM DUAL</p>
+			<p>The <strong class="source-inline">DUAL</strong> table is a <a id="_idIndexMarker068"/>default table that serves as a dummy: it only contains a single value, set at <strong class="source-inline">x</strong>. It is mostly used when computing constant expressions, due to the fact that it is visible to any user. In this case, <strong class="source-inline">SYS.DATABASE_NAME</strong> is not linked to the <strong class="source-inline">DUAL</strong> table, but it is a constant.</p>
+			<p>In Oracle, a user's access to information depends on how privileges are set. The following query returns all the tables the current user has access to:</p>
+			<p class="source-code">SELECT table_name,owner FROM all_tables; </p>
+			<p>To retrieve all available columns, the following query can be used:</p>
+			<p class="source-code">SELECT column_name FROM all_tab_columns</p>
+			<p>Of course, since it would return a very high number of results, it is best to refine the search (for example, using <strong class="source-inline">WHERE</strong> or <strong class="source-inline">LIKE</strong>, which acts as a less strict <strong class="source-inline">WHERE</strong>).</p>
+			<p>An attacker could identify interesting tables containing private information. Speaking of which… let's move to the next subsection! This will focus more on MySQL due to the presence of some interesting examples, but the reasoning could also apply to other DBMSs, with the exception of the notes we mentioned earlier.</p>
+			<h2 id="_idParaDest-36"><a id="_idTextAnchor040"/>Dumping the database</h2>
+			<p>Using the information that we can extract from the database schema, we have the power to view all the <a id="_idIndexMarker069"/>information we want from an injectable database. Once again, <strong class="source-inline">UNION</strong> comes to our aid, this time allowing us to go deeper so that we can extract the complete contents of any tables we need.</p>
+			<p>The idea is to perform enumeration of fields within a table, then, with the same approach, to extract all the content we need once we have discovered the full schema of the database. The entire database, if vulnerable to SQL injection, can be fully visible to an attacker, who can also extract sensitive information contained therein.</p>
+			<p>For explanatory reasons, we are now targeting the <strong class="source-inline">wp_users</strong> table from the previous example. We are now interested in retrieving the full structure of the table, enumerating its fields. An attacker could use this to explore the database and detect the presence of potentially useful information. The query we now need to insert after <strong class="source-inline">UNION</strong> is something like this:</p>
+			<p class="source-code">SELECT table_schema,table_name,column_name FROM information_schema.columns WHERE  table_name = 'wp_users'</p>
+			<p>By performing the <strong class="source-inline">UNION</strong> query as in the previous example, by inserting the missing value to make <a id="_idIndexMarker070"/>our columns the same as the original query, we now have access to the field names of the selected table, as illustrated in the following screenshot:</p>
+			<div>
+				<div id="_idContainer021" class="IMG---Figure">
+					<img src="image/B15632_02_005.jpg" alt="Figure 2.5 – The result of a UNION query displaying field names of target &#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.5 – The result of a UNION query displaying field names of target </p>
+			<p>Well, that's awkward: we found the <strong class="source-inline">user_login</strong> and <strong class="source-inline">user_pass</strong> fields, which definitely contain login information. Let's try to query those in a simple query, using the information we collected before, as follows:</p>
+			<p class="source-code">SELECT ID,display_name,user_login,user_pass FROM wordpress.wp_users</p>
+			<p>This results in the following response, giving us information about user profiles within the WordPress instance that relies on the database:</p>
+			<div>
+				<div id="_idContainer022" class="IMG---Figure">
+					<img src="image/B15632_02_006.jpg" alt="Figure 2.6 – The result of a UNION query displaying the wp_users table&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.6 – The result of a UNION query displaying the wp_users table</p>
+			<p>As a common practice, passwords are hashed. This means that such passwords are unusable unless they are cracked. In this case, we have MD5 hashes that could be easily broken by specialized software. This means that an attacker could easily obtain login information for such accounts.</p>
+			<p>This drill-down <a id="_idIndexMarker071"/>approach can be used in principle to obtain all the information an attacker could wish for on a database. Default databases, such as MySQL's <strong class="source-inline">information_schema</strong> database, could lead to a full map of the information contained in a database system.</p>
+			<h2 id="_idParaDest-37"><a id="_idTextAnchor041"/>Escalating privileges and gaining access</h2>
+			<p>Let's now move on to another purpose of SQL injection attacks. We already mentioned in <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a>, <em class="italic">Structured Query Language for SQL Injection,</em> how SQL can be used for privilege <a id="_idIndexMarker072"/>escalation or to gain access to applications and/or systems. We will now go deeper into this aspect.</p>
+			<p>Databases are <a id="_idIndexMarker073"/>often used for authentication purposes: whenever you insert your login information into a web form, in most cases this data is compared to information stored within a specific database. This way, the system knows whether you have the right to go through the authentication gate of an application. I know what you're thinking: if it's a database we are interacting with, someone can definitely try performing injection; right? Absolutely true. An application vulnerable to SQL injection can, in fact, allow an attacker to obtain more privileges than intended.</p>
+			<p>Remember the example in the previous subsection, where we obtained the information stored in the <strong class="source-inline">wp_login</strong> table of the WordPress instance in the database schema? This is shown here again for your reference:</p>
+			<div>
+				<div id="_idContainer023" class="IMG---Figure">
+					<img src="image/B15632_02_006.jpg" alt="Figure 2.7 –Record from the WordPress wp_login table corresponding to the admin user&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.7 –Record from the WordPress wp_login table corresponding to the admin user</p>
+			<p>For security purposes, in an attempt to prevent password attacks facilitated by database dumping, the password is not stored in the database as is. The database contains instead the MD5 hashing of it, still useable for comparing with the application. MD5 is a hashing function that produces a specific <em class="italic">message digest</em> of 128 bits, expressed as 32 hexadecimal digits (0-9, a-f) for a given input. This hashing function has been replaced with more complex and secure ones (such as SHA-256) because it is now deemed too weak. In this case, the password itself was quite predictable, and it was obtainable in relatively little time. The hash corresponds to the <strong class="source-inline">admin</strong> password. Let's try it in the WordPress application of our local emulated environment. This is illustrated in the following screenshot:</p>
+			<div>
+				<div id="_idContainer024" class="IMG---Figure">
+					<img src="image/B15632_02_008.jpg" alt="Figure 2.8 – Successful attempt at authenticating the WordPress admin account&#13;&#10;"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.8 – Successful attempt at authenticating the WordPress admin account</p>
+			<p>Another less complicated <a id="_idIndexMarker074"/>way to obtain access using SQL injection is by totally bypassing authentication forms that are vulnerable to SQL injection. The most infamous <a id="_idIndexMarker075"/>example of SQL injection for authentication bypass exploits the fact that usually, SQL queries used for authenticating rely simply on the presence of a record satisfying the condition stating that such a record exists in the database. Thus, our final result needs to be "true". For this reason, we are talking <a id="_idIndexMarker076"/>about <strong class="bold">tautologies</strong>.</p>
+			<p>In Boolean logic, a tautology is a logical expression that is always true, no matter the conditions. Putting any logical statement with a true statement in the binary <strong class="source-inline">OR</strong> operation, which returns true if either of the two operands is true, means always having <strong class="source-inline">TRUE</strong> as a result.</p>
+			<p>This also applies to SQL injection: SQL also supports Boolean operands for conditions, which we always find in the <strong class="source-inline">WHERE</strong> part of a <strong class="source-inline">SELECT</strong> statement. If we were to write this SQL query, for example, we will always satisfy the <strong class="source-inline">WHERE</strong> condition:</p>
+			<p class="source-code">SELECT * FROM table1 WHERE field='x' OR '1=1'</p>
+			<p>This is one of the most basic queries an attacker could, in principle, use to bypass authentication. Thus, an attacker could insert the following string in a vulnerable login form—for example, <a id="_idTextAnchor042"/>in the <strong class="source-inline">user</strong> text input:</p>
+			<p class="source-code">x' OR '1=1'--</p>
+			<p>By making the statement always true, an attacker could bypass the authentication of an application vulnerable to SQL injection. As we saw in the previous examples, commenting out the following part of the query helps in letting the system evaluate only what we want. </p>
+			<p>Depending on <a id="_idIndexMarker077"/>the underlying query, some additional considerations should be made. For example, the attacker should know which DBMS the <a id="_idIndexMarker078"/>database is running on in order to select the correct characters to be used as injection enablers. Other login forms could check that both text inputs, for username and password, are not empty, thus the attacker should insert information in both. </p>
+			<p>In the end, excluding the trial-and-error aspect, SQL injection can, in principle, allow an attacker to bypass authentication screens and obtain much higher privileges than intended.</p>
+			<p>We will now analyze other common attack techniques—this time, probably the most widely used one.</p>
+			<h2 id="_idParaDest-38"><a id="_idTextAnchor043"/>Blind SQL injection</h2>
+			<p>Most of the time, interaction with databases does not provide record output—unlike we have seen in the Vicnum example. Thus, attackers do not have a direct feedback of the actions that <a id="_idIndexMarker079"/>they perform on the database in terms of records or tables.</p>
+			<p>In this scenario, we are talking about <strong class="bold">blind SQL injection</strong> because attackers are interacting with databases without seeing, at least directly, the results of their actions. The authentication bypass is of course an example of blind SQL injection, but it's not the only one.</p>
+			<p>Blind SQL injection is used to <a id="_idIndexMarker080"/>uncover information with the so-called <strong class="bold">inference</strong> attack. Basically, it consists, through various attempts, of disclosing information about the database through logical assumptions based on the web response. While in tautologies and contradictions, we chose our statements to have a predictable result—always true or always false—this time, we will be using conditions that <em class="italic">could</em> be true, and, if they are, they can disclose some information.</p>
+			<p>Without seeing the output from the database, an attacker this way still has some ways to tell whether an application is vulnerable to SQL injection. One of the most common ways to test for SQL injection in a blind setting is the introduction of an arbitrary time delay in the query submission.</p>
+			<p>A common way to see the <em class="italic">injectability</em> of an application working with databases is by using logical expressions, in a similar way to what we saw with tautologies. In some cases, depending on the response that the application might return, it is possible to tell if it is injectable by making assumptions about how it treats logical expressions, or even leak some information. Here, we are dealing with <strong class="bold">Boolean-based blind injection</strong>.</p>
+			<p>If we try <a id="_idIndexMarker081"/>a tautology (adding, for example, <strong class="source-inline">' OR '1=1'--</strong> to our query), then try an always false expression—a contradiction—by using the <strong class="source-inline">AND</strong> operation (<strong class="source-inline">' AND '1=2'--</strong>), we might see different results in the appearance of the response. In this case, we might have the cue we need to spot SQL injection: the SQL snippet we injected is successfully evaluated, changing the result of our query. In terms of database results, the first attempt ensures that, if successfully evaluated, all results are returned because the condition is always satisfied; vice versa, the second one would return an empty result.</p>
+			<p>The trick is, by knowing the difference in output between true and false results, we can see whether a logical statement <a id="_idIndexMarker082"/>is true or false by putting it in an <strong class="source-inline">AND</strong> operation. This way, we could investigate about database information using this comparison, since we can't directly query the database as we did in the case of non-blind SQL injection. A useful trick, besides comparing entire strings to a field value, is the use of <strong class="source-inline">SUBSTRING()</strong> to check for a specific character in a specific position, thus reconstructing the information we need. If we were to extract the first letter of the value of a string field, we would insert the following condition:</p>
+			<p class="source-code">SUBSTRING(fieldname,1,1)= 'x' </p>
+			<p>This, of course, could be iterated to obtain the entire information we seek, but performing it manually would definitely be a chore. An attacker would probably use some script to automate the process.</p>
+			<p>Another way to <a id="_idIndexMarker083"/>perform a blind SQL injection is through the use of <strong class="bold">time-based SQL injection</strong>. Sometimes, the output for true or false results does not differ enough, so an attacker needs to introduce some artificial difference in the output. This is done through some nifty functions supported by the main SQL database systems.</p>
+			<p>MySQL supports the <strong class="source-inline">SLEEP()</strong> and the <strong class="source-inline">BENCHMARK(count, expression)</strong> functions, which could be integrated in any statement. For example, the following snippet inserts a time delay in the query of <strong class="source-inline">15</strong> seconds:</p>
+			<p class="source-code">SLEEP(15)</p>
+			<p>This one, instead, performs the <strong class="source-inline">SELECT @@VERSION</strong> query <strong class="source-inline">10000</strong> times, introducing an indirect time delay depending on the execution time, as follows:</p>
+			<p class="source-code">BENCHMARK(10000, SELECT @@VERSION)</p>
+			<p>Microsoft SQL Server instead supports the <strong class="source-inline">WAITFOR DELAY()</strong> and <strong class="source-inline">WAITFOR TIME()</strong> functions. The same result as the preceding <strong class="source-inline">SLEEP()</strong> function can be obtained with the following snippets. <strong class="source-inline">DELAY</strong> introduces a time delay (relative), while <strong class="source-inline">TIME</strong> specifies the actual clock time in which the wait ends. For the following example, let's imagine that the actual time is 9:00:</p>
+			<p class="source-code">WAITFOR DELAY(0:0:15)</p>
+			<p class="source-code">WAITFOR TIME(9:0:15)</p>
+			<p>Oracle SQL has a <a id="_idIndexMarker084"/>slightly trickier way to perform time-based queries. There actually is a <strong class="source-inline">SLEEP()</strong> function, but it can only inserted within the Oracle SQL programming code, as it's not supported by regular dynamic queries. The code snippet should be like this:</p>
+			<p class="source-code">BEGIN DBMS_LOCK.SLEEP(15); END;</p>
+			<p>There are, however, some tricks for introducing time delays. This is made possible through time-consuming queries, including <a id="_idIndexMarker085"/>network-dependent tasks (such as reverse <strong class="bold">Domain Name Systems</strong> (<strong class="bold">DNS</strong>) queries) or querying data using multiple (or replicated) tables. The following code snippets are two examples of such queries that could be injected. However, the effectiveness of these may change depending on the target:</p>
+			<p class="source-code">SELECT UTL_INADDR.get_host_name('10.10.10.10') FROM dual</p>
+			<p class="source-code">SELECT count(*) FROM all_users A, all_users B, all_users C, all_users D # and so on…</p>
+			<p>By verifying the time delay after a request has been made, an attacker can see whether the functions are evaluated by the backend system, thus confirming that SQL instruction can be successfully injected.</p>
+			<p>Time delays and Boolean queries could also be combined: nobody said that we cannot use time delays to see if a condition is true or not. The following query, in fact, is also legal:</p>
+			<p class="source-code">SELECT IF SUBSTRING(fieldname,1,1)='x' SLEEP(15)</p>
+			<p>This way, our signal is given by the passing of time before the response, instead of using logical conditions.</p>
+			<p>Another important <a id="_idIndexMarker086"/>technique in the spectrum of blind SQL injection is called <strong class="bold">splitting and balancing</strong>. The main intuition is trying queries that, according to SQL, are <a id="_idIndexMarker087"/>functionally the same, and ensuring that the opening and closing of parentheses and quotes are perfectly balanced within the query, thus generating legal SQL. Let's consider two very basic <strong class="source-inline">SELECT</strong> queries, as follows:</p>
+			<p class="source-code">SELECT name FROM customers WHERE id=3</p>
+			<p class="source-code">SELECT name FROM customers WHERE id=2+1</p>
+			<p>The two queries are functionally identical, due to the obvious arithmetic involved. This can also be used with string data with operations possible on strings, such as concatenating (<strong class="source-inline">||</strong>), if the DBMS allows for it, as illustrated in the following code snippet:</p>
+			<p class="source-code">SELECT name FROM customers WHERE name='Jonathan'</p>
+			<p class="source-code">SELECT name FROM customers WHERE name='Jo'||'nathan'</p>
+			<p>Here's the catch: by using equivalent queries, other queries could also be injected, like this:</p>
+			<p class="source-code">SELECT name FROM customers WHERE id=3</p>
+			<p class="source-code">SELECT name FROM customers WHERE id=3+(SELECT 2-2)</p>
+			<p>By exploiting this <a id="_idIndexMarker088"/>possibility provided by SQL, more complex sub-queries could also be inserted between parentheses, possibly inserting harmful attack payloads. </p>
+			<p>We have now seen an overview—without examples—of the main examples of SQL injection attacks against SQL systems. Let's now move on to an aspect that is not always considered: does SQL injection also apply to NoSQL? By the name, you might be able to tell that it doesn't, but the reality is a bit more complex than just a misleading name.</p>
+			<h1 id="_idParaDest-39"><a id="_idTextAnchor044"/>Not only SQL injection – non-relational repositories</h1>
+			<p>The term <em class="italic">NoSQL</em> has been debated over the years. Someone, probably not careful enough, would tell you it means <em class="italic">No SQL</em>, as in there is <em class="italic">positively nothing SQL-related about this matter</em>. While it is true that such databases use different approaches from the relational model (as we saw in <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a>, <em class="italic">Structured Query Language for SQL Injection</em>), some underlying logic is shared. The term NoSQL stems from the need to underline the differences with <a id="_idIndexMarker089"/>respect to the dominant database model. Going on, the term NoSQL, due to the fact that it generates some misunderstandings, is less preferred to the more general term <strong class="bold">non-relational</strong>, or <strong class="bold">no-rel</strong> for short.</p>
+			<p>As we already mentioned in <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a>, <em class="italic">Structured Query Language for SQL Injection</em>, the principles of SQL injection also impact, in some form or another, databases that do not incorporate SQL or the relational model. A trivial explanation is that the principle of injection, as it happens with code injection, can apply to every piece of software in charge of interpreting some piece of code. </p>
+			<p>One of the claims of non-relational database developers is that, by not using standard strings to build actual queries, non-SQL databases are not vulnerable to injection. Alas, there have been examples of this vulnerability, mostly in the case of document-based databases such as MongoDB.</p>
+			<p>In short: just because your <a id="_idIndexMarker090"/>database is not SQL-based, it doesn't mean that it is invulnerable to injection attacks. It's true that it's called <strong class="bold">SQL injection</strong>, but that's just because it was discovered in a SQL setting. And, more importantly, it doesn't mean at all that the only database systems vulnerable to injection are SQL ones.</p>
+			<h1 id="_idParaDest-40"><a id="_idTextAnchor045"/>The injection vulnerability in non-relational repositories</h1>
+			<p>The problem of injectability is strictly dependent on trusting input, which could include interpretable code. This is also true in some cases of NoSQL database systems.</p>
+			<p>Document-based <a id="_idIndexMarker091"/>databases still use formatted text to be inserted in a structured format. Most applications that use such <a id="_idIndexMarker092"/>databases rely mostly on text, be it in <strong class="bold">JavaScript Object Notation </strong>(<strong class="bold">JSON</strong>) format, or in any case from user-provided input. Thus, if not adequately sanitized, specific input could trigger some issues, in a similar fashion to how these happen in SQL.</p>
+			<p>Let's for now consider a fictitious website that relies on a document-based database, MongoDB, for authentication purposes. An attacker could send an HTTP <strong class="source-inline">GET</strong> request, <strong class="source-inline">https://targetsite.org/login?user=admin&amp;password[%24ne]=</strong>. The target website, coded using a framework of <strong class="source-inline">Node.js</strong>, unfortunately has a very naïve way to check for credentials. Have a look at the following code snippet:</p>
+			<p class="source-code">db.collection('users').find({ </p>
+			<p class="source-code">  "user": req.query.user,  </p>
+			<p class="source-code">  "password": req.query.password </p>
+			<p class="source-code">});</p>
+			<p>In this format, the website still accepts the malevolent content, and thus will grant access to the malicious user. Why? Because no matter the technology, an unsanitized input could still be inserted. The request will be interpreted in this way:</p>
+			<p class="source-code">db.collection('users').find({ </p>
+			<p class="source-code">  "user": "admin",  </p>
+			<p class="source-code">  "password": {"$ne": ""} </p>
+			<p class="source-code">});</p>
+			<p><strong class="source-inline">$ne</strong> in MongoDB is a specific operator that defines the <em class="italic">not equal</em> relation. Put into practice, it is read as such in MongoDB and makes the <strong class="source-inline">find()</strong> function successful, thus granting access in a similar way as in SQL injection. This is because MongoDB expects input in a specific string format—namely, JSON.</p>
+			<p>The <strong class="source-inline">GET</strong> example was made just for explanatory purposes, but this attack could also work in a <strong class="source-inline">POST</strong> request, as illustrated in the following code snippet:</p>
+			<p class="source-code">POST /login HTTP/1.1 </p>
+			<p class="source-code">Host: <a href="http://targetsite.org">targetsite.org</a> </p>
+			<p class="source-code">Content-Type: application/x-www-form-urlencoded </p>
+			<p class="source-code">Content-Length: 27 </p>
+			<p class="source-code">user=admin&amp;password[%24ne]=</p>
+			<p>Being <a id="_idIndexMarker093"/>just text, the content could also be written in a JSON format request, as follows:</p>
+			<p class="source-code">POST /login HTTP/1.1 </p>
+			<p class="source-code">Host: <a href="http://targetsite.org">targetsite.org</a> </p>
+			<p class="source-code">Content-Type: application/json </p>
+			<p class="source-code">Content-Length: 36 </p>
+			<p class="source-code">{'user': 'admin', 'password': {'$ne': ''}}</p>
+			<p>With this example, it's apparent how the principles of SQL injection can apply to a non-relational database model. Of course, not having queries written in a powerful querying language limits the scope of possible attacks so that information gathering and database dumping are rendered impossible. However, by knowing the semantic of the server-side code, an attacker could exploit it to their advantage. </p>
+			<p>In general, an attacker could insert within an input objects that alter the semantics of queries, thus resulting in unexpected behavior. The solution for this is always the same: sanitizing input properly, and expecting possible compromise attempts from users.</p>
+			<p>After this <a id="_idIndexMarker094"/>brief example, we hope that, at least in theory, SQL injection, and its possible use outside of the realm of SQL, are clear and that you have the necessary tools to put your knowledge into practice.</p>
+			<h1 id="_idParaDest-41"><a id="_idTextAnchor046"/>Wrapping up – (No-)SQL injection in theory</h1>
+			<p>OK; that was quite a lot of information. Let's have a recap of what we were dealing in this theoretical section so far.</p>
+			<p>SQL injection <a id="_idIndexMarker095"/>can be used by attackers in a variety of scenarios. In this chapter, we have seen examples regarding two common purposes, as follows:</p>
+			<ul>
+				<li>Obtaining undisclosed information about the database or its content, through database exploration or inference techniques</li>
+				<li>Gaining privileged access to applications that use a shared database system</li>
+			</ul>
+			<p>Limiting application functionality could also be possible using SQL statements such as <strong class="source-inline">DROP</strong>, or through modification of vital information in a database, such as login information. </p>
+			<p>In this chapter, we added another very important tool to be used within SQL statements, as follows:</p>
+			<ul>
+				<li><strong class="source-inline">UNION</strong> can be added to existing statements to return results pertaining to another query within the same result table. To function properly, it's necessary that the second query has the same number of fields as the first one, but this is easily obtainable by adding arbitrary static values, such as fixed numbers.</li>
+			</ul>
+			<p>SQL injection, especially using <strong class="source-inline">UNION</strong>, can be used for information gathering. Much information can be extracted from a vulnerable database:</p>
+			<ul>
+				<li>The database schema can be queried to get information about databases within the system, tables, and table fields.</li>
+				<li>The resulting information can be used to directly query the database, knowing exactly which tables and fields to extract.</li>
+				<li><strong class="source-inline">UNION</strong> queries can retrieve a great deal of information, especially in MySQL and MSSQL, as many databases can be queried, especially if the system runs many database-relying applications on them.</li>
+			</ul>
+			<p>SQL-based systems, due to some variations in implementation, can have some slight differences, as seen in <a href="B15632_01_Final_JC_ePub.xhtml#_idTextAnchor020"><em class="italic">Chapter 1</em></a>, <em class="italic">Structured Query Language for SQL Injection</em>. Here are some of them:</p>
+			<ul>
+				<li>Among default databases, some are more interesting than others in terms of contained information.</li>
+				<li>Tables can be accessed in different ways—for example, MSSQL uses <strong class="source-inline">..</strong> to access tables within our default databases.</li>
+				<li>Oracle Database accesses a single database in a single connection, so an attacker can retrieve information about one database at a time.</li>
+			</ul>
+			<p>We prepared <a id="_idIndexMarker096"/>the following quick reference table, highlighting some basic differences between the main database systems, which can turn out to be useful during information gathering in terms of databases and tables to query for information:</p>
+			<div>
+				<div id="_idContainer025" class="IMG---Figure">
+					<img src="image/B15632_02_Table_08.jpg" alt="Figure 2.9 – Reference table for information gathering in the three main DBMS we’ve seen&#13;"/>
+				</div>
+			</div>
+			<p>SQL injection <a id="_idIndexMarker097"/>can also help an attacker in gaining privileges and accessing otherwise inaccessible application functionalities, as follows:</p>
+			<ul>
+				<li>Extracting information from a database can sometimes lead to password disclosure, as password hashes are stored in databases, and those might be decrypted by offline password attacks if a weak hashing algorithm is used.</li>
+				<li>Using tautologies, also known as always true expressions (such as <strong class="source-inline">1=1</strong>), you could make the login query always true, thus gaining access within a vulnerable authentication form in an application.</li>
+			</ul>
+			<p>One of the most common SQL attack techniques is called blind SQL injection, as most of the time, attackers do not have access to direct database output:</p>
+			<ul>
+				<li>All the previous examples that do not involve viewing database output, including authentication bypassing, are de facto blind SQL injections.</li>
+				<li>Time-based SQL injection can be used to determine whether or not a database can be vulnerable to SQL injection: the attacker inserts a time delay within the query and checks whether this is correctly interpreted by the database system.</li>
+				<li>Boolean-based SQL injection uses logical statements in order to reconstruct hidden database information, as an attacker cannot see the actual database content through queries. This is done by observing the behavior of the application in the context of true and false statements. If different, an attacker might try to inject conditions and see whether they are true or not based on the response.</li>
+				<li>Time-based queries and Boolean-based queries can be combined: an attacker might insert, with a <strong class="source-inline">UNION</strong> statement, an <strong class="source-inline">IF</strong> condition that, depending on the result, might cause a set time delay. This way, an attacker can perform inference by studying the application behavior in terms of response time instead of content.</li>
+				<li>Splitting and balancing is another blind SQL injection technique that abuses the equivalence <a id="_idIndexMarker098"/>of some queries, which can also, if the application is vulnerable, include in some cases arbitrary sub-queries using parentheses and ensure the syntax is correct.</li>
+			</ul>
+			<p>Despite being called SQL injection, this vulnerability is also relevant to non-relational databases:</p>
+			<ul>
+				<li>While databases do not always rely on query languages as powerful as SQL, that does not mean that commands or alterations can't be injected at all.</li>
+				<li>In case of NoSQL databases, we can talk about NoSQL injection. While the huge array of attacks we have seen so far cannot usually be performed, such as database dumping and arbitrary queries, some of the semantics can be altered at will by attackers who can access a way to insert an input within an application.</li>
+				<li>As in the login bypass example we have seen, NoSQL databases can be altered in a simple way by inserting elements that can alter the syntax and trick the underlying database in to evaluating specific conditions that could result in harmful behavior.</li>
+				<li>While SQL injection can be more harmful, it's better not to underestimate the injection vulnerability in other database contexts: if an application that relies on a database does not sanitize user input, it may still be subject to injection.</li>
+			</ul>
+			<h1 id="_idParaDest-42"><a id="_idTextAnchor047"/>Summary</h1>
+			<p>To recap, in this chapter, we saw that SQL can be exploited to insert malicious code, using specific constructs and symbols. Some of these can be particularly useful for gathering information, but also for gaining privileged access to applications and databases themselves. </p>
+			<p>We also saw that the concept of injection in database systems not only involves SQL databases but also some non-relational ones, for which we've seen some examples.</p>
+			<p>The next chapter will be the first one of the practical section, and will focus on the setup of the same virtual environment we have seen in the examples involving Mutillidae II and Vicnum (by querying the <strong class="source-inline">information_schema</strong> database, you probably noticed the presence of various applications, including the vulnerable WordPress version we saw earlier). While the practical examples shown in this chapter served only an explanatory role, the second part of this book is instead intended to have a more practical approach and is presented in a step-by-step manner. </p>
+			<p>This first part was intended to be a full introduction to the topic of SQL injection. Theory, however, is not always enough: mastering a topic requires practice, and this is why the following practical part is the core of this book. </p>
+			<p>We hope you will enjoy what we have in store for you!</p>
+			<h1 id="_idParaDest-43"><a id="_idTextAnchor048"/>Questions</h1>
+			<ol>
+				<li>How is it usually possible to trigger SQL injection?</li>
+				<li>Describe, without going too much into detail, how it could be possible to extract information from a database using an application vulnerable to SQL injection.</li>
+				<li>Describe how a malicious user could use SQL injection to defeat user authentication and gain access to an application.</li>
+				<li>What is blind SQL injection? Describe two ways to perform blind SQL injection.</li>
+				<li>You are facing an application that relies on a database. You suspect that a web form relies on a SQL database, but the application does not return meaningful output after a query. Which SQL injection technique would you use to determine whether the application form is vulnerable to SQL injection?</li>
+				<li>Is it true that only SQL databases are vulnerable to injection?</li>
+			</ol>
+		</div>
+	</body></html>
