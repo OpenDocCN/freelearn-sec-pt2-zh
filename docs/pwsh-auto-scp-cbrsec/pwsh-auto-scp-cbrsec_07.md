@@ -1,6 +1,6 @@
-# 7
 
-# 黑客攻击云 – 利用 Azure Active Directory/Entra ID 漏洞
+
+# 第七章：黑客攻击云 – 利用 Azure Active Directory/Entra ID 漏洞
 
 在上一章，我们了解了 **Active Directory**（**AD**）和本地身份验证。本章我们将探讨其继任者和云 **身份提供者**（**IdP**）：**Azure Active Directory**（**AAD/Azure AD**）。
 

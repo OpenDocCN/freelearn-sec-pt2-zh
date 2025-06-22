@@ -1,6 +1,6 @@
-# 7
 
-# 使用 CloudWatch、CloudTrail 和 Config 进行监控
+
+# 第七章：使用 CloudWatch、CloudTrail 和 Config 进行监控
 
 我们已经讨论了许多关于安全的方面，例如**保密性**、**完整性**和**可用性**（**CIA**）以及**认证**、**授权**和**审计**（**AAA**）。审计可以通过**持续监控**、**警报**和定期**审计**来实现。适当的监控和警报也可以通过**自动修复**来提高可用性。在本章中，我们将研究**Amazon CloudWatch**、**AWS CloudTrail**和**AWS Config**。CloudWatch 是 AWS 中用于**日志记录**、**监控**和警报的主要服务。CloudTrail 可以记录 AWS API 调用。AWS Config 可以记录并评估配置是否符合预定义的配置规则。我们还将了解**简单通知服务**（**SNS**），它将帮助我们发送通知。
 

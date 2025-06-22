@@ -1,6 +1,6 @@
-# 5
 
-# PowerShell 强大——系统和 API 访问
+
+# 第五章：PowerShell 强大——系统和 API 访问
 
 当你以为 PowerShell 已经是一个强大的工具时，准备好惊讶于它深入系统的能力。在本章中，我们将探索如何使用 PowerShell 访问系统和 API。
 

@@ -1,6 +1,6 @@
-# 2
 
-# PowerShell 脚本基础
+
+# 第二章：PowerShell 脚本基础
 
 现在您已经学会了如何开始使用 PowerShell，接下来让我们深入了解 PowerShell 脚本基础，刷新一下我们的知识。
 

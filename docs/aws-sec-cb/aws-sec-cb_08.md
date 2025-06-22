@@ -1,6 +1,6 @@
-# 8
 
-# GuardDuty、Macie、Inspector 和 Analyzer 的合规性
+
+# 第八章：GuardDuty、Macie、Inspector 和 Analyzer 的合规性
 
 定期检查账户的合规性，并在发现任何不合规时收到通知，是保持账户安全的重要步骤。在本章中，我们将了解 AWS 内的一些服务，这些服务可以帮助我们检查合规性，通过附加的智能和规则。我们将学习**Amazon GuardDuty**、**Amazon Macie**和**Amazon Inspector**，它们利用机器学习和高级算法帮助我们检查合规性。AWS Config 是另一项可以帮助合规性的服务，但我们已在*第七章*中讲解过它。
 

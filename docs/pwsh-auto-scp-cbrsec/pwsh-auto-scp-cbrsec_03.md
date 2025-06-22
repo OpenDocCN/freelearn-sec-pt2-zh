@@ -1,6 +1,6 @@
-# 3
 
-# 探索 PowerShell 远程管理技术和 PowerShell 远程
+
+# 第三章：探索 PowerShell 远程管理技术和 PowerShell 远程
 
 作为 PowerShell 的主要用途之一是自动化管理任务，**PowerShell 远程**（**PSRemoting**）在同时管理多台计算机时扮演着重要角色：只需一条命令，你就可以在数百台计算机上执行相同的命令行。
 

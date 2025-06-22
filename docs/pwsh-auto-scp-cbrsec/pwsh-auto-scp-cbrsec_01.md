@@ -1,6 +1,6 @@
-# 1
 
-# PowerShell 入门
+
+# 第一章：PowerShell 入门
 
 本简介章节将介绍使用 PowerShell 的基本概念。它作为网络安全领域 PowerShell 的基础入门，并且作为 **面向对象编程**（**OOP**）的介绍，以及如何开始使用 PowerShell。
 
