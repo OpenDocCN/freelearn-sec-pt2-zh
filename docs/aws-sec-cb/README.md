@@ -1,4 +1,4 @@
-# AWS 安全怒胡
+# AWS 安全秘籍
 
 > 原文：[`annas-archive.org/md5/d3b64380faef86adc6afd7f2257d6ce3`](https://annas-archive.org/md5/d3b64380faef86adc6afd7f2257d6ce3)
 > 

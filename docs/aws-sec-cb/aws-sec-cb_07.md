@@ -2,7 +2,7 @@
 
 # 第七章：使用 CloudWatch、CloudTrail 和 Config 进行监控
 
-我们已经讨论了许多关于安全的方面，例如**保密性**、**完整性**和**可用性**（**CIA**）以及**认证**、**授权**和**审计**（**AAA**）。审计可以通过**持续监控**、**警报**和定期**审计**来实现。适当的监控和警报也可以通过**自动修复**来提高可用性。在本章中，我们将研究**Amazon CloudWatch**、**AWS CloudTrail**和**AWS Config**。CloudWatch 是 AWS 中用于**日志记录**、**监控**和警报的主要服务。CloudTrail 可以记录 AWS API 调用。AWS Config 可以记录并评估配置是否符合预定义的配置规则。我们还将了解**简单通知服务**（**SNS**），它将帮助我们发送通知。
+我们已经讨论了许多关于安全的方面，例如**保密性**、**完整性**和**可用性**（**CIA**）以及**认证**、**授权**和**审计**（**AAA**）。审计可以通过**持续监控**、**警报**和定期**审计**来实现。适当的监控和警报也可以通过**自动修复**来提高可用性。在本章中，我们将研究`Amazon CloudWatch`、`AWS CloudTrail`和`AWS Config`。CloudWatch 是 AWS 中用于**日志记录**、**监控**和警报的主要服务。CloudTrail 可以记录 AWS API 调用。AWS Config 可以记录并评估配置是否符合预定义的配置规则。我们还将了解**简单通知服务**（**SNS**），它将帮助我们发送通知。
 
 本章将涵盖以下食谱：
 
@@ -28,15 +28,15 @@
 
 在开始本章的操作之前，我们需要确保具备以下要求和知识：
 
-+   我们需要一个有效的 AWS 账户来完成本章的所有操作。我们可以使用属于 AWS 组织的一部分的账户或独立账户。我将使用我们在*第一章*的*使用 AWS 组织进行多账户管理*食谱中创建的**awsseccb-sandbox-1**账户。不过，我不会使用任何 AWS 组织功能，这意味着你也可以使用独立账户跟随这些步骤。
++   我们需要一个有效的 AWS 账户来完成本章的所有操作。我们可以使用属于 AWS 组织的一部分的账户或独立账户。我将使用我们在*第一章*的*使用 AWS 组织进行多账户管理*食谱中创建的`awsseccb-sandbox-1`账户。不过，我不会使用任何 AWS 组织功能，这意味着你也可以使用独立账户跟随这些步骤。
 
-+   对于管理操作，我们需要一个具有**AdministratorAccess**权限的用户来操作 AWS 账户。这可以是一个**身份与访问管理**（**IAM**）身份中心用户或 IAM 用户。我将使用我们在*第一章*的*使用 IAM Identity Center 进行用户管理和 SSO*食谱中创建的**awsseccbadmin1** IAM Identity Center 用户。不过，我不会使用任何 IAM Identity Center 功能，这意味着如果用户在账户中具有**AdministratorAccess**权限，你也可以使用 IAM 用户执行这些步骤。你可以按照*设置 IAM、账户别名和账单警报*食谱创建一个 IAM 用户。
++   对于管理操作，我们需要一个具有`AdministratorAccess`权限的用户来操作 AWS 账户。这可以是一个**身份与访问管理**（**IAM**）身份中心用户或 IAM 用户。我将使用我们在*第一章*的*使用 IAM Identity Center 进行用户管理和 SSO*食谱中创建的`awsseccbadmin1` IAM Identity Center 用户。不过，我不会使用任何 IAM Identity Center 功能，这意味着如果用户在账户中具有`AdministratorAccess`权限，你也可以使用 IAM 用户执行这些步骤。你可以按照*设置 IAM、账户别名和账单警报*食谱创建一个 IAM 用户。
 
 本章的代码文件可在[`github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter07`](https://github.com/PacktPublishing/AWS-Security-Cookbook-Second-Edition/tree/main/Chapter07)找到。
 
 # 创建 SNS 主题以发送电子邮件
 
-在本示例中，我们将学习如何创建一个 SNS 主题来发送电子邮件。SNS 是一个托管的**发布/订阅消息服务**，可以与多种端点一起使用，如电子邮件、**短信（SMS）**、**Lambda**、**简单队列服务（SQS）**等。
+在本示例中，我们将学习如何创建一个 SNS 主题来发送电子邮件。SNS 是一个托管的**发布/订阅消息服务**，可以与多种端点一起使用，如电子邮件、**短信（SMS）**、`Lambda`、**简单队列服务（SQS）**等。
 
 ## 准备开始
 
@@ -54,7 +54,7 @@
 
 1.  对于**类型**，选择**标准**。
 
-1.  对于**名称**和**显示名称（可选）**字段，输入有意义的值。我输入的名称是**MyEmailTopic**，显示名称是**My Email Topic**。
+1.  对于**名称**和**显示名称（可选）**字段，输入有意义的值。我输入的名称是`MyEmailTopic`，显示名称是`My Email Topic`。
 
 1.  保持其他选项不变，向下滚动至页面底部，点击**创建主题**。
 
@@ -76,13 +76,13 @@
 
 ## 更多内容...
 
-在本示例中，我们选择了**电子邮件**协议。当前支持的协议有：**电子邮件**、**Amazon Kinesis 数据 Firehose**、**Amazon SQS**、**Amazon Lambda**、**电子邮件-JSON**、**HTTP**、**HTTPS**、**平台应用端点**和**SMS**。**电子邮件-JSON**与**电子邮件**协议不同。**电子邮件-JSON**协议将输出结构化为 JSON，适用于自动读取并处理电子邮件的服务。
+在本示例中，我们选择了**电子邮件**协议。当前支持的协议有：**电子邮件**、**Amazon Kinesis 数据 Firehose**、`Amazon SQS`、`Amazon SQS`、**电子邮件-JSON**、`Amazon SQS`、`Amazon SQS`、**平台应用端点**和`SMS`。**电子邮件-JSON**与**电子邮件**协议不同。**电子邮件-JSON**协议将输出结构化为 JSON，适用于自动读取并处理电子邮件的服务。
 
 ## 参见
 
 +   您可以在[`www.cloudericks.com/blog/getting-started-with-amazon-sns-service`](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)上阅读更多关于 SNS 的信息。
 
-+   我们还可以使用**简单电子邮件服务**（**SES**）来发送电子邮件通知，而不是使用 SNS。SES 是一种基于云的电子邮件服务，用于发送和接收电子邮件。它使用**简单邮件传输协议**（**SMTP**）接口，所有到 SMTP 端点的连接应使用**传输层安全性**（**TLS**）加密。SES 的默认端口是**25**，但为了避免**弹性计算云**（**EC2**）限制电子邮件流量，我们还可以使用端口**587**或**2587**。了解更多关于 SES 的信息，请访问 [`www.cloudericks.com/blog/getting-started-with-amazon-ses`](https://www.cloudericks.com/blog/getting-started-with-amazon-ses)。
++   我们还可以使用**简单电子邮件服务**（**SES**）来发送电子邮件通知，而不是使用 SNS。SES 是一种基于云的电子邮件服务，用于发送和接收电子邮件。它使用**简单邮件传输协议**（**SMTP**）接口，所有到 SMTP 端点的连接应使用**传输层安全性**（**TLS**）加密。SES 的默认端口是`25`，但为了避免**弹性计算云**（**EC2**）限制电子邮件流量，我们还可以使用端口`587`或`2587`。了解更多关于 SES 的信息，请访问 [`www.cloudericks.com/blog/getting-started-with-amazon-ses`](https://www.cloudericks.com/blog/getting-started-with-amazon-ses)。
 
 # 使用 CloudWatch 警报和度量标准
 
@@ -100,7 +100,7 @@
 
 我们可以使用现有的度量标准创建 CloudWatch 警报，步骤如下：
 
-1.  进入控制台中的**CloudWatch**服务。
+1.  进入控制台中的`CloudWatch`服务。
 
 1.  从左侧边栏展开**警报**，然后点击**处于警报状态**。
 
@@ -116,7 +116,7 @@
 
 1.  点击**按服务**。
 
-1.  选择**Amazon EC2**并点击**选择度量标准**。这将带我们到**指定度量标准和条件**页面。
+1.  选择`Amazon EC2`并点击**选择度量标准**。这将带我们到**指定度量标准和条件**页面。
 
 1.  在**指定度量标准和条件**页面的**度量标准**部分，使用以下屏幕截图所示的默认设置：
 
@@ -124,7 +124,7 @@
 
 图 7.2 – 估计费用度量标准配置
 
-1.  在**条件**部分，定义阈值为**1**，并使用其他字段的默认值。
+1.  在**条件**部分，定义阈值为`1`，并使用其他字段的默认值。
 
 ![图 7.3 – 度量标准的条件](img/B21384_07_3.jpg)
 
@@ -140,7 +140,7 @@
 
 1.  向下滚动并点击**下一步**。
 
-1.  为我们的警报提供**名称**和**警报描述（可选）**值。我已将名称设置为**MyEC2BillingAlarm**，并将警报描述设置为**My EC2 Billing Alarm**。点击**下一步**。
+1.  为我们的警报提供**名称**和**警报描述（可选）**值。我已将名称设置为`MyEC2BillingAlarm`，并将警报描述设置为`My EC2 Billing Alarm`。点击**下一步**。
 
 1.  查看详细信息，向下滚动，并点击**创建警报**。警报现在会出现在**警报**页面上。最初，警报的**状态**字段将显示为**数据不足**。该状态应在一段时间后更改为**正常**。确保我们有一个正在运行的 EC2 实例。当警报状态更改为**报警**状态时，我们应该会收到配置 SNS 的电子邮件通知。
 
@@ -192,11 +192,11 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 我们可以按如下方式创建 CloudWatch 日志组：
 
-1.  在控制台中进入 **CloudWatch** 服务。
+1.  在控制台中进入 `CloudWatch` 服务。
 
 1.  从左侧边栏展开 **日志**。
 
-1.  点击 **日志组** 并点击 **创建** **日志组**。
+1.  点击 **日志组** 并点击 **创建日志组**。
 
 1.  给日志组起一个能描述其用途的名称，其他设置保持默认，然后点击 **创建**。
 
@@ -216,7 +216,7 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 # 使用 EventBridge（以前是 CloudWatch 事件）
 
-在这个配方中，我们将学习如何创建并使用 **EventBridge** 服务（以前称为 **CloudWatch Events**）。CloudWatch 事件为我们提供了来自各种 AWS 资源的近实时系统事件流，我们可以创建规则来根据事件数据采取行动。
+在这个配方中，我们将学习如何创建并使用 `EventBridge` 服务（以前称为 **CloudWatch Events**）。CloudWatch 事件为我们提供了来自各种 AWS 资源的近实时系统事件流，我们可以创建规则来根据事件数据采取行动。
 
 ## 准备工作
 
@@ -230,21 +230,21 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 我们可以按如下方式使用 EventBridge（或 CloudWatch 事件）：
 
-1.  在控制台中进入 **Amazon EventBridge** 服务。
+1.  在控制台中进入 `Amazon EventBridge` 服务。
 
 1.  在左侧边栏，展开 **总线** 并点击 **规则**。点击 **创建规则**。
 
 提示
 
-如果你正在使用 CloudWatch 服务创建事件，你需要从控制台进入**Amazon CloudWatch**服务。在左侧边栏中，选择**事件**下的**规则**，你将被重定向到 EventBridge 控制台，以创建一个带有**CloudWatch 事件控制台已废弃**消息的规则，并使用 EventBridge 控制台创建和管理事件总线和规则。点击**创建规则**。其余步骤与创建事件相同。
+如果你正在使用 CloudWatch 服务创建事件，你需要从控制台进入`Amazon CloudWatch`服务。在左侧边栏中，选择**事件**下的**规则**，你将被重定向到 EventBridge 控制台，以创建一个带有**CloudWatch 事件控制台已废弃**消息的规则，并使用 EventBridge 控制台创建和管理事件总线和规则。点击**创建规则**。其余步骤与创建事件相同。
 
-1.  输入**my-sec-cb-rule-1**作为名称和一个可选的描述**我的安全 CB 规则 1**。将**事件总线**选择保持为**默认**。最后，选择**带事件模式的规则**作为规则类型。点击**下一步**。
+1.  输入`my-sec-cb-rule-1`作为名称和一个可选的描述**我的安全 CB 规则 1**。将**事件总线**选择保持为**默认**。最后，选择**带事件模式的规则**作为规则类型。点击**下一步**。
 
 ![图 7.5 – 规则详情](img/B21384_07_5.jpg)
 
 图 7.5 – 规则详情
 
-1.  在**事件源**下，选择**AWS 事件或 EventBridge** **合作伙伴事件**。
+1.  在**事件源**下，选择**AWS 事件或 EventBridge合作伙伴事件**。
 
 1.  在**示例事件 - 可选**下，保持**示例事件类型**为**AWS 事件**的默认选择，并且不选择任何示例事件。
 
@@ -252,13 +252,13 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 包含示例事件是可选的，但推荐这样做，因为它们可以帮助我们编写和测试事件模式或过滤条件。我们可以在创建事件模式时引用示例事件，或者使用它来测试事件模式是否匹配。
 
-1.  在**创建方式**下，选择**使用** **模式表单**。
+1.  在**创建方式**下，选择**使用模式表单**。
 
 1.  在**事件模式**下，按照*图 7* *.6*所示操作：
 
     1.  将**事件源**设置为**AWS 服务**。
 
-    1.  将**AWS 服务**设置为**EC2**。
+    1.  将**AWS 服务**设置为`EC2`。
 
     1.  将**事件类型**设置为**EC2 实例状态变更通知**。
 
@@ -288,13 +288,13 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 ## 它是如何工作的...
 
-在本教程中，我们选择了一个事件模式，并将服务名称设置为**EC2**，事件类型设置为**EC2 实例状态变化通知**，以匹配状态发生变化的 EC2 事件。除了事件模式，我们还可以选择**计划**，按计划调用我们的目标，就像使用 cron 作业一样。
+在本教程中，我们选择了一个事件模式，并将服务名称设置为`EC2`，事件类型设置为**EC2 实例状态变化通知**，以匹配状态发生变化的 EC2 事件。除了事件模式，我们还可以选择**计划**，按计划调用我们的目标，就像使用 cron 作业一样。
 
 我们配置为通知任何状态变化。我们也可以选择一个特定状态，比如**待处理**、**运行中**、**关机中**、**已停止**、**停止中**或**已终止**。我们还配置为将此规则应用于账户内的所有实例。我们也可以选择一个特定的 EC2 实例。我们选择了我们的 SNS 主题作为目标。当我们配置目标时，CloudWatch 事件将提供必要的权限，以便在规则触发时调用目标。
 
 ## 还有更多...
 
-在配置事件时，我们选择了**SNS 主题**作为目标。以下是目前可供我们选择的目标类型的完整列表：**Amazon Redshift**、**API Gateway**、**AppSync**、**Batch 作业队列**、**CloudWatch 日志组**、**CodeBuild 项目**、**CodePipeline**、**EBS 创建快照**、**EC2 ImageBuilder**、**EC2 重启实例 API 调用**、**ECS 任务**、**Firehose 流**、**Glue 工作流**、**Incident Manager 响应计划**、**Inspector 评估模板**、**Kinesis 流**、**Lambda 函数**、**SageMaker 管道**、**SNS 主题**、**SQS 队列**、**Step Functions 状态机**、**System Manager 自动化**、**System Manager OpsItem**、**System Manager 运行命令**。
+在配置事件时，我们选择了**SNS 主题**作为目标。以下是目前可供我们选择的目标类型的完整列表：`Amazon Redshift`、`Amazon Redshift`、`Amazon Redshift`、**Batch 作业队列**、**CloudWatch 日志组**、**CodeBuild 项目**、`Amazon Redshift`、**EBS 创建快照**、`Amazon Redshift`、**EC2 重启实例 API 调用**、**ECS 任务**、**Firehose 流**、**Glue 工作流**、**Incident Manager 响应计划**、**Inspector 评估模板**、**Kinesis 流**、**Lambda 函数**、**SageMaker 管道**、**SNS 主题**、**SQS 队列**、**Step Functions 状态机**、**System Manager 自动化**、`Amazon Redshift`、**System Manager 运行命令**。
 
 ## 另请参见
 
@@ -306,13 +306,13 @@ CloudWatch 警报有三种状态，分别是**数据不足**、**正常**和**�
 
 ## 准备工作
 
-我们需要一个有效的 AWS 账户。我将使用我们在*第一章*中创建的**awsseccb-sandbox-1**账户。
+我们需要一个有效的 AWS 账户。我将使用我们在*第一章*中创建的`awsseccb-sandbox-1`账户。
 
 ## 如何操作...
 
 我们可以按以下方式检查自动填充的事件日志：
 
-1.  登录到管理控制台，进入**CloudTrail**服务。
+1.  登录到管理控制台，进入`CloudTrail`服务。
 
 1.  点击左侧边栏的**事件历史**。这将带我们进入**事件历史**页面。
 
@@ -338,13 +338,13 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 在这个教程中，我们查询了来自控制台的日志。我们也可以通过命令行界面（CLI）查询日志。以下是一些用于查询 CloudTrail 日志的重要 CLI 命令：
 
-+   **aws cloudtrail lookup-events** 命令可用于查询过去 90 天内自动生成的事件日志。如果有更多结果，将返回分页令牌。
++   `aws cloudtrail lookup-events` 命令可用于查询过去 90 天内自动生成的事件日志。如果有更多结果，将返回分页令牌。
 
-+   我们可以通过指定 **max-items** 选项来限制 **aws cloudtrail lookup-events** 命令返回的项数；例如，**aws cloudtrail lookup-events --** **max-items 10**。
++   我们可以通过指定 `max-items` 选项来限制 `aws cloudtrail lookup-events` 命令返回的项数；例如，`aws cloudtrail lookup-events --max-items 10`。
 
-+   我们可以使用 **start-time** 和 **end-time** 参数指定日期范围；例如，**aws cloudtrail lookup-events --start-time 2019-01-12 --end-time 2019-10-12**。我们也可以通过这些参数指定小时、分钟和秒；例如，**--** **start-time 2019-01-12T00:30:45**。
++   我们可以使用 `start-time` 和 `end-time` 参数指定日期范围；例如，`aws cloudtrail lookup-events --start-time 2019-01-12 --end-time 2019-10-12`。我们也可以通过这些参数指定小时、分钟和秒；例如，`--start-time 2019-01-12T00:30:45`。
 
-+   我们可以使用 **lookup-attributes** 参数指定任何参数的值；例如，**aws cloudtrail lookup-events --** **lookupattributes "AttributeKey=Username,AttributeValue=i-07d6614e1dec5e537"**。
++   我们可以使用 `lookup-attributes` 参数指定任何参数的值；例如，`aws cloudtrail lookup-events --lookupattributes "AttributeKey=Username,AttributeValue=i-07d6614e1dec5e537"`。
 
 让我们再看一些与 CloudTrail 日志相关的重要概念：
 
@@ -362,7 +362,7 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 # 在 CloudTrail 中创建轨迹
 
-在本食谱中，我们将学习如何在**CloudTrail**中创建轨迹，并如何从关联的**S3 存储桶**中读取日志。默认情况下，**CloudTrail API 事件日志**会保存 90 天。数据事件，例如 S3 存储桶操作和 Lambda 调用，默认情况下也不会被记录。为了将日志保存超过 90 天，启用 S3 或 Lambda 的数据事件日志记录，并且在日志搜索中提供更多灵活性，我们可以创建一个轨迹，将数据记录到 S3 存储桶中。
+在本食谱中，我们将学习如何在`CloudTrail`中创建轨迹，并如何从关联的**S3 存储桶**中读取日志。默认情况下，**CloudTrail API 事件日志**会保存 90 天。数据事件，例如 S3 存储桶操作和 Lambda 调用，默认情况下也不会被记录。为了将日志保存超过 90 天，启用 S3 或 Lambda 的数据事件日志记录，并且在日志搜索中提供更多灵活性，我们可以创建一个轨迹，将数据记录到 S3 存储桶中。
 
 ## 准备工作
 
@@ -372,17 +372,17 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 我们可以按如下方式在 CloudTrail 中创建轨迹：
 
-1.  登录到控制台中的**CloudTrail**服务。
+1.  登录到控制台中的`CloudTrail`服务。
 
 1.  在左侧边栏点击**轨迹**。
 
 1.  点击**创建轨迹**。
 
-1.  提供一个**轨迹名称**值为**aws-sec-cb-events**。
+1.  提供一个**轨迹名称**值为`aws-sec-cb-events`。
 
 1.  保持**为我组织中的所有账户启用**未勾选。要启用此选项，我们需要登录到我们组织的管理账户。
 
-1.  在**存储位置**下，选择**创建一个新的** **S3 存储桶**。
+1.  在**存储位置**下，选择**创建一个新的S3 存储桶**。
 
 1.  对于**轨迹日志存储桶和文件夹**，输入一个新的 S3 存储桶的唯一名称，并指定一个文件夹（前缀）来存储您的日志。我们也可以使用自动填充的值。记住——存储桶名称必须是全局唯一的。
 
@@ -390,7 +390,7 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 1.  对于**日志文件验证**，选择**启用**。
 
-1.  不要为**SNS** **通知投递**选择**启用**。
+1.  不要为**SNS通知投递**选择**启用**。
 
 1.  不要为**CloudWatch 日志**选择**启用**。
 
@@ -410,9 +410,9 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 1.  在屏幕右下角点击**下一步**。
 
-1.  在**审查和创建**页面上，检查所有详细信息，然后点击**创建轨迹**。我们应该会看到**轨迹成功** **创建**的消息。
+1.  在**审查和创建**页面上，检查所有详细信息，然后点击**创建轨迹**。我们应该会看到**轨迹成功创建**的消息。
 
-1.  转到**轨迹**页面，点击我们轨迹的 S3 存储桶名称，进入我们轨迹的 S3 存储桶。我们也可以手动进入 S3 仪表板并访问此存储桶。我们应该会看到**CloudTrail**和**CloudTrail-Digest**文件夹。在这些文件夹中，我们应该会看到按区域划分的子文件夹。
+1.  转到**轨迹**页面，点击我们轨迹的 S3 存储桶名称，进入我们轨迹的 S3 存储桶。我们也可以手动进入 S3 仪表板并访问此存储桶。我们应该会看到`CloudTrail`和`CloudTrail-Digest`文件夹。在这些文件夹中，我们应该会看到按区域划分的子文件夹。
 
 1.  进入文件夹，直到我们看到实际的日志文件。
 
@@ -426,13 +426,13 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 图 7.13 – 使用 S3 Select 的查询
 
-1.  选择 **JSON** 作为格式，**行** 作为 JSON 内容类型，**GZIP** 作为压缩选项。
+1.  选择 `JSON` 作为格式，**行** 作为 JSON 内容类型，`GZIP` 作为压缩选项。
 
 ![图 7.14 – 输入设置](img/B21384_07_14.jpg)
 
 图 7.14 – 输入设置
 
-1.  对于 **输出设置**，选择 **JSON** 格式。
+1.  对于 **输出设置**，选择 `JSON` 格式。
 
 1.  向下滚动，我们现在应该看到 **结构化查询语言**（**SQL**）查询语句。根据需要修改 SQL，并点击 **运行 SQL 查询**。
 
@@ -458,7 +458,7 @@ AWS CloudTrail 是 Amazon 提供的一项服务，可以持续监控并记录 AW
 
 ## 还有更多内容...
 
-在这个食谱中，我们没有启用数据事件和 Insights 事件。数据事件记录诸如 S3 对象变更和 Lambda 函数调用等操作，提供详细的资源监控，但启用它们会增加日志记录成本。CloudTrail 允许记录数据事件选项，如**S3**、**DynamoDB**、**Lambda**、**Amazon Q 应用**、**Amazon Q 商业应用**、**Amazon Q 商业数据源**、**Amazon Q 商业索引**、**Amazon Verified Permissions**、**AWS AppConfig**、**AWS Cloud Map 命名空间**、**AWS Cloud Map 服务**、**B2B 数据交换**、**Bedrock 代理别名**、**Bedrock 知识库**、**Cassandra 表**、**CloudFront KeyValueStore**、**CloudTrail 渠道**、**CloudWatch 指标**、**CodeWhisperer**、**CodeWhisperer 自定义**、**Cognito 身份池**、**DynamoDB Streams**、**EBS 直接 API**、**EMR 写前日志工作区**、**FinSpace**、**Guard Duty 检测器**、**IoT 证书**、**IoT Greengrass 组件版本**、**IoT Greengrass 部署**、**IoT SiteWise 资产**、**IoT SiteWise 时间序列**、**IoT 设备**、**IoT TwinMaker 实体**、**IoT TwinMaker 工作区**、**Kendra 排名**、**Kinesis 流**、**Kinesis 流消费者**、**Kinesis 视频流**、**Lake Formation**、**机器学习 MIModel**、**托管区块链**、**托管区块链网络**、**托管区块链查询**、**医疗影像数据存储**、**Neptune 图数据库**、**用于 Active Directory 的私有 CA 连接器**、**用于 SCEP 的私有 CA 连接器**、**RDS 数据 API - 数据库集群**、**S3 访问点**、**S3 对象 Lambda**、**S3 Outposts**、**SageMaker 端点**、**SageMaker 特征存储**、**SageMaker 指标实验试验组件**、**SNS 平台端点**、**SNS 主题**、**SQS**、**Step Functions 状态机**、**供应链**、**SWF 域**、**系统管理器**、**系统管理器托管节点**、**瘦客户机设备**、**瘦客户机环境**、**Timestream 数据库**、**Timestream 表**和**X-Ray 跟踪**等。这些选项提供了对我们 AWS 资源活动的额外洞察。
+在这个食谱中，我们没有启用数据事件和 Insights 事件。数据事件记录诸如 S3 对象变更和 Lambda 函数调用等操作，提供详细的资源监控，但启用它们会增加日志记录成本。CloudTrail 允许记录数据事件选项，如`S3`、`S3`、`S3`、**Amazon Q 应用**、**Amazon Q 商业应用**、**Amazon Q 商业数据源**、**Amazon Q 商业索引**、`S3`、`S3`、**AWS Cloud Map 命名空间**、**AWS Cloud Map 服务**、**B2B 数据交换**、**Bedrock 代理别名**、**Bedrock 知识库**、**Cassandra 表**、`S3`、**CloudTrail 渠道**、**CloudWatch 指标**、`S3`、**CodeWhisperer 自定义**、**Cognito 身份池**、`S3`、**EBS 直接 API**、**EMR 写前日志工作区**、`S3`、**Guard Duty 检测器**、**IoT 证书**、**IoT Greengrass 组件版本**、**IoT Greengrass 部署**、**IoT SiteWise 资产**、**IoT SiteWise 时间序列**、**IoT 设备**、**IoT TwinMaker 实体**、**IoT TwinMaker 工作区**、**Kendra 排名**、**Kinesis 流**、**Kinesis 流消费者**、**Kinesis 视频流**、`S3`、**机器学习 MIModel**、**托管区块链**、**托管区块链网络**、**托管区块链查询**、**医疗影像数据存储**、**Neptune 图数据库**、**用于 Active Directory 的私有 CA 连接器**、**用于 SCEP 的私有 CA 连接器**、**RDS 数据 API - 数据库集群**、**S3 访问点**、**S3 对象 Lambda**、`S3`、**SageMaker 端点**、**SageMaker 特征存储**、**SageMaker 指标实验试验组件**、**SNS 平台端点**、**SNS 主题**、`S3`、**Step Functions 状态机**、**供应链**、**SWF 域**、**系统管理器**、**系统管理器托管节点**、**瘦客户机设备**、**瘦客户机环境**、**Timestream 数据库**、**Timestream 表**和**X-Ray 跟踪**等。这些选项提供了对我们 AWS 资源活动的额外洞察。
 
 Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API 调用的异常使用模式或潜在的安全威胁。Insight 事件不能单独选择，必须与管理事件配对，以确保对 AWS API 活动的全面日志记录和上下文分析，服务于安全、合规和操作目的。
 
@@ -470,7 +470,7 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 # 使用 Athena 查询 S3 中的 CloudTrail 日志
 
-在这个配方中，我们将学习如何使用**Amazon Athena**查询 CloudTrail 日志。使用 Athena 查询 CloudTrail 日志为我们提供了更大的灵活性。例如，当多个账户将日志发送到 CloudTrail 的 S3 桶时，我们无法在 CloudTrail 控制台中基于账户 ID 进行筛选。然而，我们可以使用 Athena 来基于账户 ID 查询 CloudTrail 的 S3 桶中的日志。
+在这个配方中，我们将学习如何使用`Amazon Athena`查询 CloudTrail 日志。使用 Athena 查询 CloudTrail 日志为我们提供了更大的灵活性。例如，当多个账户将日志发送到 CloudTrail 的 S3 桶时，我们无法在 CloudTrail 控制台中基于账户 ID 进行筛选。然而，我们可以使用 Athena 来基于账户 ID 查询 CloudTrail 的 S3 桶中的日志。
 
 ## 准备工作
 
@@ -482,9 +482,9 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 +   如果我们是 Athena 新手，在运行查询之前，我们需要设置一个查询结果存储位置在 Amazon S3，步骤如下：
 
-    1.  为查询结果创建一个桶。我将我的桶命名为**aws-sec-cb2-query-results**。为您的桶选择一个唯一的名称。
+    1.  为查询结果创建一个桶。我将我的桶命名为`aws-sec-cb2-query-results`。为您的桶选择一个唯一的名称。
 
-    1.  转到管理控制台中的**Athena**服务。
+    1.  转到管理控制台中的`Athena`服务。
 
     1.  转到**查询编辑器标签**。如果我们是 Athena 新手，我们应该会看到一个警告，提示**在运行第一次查询之前，您需要在 Amazon S3 中设置查询结果位置**。点击**编辑设置**。
 
@@ -500,9 +500,9 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 我们可以按照以下步骤设置 Athena 并查询 CloudTrail 日志：
 
-1.  登录到管理控制台中的**CloudTrail**服务。
+1.  登录到管理控制台中的`CloudTrail`服务。
 
-1.  点击左侧边栏中的**事件历史**。这将带我们进入**事件** **历史**页面。
+1.  点击左侧边栏中的**事件历史**。这将带我们进入**事件历史**页面。
 
 1.  点击**创建 Athena 表**，如我们在*图 7* *9*中看到的。
 
@@ -514,19 +514,19 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 1.  向下滚动并点击**创建表**。我们应该看到一个成功消息，表已经创建。
 
-1.  现在，转到管理控制台中的**Athena**服务。
+1.  现在，转到管理控制台中的`Athena`服务。
 
 1.  转到**查询编辑器**标签。我们应该在左侧的**表**下看到我们的表，并在右侧看到查询编辑器窗口。表在从 CloudTrail 仪表板启动创建后，可能需要一些时间才能在 Athena 仪表板上显示。我们可以使用左侧边栏中的刷新图标手动刷新表格列表。
 
 1.  点击我们表格旁边的三个点按钮，然后点击**预览表**。将创建一个示例查询，我们可以修改它以满足我们的需求。
 
-    我在查询中将限制设置为**2**，如下所示：**SELECT * FROM "default"."cloudtrail_logs_aws_cloudtrail_logs_370598287390_66c52071"** **limit 2;**。
+    我在查询中将限制设置为`2`，如下所示：`SELECT * FROM "default"."cloudtrail_logs_aws_cloudtrail_logs_370598287390_66c52071"limit 2;`。
 
 1.  点击**运行**。
 
 1.  点击页面右上方的**下载结果**图标，以 CSV 格式下载结果。
 
-    如果我们访问为存储结果创建的 S3 存储桶，在我的案例中是 **aws-sec-cb2-query-results**，我们应该能在那里看到保存的查询结果。
+    如果我们访问为存储结果创建的 S3 存储桶，在我的案例中是 `aws-sec-cb2-query-results`，我们应该能在那里看到保存的查询结果。
 
 ## 它是如何工作的...
 
@@ -578,7 +578,7 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 我们可以按照以下步骤将 CloudWatch 与现有的跟踪集成：
 
-1.  进入管理控制台中的**CloudTrail**服务。
+1.  进入管理控制台中的`CloudTrail`服务。
 
 1.  从左侧边栏点击**跟踪**。
 
@@ -586,15 +586,15 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 1.  向下滚动到**CloudWatch 日志**部分，并点击**编辑**。
 
-1.  对于**CloudWatch Logs**，选择**启用**复选框。
+1.  对于`CloudWatch Logs`，选择**启用**复选框。
 
-1.  对于**日志组**，选择**新建**并保持日志组名称不变，在我的案例中为**aws-cloudtrail-logs-370598287390-b9277b0a**。我们也可以通过**现有**选项使用现有日志组。
+1.  对于**日志组**，选择**新建**并保持日志组名称不变，在我的案例中为`aws-cloudtrail-logs-370598287390-b9277b0a`。我们也可以通过**现有**选项使用现有日志组。
 
 1.  对于**IAM 角色**，选择**新建**，提供角色名称，然后点击**保存更改**。
 
 1.  从[`s3-us-west-2.amazonaws.com/awscloudtrail/cloudwatch-alarms-for-cloudtrail-api-activity/CloudWatch_Alarms_for_CloudTrail_API_Activity.json`](https://www.cloudericks.com/blog/getting-started-with-amazon-sns-service)下载 CloudFormation 模板并保存在本地。
 
-1.  进入管理控制台中的**CloudFormation**服务并点击**创建堆栈**。
+1.  进入管理控制台中的`CloudFormation`服务并点击**创建堆栈**。
 
 1.  对于**准备模板**，请选择**选择现有模板**选项。
 
@@ -620,15 +620,15 @@ Insight 事件日志侧重于检测与修改或管理 AWS 资源相关的 API �
 
 1.  在 CloudFormation 堆栈成功创建后，我们将收到一封电子邮件，要求我们验证电子邮件地址。要开始接收警报激活时的电子邮件通知，请点击电子邮件中的**确认订阅**链接。
 
-1.  如果我们进入**CloudWatch**中的**警报**页面，我们将能够查看新创建的警报。我们可以等待警报状态变为**OK**或**ALARM**，并操作这些警报，以更好地了解它们。
+1.  如果我们进入`CloudWatch`中的**警报**页面，我们将能够查看新创建的警报。我们可以等待警报状态变为`OK`或`ALARM`，并操作这些警报，以更好地了解它们。
 
 ## 它是如何工作的...
 
 在这个教程中，我们通过设置 CloudTrail 将 CloudWatch 与 CloudTrail 集成。CloudTrail 请求我们授权将与我们账户中的 API 活动相关的 CloudTrail 事件传递到我们的日志组中。我们从控制台允许了这一操作。授予了以下权限：
 
-+   **CreateLogStream**，在我们指定的日志组中创建一个日志流
++   `CreateLogStream`，在我们指定的日志组中创建一个日志流
 
-+   **PutLogEvents**，将 CloudTrail 事件传递到日志流
++   `PutLogEvents`，将 CloudTrail 事件传递到日志流
 
 我们使用了 AWS 提供的 CloudFormation 模板来为与安全性和网络相关的 API 活动设置了一些 CloudWatch 警报。如果我们删除 CloudFormation 堆栈，所有的警报也会被删除。
 
@@ -660,7 +660,7 @@ AWS 使用 SNS 发送通知，并为我们创建了 SNS 主题订阅。我们需
 
 首先，我们将首次设置 AWS Config，然后我们将看到如何使用 AWS Config。让我们开始吧：
 
-1.  当我们第一次登录管理控制台中的**AWS Config**服务时，我们将看到一个**入门**页面。点击**开始使用**，我们将进入**设置**页面。
+1.  当我们第一次登录管理控制台中的`AWS Config`服务时，我们将看到一个**入门**页面。点击**开始使用**，我们将进入**设置**页面。
 
 1.  在**录制方式**部分，对于**录制策略**，选择**所有资源类型，带有**可自定义的覆盖**。
 
@@ -696,21 +696,21 @@ AWS 使用 SNS 发送通知，并为我们创建了 SNS 主题订阅。我们需
 
 1.  在页面底部，点击**下一步**。
 
-1.  在**AWS 托管规则**页面，搜索并选择**iam-user-mfa-enabled**规则。点击**下一步**。如果需要，我们可以添加更多规则。完成设置过程后，我们也可以添加规则。
+1.  在**AWS 托管规则**页面，搜索并选择`iam-user-mfa-enabled`规则。点击**下一步**。如果需要，我们可以添加更多规则。完成设置过程后，我们也可以添加规则。
 
 1.  在**审核**页面，审核更改并点击右下角的**确认**。我们将被重定向到 AWS Config 仪表板。在仪表板中，我们可以看到**按合规性评分的符合性包**、**合规状态**、**按非合规资源计数的非合规规则**、**资源清单**、**AWS Config 使用指标**和**AWS Config 成功指标**。
 
-1.  如果我们有一个没有启用 MFA 的 IAM 用户，如在*准备工作*部分讨论的那样，我们应该看到该用户不符合我们的**iam-user-mfa-enabled**规则。
+1.  如果我们有一个没有启用 MFA 的 IAM 用户，如在*准备工作*部分讨论的那样，我们应该看到该用户不符合我们的`iam-user-mfa-enabled`规则。
 
     请注意，非合规资源在仪表板中显示可能需要一些时间。我们还可以对规则执行以下操作：**管理修复**、**重新评估**、**删除结果**和**删除规则**。
 
 ## 工作原理...
 
-在这个教程中，我们在我们的账户上设置了 AWS Config。我们选择了**记录此区域中支持的所有资源**和**包括全局资源**（例如，AWS IAM 资源），以记录所有区域的所有资源。我们也可以通过取消勾选**记录此区域中支持的所有资源**，然后在**特定** **类型**字段中选择我们想要记录的资源，来配置特定资源的记录。
+在这个教程中，我们在我们的账户上设置了 AWS Config。我们选择了**记录此区域中支持的所有资源**和**包括全局资源**（例如，AWS IAM 资源），以记录所有区域的所有资源。我们也可以通过取消勾选**记录此区域中支持的所有资源**，然后在**特定类型**字段中选择我们想要记录的资源，来配置特定资源的记录。
 
 我们启用了 SNS 通知，通过从我们的账户选择一个带有电子邮件订阅的 SNS 主题来接收电子邮件通知。我们还可以选择另一个账户的 SNS 主题，方法是选择**从另一个账户选择主题**选项。在**AWS Config 角色**部分，我们选择了**创建 AWS Config 服务链接角色**。该角色授予 Config 只读访问权限，以便我们记录配置信息。该角色还授予将信息发送到 S3 和 SNS 的权限。
 
-在这里，我们选择了**iam-user-mfa-enabled**规则，这是一个周期性规则。周期性规则定期运行，而非周期性规则（基于配置更改的规则）会在关联的配置发生更改时立即运行。
+在这里，我们选择了`iam-user-mfa-enabled`规则，这是一个周期性规则。周期性规则定期运行，而非周期性规则（基于配置更改的规则）会在关联的配置发生更改时立即运行。
 
 ## 还有更多内容...
 
@@ -732,11 +732,11 @@ AWS 使用 SNS 发送通知，并为我们创建了 SNS 主题订阅。我们需
 
 创建自定义规则的步骤可以总结如下：
 
-1.  创建一个 IAM 角色，该角色可以被 Lambda 使用，并具有所需的权限。为了向 AWS Config 报告，我们需要提供**AWSConfigRulesExecutionRole**。为了将日志发送到 CloudWatch，我们需要添加**AWSLambdaBasicExecutionRole**。最后，我们需要授予它访问它将要监控的服务的权限（例如，访问 S3 时需要**AmazonS3ReadOnlyAccess**）。
+1.  创建一个 IAM 角色，该角色可以被 Lambda 使用，并具有所需的权限。为了向 AWS Config 报告，我们需要提供`AWSConfigRulesExecutionRole`。为了将日志发送到 CloudWatch，我们需要添加`AWSLambdaBasicExecutionRole`。最后，我们需要授予它访问它将要监控的服务的权限（例如，访问 S3 时需要**AmazonS3ReadOnlyAccess**）。
 
 1.  通过选择我们在上一步中创建的 IAM 角色，并使用任何支持的编程语言，来创建一个 Lambda。
 
-1.  在 Lambda 中编写一些代码，以评估我们正在监控的服务参数（例如，S3 存储桶属性），每次评估后更新一个**ResultToken**对象，并将一组**ResultToken**对象返回给 Config。**ResultToken**对象应包含以下信息：**ComplianceResourceType**（例如，**AWS::S3::Bucket**），**ComplianceResourceId**（例如，存储桶名称），**ComplianceType**（**COMPLIANT**或**NON_COMPLIANT**）和**OrderingTimestamp**。
+1.  在 Lambda 中编写一些代码，以评估我们正在监控的服务参数（例如，S3 存储桶属性），每次评估后更新一个`ResultToken`对象，并将一组`ResultToken`对象返回给 Config。`ResultToken`对象应包含以下信息：`ComplianceResourceType`（例如，**AWS::S3::Bucket**），`ComplianceResourceId`（例如，存储桶名称），`ComplianceType`（`COMPLIANT`或**NON_COMPLIANT**）和`OrderingTimestamp`。
 
 1.  在 Config 控制台中，我们可以进入**规则**，然后选择**添加规则**，并选择**添加自定义规则**。当你执行此操作时，相关的屏幕名称可能会有所不同。
 

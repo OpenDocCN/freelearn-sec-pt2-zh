@@ -26,11 +26,11 @@
 
 +   我们需要一个有效的 AWS 账户来完成本章的大多数食谱，某些食谱可能需要多个 AWS 账户（如各自食谱中所提及）。
 
-+   基础的 AWS 核心概念知识，以及对**AWS 管理控制台**、**AWS CLI**，尤其是 Amazon S3 的使用熟练度，将对我们有很大帮助。如果你是 S3 服务的新手，可以参考以下网址了解如何开始使用 S3：[`www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud`](https://www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud)
++   基础的 AWS 核心概念知识，以及对**AWS 管理控制台**、`AWS CLI`，尤其是 Amazon S3 的使用熟练度，将对我们有很大帮助。如果你是 S3 服务的新手，可以参考以下网址了解如何开始使用 S3：[`www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud`](https://www.cloudericks.com/blog/getting-started-with-amazon-s3-on-aws-cloud)
 
-+   如果我们使用 IAM Identity Center 来管理用户而不是直接使用 IAM，掌握**IAM Identity Center**的知识，尤其是*第一章*和*第二章*的内容，会非常有帮助。
++   如果我们使用 IAM Identity Center 来管理用户而不是直接使用 IAM，掌握`IAM Identity Center`的知识，尤其是*第一章*和*第二章*的内容，会非常有帮助。
 
-+   为了执行 AWS CLI 命令，我们需要安装**AWS CLI v2**。如果我们使用 IAM Identity Center 来管理用户，则还需要根据每个食谱的需要使用 AWS IAM Identity Center 进行配置。或者，如果我们使用 IAM 用户来执行任何食谱，则需要使用其**访问密钥**和**秘密访问密钥**来配置 CLI 配置文件。
++   为了执行 AWS CLI 命令，我们需要安装`AWS CLI v2`。如果我们使用 IAM Identity Center 来管理用户，则还需要根据每个食谱的需要使用 AWS IAM Identity Center 进行配置。或者，如果我们使用 IAM 用户来执行任何食谱，则需要使用其**访问密钥**和**秘密访问密钥**来配置 CLI 配置文件。
 
 重要提示
 
@@ -42,17 +42,17 @@
 
 之前，我们探讨了如何创建 IAM 策略。IAM 策略通常用于跨 AWS 服务的用户级权限，而桶策略则特定于单个 S3 桶，并提供更细粒度的桶级控制。例如，桶策略独特地支持授予匿名用户访问权限，默认强制**服务器端加密**（**SSE**），并根据源 IP 或 VPC 限制访问。
 
-在本食谱中，我们将首先通过管理控制台使用策略生成器创建一个桶策略，允许每个人执行**ListBucket**和**GetObject**操作。然后，我们将通过 AWS CLI 创建一个桶策略，提供对特定 IAM 用户的访问权限。您可以使用管理控制台或 AWS CLI 中的任何一种策略；但是，我想展示这两种方法的实现。我还将在本食谱的*更多内容*部分提供主类型的示例。
+在本食谱中，我们将首先通过管理控制台使用策略生成器创建一个桶策略，允许每个人执行`ListBucket`和`GetObject`操作。然后，我们将通过 AWS CLI 创建一个桶策略，提供对特定 IAM 用户的访问权限。您可以使用管理控制台或 AWS CLI 中的任何一种策略；但是，我想展示这两种方法的实现。我还将在本食谱的*更多内容*部分提供主类型的示例。
 
 ## 准备工作
 
 我们需要以下内容才能成功完成此操作：
 
-+   一个有效的 AWS 账户至关重要。我将使用我们在*第一章*中创建的**awsseccb-sandbox-1**账户。不过，我将不使用 AWS Organizations 或 IAM 身份中心的任何功能。
++   一个有效的 AWS 账户至关重要。我将使用我们在*第一章*中创建的`awsseccb-sandbox-1`账户。不过，我将不使用 AWS Organizations 或 IAM 身份中心的任何功能。
 
-+   具有**AdministratorAccess**权限的**awsseccb_admin1**用户也很重要。
++   具有`AdministratorAccess`权限的`awsseccb_admin1`用户也很重要。
 
-+   我们还需要一个 S3 桶和其中的一个文件。我将使用名为**awsseccbbucketpolicy**的桶和名为**image-cloudericks.png**的文件。请将它们替换为您的桶名称和文件名。S3 桶应配置为**取消选中所有公共访问**，特别是与桶策略相关的设置。我们可以在创建桶时进行此设置，如*图 4.1*所示。对于其余设置，请保持默认值，在本书编写时，默认设置如下：
++   我们还需要一个 S3 桶和其中的一个文件。我将使用名为`awsseccbbucketpolicy`的桶和名为`image-cloudericks.png`的文件。请将它们替换为您的桶名称和文件名。S3 桶应配置为**取消选中所有公共访问**，特别是与桶策略相关的设置。我们可以在创建桶时进行此设置，如*图 4.1*所示。对于其余设置，请保持默认值，在本书编写时，默认设置如下：
 
     +   已选择**禁用 ACL（推荐）**
 
@@ -68,15 +68,15 @@
 
 图 4.1 – 取消选中桶策略的设置
 
-+   通过浏览器访问桶的**https://<bucket-name>.s3.amazonaws.com** 桶 URL，替换 **<bucket-name>** 为你的桶名称（例如，[`seccbbucket.s3.amazonaws.com/`](https://seccbbucket.s3.amazonaws.com/) ），验证桶不允许公开列出。
++   通过浏览器访问桶的`https://<bucket-name>.s3.amazonaws.com` 桶 URL，替换 `<bucket-name>` 为你的桶名称（例如，[`seccbbucket.s3.amazonaws.com/`](https://seccbbucket.s3.amazonaws.com/) ），验证桶不允许公开列出。
 
 ![图 4.2 – 在开始操作前验证桶的访问权限](img/B21384_04_2.jpg)
 
 图 4.2 – 在开始操作前验证桶的访问权限
 
-+   如在*从 CLI 授予 IAM 用户 ListBucket 访问权限*部分所述，若要使用 IAM 用户作为主体，我们需要一个没有权限的 IAM 用户，名为 **awsseccb_user1**。
++   如在*从 CLI 授予 IAM 用户 ListBucket 访问权限*部分所述，若要使用 IAM 用户作为主体，我们需要一个没有权限的 IAM 用户，名为 `awsseccb_user1`。
 
-+   如果我们希望执行涉及 CLI 命令的步骤，还需要为执行 CLI 命令设置一个环境，包含两个 CLI 配置文件：**AwsSecCbAdmin** 和 **AwsSecCbUser**，分别对应 **awsseccb_admin1** 和 **awsseccb_user1** 用户，具体配置请参考本章的*技术要求*部分。
++   如果我们希望执行涉及 CLI 命令的步骤，还需要为执行 CLI 命令设置一个环境，包含两个 CLI 配置文件：`AwsSecCbAdmin` 和 `AwsSecCbUser`，分别对应 `awsseccb_admin1` 和 `awsseccb_user1` 用户，具体配置请参考本章的*技术要求*部分。
 
 接下来，我们将使用桶策略授予每个人列出我们桶内容的权限，然后重试此步骤。
 
@@ -88,21 +88,21 @@
 
 我们可以通过以下方式授予公开访问权限以列出桶的内容：
 
-1.  进入控制台中的**S3**服务，点击我们的桶名称，转到**权限**选项卡，然后点击**桶策略**。
+1.  进入控制台中的`S3`服务，点击我们的桶名称，转到**权限**选项卡，然后点击**桶策略**。
 
 1.  点击**编辑**，然后点击右上角的**策略生成器**。
 
 1.  在**AWS 策略生成器**页面中，选择或输入以下数据：
 
-    1.  对于**选择策略类型**，选择 **S3** **桶策略**。
+    1.  对于**选择策略类型**，选择 **S3桶策略**。
 
     1.  对于**效果**，选择**允许**。
 
-    1.  对于**主体**，输入 ***** 值。
+    1.  对于**主体**，输入 `*` 值。
 
-    1.  对于**AWS 服务**，将选择 **Amazon S3**。
+    1.  对于**AWS 服务**，将选择 `Amazon S3`。
 
-    1.  对于**操作**，选择 **ListBucket**。
+    1.  对于**操作**，选择 `ListBucket`。
 
     1.  对于**Amazon 资源名称（ARN）**，从**编辑桶策略**页面复制并粘贴桶 ARN（例如，**arn:aws:s3:::seccbbucket**）。
 
@@ -128,7 +128,7 @@
 
 图 4.5 – 列出桶的内容
 
-1.  在桶策略编辑器中，将 **s3:ListBucket** 改为 **s3:GetObject**，并在资源的末尾添加 **/*（例如，**"Resource": "arn:aws:s3:::seccbbucket/*"**），然后点击**保存更改**。
+1.  在桶策略编辑器中，将 `s3:ListBucket` 改为 `s3:GetObject`，并在资源的末尾添加 **/*（例如，**"Resource": "arn:aws:s3:::seccbbucket/*"**），然后点击**保存更改**。
 
 1.  从存储桶访问对象 URL，并将其粘贴到浏览器中。现在我们应该能够成功地检索对象了：
 
@@ -136,17 +136,17 @@
 
 图 4.6 – 从存储桶访问图像
 
-如果我们将资源更改为 **arn:aws:s3:::seccbbucket/***，并且没有指定对象操作（如 **s3:GetObject**），我们将收到一个错误，提示该操作不适用于任何资源。这是因为，当我们在存储桶上添加任何前缀（如 ***** ）时，它被视为对象操作；否则，它被视为存储桶级别的操作。
+如果我们将资源更改为 `arn:aws:s3:::seccbbucket/`*，并且没有指定对象操作（如 **s3:GetObject**），我们将收到一个错误，提示该操作不适用于任何资源。这是因为，当我们在存储桶上添加任何前缀（如 `*` ）时，它被视为对象操作；否则，它被视为存储桶级别的操作。
 
 接下来，我们将看看如何通过 CLI 为 IAM 用户授予 ListBucket 访问权限。
 
 ### 从 CLI 为 IAM 用户授予 ListBucket 访问权限
 
-在前一节中，我们使用了一个允许所有人访问的策略，通过将 **Principal** 设置为 ***** 来实现。在本节中，我们将使用一个允许特定 IAM 用户访问的存储桶策略，以演示如何通过 CLI 创建存储桶策略。让我们开始吧：
+在前一节中，我们使用了一个允许所有人访问的策略，通过将 `Principal` 设置为 `*` 来实现。在本节中，我们将使用一个允许特定 IAM 用户访问的存储桶策略，以演示如何通过 CLI 创建存储桶策略。让我们开始吧：
 
 1.  如果你在前一节中跟着操作，请删除该策略，并确保你没有访问列表存储桶的权限。
 
-1.  创建一个存储桶策略，允许我们的 **awsseccb_user1** 用户访问该对象，并将其保存为 **bucket-policy-allow-list.json**：
+1.  创建一个存储桶策略，允许我们的 `awsseccb_user1` 用户访问该对象，并将其保存为 `bucket-policy-allow-list.json`：
 
     ```
      {
@@ -168,7 +168,7 @@
     }
     ```
 
-    请记得将我的 S3 存储桶名称 **awsseccbbucketpolicy** 替换为你的存储桶名称，将我的 AWS 账户 ID **207849759248** 替换为你自己的 AWS 账户 ID。
+    请记得将我的 S3 存储桶名称 `awsseccbbucketpolicy` 替换为你的存储桶名称，将我的 AWS 账户 ID `207849759248` 替换为你自己的 AWS 账户 ID。
 
 1.  将策略附加到存储桶：
 
@@ -176,7 +176,7 @@
     aws s3api put-bucket-policy --bucket awsseccbbucketpolicy --policy file://bucket-policy-allow-list.json --profile AwsSecCbAdmin
     ```
 
-1.  使用为 **awsseccb_user1** 用户创建的 **AwsSecCbUser** 配置文件，列出存储桶的内容，使用如下截图所示的 **aws s3 ls bucketname** 命令：
+1.  使用为 `awsseccb_user1` 用户创建的 `AwsSecCbUser` 配置文件，列出存储桶的内容，使用如下截图所示的 `aws s3 ls bucketname` 命令：
 
 ![图 4.7 – 使用 CLI 列出存储桶内容](img/B21384_04_7.jpg)
 
@@ -186,11 +186,11 @@
 
 ## 它是如何工作的…
 
-在本食谱中，我们创建了 S3 存储桶策略。一个存储桶策略声明可以包含以下组件：**Sid**、**Principal**、**Effect**、**Action**、**Resource** 和 **Condition**。除了 Principal 之外，这些都与 IAM 策略相同，我们在*第二章*的《创建客户管理的 IAM 策略》一节中探讨过它们。
+在本食谱中，我们创建了 S3 存储桶策略。一个存储桶策略声明可以包含以下组件：`Sid`、`Sid`、`Sid`、`Sid`、`Resource` 和 `Condition`。除了 Principal 之外，这些都与 IAM 策略相同，我们在*第二章*的《创建客户管理的 IAM 策略》一节中探讨过它们。
 
-存储桶策略的 Principal 组件可以是帐户、用户、角色或所有人（由 ***** 表示）。它可以包含资源的 ARN（通过 ARN 元素指定）或规范 ID（通过 **CanonicalUser** 元素指定）。有关 Principal 的更多细节，请参见本食谱的 *更多信息* 部分。
+存储桶策略的 Principal 组件可以是帐户、用户、角色或所有人（由 `*` 表示）。它可以包含资源的 ARN（通过 ARN 元素指定）或规范 ID（通过 `CanonicalUser` 元素指定）。有关 Principal 的更多细节，请参见本食谱的 *更多信息* 部分。
 
-对于存储桶策略，资源是存储桶或对象，并使用存储桶 ARN 表示。存储桶 ARN 应该是 **arn:aws:s3:::bucket_name** 形式。对象资源表示为 **arn:aws:s3:::bucket_name/key_name** 形式。为了表示存储桶中的所有对象，我们可以使用 **arn:aws:s3:::bucket_name/*** 。我们可以将每个存储桶中的每个资源表示为 **arn:aws:s3:::*** 。
+对于存储桶策略，资源是存储桶或对象，并使用存储桶 ARN 表示。存储桶 ARN 应该是 `arn:aws:s3:::bucket_name` 形式。对象资源表示为 `arn:aws:s3:::bucket_name/key_name` 形式。为了表示存储桶中的所有对象，我们可以使用 `arn:aws:s3:::bucket_name/`* 。我们可以将每个存储桶中的每个资源表示为 `arn:aws:s3:::`* 。
 
 ## 还有更多内容...
 
@@ -277,11 +277,11 @@
 
 +   目前，我们大约有 50 个存储桶策略操作，包括适用于对象的操作（例如，**s3:PutObject**），适用于存储桶的操作（例如，**s3:CreateBucket**），以及适用于存储桶子资源的操作（例如，**PutBucketAcl**）。
 
-+   当前具有权限的存储桶子资源列表包括 **BucketPolicy**、**BucketWebsite**、**AccelerateConfiguration**、**BucketAcl**、**BucketCORS**、**BucketLocation**、**BucketLogging**、**BucketNotification**、**BucketObjectLockConfiguration**、**BucketPolicyStatus**、**BucketPublicAccessBlock**、**BucketRequestPayment**、**BucketTagging**、**BucketVersioning**、**EncryptionConfiguration**、**InventoryConfiguration**、**LifecycleConfiguration**、**MetricsConfiguration**、**ReplicationConfiguration** 和 **AnalyticsConfiguration**。
++   当前具有权限的存储桶子资源列表包括 `BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`BucketPolicy`、`ReplicationConfiguration` 和 `AnalyticsConfiguration`。
 
 +   我们不能在 S3 存储桶策略中指定 IAM 组作为主体。如果我们添加一个组而不是用户，则会出现错误：**策略中的无效主体**。
 
-+   以下是一些可在策略中的条件中使用的 S3 特定条件键：**s3:x-amz-acl**，**s3:x-amz-copy-source**，**s3:x-amz-metadatadirective**，**s3:x-amz-server-side-encryption**，**s3:VersionId**，**s3:LocationConstraint**，**s3:delimiter**，**s3:max-keys**，**s3:prefix**，**s3:xamz-server-side-encryption-aws-kms-key-id**，**s3:ExistingObjectTag/**，**s3:RequestObjectTagKeys**，**s3:RequestObjectTag/**，**s3:object-lock-remainingretention-days**，**s3:object-lock-mode**，**s3:object-lock-retain-untildate**，和**s3:object-lock-legal-hold**。
++   以下是一些可在策略中的条件中使用的 S3 特定条件键：`s3:x-amz-acl`，`s3:x-amz-copy-source`，`s3:x-amz-metadatadirective`，`s3:x-amz-server-side-encryption`，`s3:VersionId`，`s3:LocationConstraint`，`s3:delimiter`，`s3:max-keys`，`s3:prefix`，`s3:xamz-server-side-encryption-aws-kms-key-id`，`s3:ExistingObjectTag/`，`s3:RequestObjectTagKeys`，`s3:RequestObjectTag/`，`s3:object-lock-remainingretention-days`，`s3:object-lock-mode`，`s3:object-lock-retain-untildate`，和`s3:object-lock-legal-hold`。
 
 ## 另请参见
 
@@ -299,13 +299,13 @@
 
 我们需要以下内容才能成功完成此食谱：
 
-+   一个有效的 AWS 账户是必需的。我将使用我们在*第一章*中创建的**awsseccb-sandbox-1**账户。但是，我不会使用 AWS Organizations 或 IAM Identity Center 的任何功能。
++   一个有效的 AWS 账户是必需的。我将使用我们在*第一章*中创建的`awsseccb-sandbox-1`账户。但是，我不会使用 AWS Organizations 或 IAM Identity Center 的任何功能。
 
-+   一个具有**AdministratorAccess**权限的**awsseccb_admin1**用户。
++   一个具有`AdministratorAccess`权限的`awsseccb_admin1`用户。
 
-+   如果我们想按照本章中 CLI 命令的步骤操作，我们需要设置一个环境，用于执行具有两个 CLI 配置文件的 CLI 命令，分别是**AwsSecCbAdmin**和**AwsSecCbUser**，用于**awsseccb_admin1**和**awsseccb_user1**用户（分别）。
++   如果我们想按照本章中 CLI 命令的步骤操作，我们需要设置一个环境，用于执行具有两个 CLI 配置文件的 CLI 命令，分别是`AwsSecCbAdmin`和`AwsSecCbUser`，用于`awsseccb_admin1`和`awsseccb_user1`用户（分别）。
 
-+   我们还需要一个 S3 桶以及其中的一个文件。我将使用一个名为**awsseccbacldemo**的桶，其中有一个名为**image-cloudericks.png**的文件。请将其替换为你的桶名和文件名。该 S3 桶应该配置为启用 ACL。我们可以在创建桶时进行设置，如*图 4.8*所示。另请确保**阻止所有公共访问**选项未勾选，尤其是在涉及 ACL 设置时。我们可以在创建桶时进行设置，如*图 4.9*所示。对于其余设置，保持默认设置即可，在撰写本书时，默认设置如下：
++   我们还需要一个 S3 桶以及其中的一个文件。我将使用一个名为`awsseccbacldemo`的桶，其中有一个名为`image-cloudericks.png`的文件。请将其替换为你的桶名和文件名。该 S3 桶应该配置为启用 ACL。我们可以在创建桶时进行设置，如*图 4.8*所示。另请确保**阻止所有公共访问**选项未勾选，尤其是在涉及 ACL 设置时。我们可以在创建桶时进行设置，如*图 4.9*所示。对于其余设置，保持默认设置即可，在撰写本书时，默认设置如下：
 
     +   **桶版本控制**设置为**禁用**
 
@@ -335,7 +335,7 @@
 
 执行以下步骤以允许所有人列出桶的内容：
 
-1.  进入控制台的**S3**服务。
+1.  进入控制台的`S3`服务。
 
 1.  点击我们的桶名称（例如，**awsseccbacldemo**），进入桶的页面。
 
@@ -363,17 +363,17 @@
 
 在这个食谱中，我们通过管理控制台允许所有人列出桶的内容。我们也可以通过 CLI 做到这一点。ACL 提供了桶、对象及其 ACL 的基本读写权限。具体来说，它们可以授予以下权限，并且可以在使用 AWS CLI 时进行设置：
 
-+   **READ** : 允许列出桶中的对象，并读取对象及其元数据
++   `READ` : 允许列出桶中的对象，并读取对象及其元数据
 
-+   **WRITE** : 启用在桶中创建、覆盖或删除对象；此权限不适用于单个对象
++   `WRITE` : 启用在桶中创建、覆盖或删除对象；此权限不适用于单个对象
 
-+   **READ_ACP** : 授予读取桶或对象的 ACL 的权限
++   `READ_ACP` : 授予读取桶或对象的 ACL 的权限
 
-+   **WRITE_ACP** : 允许为桶或对象写入 ACL
++   `WRITE_ACP` : 允许为桶或对象写入 ACL
 
-+   **FULL_CONTROL** : 包括所有先前的权限，提供对桶或对象的完全控制
++   `FULL_CONTROL` : 包括所有先前的权限，提供对桶或对象的完全控制
 
-在实施 **READ** ACLs 以进行公共访问之前，我们通过启用 ACL 并确保取消勾选 **阻止所有公共访问** 设置，特别是针对与 ACL 相关的选项，来准备桶。需要注意的是，ACL，通常被视为一个遗留功能，相较于更现代的选项，如 IAM 和桶策略，默认是禁用的。同样，出于安全考虑，公共访问默认是被阻止的。
+在实施 `READ` ACLs 以进行公共访问之前，我们通过启用 ACL 并确保取消勾选 **阻止所有公共访问** 设置，特别是针对与 ACL 相关的选项，来准备桶。需要注意的是，ACL，通常被视为一个遗留功能，相较于更现代的选项，如 IAM 和桶策略，默认是禁用的。同样，出于安全考虑，公共访问默认是被阻止的。
 
 ## 还有更多内容...
 
@@ -383,23 +383,23 @@
 
 +   **访问授予** : ACL 授予对 AWS 账户和预定义组的访问权限，但不能拒绝访问。Amazon S3 ACL 中的预定义组是由 AWS 设置的固定类别，表示广泛的用户集，例如 **所有用户**（面向公众），**已验证用户**（面向任何已登录的 AWS 用户）和 **日志传递**（面向将日志传递到桶中的服务）。这些组简化了权限设置，而无需指定单个用户账户。在指定受让人时，可以使用以下方法：
 
-    +   **AmazonCustomerByEmail** : 将 **Type** 设置为 **AmazonCustomerByEmail**，并在 **EmailAddress** 字段中使用规范 ID
+    +   `AmazonCustomerByEmail` : 将 `Type` 设置为 `AmazonCustomerByEmail`，并在 `EmailAddress` 字段中使用规范 ID
 
-    +   **CanonicalUser** : 将 **Type** 设置为 **CanonicalUser**；账户的电子邮件提供在 **ID** 字段中
+    +   `CanonicalUser` : 将 `Type` 设置为 `CanonicalUser`；账户的电子邮件提供在 `ID` 字段中
 
-    +   **Group** : 当 **Type** 为 **Group** 时，使用预定义组的 URI 在 **URI** 字段中
+    +   `Group` : 当 `Type` 为 `Group` 时，使用预定义组的 URI 在 `URI` 字段中
 
 +   **默认控制** : 默认情况下，ACL 授予资源所有者完全控制，并不给予其他任何人的权限。
 
 +   **内部表示**：ACL 以 XML 文档的格式呈现，指定访问权限和受让人。
 
-+   **非所有者对象访问**：ACL 允许使用像**bucket-owner-full-control**这样的预设 ACL 授予对不是桶所有者拥有的对象的访问权限。
++   **非所有者对象访问**：ACL 允许使用像`bucket-owner-full-control`这样的预设 ACL 授予对不是桶所有者拥有的对象的访问权限。
 
-+   **预设 ACL**：这些是简化的 ACL 权限，可以用于通过命令行提供资源的权限。目前，支持以下预设 ACL：**private**、**public-read**、**public-read-write**、**aws-exec-read**、**authenticated-read**、**bucket-owner-read**、**bucket-owner-full-control**和**log-delivery-write**。
++   **预设 ACL**：这些是简化的 ACL 权限，可以用于通过命令行提供资源的权限。目前，支持以下预设 ACL：`private`、`private`、`private`、`private`、`private`、`private`、`bucket-owner-full-control`和`log-delivery-write`。
 
 +   **细粒度对象权限**：与桶策略相比，ACL 提供了一种更简单的方式来为多个对象分配单独的权限。
 
-+   **阻止公共访问覆盖**：S3 的**Block Public Access**设置可以覆盖授予公共访问的 ACL。
++   **阻止公共访问覆盖**：S3 的`Block Public Access`设置可以覆盖授予公共访问的 ACL。
 
 +   **记录访问尝试**：可以使用 S3 访问日志记录成功和拒绝的访问尝试。
 
@@ -411,7 +411,7 @@
 
 +   **作用域和应用差异**：我们有以下区别：
 
-    +   **ACLs**：按资源（桶或对象）指定
+    +   `ACLs`：按资源（桶或对象）指定
 
     +   **桶策略**：应用于整个桶，并可用于根据对象前缀定义访问权限
 
@@ -419,19 +419,19 @@
 
 让我们快速浏览一些与预设 ACL 相关的重要概念：
 
-+   **bucket-owner-read**和**bucket-owner-full-control**预设 ACL 仅适用于对象，若在创建桶时指定这些 ACL 则会被忽略。
++   `bucket-owner-read`和`bucket-owner-full-control`预设 ACL 仅适用于对象，若在创建桶时指定这些 ACL 则会被忽略。
 
-+   **log-delivery-write**预设 ACL 仅适用于桶。
++   `log-delivery-write`预设 ACL 仅适用于桶。
 
-+   使用**aws-exec-read**预设 ACL 时，所有者获得**FULL_CONTROL**权限，Amazon EC2 获得对来自 S3 的**Amazon Machine Image**（**AMI**）的读取权限。
++   使用`aws-exec-read`预设 ACL 时，所有者获得`FULL_CONTROL`权限，Amazon EC2 获得对来自 S3 的`Amazon Machine Image`（**AMI**）的读取权限。
 
-+   使用**log-delivery-write**预设 ACL 时，**LogDelivery**组获得对桶的**WRITE**和**READ_ACP**权限。这用于 S3 访问日志记录。
++   使用`log-delivery-write`预设 ACL 时，`LogDelivery`组获得对桶的`WRITE`和`READ_ACP`权限。这用于 S3 访问日志记录。
 
-+   在发出 API 调用时，我们可以在请求中使用**x-amz-acl**请求头指定预设 ACL。
++   在发出 API 调用时，我们可以在请求中使用`x-amz-acl`请求头指定预设 ACL。
 
 重要说明
 
-在跨账户访问的情况下，如果账户 A 中的用户将对象上传到账户 B（由账户 B 拥有）的桶中，即使账户 B 是桶的拥有者，也无法访问该对象。然而，账户 A 可以在上传文档时使用**bucket-owner-read**或**bucket-owner-full-control**预设 ACL，授予桶所有者权限。
+在跨账户访问的情况下，如果账户 A 中的用户将对象上传到账户 B（由账户 B 拥有）的桶中，即使账户 B 是桶的拥有者，也无法访问该对象。然而，账户 A 可以在上传文档时使用`bucket-owner-read`或`bucket-owner-full-control`预设 ACL，授予桶所有者权限。
 
 ### 比较 ACL、桶策略和 IAM 策略
 
@@ -475,9 +475,9 @@ IAM 策略与 ACL 和存储桶策略的不同之处：
 
 我们将需要以下内容来成功完成此食谱：
 
-+   一个有效的 AWS 账户；我将使用我们在*第一章*中创建的**awsseccb-sandbox-1**账户。
++   一个有效的 AWS 账户；我将使用我们在*第一章*中创建的`awsseccb-sandbox-1`账户。
 
-+   一个 S3 存储桶及其中的一个文件；我将使用名为 **seccbbucket** 的存储桶，里面有一个名为 **image-cloudericks.png** 的文件。
++   一个 S3 存储桶及其中的一个文件；我将使用名为 `seccbbucket` 的存储桶，里面有一个名为 `image-cloudericks.png` 的文件。
 
 ## 如何操作...
 
@@ -487,11 +487,11 @@ IAM 策略与 ACL 和存储桶策略的不同之处：
 
 我们可以从控制台创建一个预签名 URL 并按如下方式进行测试：
 
-1.  登录到 AWS 管理控制台，导航到 **S3** 服务，然后进入我们的 S3 存储桶。
+1.  登录到 AWS 管理控制台，导航到 `S3` 服务，然后进入我们的 S3 存储桶。
 
 1.  选择我们需要为其创建预签名 URL 的对象，点击 **对象操作** 下拉菜单，并选择 **通过预签名 URL 分享**。
 
-1.  在以下图中输入 **分钟数** 的值为 **5**，然后点击 **创建** **预签名 URL**。
+1.  在以下图中输入 **分钟数** 的值为 `5`，然后点击 **创建预签名 URL**。
 
 ![图 4.12 – 创建预签名 URL](img/B21384_04_12.jpg)
 
@@ -505,7 +505,7 @@ IAM 策略与 ACL 和存储桶策略的不同之处：
 
 1.  复制并粘贴 URL，然后在 **分钟数** 所述的时间范围内从浏览器中运行它。我们应该能够成功查看我们的文件。
 
-    如果在指定的时间后运行 URL，我们应该会收到一个类似于 **AccessDenied** 的错误信息：
+    如果在指定的时间后运行 URL，我们应该会收到一个类似于 `AccessDenied` 的错误信息：
 
 ![图 4.14 – 过期后访问预签名 URL](img/B21384_04_14.jpg)
 
@@ -547,7 +547,7 @@ IAM 策略与 ACL 和存储桶策略的不同之处：
 
 +   安全凭证
 
-在这个实例中，我们在代码中指定了存储桶、对象和过期时间。HTTP 操作是 **GET**。对于安全凭证，我们指定了一个具有操作权限的用户配置文件，在我们的示例中是 **get_object**。任何拥有有效凭证的人都可以生成预签名 URL。然而，如果生成 URL 的用户没有执行预期操作的权限（例如 **get_object**），则该操作最终会失败。
+在这个实例中，我们在代码中指定了存储桶、对象和过期时间。HTTP 操作是 `GET`。对于安全凭证，我们指定了一个具有操作权限的用户配置文件，在我们的示例中是 `get_object`。任何拥有有效凭证的人都可以生成预签名 URL。然而，如果生成 URL 的用户没有执行预期操作的权限（例如 **get_object**），则该操作最终会失败。
 
 ## 还有更多...
 
@@ -567,9 +567,9 @@ S3 版本控制是 S3 对象锁定的前提条件。因此，我们还将快速�
 
 我们需要以下内容才能成功完成这个步骤：
 
-+   一个有效的 AWS 账户；我将使用在*第一章*中创建的**awsseccb-sandbox-1**账户。
++   一个有效的 AWS 账户；我将使用在*第一章*中创建的`awsseccb-sandbox-1`账户。
 
-+   一个启用了**桶版本控制**的 S3 桶；我将使用一个名为**seccbbucket**的桶，桶中有一个名为**image-cloudericks.png**的文件。
++   一个启用了**桶版本控制**的 S3 桶；我将使用一个名为`seccbbucket`的桶，桶中有一个名为`image-cloudericks.png`的文件。
 
     我们可以在创建 S3 桶时启用版本控制，如下所示：
 
@@ -589,7 +589,7 @@ S3 版本控制是 S3 对象锁定的前提条件。因此，我们还将快速�
 
 我们可以按如下步骤启用对象锁定：
 
-1.  登录 AWS 管理控制台，进入**S3**服务。
+1.  登录 AWS 管理控制台，进入`S3`服务。
 
 1.  导航到 S3 桶，进入桶的**属性**标签，点击**编辑**旁边的**对象锁定**。
 
@@ -605,9 +605,9 @@ S3 版本控制是 S3 对象锁定的前提条件。因此，我们还将快速�
 
 图 4.19 – 启用默认保留期
 
-1.  在**默认保留模式**下选择**治理**，在**默认保留期限**中输入**30**，然后点击**保存更改**。
+1.  在**默认保留模式**下选择**治理**，在**默认保留期限**中输入`30`，然后点击**保存更改**。
 
-1.  上传一个新对象到我们的 S3 桶。我已上传了一个**image-heartin.png**文件。
+1.  上传一个新对象到我们的 S3 桶。我已上传了一个`image-heartin.png`文件。
 
 1.  转到桶的**对象**标签，点击新对象的名称以转到该对象的**属性**标签。
 
@@ -643,7 +643,7 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 ## 还有更多...
 
-在了解了 S3 对象锁定的内容后，我们迅速来看一下**Glacier Vault Lock**，这是 AWS 中的一项重要功能，尤其是在数据需要长期存储时，它有助于确保 AWS Glacier 中的数据安全。Glacier Vault Lock 的核心是 WORM 原则。这意味着数据存储后可以访问，但无法修改。通过建立并锁定策略，我们可以确保没有人，甚至是管理员或创建者，能够修改或删除这些规则或它们保护的数据。这些策略可以从基础的设置（例如设置数据保留期）到更详细的内容（如指定删除权限角色，甚至创建永久归档）不等。
+在了解了 S3 对象锁定的内容后，我们迅速来看一下`Glacier Vault Lock`，这是 AWS 中的一项重要功能，尤其是在数据需要长期存储时，它有助于确保 AWS Glacier 中的数据安全。Glacier Vault Lock 的核心是 WORM 原则。这意味着数据存储后可以访问，但无法修改。通过建立并锁定策略，我们可以确保没有人，甚至是管理员或创建者，能够修改或删除这些规则或它们保护的数据。这些策略可以从基础的设置（例如设置数据保留期）到更详细的内容（如指定删除权限角色，甚至创建永久归档）不等。
 
 设置 Glacier Vault Lock 涉及以下步骤：
 
@@ -663,7 +663,7 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 +   **S3 加密**：Amazon S3 加密提供了保护我们静态数据的方式。主要有两种类型：SSE，即 Amazon S3 在将数据写入磁盘时进行加密，并在访问时解密；以及**客户端加密**，即我们在将数据上传到 S3 之前在本地进行加密。对于 SSE，我们可以选择**S3 管理密钥**（**SSE-S3**）、**AWS 密钥管理服务密钥**（**SSE-KMS**）和**客户提供的密钥**（**SSE-C**）。我们将在本书稍后讨论 AWS 的**密钥管理服务**（**KMS**）后，进一步讨论 S3 加密。
 
-+   **S3 访问点**：Amazon S3 访问点通过提供具有定制访问策略的独特主机名，便于管理 S3 中大规模共享数据集的访问。例如，如果我们正在操作一个数据湖，多个部门访问同一个 S3 桶，我们可以为每个部门创建单独的访问点——如**finance-data-access**或**hr-data-access**——每个访问点具有特定的权限和网络控制。这使我们能够根据每个部门的需求定制访问，确保数据处理的安全性和高效性。因此，S3 访问点为需要明确基于角色的访问控制的场景提供了简化的解决方案，大大简化了复杂数据访问需求的管理。
++   **S3 访问点**：Amazon S3 访问点通过提供具有定制访问策略的独特主机名，便于管理 S3 中大规模共享数据集的访问。例如，如果我们正在操作一个数据湖，多个部门访问同一个 S3 桶，我们可以为每个部门创建单独的访问点——如`finance-data-access`或`hr-data-access`——每个访问点具有特定的权限和网络控制。这使我们能够根据每个部门的需求定制访问，确保数据处理的安全性和高效性。因此，S3 访问点为需要明确基于角色的访问控制的场景提供了简化的解决方案，大大简化了复杂数据访问需求的管理。
 
 +   **S3 访问日志**：Amazon S3 访问日志是增强安全性和监控我们 S3 桶活动的关键组成部分。这些日志提供了对特定 S3 桶所做所有请求的详细记录，包括请求者信息、桶名称、请求时间以及执行的操作。这些信息对于安全分析和审计跟踪至关重要，帮助我们跟踪访问模式、识别可疑活动，并确保符合安全政策。通过分析这些日志，我们可以深入了解使用趋势和潜在的安全漏洞，从而改善我们在 S3 中的整体数据保护策略。
 
@@ -683,11 +683,11 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 我们需要一个配置了以下资源的有效 AWS 账户：
 
-+   我们需要一个 S3 存储桶。我将使用名为**awssecbucket**的存储桶。请将其替换为你的存储桶名称。
++   我们需要一个 S3 存储桶。我将使用名为`awssecbucket`的存储桶。请将其替换为你的存储桶名称。
 
-+   我们需要一个具有**AdministratorAccess**权限的用户。为该用户配置 CLI 配置文件。我将在**awssecadmin** CLI 上同时调用该用户和配置文件。
++   我们需要一个具有`AdministratorAccess`权限的用户。为该用户配置 CLI 配置文件。我将在`awssecadmin` CLI 上同时调用该用户和配置文件。
 
-+   我们需要在 KMS 中创建一个客户管理的密钥。请参考*第三章*中的*创建 KMS 密钥*教程来创建密钥。我创建了一个名为**MyS3Key**的密钥。
++   我们需要在 KMS 中创建一个客户管理的密钥。请参考*第三章*中的*创建 KMS 密钥*教程来创建密钥。我创建了一个名为`MyS3Key`的密钥。
 
 ## 如何操作...
 
@@ -699,7 +699,7 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 1.  在控制台中导航到你的 S3 存储桶。
 
-1.  在**对象**窗格下，点击**上传** | **添加文件**，选择文件后，点击**上传**。
+1.  在**对象**窗格下，点击**上传` | `添加文件**，选择文件后，点击**上传**。
 
 1.  现在转到**属性**选项卡。在我们的存储桶中，向下滚动到**默认加密**窗格并点击**编辑**。在**加密类型**下，选择**使用 Amazon S3 管理的密钥进行服务器端加密 (SSE-S3)**，然后在**存储桶密钥**下，选择**启用**。最后，点击**保存更改**。
 
@@ -746,7 +746,7 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 重要提示
 
-**sse-kms-key-id** 是您创建的 KMS 密钥的 ID（有关详细信息，请参阅*准备工作*部分）。
+`sse-kms-key-id` 是您创建的 KMS 密钥的 ID（有关详细信息，请参阅*准备工作*部分）。
 
 ### 使用 SSE-C 的 SSE
 
@@ -784,13 +784,13 @@ Amazon S3 对象锁是一个旨在保护您的 S3 对象免受删除或覆盖的
 
 提示
 
-如果我们在下载使用 SSE-C 加密的对象时不指定**sse-c**选项，那么在调用**HeadObject 操作：Bad Request**时，我们将收到一个**致命错误：发生错误（400）**异常。如果我们在下载使用 SSE-C 加密的对象时不指定用于加密的正确密钥（使用**sse-c-key**选项），那么在调用**HeadObject 操作：Forbidden**时，我们将收到一个**致命错误：发生错误（403）**异常。
+如果我们在下载使用 SSE-C 加密的对象时不指定`sse-c`选项，那么在调用**HeadObject 操作：Bad Request**时，我们将收到一个**致命错误：发生错误（400）**异常。如果我们在下载使用 SSE-C 加密的对象时不指定用于加密的正确密钥（使用`sse-c-key`选项），那么在调用**HeadObject 操作：Forbidden**时，我们将收到一个**致命错误：发生错误（403）**异常。
 
 ## 工作原理...
 
-在*SSE with SSE-S3*部分，我们使用 SSE-S3 加密从控制台上传了一个对象。我们将现有对象的加密更改为 SSE-S3 加密。我们还上传了一个使用 SSE-S3 加密的对象。在从 CLI 执行 SSE-S3 加密时，**sse**参数的值是可选的。默认值为**AES256**。
+在*SSE with SSE-S3*部分，我们使用 SSE-S3 加密从控制台上传了一个对象。我们将现有对象的加密更改为 SSE-S3 加密。我们还上传了一个使用 SSE-S3 加密的对象。在从 CLI 执行 SSE-S3 加密时，`sse`参数的值是可选的。默认值为`AES256`。
 
-在*SSE with SSE-KMS*部分，我们使用 SSE-KMS 加密上传了一个对象。我们将现有对象的加密更改为 SSE-KMS 加密。我们还使用 SSE-KMS 加密从 CLI 上传了一个对象。在从 CLI 执行 SSE-KMS 加密时，**sse-c**参数的值是可选的。默认值为**AES256**。
+在*SSE with SSE-KMS*部分，我们使用 SSE-KMS 加密上传了一个对象。我们将现有对象的加密更改为 SSE-KMS 加密。我们还使用 SSE-KMS 加密从 CLI 上传了一个对象。在从 CLI 执行 SSE-KMS 加密时，`sse-c`参数的值是可选的。默认值为`AES256`。
 
 在*SSE with SSE-C*部分，我们使用 SSE-C 加密从 CLI 上传了一个对象。与其他两种 SSE 技术 SSE-S3 和 SSE-KMS 不同，控制台目前没有明确的 SSE-C 选项。我们需要使用 API 来执行此操作。在这个示例中，我们使用了一个 32 位数字作为密钥。然而，在现实世界中，密钥通常是使用密钥生成工具生成的。当我们在本书后面讨论 KMS 时，我们将更多地了解密钥。
 

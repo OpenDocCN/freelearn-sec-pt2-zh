@@ -28,7 +28,7 @@
 
 +   **互联网连接**：由于 AWS 是基于云的，因此稳定的互联网连接对于访问和管理 AWS 服务至关重要。
 
-+   **AWS 命令行接口**（**CLI**）：要执行 AWS CLI 命令，我们需要 AWS CLI V2。两种推荐的使用 AWS CLI V2 的方法是通过 AWS IAM 身份中心在本地或虚拟机上进行设置，或使用**AWS CloudShell**。我们将在*使用 IAM 身份中心进行用户管理和 SSO*教程中学习如何使用 IAM 身份中心设置 AWS CLI V2。
++   **AWS 命令行接口**（**CLI**）：要执行 AWS CLI 命令，我们需要 AWS CLI V2。两种推荐的使用 AWS CLI V2 的方法是通过 AWS IAM 身份中心在本地或虚拟机上进行设置，或使用`AWS CloudShell`。我们将在*使用 IAM 身份中心进行用户管理和 SSO*教程中学习如何使用 IAM 身份中心设置 AWS CLI V2。
 
 重要提示
 
@@ -48,7 +48,7 @@ IAM 是 AWS 中用于管理访问 AWS 资源的主要服务。设置 AWS 账户�
 
 我们需要一个新创建的 AWS 账户来完成本教程中的所有步骤。如果账户不是新的，我们可以按照本教程进行验证，检查配置是否正确，并配置缺失的内容。
 
-要在此方案中使用虚拟 MFA 设备设置 MFA，我们需要在手机上安装认证器应用，**Google Authenticator** 是一个流行的认证器应用，我们可以使用。我们也可以使用**YubiKey Universal 2nd Factor** (**U2F**) **安全密钥**，任何**U2F 兼容设备**，或**硬件 MFA 设备**。U2F 是一种认证标准，旨在仅通过安全密钥访问在线服务，无需任何驱动程序或客户端软件。
+要在此方案中使用虚拟 MFA 设备设置 MFA，我们需要在手机上安装认证器应用，`Google Authenticator` 是一个流行的认证器应用，我们可以使用。我们也可以使用`YubiKey Universal 2nd Factor` (`U2F`) **安全密钥**，任何**U2F 兼容设备**，或**硬件 MFA 设备**。U2F 是一种认证标准，旨在仅通过安全密钥访问在线服务，无需任何驱动程序或客户端软件。
 
 ## 如何操作...
 
@@ -132,15 +132,15 @@ IAM 是 AWS 中用于管理访问 AWS 资源的主要服务。设置 AWS 账户�
 
 1.  在**浏览**标签中，点击**计费**，然后点击**总估计费用**。
 
-1.  选择**EstimatedCharges**指标的复选框，如下图所示，然后点击**选择指标**。
+1.  选择`EstimatedCharges`指标的复选框，如下图所示，然后点击**选择指标**。
 
 ![图 1.6 – 配置指标](img/B21384_01_6.jpg)
 
 图 1.6 – 配置指标
 
-1.  保持**指标名称**为**EstimatedCharges**，**货币**为**美元（USD）**。对于**统计**，选择**最大值**，对于**周期**，选择**6 小时**。
+1.  保持**指标名称**为`EstimatedCharges`，**货币**为**美元（USD）**。对于**统计**，选择**最大值**，对于**周期**，选择**6 小时**。
 
-1.  在**条件**下，选择**阈值类型**为**静态**，在**每当 EstimatedCharges 为...**中选择**大于**，并在**比...大**中定义触发报警的值。还可以展开**其他配置**。在**报警的数据点**中，指定**1** **中的** **1**，并在**缺失数据处理**中选择**将缺失数据** **视为缺失**。
+1.  在**条件**下，选择**阈值类型**为**静态**，在**每当 EstimatedCharges 为...**中选择**大于**，并在**比...大**中定义触发报警的值。还可以展开**其他配置**。在**报警的数据点**中，指定**1中的1**，并在**缺失数据处理**中选择**将缺失数据视为缺失**。
 
 ![图 1.7 – 配置指标的条件 - 条件](img/B21384_01_7.jpg)
 
@@ -210,23 +210,19 @@ IAM 是 AWS 服务，帮助我们管理和验证 AWS 内用户的身份（认证
 
 IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联，如果没有正确管理，这可能会带来安全风险。以下是根据 AWS 提供的常见 AWS 访问密钥使用场景，以及更安全的替代方案推荐：
 
-| **替代方案** | **使用案例** | **推荐** |
+| 替代方案 | 使用案例 | 推荐 |
 | --- | --- | --- |
+| `CLI` | 通过 AWS CLI 访问 AWS 账户。 | 在这种情况下，按照以下步骤操作： |
 
-| **CLI** | 通过 AWS CLI 访问 AWS 账户。 | 在这种情况下，按照以下步骤操作：
-
-+   使用**AWS CloudShell**，这是一种集成在浏览器中的命令行界面（CLI），用于执行命令。
++   使用`AWS CloudShell`，这是一种集成在浏览器中的命令行界面（CLI），用于执行命令。
 
 +   选择 AWS CLI V2 并通过**IAM 身份中心**中的用户设置身份验证；我们将在后续详细探讨 IAM 身份中心。
 
-|
-
 | **本地代码** | 从本地开发环境访问 AWS 账户。 | 使用配备 AWS 工具包的**集成开发环境**（**IDE**），它通过 IAM 身份中心促进身份验证。 |
 | --- | --- | --- |
-| **在 AWS 计算** **服务** 上运行的应用 | 在 AWS 计算服务（如 Amazon EC2、Amazon ECS 或 AWS Lambda）上管理应用代码。 | 为计算资源（如 EC2 实例或 Lambda 函数）分配 IAM 角色，确保为访问自动提供临时凭证。 |
+| **在 AWS 计算服务** 上运行的应用 | 在 AWS 计算服务（如 Amazon EC2、Amazon ECS 或 AWS Lambda）上管理应用代码。 | 为计算资源（如 EC2 实例或 Lambda 函数）分配 IAM 角色，确保为访问自动提供临时凭证。 |
 | **第三方服务** | 用于启用管理或与 AWS 资源交互的第三方应用程序或服务。 | 作为标准，选择通过 IAM 角色使用临时安全凭证，避免创建长期凭证（如访问密钥）。避免生成 AWS 账户根用户的访问密钥。 |
-
-| **在 AWS 外运行的应用程序** | 管理 AWS 计算服务上的应用程序代码，如 Amazon EC2、Amazon ECS 或 AWS Lambda。 | 尽管在这种用例中使用访问密钥是可以接受的，但请确保执行以下操作：
+| **在 AWS 外运行的应用程序** | 管理 AWS 计算服务上的应用程序代码，如 Amazon EC2、Amazon ECS 或 AWS Lambda。 | 尽管在这种用例中使用访问密钥是可以接受的，但请确保执行以下操作： |
 
 +   避免将访问密钥以明文形式存储在代码库中或直接嵌入代码中。
 
@@ -236,7 +232,6 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 +   定期轮换访问密钥。
 
-|
 
 表 1.1 – AWS 访问密钥的使用案例（按 AWS 分类）
 
@@ -274,7 +269,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 首先，让我们按如下方式创建一个 AWS 组织：
 
-1.  以根用户或具有管理员权限的用户身份登录 AWS 管理控制台，并转到**AWS Organizations**服务控制台。
+1.  以根用户或具有管理员权限的用户身份登录 AWS 管理控制台，并转到`AWS Organizations`服务控制台。
 
 1.  点击**创建组织**。它将创建一个组织，并将我们引导到**AWS 账户**页面，该页面应该如下所示：
 
@@ -294,29 +289,29 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 要在根 OU 下创建一个 OU，我们可以按照以下步骤进行：
 
-1.  在**AWS Organizations**服务控制台页面，转到**AWS 账户**页面。
+1.  在`AWS Organizations`服务控制台页面，转到**AWS 账户**页面。
 
-1.  选择**Root** OU，然后在**操作**菜单中，选择**创建新组织单元**。
+1.  选择`Root` OU，然后在**操作**菜单中，选择**创建新组织单元**。
 
 ![图 1.11 – 创建新的组织单元](img/B21384_01_11.jpg)
 
 图 1.11 – 创建新的组织单元
 
-1.  在下一个屏幕上，输入**Sandbox**作为**组织单元名称**，然后点击**创建组织单元**。
+1.  在下一个屏幕上，输入`Sandbox`作为**组织单元名称**，然后点击**创建组织单元**。
 
-我们现在可以创建一个 AWS 账户并将其移动到**Sandbox** OU，如下所示：
+我们现在可以创建一个 AWS 账户并将其移动到`Sandbox` OU，如下所示：
 
-1.  在**AWS Organizations**服务控制台页面，转到**AWS 账户**页面。
+1.  在`AWS Organizations`服务控制台页面，转到**AWS 账户**页面。
 
 1.  点击**添加 AWS 账户**。
 
-1.  选择**创建 AWS 账户**，并为**AWS 账户名称**提供**awsseccb-sandbox-1**值。对于**账户所有者的电子邮件地址**，提供一个你可以访问的电子邮件地址。为**IAM 角色名称**提供**OrganizationAccountAccessRole**值。
+1.  选择**创建 AWS 账户**，并为**AWS 账户名称**提供`awsseccb-sandbox-1`值。对于**账户所有者的电子邮件地址**，提供一个你可以访问的电子邮件地址。为**IAM 角色名称**提供`OrganizationAccountAccessRole`值。
 
 ![图 1.12 – 向组织中添加账户](img/B21384_01_12.jpg)
 
 图 1.12 – 向组织中添加账户
 
-1.  向下滚动并点击**创建** **AWS 账户**。
+1.  向下滚动并点击**创建AWS 账户**。
 
     我们应该立即看到一个显示**AWS 正在创建 1 个账户**的屏幕。账户创建可能需要一些时间。
 
@@ -326,7 +321,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.13 – 选择账户并在 OU 之间移动
 
-1.  在**目标**部分选择所需的 OU，然后点击**移动** **AWS 账户**。
+1.  在**目标**部分选择所需的 OU，然后点击**移动AWS 账户**。
 
 ![图 1.14 – 选择目标 OU 以移动账户](img/B21384_01_14.jpg)
 
@@ -338,7 +333,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 在本节中，我们将通过 CLI 创建一个 OU 和账户。请记住，在执行 CLI 命令时，要用相关步骤中的 ID 替换我的 ID。命令也会与代码文件一起提供。此外，如果我们从 AWS CloudShell 执行命令，则无需指定 CLI 配置文件。让我们开始吧：
 
-1.  使用**create-organizational-unit**子命令，在根 OU 下创建名为**Workloads**的 OU，使用我们的根 OU 的 ID：
+1.  使用`create-organizational-unit`子命令，在根 OU 下创建名为`Workloads`的 OU，使用我们的根 OU 的 ID：
 
     ```
     aws organizations create-organizational-unit --parent-id r-bim7 --name Workloads --profile awssecadmin
@@ -350,7 +345,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.15 – create-organizational-unit 子命令的响应
 
-1.  我们可以使用**create-account**子命令创建一个 AWS 账户：
+1.  我们可以使用`create-account`子命令创建一个 AWS 账户：
 
     ```
     aws organizations create-account --email awsseccb_sandbox2@cloudericks.com --account-name awsseccb-sandbox-2 --profile awssecadmin
@@ -362,7 +357,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.16 – create-account 子命令的响应
 
-1.  我们可以使用**describe-create-account-status**子命令检查请求的状态，通过提供上一步收到的请求 ID：
+1.  我们可以使用`describe-create-account-status`子命令检查请求的状态，通过提供上一步收到的请求 ID：
 
     ```
     aws organizations describe-create-account-status --create-account-request-id car-6582b2c63be845ebaa474c9268cea8c1 --profile awssecadmin
@@ -374,7 +369,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.17 – describe-create-account-status 的响应
 
-1.  我们可以通过提供在上一步中收到的账户 ID，使用**list-parents**子命令来验证账户是否在根 OU 下创建，并获取根 OU 的 ID：
+1.  我们可以通过提供在上一步中收到的账户 ID，使用`list-parents`子命令来验证账户是否在根 OU 下创建，并获取根 OU 的 ID：
 
     ```
     aws organizations list-parents --child-id 206722961012 --profile awssecadmin
@@ -386,7 +381,7 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.18 – list-parents 子命令的响应
 
-1.  使用**move-account**子命令，将我们的新账户从根 OU 移动到之前通过 CLI 创建的新的 OU，提供上一步的账户 ID、根 ID 和 OU ID：
+1.  使用`move-account`子命令，将我们的新账户从根 OU 移动到之前通过 CLI 创建的新的 OU，提供上一步的账户 ID、根 ID 和 OU ID：
 
     ```
     aws organizations move-account --account-id 206722961012 --source-parent-id r-bim7 --destination-parent-id ou-bim7-0s1nqy2w --profile awssecadmin
@@ -394,13 +389,13 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
     该命令不会返回任何内容。
 
-1.  使用**list-parents**子命令检查我们账户的父级，如*S* *tep 4* 中所做的那样。我们应该会得到一个响应，其中新 OU 作为父级：
+1.  使用`list-parents`子命令检查我们账户的父级，如*S* *tep 4* 中所做的那样。我们应该会得到一个响应，其中新 OU 作为父级：
 
 ![图 1.19 – list-parents 子命令的响应](img/B21384_01_19.jpg)
 
 图 1.19 – list-parents 子命令的响应
 
-1.  我们可以使用 **list-children** 子命令列出根 OU 下的所有 OU，并将子类型设置为 **ORGANIZATIONAL_UNIT**：
+1.  我们可以使用 `list-children` 子命令列出根 OU 下的所有 OU，并将子类型设置为 `ORGANIZATIONAL_UNIT`：
 
     ```
     aws organizations list-children --parent-id r-bim7 --child-type ORGANIZATIONAL_UNIT --profile awssecadmin
@@ -412,21 +407,21 @@ IAM 用户的主要问题在于它们与长期凭证（如访问密钥）关联�
 
 图 1.20 – list-children 子命令的响应
 
-要获取 OU 的详细信息及其名称，我们可以使用 **describe-organizational-unit** 子命令，传入名为 **organizational-unit-id** 的单一参数，并传入其 ID。
+要获取 OU 的详细信息及其名称，我们可以使用 `describe-organizational-unit` 子命令，传入名为 `organizational-unit-id` 的单一参数，并传入其 ID。
 
 ## 工作原理...
 
-从管理控制台中，我们创建了一个 AWS 组织，在其下创建了 OU，并将账户添加到这些 OU 下。默认情况下，会创建一个名为 **Root** 的 OU。用于创建组织的账户称为管理账户（以前称为 **主账户**），并且是在根 OU 下创建的。
+从管理控制台中，我们创建了一个 AWS 组织，在其下创建了 OU，并将账户添加到这些 OU 下。默认情况下，会创建一个名为 `Root` 的 OU。用于创建组织的账户称为管理账户（以前称为 **主账户**），并且是在根 OU 下创建的。
 
 我们只能从一个未加入任何组织的 AWS 账户启动创建新组织的操作。我们不能将另一个 AWS 账户后期变更为管理账户，因此，创建组织的账户需要谨慎选择。我们可以将账户移动到任何 OU，包括根 OU。我们也可以在一个 OU 内创建子 OU。
 
 AWS Organizations 的委托管理员功能允许指定的 AWS 服务（如 AWS IAM 身份中心）将组织中的成员账户指定为管理员，以便在所有账户中管理该服务。这使得不同的团队可以使用单独的账户来管理 AWS 服务，这些账户是根据他们的角色和责任量身定制的。目前支持此功能的服务包括 AWS IAM 身份中心、AWS Config、AWS 防火墙管理器、Amazon GuardDuty、AWS IAM 访问分析器、Amazon Macie、AWS Security Hub、Amazon Detective、AWS 审计管理器、Amazon Inspector 和 AWS 系统管理器。
 
-从 CLI 中，我们使用 **create-account** 子命令创建了一个 AWS 账户。此命令会立即返回请求 ID，并异步执行。我们可以使用 **describe-create-account-status** 子命令，通过提供请求 ID 来检查请求的状态。要检查账户是否已创建，我们可以查看 **AWS CloudTrail 日志** 中的 **CreateAccountResult** 事件。
+从 CLI 中，我们使用 `create-account` 子命令创建了一个 AWS 账户。此命令会立即返回请求 ID，并异步执行。我们可以使用 `describe-create-account-status` 子命令，通过提供请求 ID 来检查请求的状态。要检查账户是否已创建，我们可以查看 **AWS CloudTrail 日志** 中的 `CreateAccountResult` 事件。
 
-**create-account** 子命令还接受其他参数，即 **role-name** 和 **iam-user-access-to-billing**。**role-name** 参数用于指定将在新成员账户中自动预配置的 IAM 角色名称。此角色为成员账户提供管理员权限，并信任管理账户。这意味着管理账户中的用户可以承担该角色，前提是管理账户的管理员允许这样做。默认值是 **OrganizationAccountAccessRole**。如果我们登录到子账户并检查 **OrganizationAccountAccessRole** 角色，我们会看到它附加了 **Administrator Access** 策略。如果我们检查 **Trust relationships** 部分，我们会看到我们的管理账户已被添加为受信任实体。现在，管理账户的管理员可以切换角色到子账户并获得管理员访问权限。对于非管理员用户来说，要承担子账户中的 **OrganizationAccountAccessRole** 角色并切换角色登录到子账户，用户应该被授予该角色的 **AssumeRole** 权限。
+`create-account` 子命令还接受其他参数，即 `role-name` 和 `iam-user-access-to-billing`。`role-name` 参数用于指定将在新成员账户中自动预配置的 IAM 角色名称。此角色为成员账户提供管理员权限，并信任管理账户。这意味着管理账户中的用户可以承担该角色，前提是管理账户的管理员允许这样做。默认值是 `OrganizationAccountAccessRole`。如果我们登录到子账户并检查 `OrganizationAccountAccessRole` 角色，我们会看到它附加了 `Administrator Access` 策略。如果我们检查 `Trust relationships` 部分，我们会看到我们的管理账户已被添加为受信任实体。现在，管理账户的管理员可以切换角色到子账户并获得管理员访问权限。对于非管理员用户来说，要承担子账户中的 `OrganizationAccountAccessRole` 角色并切换角色登录到子账户，用户应该被授予该角色的 `AssumeRole` 权限。
 
-必须将 **iam-user-access-to-billing** 参数设置为 **ALLOW**，以便 IAM 用户访问账户账单信息。如果设置为 **DENY**，只有根用户才能访问账户账单信息。默认值是 **ALLOW**。我们还创建了一个 OU，并将账户移至该 OU。在示例中，我们使用了 **list-children** 子命令与 **ORGANIZATIONAL_UNIT** 子类型来列出根下的所有 OU。我们还可以将 **child-type** 设置为 **ACCOUNT** 来列出所有账户。
+必须将 `iam-user-access-to-billing` 参数设置为 `ALLOW`，以便 IAM 用户访问账户账单信息。如果设置为 `DENY`，只有根用户才能访问账户账单信息。默认值是 `ALLOW`。我们还创建了一个 OU，并将账户移至该 OU。在示例中，我们使用了 `list-children` 子命令与 `ORGANIZATIONAL_UNIT` 子类型来列出根下的所有 OU。我们还可以将 `child-type` 设置为 `ACCOUNT` 来列出所有账户。
 
 ## 还有更多内容...
 
@@ -450,33 +445,33 @@ AWS Organizations 的委托管理员功能允许指定的 AWS 服务（如 AWS I
 
 +   当 **权限边界**（IAM 特性）和 SCP 同时存在时，只有在权限边界、SCP 和基于身份的策略都允许该操作时，操作才会被允许。
 
-+   当前可以与 AWS Organizations 集成的受支持服务包括 AWS 账户管理、AWS **应用迁移服务** (**MGN**)、AWS Artifact、AWS 审计管理器、AWS Backup、AWS CloudFormation Stacksets、AWS CloudTrail、Amazon CloudWatch Events、AWS Compute Optimizer、AWS Config、AWS Control Tower、Amazon Detective、Amazon DevOps Guru、AWS Directory Service、AWS Firewall Manager、Amazon GuardDuty、AWS Health、AWS IAM、IAM 访问分析器、Amazon Inspector、AWS License Manager、Amazon Macie、AWS Marketplace、AWS Network Manager、AWS 资源访问管理器、AWS 安全中心、Amazon S3 Storage Lens、Amazon Security Lake、AWS Service Catalog、服务配额、AWS IAM 身份中心（AWS SSO 的继任者）、AWS Systems Manager、标签策略、AWS Trusted Advisor、AWS Well-Architected Tool、**Amazon VPC IP 地址管理器** (**IPAM**) 和 Amazon VPC 可达性分析器。我们可以从受支持服务的仪表板启用集成。有关更新的服务列表，请参阅本指南的 *另见* 部分。
++   当前可以与 AWS Organizations 集成的受支持服务包括 AWS 账户管理、AWS **应用迁移服务** (`MGN`)、AWS Artifact、AWS 审计管理器、AWS Backup、AWS CloudFormation Stacksets、AWS CloudTrail、Amazon CloudWatch Events、AWS Compute Optimizer、AWS Config、AWS Control Tower、Amazon Detective、Amazon DevOps Guru、AWS Directory Service、AWS Firewall Manager、Amazon GuardDuty、AWS Health、AWS IAM、IAM 访问分析器、Amazon Inspector、AWS License Manager、Amazon Macie、AWS Marketplace、AWS Network Manager、AWS 资源访问管理器、AWS 安全中心、Amazon S3 Storage Lens、Amazon Security Lake、AWS Service Catalog、服务配额、AWS IAM 身份中心（AWS SSO 的继任者）、AWS Systems Manager、标签策略、AWS Trusted Advisor、AWS Well-Architected Tool、**Amazon VPC IP 地址管理器** (`IPAM`) 和 Amazon VPC 可达性分析器。我们可以从受支持服务的仪表板启用集成。有关更新的服务列表，请参阅本指南的 *另见* 部分。
 
 让我们了解一些有用的 AWS CLI 子命令，用于 AWS Organizations：
 
-+   **create-gov-cloud-account** 可用于在 AWS GovCloud (US) 区域创建账户，前提是我们有相关权限。
++   `create-gov-cloud-account` 可用于在 AWS GovCloud (US) 区域创建账户，前提是我们有相关权限。
 
-+   **invite-account-to-organization** 向另一个账户发送邀请，邀请其加入我们的组织。
++   `invite-account-to-organization` 向另一个账户发送邀请，邀请其加入我们的组织。
 
-+   **remove-account-from-organization** 将账户从组织中移除。
++   `remove-account-from-organization` 将账户从组织中移除。
 
-+   **create-organization** 用于创建一个 AWS 组织，而 **delete-organization** 用于删除一个 AWS 组织。
++   `create-organization` 用于创建一个 AWS 组织，而 `delete-organization` 用于删除一个 AWS 组织。
 
-+   **leave-organization** 将账户从其父组织中移除。
++   `leave-organization` 将账户从其父组织中移除。
 
-+   **create-organizational-unit** 用于创建一个组织单元（OU），而 **delete-organizational-unit** 用于删除一个组织单元（OU）。要删除一个 OU，必须先移除所有账户和子 OU。
++   `create-organizational-unit` 用于创建一个组织单元（OU），而 `delete-organizational-unit` 用于删除一个组织单元（OU）。要删除一个 OU，必须先移除所有账户和子 OU。
 
-+   **update-organizational-unit** 用于重命名一个组织单元（OU）。
++   `update-organizational-unit` 用于重命名一个组织单元（OU）。
 
-+   **describe-account** 用于检索该账户的信息，应该从主账户调用。**describe-organization** 用于检索组织的信息。**describe-organizational-unit** 用于检索一个组织单元（OU）的信息。
++   `describe-account` 用于检索该账户的信息，应该从主账户调用。`describe-organization` 用于检索组织的信息。`describe-organizational-unit` 用于检索一个组织单元（OU）的信息。
 
-+   **list-accounts** 列出组织中的所有账户。**list-accounts-for-parent** 列出给定目标根或 OU 的子账户。**list-create-account-status** 列出与给定状态匹配的账户创建请求。**list-roots** 列出当前组织中定义的根。
++   `list-accounts` 列出组织中的所有账户。`list-accounts-for-parent` 列出给定目标根或 OU 的子账户。`list-create-account-status` 列出与给定状态匹配的账户创建请求。`list-roots` 列出当前组织中定义的根。
 
-+   **tag-resource** 和 **untag-resource** 可用于管理标签。
++   `tag-resource` 和 `untag-resource` 可用于管理标签。
 
 ### 与 AWS 交互的不同方式
 
-我们可以通过多种方式与 AWS 进行交互，包括 AWS 管理控制台、AWS CLI、AWS **软件开发工具包** (**SDKs**)、AWS CloudFormation、外部工具如 HashiCorp 的 Terraform、直接的 AWS API 调用、AWS PowerShell 工具、AWS **云开发工具包** (**CDK**) 和 AWS **无服务器应用模型** (**SAM**)。根据具体任务和所需的自动化水平，每种方法都有其独特的优势。
+我们可以通过多种方式与 AWS 进行交互，包括 AWS 管理控制台、AWS CLI、AWS **软件开发工具包** (`SDKs`)、AWS CloudFormation、外部工具如 HashiCorp 的 Terraform、直接的 AWS API 调用、AWS PowerShell 工具、AWS **云开发工具包** (`CDK`) 和 AWS **无服务器应用模型** (`SAM`)。根据具体任务和所需的自动化水平，每种方法都有其独特的优势。
 
 对于本书中的食谱范围，我们将主要集中于 AWS 管理控制台和 CLI。管理控制台通常用于一次性配置和操作，提供直观和可视化的方式来管理 AWS 资源。另一方面，CLI 特别适合处理重复性任务，支持自动化和脚本化。掌握 CLI 不仅能简化我们的 AWS 操作并打下坚实的基础，还能帮助我们理解其他交互方式的细微差别，如 AWS SDK、CloudFormation、Terraform 等。
 
@@ -540,13 +535,13 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 图 1.23 – IAM 身份中心侧边栏和组页面
 
-1.  在**创建组**页面的**组详情**部分，输入**awsseccbadmins**作为**组名称**，并在**描述**下设置**AWS 安全食谱管理员组**。
+1.  在**创建组**页面的**组详情**部分，输入`awsseccbadmins`作为**组名称**，并在**描述**下设置**AWS 安全食谱管理员组**。
 
 1.  向下滚动，保持**添加用户到组**部分为空，不添加任何用户，点击**创建组**。
 
 1.  从 IAM 身份中心仪表板的左侧边栏点击**用户**，然后点击**添加用户**。
 
-1.  在**基本信息**部分，指定**awsseccbadmin1**作为**用户名**，在**密码**下选择**向该用户发送带有密码设置说明的电子邮件**。我们也可以生成一次性密码并与用户共享。
+1.  在**基本信息**部分，指定`awsseccbadmin1`作为**用户名**，在**密码**下选择**向该用户发送带有密码设置说明的电子邮件**。我们也可以生成一次性密码并与用户共享。
 
 ![图 1.24 – IAM 身份中心中的指定用户详情页面](img/B21384_01_24.jpg)
 
@@ -556,7 +551,7 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 1.  保持其他部分不变，即**联系方法**、**工作相关信息**、**地址**、**偏好设置**和**附加属性**，然后点击页面右下角的**下一步**。
 
-1.  在**将用户添加到组**页面中，选择我们在本节中创建的**awsseccbadmins**组，然后点击**下一步**。
+1.  在**将用户添加到组**页面中，选择我们在本节中创建的`awsseccbadmins`组，然后点击**下一步**。
 
 1.  在**审查并添加用户**页面上，审查详细信息并点击**添加用户**。现在我们应该能看到新用户已添加到**用户**页面。
 
@@ -566,7 +561,7 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 图 1.25 – IAM 身份中心中新用户的邀请邮件
 
-完成指令后，我们应该已经登录到 AWS 访问门户，在那里可以看到分配给我们的应用程序。目前，由于我们还没有分配任何应用程序，我们应该会看到**您没有任何** **应用程序**的消息。
+完成指令后，我们应该已经登录到 AWS 访问门户，在那里可以看到分配给我们的应用程序。目前，由于我们还没有分配任何应用程序，我们应该会看到**您没有任何应用程序**的消息。
 
 接下来，我们将创建一个权限集。
 
@@ -576,7 +571,7 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 1.  点击左侧边栏中的**权限集**，如*图 1* *23*所示，在**权限集**页面上点击**创建****权限集**。
 
-1.  选择**预定义权限集**作为**权限集类型**，对于**选择 AWS 托管策略**，选择**AdministratorAccess**。
+1.  选择**预定义权限集**作为**权限集类型**，对于**选择 AWS 托管策略**，选择`AdministratorAccess`。
 
 ![图 1.26 – 在 IAM 身份中心中选择权限集类型](img/B21384_01_26.jpg)
 
@@ -584,27 +579,27 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 1.  向下滚动并点击**下一步**。
 
-1.  在**指定权限集详细信息**页面上，将**权限集名称**的值保持为**AdministratorAccess**，**会话时长**保持为**1 小时**，添加一个有意义的描述，其他字段保持空白，然后点击**下一步**。
+1.  在**指定权限集详细信息**页面上，将**权限集名称**的值保持为`AdministratorAccess`，**会话时长**保持为**1 小时**，添加一个有意义的描述，其他字段保持空白，然后点击**下一步**。
 
 1.  在**审查和创建**页面上，审查所有内容后点击**创建**。
 
     新的权限集现在应该出现在**权限集**页面上。
 
-接下来，我们将为 AWS 账户分配**awsseccbadmins**小组。
+接下来，我们将为 AWS 账户分配`awsseccbadmins`小组。
 
 ### 提供 AWS 账户的访问权限
 
 我们可以按照以下步骤为小组提供一个或多个 AWS 账户的访问权限：
 
-1.  点击左侧边栏中的**AWS 账户**选项，如*图 1* *23*所示，进入**AWS** **账户**页面。
+1.  点击左侧边栏中的**AWS 账户**选项，如*图 1* *23*所示，进入**AWS账户**页面。
 
-1.  选择我们希望授予访问权限的所有 AWS 账户，并点击**分配用户或组**。我已选择**aws-sec-cookbook-1**账户。
+1.  选择我们希望授予访问权限的所有 AWS 账户，并点击**分配用户或组**。我已选择`aws-sec-cookbook-1`账户。
 
 ![图 1.27 – IAM 身份中心中的 AWS 账户页面](img/B21384_01_27.jpg)
 
 图 1.27 – IAM 身份中心中的 AWS 账户页面
 
-1.  在**选择用户和组**页面的**组**标签页中，选择我们在本节中创建的**awsseccbadmins**组，然后点击**下一步**进入**分配权限** **集**页面。
+1.  在**选择用户和组**页面的**组**标签页中，选择我们在本节中创建的`awsseccbadmins`组，然后点击**下一步**进入**分配权限集**页面。
 
 1.  在**分配权限集**页面上，为我们的小组选择要分配给所选 AWS 账户的权限集。点击**下一步**进入**审查和提交****分配**页面。
 
@@ -640,7 +635,7 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 图 1.30 – 使用 IAM Identity Center 时使用 AWS CLI 的工作步骤
 
-1.  假设我们已经安装了 AWS CLI V2，打开命令提示符（或终端），运行**aws configure sso**命令，并按照*图 1* *.30*中显示的说明进行操作。提供**SSO 起始 URL**和**SSO 区域**，以及可选的 SSO 会话名称，如下图所示：
+1.  假设我们已经安装了 AWS CLI V2，打开命令提示符（或终端），运行`aws configure sso`命令，并按照*图 1* *.30*中显示的说明进行操作。提供**SSO 起始 URL**和**SSO 区域**，以及可选的 SSO 会话名称，如下图所示：
 
 ![图 1.31 – 配置 AWS CLI V2 的 SSO](img/B21384_01_31.jpg)
 
@@ -648,27 +643,27 @@ SSO 是一种用户认证过程，允许用户使用一套登录凭证访问多�
 
 一旦我们为**SSO 会话名称**、**SSO 起始 URL**、**SSO 区域**和**SSO 注册范围**提供了值，浏览器将打开进行授权。请注意，我提供了自定义的**SSO 起始 URL**而不是默认的一个，如*图 1* *.30*所示；两者都可以使用。授权完成后，命令提示符将恢复。
 
-1.  运行**aws s3 ls**命令并附上配置文件名称进行验证，如*图 1* *.31*所示。
+1.  运行`aws s3 ls`命令并附上配置文件名称进行验证，如*图 1* *.31*所示。
 
-我们只需要为 AWS 账户和角色组合配置一次 SSO，如下面的*工作原理...*部分所述。配置完成后，我们可以使用该配置文件通过**aws sso login**和**aws sso logout**命令登录和退出，如下所示。
+我们只需要为 AWS 账户和角色组合配置一次 SSO，如下面的*工作原理...*部分所述。配置完成后，我们可以使用该配置文件通过`aws sso login`和`aws sso logout`命令登录和退出，如下所示。
 
 ### 在 AWS CLI 中使用 IAM Identity Center 进行 SSO 登录和退出
 
 我们可以使用配置的 AWS CLI V2 配置文件登录和退出 AWS 账户，方法如下：
 
-1.  使用**aws sso login**命令登录，提供我们已经配置的 CLI 配置文件名称（如我们在*图 1* *.31*中看到的）。执行**aws s3 ls**命令，提供相同的配置文件名称，如下所示：
+1.  使用`aws sso login`命令登录，提供我们已经配置的 CLI 配置文件名称（如我们在*图 1* *.31*中看到的）。执行`aws sso login`命令，提供相同的配置文件名称，如下所示：
 
 ![图 1.32 – 使用 SSO 从 CLI 登录 AWS 账户](img/B21384_01_32.jpg)
 
 图 1.32 – 使用 SSO 从 CLI 登录 AWS 账户
 
-**aws sso login**命令将打开一个浏览器进行授权，类似于**aws configure sso**命令。授权完成后，命令提示符将恢复。
+`aws sso login`命令将打开一个浏览器进行授权，类似于`aws sso login`命令。授权完成后，命令提示符将恢复。
 
 重要提示
 
-如果我们有多个配置文件或者没有使用默认配置文件，即使在 SSO 登录后，执行 AWS CLI 命令时也需要指定配置文件。此外，如果我们尝试使用我们没有访问权限的配置文件，当调用**GetRoleCredentials**操作时，将会收到一个错误，指出发生了错误（**ForbiddenException**）：**无法访问**。
+如果我们有多个配置文件或者没有使用默认配置文件，即使在 SSO 登录后，执行 AWS CLI 命令时也需要指定配置文件。此外，如果我们尝试使用我们没有访问权限的配置文件，当调用`GetRoleCredentials`操作时，将会收到一个错误，指出发生了错误（**ForbiddenException**）：**无法访问**。
 
-1.  使用**aws sso logout**命令退出登录，并执行**aws s3 ls**命令，提供与之前相同的配置文件名称。
+1.  使用`aws sso logout`命令退出登录，并执行`aws sso logout`命令，提供与之前相同的配置文件名称。
 
 ![图 1.33 – 使用 SSO 从 CLI 退出 AWS 账户](img/B21384_01_33.jpg)
 
@@ -682,7 +677,7 @@ AWS IAM Identity Center 是 AWS SSO 的后继者，帮助我们在多个 AWS 账
 
 **身份提供者（IdP）**是存储和验证用户身份的服务。我们可以利用 IdP 在不提供额外凭据的情况下登录多个应用程序使用 SSO。我们在本文中使用了 IAM Identity Center 的内置 IdP。但是，除了内置 IdP，我们还可以使用许多支持的 IdP，如 Microsoft Entra ID（以前是 Active Directory 或 Azure AD）、Okta、Ping Identity、Jump Cloud 和 Google Workspace。
 
-在本食谱中，在启用 IAM 身份中心时，我们还启用了 **访问控制的属性**。我们可以根据用户身份源中的现有属性将用户分配给 AWS 中的工作负载，从而控制对资源的访问，实现 **基于属性的访问控制** (**ABAC**) 。ABAC 是一种基于与用户、资源或环境相关的属性（特征或属性）来调节访问的方法。与 **基于角色的访问控制** (**RBAC**) 不同，RBAC 根据用户在组织中的角色授予访问权限，而 ABAC 使用各种属性，如用户位置、访问时间，甚至访问资源的敏感性。这允许更灵活、情境感知和政策驱动的访问控制，从而实现更精细和动态的权限管理。
+在本食谱中，在启用 IAM 身份中心时，我们还启用了 **访问控制的属性**。我们可以根据用户身份源中的现有属性将用户分配给 AWS 中的工作负载，从而控制对资源的访问，实现 **基于属性的访问控制** (`ABAC`) 。ABAC 是一种基于与用户、资源或环境相关的属性（特征或属性）来调节访问的方法。与 **基于角色的访问控制** (`RBAC`) 不同，RBAC 根据用户在组织中的角色授予访问权限，而 ABAC 使用各种属性，如用户位置、访问时间，甚至访问资源的敏感性。这允许更灵活、情境感知和政策驱动的访问控制，从而实现更精细和动态的权限管理。
 
 我们可以使用权限集为不同的 AWS 账户和应用程序分配不同的权限级别给用户或组。例如，我们可以为开发者账户授予完全访问权限，为生产账户授予只读访问权限。我们可以选择预定义权限集选项，像本食谱中一样选择可用的 AWS 管理策略之一，或者我们可以创建自定义权限集。
 
