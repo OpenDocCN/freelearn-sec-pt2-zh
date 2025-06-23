@@ -32,17 +32,17 @@ SQL 是与关系数据库交互的一个强大且有效的工具，因为它提�
 
 在上一章中，你亲眼看到了一个脆弱应用程序可能导致的后果（我们也希望你在过程中玩得开心），如果你已经读到本书的这一部分，你可能也会在想是否有方法能够提高安全性，防止这一切的发生。SQL 数据库今天仍然被广泛使用，所以你可以猜到，简短的答案肯定是有的。详细的答案是，这些防御措施需要一次性应用。
 
-在探索**魔法代码注入彩虹**或甚至**Mutillidae II** Web 应用程序的挑战时，我们看到了单纯的解决方案往往不足以应对，因为通常总有绕过它们的方法。然而，如果防御措施在应用程序的多个点同时实施，那么这些应急方法将不再有效，因为其他同时存在的防御措施将使 SQL 注入攻击几乎不可能发生，除非存在其他漏洞。
+在探索**魔法代码注入彩虹**或甚至`Mutillidae II` Web 应用程序的挑战时，我们看到了单纯的解决方案往往不足以应对，因为通常总有绕过它们的方法。然而，如果防御措施在应用程序的多个点同时实施，那么这些应急方法将不再有效，因为其他同时存在的防御措施将使 SQL 注入攻击几乎不可能发生，除非存在其他漏洞。
 
 SQL 注入的主要问题在于用户输入如何与 SQL 的实际语法进行交互，主要是因为在代码层面上，SQL 语句通常是由文本字符串构建的。各种编程语言使用特定的函数，这些函数接受文本字符串作为参数。显然，这个文本字符串是用 SQL 语法编写的，以便作为 SQL 输入进行解释。以下是我们在*第四章*中使用的脆弱 Java Web 服务中的 SQL **字符串**声明，*攻击 Web、移动和物联网应用*：
 
 String query = "SELECT * FROM " + USER_TABLE + " WHERE username='" + user_id + "' AND password='" + password + "'";
 
-**query** 字符串将作为命令通过 **executeQuery(query)** 发送给数据库，这是一个 Java 函数，在数据库连接内将输入字符串发送到数据库，以便进行处理。
+`query` 字符串将作为命令通过 `executeQuery(query)` 发送给数据库，这是一个 Java 函数，在数据库连接内将输入字符串发送到数据库，以便进行处理。
 
-你可以看到，虽然查询中的某些部分有固定的内容，像是由双引号界定的，但其他部分则由先前声明的变量组成。你现在应该已经能够察觉出我们要表达的方向，因为你已经看到了 SQL 注入的实际操作。通过将恶意负载插入查询结构中，攻击者实际上可以让查询执行任意命令，就好像他们自己在编写查询的一部分一样。在我们之前提到的攻击中，攻击者只需将恶意负载插入到**user_id**参数的位置，改变查询结构即可。对于绕过身份验证的同值攻击，生成的查询将如下所示：
+你可以看到，虽然查询中的某些部分有固定的内容，像是由双引号界定的，但其他部分则由先前声明的变量组成。你现在应该已经能够察觉出我们要表达的方向，因为你已经看到了 SQL 注入的实际操作。通过将恶意负载插入查询结构中，攻击者实际上可以让查询执行任意命令，就好像他们自己在编写查询的一部分一样。在我们之前提到的攻击中，攻击者只需将恶意负载插入到`user_id`参数的位置，改变查询结构即可。对于绕过身份验证的同值攻击，生成的查询将如下所示：
 
-SELECT * FROM USER WHERE username=**'' OR 1=1 -- -'** AND password='password'
+SELECT * FROM USER WHERE username=`'' OR 1=1 -- -'` AND password='password'
 
 插入合法的 SQL 表达式可能会改变原本设计的查询功能，就像本例中通过使用字符串定界符和注释所做的那样。这就是为什么在安全方面，必须考虑用户输入。
 
@@ -116,7 +116,7 @@ Java 是一种非常灵活的语言，拥有悠久的框架开发历史，其中
 
 正如我们之前所说，实现黑名单验证非常简单，你可以通过检查字符串是否包含敏感字符来完成。在以下示例中，我们为了简化，仅黑名单限制单引号和连字符字符。
 
-以下代码检查输入字符串，该字符串作为名为 **input** 的变量传入，并通过调用名为 **constructQuery()** 的函数继续构建 SQL 语句，但只有当字符串不包含任何黑名单字符时：
+以下代码检查输入字符串，该字符串作为名为 `input` 的变量传入，并通过调用名为 `constructQuery()` 的函数继续构建 SQL 语句，但只有当字符串不包含任何黑名单字符时：
 
 String s = input;
 
@@ -150,7 +150,7 @@ throw new IllegalArgumentException("非法输入");
 
 ### PHP 中的输入验证
 
-至于 PHP，与 Java 类似，具体实现取决于使用的框架。与 Java 相似，它提供了一些有用的函数，可以帮助以简单的方式实现输入验证。其函数之一是 **preg_match(regex, string)**，它与 **String.matches()** 函数类似，用于检查 **string** 字符串是否符合正则表达式 **regex** 模式。当然，这可以用于黑名单和白名单的实现：
+至于 PHP，与 Java 类似，具体实现取决于使用的框架。与 Java 相似，它提供了一些有用的函数，可以帮助以简单的方式实现输入验证。其函数之一是 `preg_match(regex, string)`，它与 `String.matches()` 函数类似，用于检查 `string` 字符串是否符合正则表达式 `regex` 模式。当然，这可以用于黑名单和白名单的实现：
 
 $s = $_POST['input'];
 
@@ -160,7 +160,7 @@ if(preg_match("/\'/", $s) OR preg_match("\-", $s)){
 
 }
 
-现在，对于白名单的情况，我们保持相同的结构，但以逻辑上反向的方式进行，因为 **if** 现在检查是否与正则表达式不匹配：
+现在，对于白名单的情况，我们保持相同的结构，但以逻辑上反向的方式进行，因为 `if` 现在检查是否与正则表达式不匹配：
 
 $s = $_POST['input'];
 
@@ -174,7 +174,7 @@ if(!preg_match("/[[A-Z][a-zA-Z]*]/", $s){
 
 ### .NET 中的输入验证
 
-与 Java 和 PHP 不同，ASP.NET 有多种内置控件，用于开发应用程序。一个简单的控件是 **RegularExpressionValidator**，它与我们在 Java 和 PHP 中看到的模式匹配函数采用相同的方法。该控件强制执行服务器端和客户端的验证。
+与 Java 和 PHP 不同，ASP.NET 有多种内置控件，用于开发应用程序。一个简单的控件是 `RegularExpressionValidator`，它与我们在 Java 和 PHP 中看到的模式匹配函数采用相同的方法。该控件强制执行服务器端和客户端的验证。
 
 在下面的示例中，我们应用了与前两个代码示例中相同的白名单方法，通过正则表达式进行匹配，只允许一个字母字符串，第一个字母为大写：
 
@@ -218,7 +218,7 @@ Login()
 
 ### Java 中的参数化查询
 
-在 Java 中处理任何数据库时，最常用的框架之一是 **Java 数据库连接** (**JDBC**) 框架。它是原生提供的，支持独立于所使用数据库技术的数据库连接，提供连接数据库的有用功能。其中之一就是 **PreparedStatement** 类，它允许使用以下代码：
+在 Java 中处理任何数据库时，最常用的框架之一是 **Java 数据库连接` (`JDBC**) 框架。它是原生提供的，支持独立于所使用数据库技术的数据库连接，提供连接数据库的有用功能。其中之一就是 `PreparedStatement` 类，它允许使用以下代码：
 
 Connection con = DriverManager.getConnection(connectionString);
 
@@ -232,7 +232,7 @@ ps.setString(2, pass);
 
 rs = ps.executeQuery();
 
-基本的 SQL 语句通过将值替换为问号来修改，然后通过 **PreparedStatement** 实例 **ps** 引用这些问号。然后，**setString()** 方法将按原始查询 **query** 中出现的顺序（**1** 对应 **user** 和 **2** 对应 **pass**）将这些值插入到问号的占位符中。最后，基于准备好的语句调用 **executeQuery()** 方法。
+基本的 SQL 语句通过将值替换为问号来修改，然后通过 `PreparedStatement` 实例 `ps` 引用这些问号。然后，`setString()` 方法将按原始查询 `query` 中出现的顺序（`1` 对应 `user` 和 `2` 对应 **pass**）将这些值插入到问号的占位符中。最后，基于准备好的语句调用 `executeQuery()` 方法。
 
 ### PHP 中的参数化查询
 
@@ -250,13 +250,13 @@ $stmt->bindParam(2, $pass, PDO::PARAM_STR);
 
 $stmt->execute();
 
-这段代码几乎与 JDBC 示例完全相同；语句是从包含问号形式占位符的 SQL 查询 **query** 中准备的。然后，**bindParam()** 函数将输入参数绑定到问号实例，按数字顺序（**1** 对应 **user** 和 **2** 对应 **pass**），并指定参数的数据类型（**PDO::PARAM_STR** 定义了一个字符串参数）。最后，使用 **execute()** 执行准备好的语句。
+这段代码几乎与 JDBC 示例完全相同；语句是从包含问号形式占位符的 SQL 查询 `query` 中准备的。然后，`bindParam()` 函数将输入参数绑定到问号实例，按数字顺序（`1` 对应 `user` 和 `2` 对应 **pass**），并指定参数的数据类型（`PDO::PARAM_STR` 定义了一个字符串参数）。最后，使用 `execute()` 执行准备好的语句。
 
 ### .NET 中的参数化查询
 
 至于 .NET，ADO.NET 框架提供了一种实现参数化查询的方法。这个名字来源于其基础的前身技术——**ActiveX 数据对象**（**ADO**）。
 
-ADO.NET 通过使用**数据提供程序**与数据库进行交互，每个支持的数据库系统都有一个相应的提供程序。由于每个提供程序的代码语法不同，因此我们将展示使用 **System.Data.SqlClient** 提供程序的示例，它适用于 Microsoft SQL Server，以及适用于 Oracle 数据库的 **System.Data.OracleClient**。首先我们来看一下使用 **SqlClient** 时的代码：
+ADO.NET 通过使用**数据提供程序**与数据库进行交互，每个支持的数据库系统都有一个相应的提供程序。由于每个提供程序的代码语法不同，因此我们将展示使用 `System.Data.SqlClient` 提供程序的示例，它适用于 Microsoft SQL Server，以及适用于 Oracle 数据库的 `System.Data.OracleClient`。首先我们来看一下使用 `SqlClient` 时的代码：
 
 SqlConnection con = new SqlConnection(ConnectionString);
 
@@ -274,7 +274,7 @@ cmd.Parameters.Value["@pass"] = pass;
 
 reader = cmd.ExecuteReader();
 
-这里的参数是通过 **@** 字符引用的，它们通过 **Parameters.Add()** 被添加到 **cmd** 准备好的语句中，这会传入参数名称和类型（在这种情况下，是由 **SqlDbType.NVarChar** 表示的字符字符串）。**OracleClient** 的工作方式类似：
+这里的参数是通过 `@` 字符引用的，它们通过 `Parameters.Add()` 被添加到 `cmd` 准备好的语句中，这会传入参数名称和类型（在这种情况下，是由 `SqlDbType.NVarChar` 表示的字符字符串）。`OracleClient` 的工作方式类似：
 
 OracleConnection con = new OracleConnection(ConnectionString);
 
@@ -292,7 +292,7 @@ cmd.Parameters.Value["pass"] = pass;
 
 reader = cmd.ExecuteReader();
 
-这个结构几乎与 **SqlClient** 示例相同。唯一的区别在于参数的引用方式（在查询语句中使用分号，而在其他地方不使用特殊字符）和对象名称。
+这个结构几乎与 `SqlClient` 示例相同。唯一的区别在于参数的引用方式（在查询语句中使用分号，而在其他地方不使用特殊字符）和对象名称。
 
 ## 字符编码与转义
 
@@ -306,23 +306,23 @@ reader = cmd.ExecuteReader();
 
 由于 MySQL 使用单引号作为字符串终止符，因此在构造 SQL 语句时，包含在字符串中的单引号需要进行编码。这可以通过将单引号替换为两个单引号，或者通过使用反斜杠字符（**\**）来转义单引号来实现。
 
-在 Java 中，可以使用一个简单的**replace()**函数来将一个字符的所有出现替换为其他字符：
+在 Java 中，可以使用一个简单的`replace()`函数来将一个字符的所有出现替换为其他字符：
 
 query1 = query1.replace("'", "\'");
 
 query2 = query2.replace("'", "''");
 
-从 PHP 方面来看，**mysqli** 框架是一个专门用于与 MySQL 交互的 PHP 框架，它适用于 PHP 5.x 及以后的版本。有一个非常方便的函数叫做 **mysql_real_escape_string( )**，它会自动在文本字符串中的单引号前加上反斜杠。这种转义方法同样适用于其他危险字符：
+从 PHP 方面来看，`mysqli` 框架是一个专门用于与 MySQL 交互的 PHP 框架，它适用于 PHP 5.x 及以后的版本。有一个非常方便的函数叫做 `mysql_real_escape_string( )`，它会自动在文本字符串中的单引号前加上反斜杠。这种转义方法同样适用于其他危险字符：
 
 mysql_real_escape_string($parameter);
 
-当然，PHP 中依然可以使用 **REPLACE** 函数：
+当然，PHP 中依然可以使用 `REPLACE` 函数：
 
 SET @query1 = REPLACE(@query1, '\'', '\\\'');
 
 SET @query2 = REPLACE(@query2 '\'', '"');
 
-另一个需要注意的清理问题是，其他有害字符包括**LIKE**子句中的通配符，这些通配符可以定义任意字符，可能会在恶意地添加到查询时导致自我证伪。最相关的通配符是**%**字符，它对应于零个或多个任意字符的通配符。可以通过在其前面添加反斜杠来通过**replace()**函数转义：
+另一个需要注意的清理问题是，其他有害字符包括`LIKE`子句中的通配符，这些通配符可以定义任意字符，可能会在恶意地添加到查询时导致自我证伪。最相关的通配符是`%`字符，它对应于零个或多个任意字符的通配符。可以通过在其前面添加反斜杠来通过`replace()`函数转义：
 
 query3 = query3.replace("%", "\%"); // Java
 
@@ -336,19 +336,19 @@ SET @query3 = REPLACE(@query3, '%', '\\%'); // PHP
 
 query3 = query3.replace("'", "''");
 
-除了我们之前考虑过的 MySQL，SQL Server 也有一个**ESCAPE**子句，可以在**LIKE**子句中用于转义 SQL 查询中的任何字符：
+除了我们之前考虑过的 MySQL，SQL Server 也有一个`ESCAPE`子句，可以在`LIKE`子句中用于转义 SQL 查询中的任何字符：
 
 SELECT * from users WHERE name LIKE 'a\%' ESCAPE '\'
 
-上面的查询在**LIKE**子句中转义了反斜杠字符，仅返回用户名为**a%**的记录（前提是该用户名存在）。
+上面的查询在`LIKE`子句中转义了反斜杠字符，仅返回用户名为`a%`的记录（前提是该用户名存在）。
 
 ### Oracle 数据库中的字符编码和转义
 
-在考虑与 MySQL 相同的假设时，Oracle 数据库通常也依赖于 PL/SQL 语言。它也有一个**replace()**函数，可以如下使用：
+在考虑与 MySQL 相同的假设时，Oracle 数据库通常也依赖于 PL/SQL 语言。它也有一个`replace()`函数，可以如下使用：
 
 query = replace(query, '''', '''''');
 
-Oracle 数据库也支持**ESCAPE**子句，用于**LIKE**子句，就像 SQL Server 一样。
+Oracle 数据库也支持`ESCAPE`子句，用于`LIKE`子句，就像 SQL Server 一样。
 
 在处理了这些特定技术后，现在我们可以转向更高层次的代码级对策了。
 
@@ -406,7 +406,7 @@ OWASP 及其他相关项目已经制定了一个重要框架，为组织提供�
 
 WAF 通常通过使用定义允许和拒绝内容的过滤器来工作。这些过滤器作为 WAF 的规则，负责接受或拒绝请求。过滤器需要正确配置，以防止大多数针对应用的攻击。过滤器的实现方式有很多种：
 
-+   **Web 服务器过滤器**：这些过滤器作为额外模块安装在 Web 服务器上，通常作为额外组件工作，评估进入 Web 服务器的请求。根据 Web 服务器技术的不同，实施方式可能有所不同。一些例子包括**ModSecurity**（可在[`modsecurity.org/`](https://modsecurity.org/)找到），它适用于 Apache，还有微软的**UrlScan**，它专为 IIS Web 服务器设计（[`docs.microsoft.com/en-us/iis/extensions/working-with-urlscan/urlscan-3-reference`](https://docs.microsoft.com/en-us/iis/extensions/working-with-urlscan/urlscan-3-reference)）。
++   **Web 服务器过滤器**：这些过滤器作为额外模块安装在 Web 服务器上，通常作为额外组件工作，评估进入 Web 服务器的请求。根据 Web 服务器技术的不同，实施方式可能有所不同。一些例子包括`ModSecurity`（可在[`modsecurity.org/`](https://modsecurity.org/)找到），它适用于 Apache，还有微软的`UrlScan`，它专为 IIS Web 服务器设计（[`docs.microsoft.com/en-us/iis/extensions/working-with-urlscan/urlscan-3-reference`](https://docs.microsoft.com/en-us/iis/extensions/working-with-urlscan/urlscan-3-reference)）。
 
 +   **应用过滤器**：这些过滤器可以作为你应用的额外模块实现，通常使用相同的编程语言。对于应用开发者来说，这个选项通常被认为是可行的，因为这些过滤器通常与 Web 服务器技术无关，并且可以作为额外的应用插件加入。OWASP 的一个显著例子是 OWASP Stinger，但 OWASP 已经不再支持它。
 
@@ -476,7 +476,7 @@ WAF 是一种非常多功能的工具，可以用在不同的模式下进一步�
 
     有时，完全不显示错误发生的情况是一个明智的选择，可以避免可能的盲目 SQL 注入攻击。你可以选择在应用程序中根本不显示任何错误，或者提供一个通用的自定义 HTTP 错误页面（例如，HTTP 500 错误页面）。当然，这会使调试变得更加困难，但如果应用程序处于生产环境中，这应该不是问题。
 
-+   **防止 Google（以及其他搜索引擎）黑客攻击**：Google 黑客技术是一种通过在 Google 搜索字符串中插入特定操作符来返回网站特定信息的方法。插入某些关键词可能使攻击者通过访问包含特定关键词的网页，获取与你的应用程序相关的信息。可以通过编辑你网站根目录中的一个文件来防止这种情况，指示搜索引擎不要抓取你的网站，从而避免内页被它们访问。这个文件叫做 **robots.txt**，其内容如下所示，以防止这种行为：
++   **防止 Google（以及其他搜索引擎）黑客攻击**：Google 黑客技术是一种通过在 Google 搜索字符串中插入特定操作符来返回网站特定信息的方法。插入某些关键词可能使攻击者通过访问包含特定关键词的网页，获取与你的应用程序相关的信息。可以通过编辑你网站根目录中的一个文件来防止这种情况，指示搜索引擎不要抓取你的网站，从而避免内页被它们访问。这个文件叫做 `robots.txt`，其内容如下所示，以防止这种行为：
 
     用户代理: *
 

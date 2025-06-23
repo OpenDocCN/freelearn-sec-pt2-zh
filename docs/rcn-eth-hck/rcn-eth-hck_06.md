@@ -48,7 +48,7 @@
 
 # 图像和元数据分析
 
-**可交换图像文件** (**EXIF**) 是一种标准，指定了在图像处理设备（如扫描仪和数码相机）中常用的声音和图像的格式。简单来说，EXIF 是嵌入在数码相机拍摄的照片文件中的元数据，包括相机数据，如地理位置、时间和日期、制造商、分辨率等。带有 EXIF 数据的图像可以被道德黑客用来进行侦察和社会工程攻击。
+**可交换图像文件` (`EXIF**) 是一种标准，指定了在图像处理设备（如扫描仪和数码相机）中常用的声音和图像的格式。简单来说，EXIF 是嵌入在数码相机拍摄的照片文件中的元数据，包括相机数据，如地理位置、时间和日期、制造商、分辨率等。带有 EXIF 数据的图像可以被道德黑客用来进行侦察和社会工程攻击。
 
 作为一名道德黑客，你可以收集目标的公开图像并分析其中的 EXIF 数据。收集到的 EXIF 数据可能会揭示目标的地理位置、拍摄照片的设备类型以及拍摄照片的时间。例如，如果一张照片是在一个组织的服务器室内用数码相机拍摄的，那么被聘请模拟现实世界网络攻击的道德黑客可以识别是否有地理位置数据，并利用它确定服务器室的实际位置和目标公司的位置。此外，EXIF 数据还可以被道德黑客用来提升他们的社会工程攻击，通过识别照片的地理位置并发送看似来自目标相同物理位置的网络钓鱼邮件，从而试图欺骗目标，认为邮件来自可信来源。
 
@@ -64,7 +64,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 在本练习中，你将学习如何识别和分析照片中的 EXIF 数据，并确定拍摄地点的地理位置。要开始此练习，请按照以下说明操作：
 
-1.  打开**Trace Labs OSINT 虚拟机**并使用**osint**/**osint**作为用户名和密码登录。
+1.  打开**Trace Labs OSINT 虚拟机**并使用`osint**/**osint`作为用户名和密码登录。
 
 1.  一旦你登录到 Trace Labs OSINT 虚拟机，打开**网页浏览器**并访问[`osint.tools`](https://osint.tools)进行练习文件操作。在左侧栏的菜单中，你将看到一个资源列表–点击**Exif 示例 1**，如图所示：
 
@@ -78,9 +78,9 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 图 6.2 – EXIF 图片
 
-默认情况下，所有下载的文件都会自动保存在 Trace Labs 虚拟机上的**/home/osint/Downloads**目录中。
+默认情况下，所有下载的文件都会自动保存在 Trace Labs 虚拟机上的`/home/osint/Downloads`目录中。
 
-1.  接下来，使用**exiftool**从图片文件中提取 EXIF 数据。打开**Terminal**并执行以下命令：
+1.  接下来，使用`exiftool`从图片文件中提取 EXIF 数据。打开`Terminal`并执行以下命令：
 
     ```
     osint@osint:~$ exiftool Downloads/exif1.jpg
@@ -94,7 +94,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 如前截图所示，我们能够查看图片的 EXIF 数据。可以收集和分析时间和日期、地理位置、设备类型和型号以及分辨率等信息。
 
-1.  接下来，我们使用**exifprobe**工具从同一张图片中提取 EXIF 数据：
+1.  接下来，我们使用`exifprobe`工具从同一张图片中提取 EXIF 数据：
 
     ```
     osint@osint:~$ exifprobe Downloads/exif1.jpg
@@ -106,7 +106,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 图 6.4 – exifprobe 工具
 
-1.  接下来，再次打开浏览器，访问[`fotoforensics.com/`](https://fotoforensics.com/)，在该网站上你可以上传图片以提取 EXIF 数据。只需点击**Browse...**附加文件，然后选择**Upload**进行提取和分析，如下所示：
+1.  接下来，再次打开浏览器，访问[`fotoforensics.com/`](https://fotoforensics.com/)，在该网站上你可以上传图片以提取 EXIF 数据。只需点击`Browse...`附加文件，然后选择`Upload`进行提取和分析，如下所示：
 
 ![图 6.5 – Fotoforensics 网站](img/Figure_6.05_B19448.jpg)
 
@@ -114,7 +114,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 几秒钟或几分钟后，网站会显示所有的 EXIF 数据，并提供多个特定的数据类别供查看。
 
-1.  接下来，选择**Analysis** | **Metadata**查看 EXIF 数据：
+1.  接下来，选择`Analysis** | **Metadata`查看 EXIF 数据：
 
 ![图 6.6 – 查看元数据](img/Figure_6.06_B19448.jpg)
 
@@ -172,13 +172,13 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 能够识别特定的建筑风格、标识、植物和动物可以帮助你确定照片拍摄的具体地区。例如，某些类型的树木只能在特定国家找到。
 
-1.  我们可以使用 **Cleanup.pictures** ([`cleanup.pictures`](https://cleanup.pictures)) 来从图片中移除特定的物体，比如人物和车辆。以下截图显示了 Cleanup.pictures 网站以及上传字段，在此上传你的图片：
+1.  我们可以使用 `Cleanup.pictures` ([`cleanup.pictures`](https://cleanup.pictures)) 来从图片中移除特定的物体，比如人物和车辆。以下截图显示了 Cleanup.pictures 网站以及上传字段，在此上传你的图片：
 
 ![图 6.11 – Cleanup.pictures 网站](img/Figure_6.11_B19448.jpg)
 
 图 6.11 – Cleanup.pictures 网站
 
-1.  接下来，使用橡皮擦刷选择你想要移除的物体和人物，并启用 **人工智能** (**AI**) 来自动填充高亮区域：
+1.  接下来，使用橡皮擦刷选择你想要移除的物体和人物，并启用 **人工智能` (`AI**) 来自动填充高亮区域：
 
 ![图 6.12 – 物体与人物](img/Figure_6.12_B19448.jpg)
 
@@ -192,9 +192,9 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 提示
 
-你可以在 [`www.remove.bg`](https://www.remove.bg) 使用 **Remote Background** 来去除图片的背景。
+你可以在 [`www.remove.bg`](https://www.remove.bg) 使用 `Remote Background` 来去除图片的背景。
 
-1.  接下来，要执行反向图像搜索，请访问 **Google Images** [`images.google.com`](https://images.google.com)，并上传修改后的图像以查看搜索结果，如下所示：
+1.  接下来，要执行反向图像搜索，请访问 `Google Images` [`images.google.com`](https://images.google.com)，并上传修改后的图像以查看搜索结果，如下所示：
 
 ![图 6.14 – 反向图像搜索结果](img/Figure_6.14_B19448.jpg)
 
@@ -204,9 +204,9 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 重要提示
 
-**Google Images** 已集成 **Google Lens** 来改进图像搜索。这项技术使你能够选择图像的特定区域，或者选择整个图像。
+`Google Images` 已集成 `Google Lens` 来改进图像搜索。这项技术使你能够选择图像的特定区域，或者选择整个图像。
 
-1.  接下来，在 **Google Maps** [`maps.google.com`](https://maps.google.com) 中输入 **Convento de Santo Domingo, Cartagena** 位置，如下所示：
+1.  接下来，在 `Google Maps` [`maps.google.com`](https://maps.google.com) 中输入 `Convento de Santo Domingo, Cartagena` 位置，如下所示：
 
 ![图 6.15 – 谷歌地图](img/Figure_6.15_B19448.jpg)
 
@@ -224,7 +224,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 ## 地理位置分析
 
-地图系统是道德黑客识别目标组织及其周边环境物理位置的优秀数据源。假设你需要在黑盒评估期间对目标组织进行无线渗透测试，你可以通过搜索组织的名称，查找其网站，并查看地址是否列出。此外，你还可以使用像 **Google Maps** 这样的公开在线地图来识别组织的物理位置。
+地图系统是道德黑客识别目标组织及其周边环境物理位置的优秀数据源。假设你需要在黑盒评估期间对目标组织进行无线渗透测试，你可以通过搜索组织的名称，查找其网站，并查看地址是否列出。此外，你还可以使用像 `Google Maps` 这样的公开在线地图来识别组织的物理位置。
 
 例如，我们可以使用谷歌地图查找 Twitter 总部的物理位置（红色图钉），并更好地了解其周围环境，如下所示：
 
@@ -268,19 +268,19 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 组织使用各种格式的员工电子邮件地址，例如以下格式：
 
-+   **firstname @ domain .** **com**
++   `firstname @ domain .** **com`
 
-+   **firstnameinitial + lastname @ domain .** **com**
++   `firstnameinitial + lastname @ domain .** **com`
 
-+   **firstname.lastnameinitial @ domain .** **com**
++   `firstname.lastnameinitial @ domain .** **com`
 
-+   **firstname + lastnameinitial @ domain .** **com**
++   `firstname + lastnameinitial @ domain .** **com`
 
-+   **fullname @ domain .** **com**
++   `fullname @ domain .** **com`
 
 因此，如果攻击者正在收集有关目标组织的 OSINT，从社交媒体上找到的当前员工的电子邮件地址可以帮助他们确定组织内使用的电子邮件格式。一些公司甚至会在他们的网站上公开发布组织结构图，概述各种知名员工及其部门。这些信息可以用来识别特定人员，并确定他们的电子邮件地址格式，以计划针对性的网络钓鱼攻击。
 
-此外，有许多在线论坛，学生、专业人士和研究人员可以在其中获取有关技术问题的帮助，例如**Stack Overflow** ([`stackoverflow.com`](https://stackoverflow.com))。攻击者可以利用 Stack Overflow 上的信息来识别目标组织内存在的技术和安全漏洞。例如，想象一下技术团队遇到某个应用程序问题并决定在 Stack Overflow 上使用他们的真实姓名、职位和组织名称创建一个帐户。然后，他们继续发布包含其基础设施的技术细节、主机操作系统、应用程序名称和服务版本的帖子。尽管这些信息对于出于善意提供帮助的任何人都是有用的，但这些信息对于威胁行为者来说揭示了关于他们目标的许多信息，并使其更容易识别攻击面。
+此外，有许多在线论坛，学生、专业人士和研究人员可以在其中获取有关技术问题的帮助，例如`Stack Overflow` ([`stackoverflow.com`](https://stackoverflow.com))。攻击者可以利用 Stack Overflow 上的信息来识别目标组织内存在的技术和安全漏洞。例如，想象一下技术团队遇到某个应用程序问题并决定在 Stack Overflow 上使用他们的真实姓名、职位和组织名称创建一个帐户。然后，他们继续发布包含其基础设施的技术细节、主机操作系统、应用程序名称和服务版本的帖子。尽管这些信息对于出于善意提供帮助的任何人都是有用的，但这些信息对于威胁行为者来说揭示了关于他们目标的许多信息，并使其更容易识别攻击面。
 
 作为一名道德黑客，全面了解威胁行为者常用的策略和技术来收集和分析来自互联网的数据泄漏是非常重要的。有时，找到人员可能是一项具有挑战性的任务，无论您是在帮助执法部门还是识别目标组织的员工。有许多基于人员的搜索引擎可用于收集个人的姓名、地址、电话号码、社交媒体账号和用户名。以下是一些免费和商业人员搜索引擎的列表：
 
@@ -306,7 +306,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 +   Cisco Talos: [`www.talosintelligence.com/reputation_center/email_rep`](https://www.talosintelligence.com/reputation_center/email_rep)
 
-此外，**Hunter** ([`hunter.io`](https://hunter.io)) 使道德黑客能够发现员工、他们的职位以及与目标域名相关的电子邮件地址。Hunter 允许你使用目标的域名进行查询，然后在其数据库和互联网上的多个数据源中搜索与该域名相关的个人联系信息。
+此外，`Hunter` ([`hunter.io`](https://hunter.io)) 使道德黑客能够发现员工、他们的职位以及与目标域名相关的电子邮件地址。Hunter 允许你使用目标的域名进行查询，然后在其数据库和互联网上的多个数据源中搜索与该域名相关的个人联系信息。
 
 以下截图显示了对 [microsoft.com](http://microsoft.com) 域名进行的查询：
 
@@ -330,11 +330,11 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 上述截图显示了他们的公开资料，其中包含大量数据。例如，如果你在寻找目标的照片，他们的社交媒体资料很可能会有他们的最新照片。此外，公开资料的照片可以通过反向图像搜索来识别其他可能在互联网上包含相同或类似图片的数据源。上述截图还显示了个人的位置、他们的网站以及资料的年龄。如前所述，位置帮助你识别目标的大致位置或城市。资料中的网站可以用来获取更多情报。最后，你可以查看目标上传的所有帖子和媒体；其中包含的敏感信息可以帮助你识别目标组织的基础设施。
 
-智能手机上的社交媒体应用允许用户在帖子中添加地理位置数据，让他们的关注者、朋友和联系人知道他们发帖时的位置。假设你想识别一个目标组织的所有员工，但你只有该公司的地址。作为一名道德黑客，你可以使用**Google Maps**来查找该组织的具体位置并获取 GPS 坐标。
+智能手机上的社交媒体应用允许用户在帖子中添加地理位置数据，让他们的关注者、朋友和联系人知道他们发帖时的位置。假设你想识别一个目标组织的所有员工，但你只有该公司的地址。作为一名道德黑客，你可以使用`Google Maps`来查找该组织的具体位置并获取 GPS 坐标。
 
 要更好地理解如何根据 GPS 数据定位人员，请按照以下说明操作：
 
-1.  打开网页浏览器，访问**Google Maps**：[`maps.google.com`](https://maps.google.com)。
+1.  打开网页浏览器，访问`Google Maps`：[`maps.google.com`](https://maps.google.com)。
 
 1.  接下来，左键单击地图上的任意位置，放置一个标记点，如下所示：
 
@@ -342,7 +342,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 图 6.23 – 收集 GPS 数据
 
-如上图所示，时尚广场（Times Square）作为示例。当你在 Google Maps 上点击一个特定位置时，一个标针会插入，且 URL 会更新为包含 GPS 坐标数据：**40.757791,-73.9854071**。
+如上图所示，时尚广场（Times Square）作为示例。当你在 Google Maps 上点击一个特定位置时，一个标针会插入，且 URL 会更新为包含 GPS 坐标数据：`40.757791,-73.9854071`。
 
 1.  接下来，为了找到所有从该位置发布的人员，前往[`twitter.com`](https://twitter.com)并在**搜索**框中输入以下语法：
 
@@ -358,7 +358,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 上述练习是一个概念验证，旨在获取目标组织的 GPS 坐标，并过滤出来自该位置的帖子。一些找到的帖子很可能是由员工发布的，因此，分析所有收集的数据非常重要，以确保它对你的 OSINT 操作以及未来攻击的计划有帮助。
 
-在对某个人或员工进行画像时，确保你没有收集到假资料或对假个人资料图片进行反向图片查找是非常重要的。像**WhatsMyName** ([`whatsmyname.app`](https://whatsmyname.app))这样的网站对道德黑客和渗透测试人员非常有用，可以用来在互联网上多个数据源和网站上搜索用户名，识别某个特定用户名在哪里注册。结果帮助你确定目标可能在互联网上发布更多有用信息的其他地方。
+在对某个人或员工进行画像时，确保你没有收集到假资料或对假个人资料图片进行反向图片查找是非常重要的。像`WhatsMyName` ([`whatsmyname.app`](https://whatsmyname.app))这样的网站对道德黑客和渗透测试人员非常有用，可以用来在互联网上多个数据源和网站上搜索用户名，识别某个特定用户名在哪里注册。结果帮助你确定目标可能在互联网上发布更多有用信息的其他地方。
 
 以下截图展示了 WhatsMyName 网站的查找字段：
 
@@ -366,7 +366,7 @@ EXIF 提供了大量数据，经过道德黑客的正确利用，可以用来确
 
 图 6.25 – WhatsMyName 查找
 
-最后，你可以使用像**TinEye** ([`tineye.com`](https://tineye.com))和**PimEyes** ([`pimeyes.com`](https://pimeyes.com))这样的工具，进行反向图片搜索，识别某张人物图片在互联网上的相似图像或相同图像。这些工具对于执法部门寻找失踪人员并追踪其活动非常有用。
+最后，你可以使用像`TinEye` ([`tineye.com`](https://tineye.com))和`PimEyes` ([`pimeyes.com`](https://pimeyes.com))这样的工具，进行反向图片搜索，识别某张人物图片在互联网上的相似图像或相同图像。这些工具对于执法部门寻找失踪人员并追踪其活动非常有用。
 
 以下截图展示了 TinEye 上关于一张虚构人物的假图片的搜索结果：
 
@@ -398,7 +398,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 +   Dehashed: [`www.dehashed.com`](https://www.dehashed.com)
 
-道德黑客可以使用 **Have I Been Pwned?** 来识别电子邮件地址和电话号码是否出现在批量泄露数据中。例如，道德黑客可以对目标的电子邮件地址进行查找，如下所示：
+道德黑客可以使用 `Have I Been Pwned?` 来识别电子邮件地址和电话号码是否出现在批量泄露数据中。例如，道德黑客可以对目标的电子邮件地址进行查找，如下所示：
 
 ![图 6.28 – Have I Been Pwned?](img/Figure_6.28_B19448.jpg)
 
@@ -418,7 +418,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 图 6.30 – 泄露数据源
 
-此外，**Intelligence X** 帮助道德黑客从泄露的数据中找到用户凭证。例如，你可以执行电子邮件查找，以识别与电子邮件地址相关的所有相关数据，如下所示：
+此外，`Intelligence X` 帮助道德黑客从泄露的数据中找到用户凭证。例如，你可以执行电子邮件查找，以识别与电子邮件地址相关的所有相关数据，如下所示：
 
 ![图 6.31 – Intelligence X 邮件查找](img/Figure_6.31_B19448.jpg)
 
@@ -440,7 +440,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 如前所示的截图，一些数据收集项包含大量条目，因此使用搜索字段可以帮助你在数据集中找到特定的结果。
 
-最后，**Dehashed**是一个在线数据库，允许伦理黑客从数据泄露中购买用户凭证。这个网站是伦理黑客和渗透测试人员在对目标组织的账户和系统进行基于密码的攻击时的一个有价值工具。它允许你对电子邮件地址、用户名、IP 地址、姓名、地址、电话号码和域名进行查找。
+最后，`Dehashed`是一个在线数据库，允许伦理黑客从数据泄露中购买用户凭证。这个网站是伦理黑客和渗透测试人员在对目标组织的账户和系统进行基于密码的攻击时的一个有价值工具。它允许你对电子邮件地址、用户名、IP 地址、姓名、地址、电话号码和域名进行查找。
 
 完成本节后，你已经学会了如何收集和分析关于个人及其地理位置的开源情报（OSINT），并且能够定位包含用户凭证的数据泄露。在下一节中，你将学习如何收集和分析无线信号的数据。
 
@@ -456,7 +456,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 +   **测试安全控制**：在实施网络防御和安全控制后，测试这些对策的有效性是一个好习惯，以确保它们能按预期工作，减少潜在网络攻击或威胁的风险。
 
-+   **改进事件响应和处理**：如果攻击者通过无线基础设施成功渗透到组织的网络中，网络安全专业人员可以执行无线 SIGINT（信号情报）来识别攻击工具、技术及来源，从而提升**网络威胁** **情报**（**CTI**）。
++   **改进事件响应和处理**：如果攻击者通过无线基础设施成功渗透到组织的网络中，网络安全专业人员可以执行无线 SIGINT（信号情报）来识别攻击工具、技术及来源，从而提升**网络威胁` `情报**（**CTI**）。
 
 通常，无线 SIGINT 帮助组织从敌方的角度更好地理解其无线网络基础设施的攻击面及可能被用于入侵网络的技术。SIGINT 收集的数据有助于道德黑客向客户和组织提供改进安全防御、提升态势感知和优化事件响应与处理的建议。然而，请记住，道德黑客必须在执行无线 SIGINT 前，获得相关当局的合法许可。
 
@@ -464,7 +464,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 ## 构建 SIGINT 基础设施
 
-许多道德黑客和渗透测试人员使用带有外部无线网络适配器的笔记本电脑，该适配器支持监控模式和数据包注入，来收集和分析周围的无线信号。然而，如果你想创建一个更紧凑的设置，可以放进背包里进行战步，或者安装在无人机上进行战飞，那么笔记本电脑就不是最好的选择，因其体积和重量较大。我们可以利用如**树莓派**这类微型计算机的强大功能，运行**Kali Linux ARM**，对目标的无线网络进行侦察。
+许多道德黑客和渗透测试人员使用带有外部无线网络适配器的笔记本电脑，该适配器支持监控模式和数据包注入，来收集和分析周围的无线信号。然而，如果你想创建一个更紧凑的设置，可以放进背包里进行战步，或者安装在无人机上进行战飞，那么笔记本电脑就不是最好的选择，因其体积和重量较大。我们可以利用如**树莓派**这类微型计算机的强大功能，运行`Kali Linux ARM`，对目标的无线网络进行侦察。
 
 以下是建立门户无线信号基础设施所需的材料清单：
 
@@ -480,7 +480,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 +   一个便携式移动电源
 
-树莓派（Raspberry Pi）是一款具有足够计算能力的微型计算机，能够运行**Kismet**，这是一款用于监控 IEEE 802.11、蓝牙和射频信号的无线信号情报工具，可以检测无线网络入侵。microSD 卡将用于存储 Kali Linux ARM 操作系统和所有收集的数据。Alfa AWUS036NHA 无线网络适配器支持监控模式和数据包注入，并能连接到树莓派。VK-162 G-Mouse USB GPS 接收器用于在找到无线站点（客户端）和接入点时，收集其 GPS 坐标。便携式移动电源将为树莓派提供电力，支持战步、战车或战机。
+树莓派（Raspberry Pi）是一款具有足够计算能力的微型计算机，能够运行`Kismet`，这是一款用于监控 IEEE 802.11、蓝牙和射频信号的无线信号情报工具，可以检测无线网络入侵。microSD 卡将用于存储 Kali Linux ARM 操作系统和所有收集的数据。Alfa AWUS036NHA 无线网络适配器支持监控模式和数据包注入，并能连接到树莓派。VK-162 G-Mouse USB GPS 接收器用于在找到无线站点（客户端）和接入点时，收集其 GPS 坐标。便携式移动电源将为树莓派提供电力，支持战步、战车或战机。
 
 以下图示展示了组装后的信号情报基础设施：
 
@@ -488,15 +488,15 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 图 6.34 – 信号情报基础设施
 
-此外，我们将配置 Raspberry Pi 作为一个接入点，设置**动态主机配置协议**（**DHCP**）服务器，向连接到其**wlan0**接口的任何设备提供 IP 地址和子网掩码。这使我们能够轻松连接笔记本电脑，并使用**安全外壳**（**SSH**）安全访问运行在 Raspberry Pi 上的 Kali Linux ARM 操作系统，用于我们的无线渗透测试评估。
+此外，我们将配置 Raspberry Pi 作为一个接入点，设置**动态主机配置协议**（**DHCP**）服务器，向连接到其`wlan0`接口的任何设备提供 IP 地址和子网掩码。这使我们能够轻松连接笔记本电脑，并使用**安全外壳**（**SSH**）安全访问运行在 Raspberry Pi 上的 Kali Linux ARM 操作系统，用于我们的无线渗透测试评估。
 
 要开始设置 Raspberry Pi 进行信号情报工作，请按照以下说明操作：
 
 ### 第一部分 – 安装 Kali Linux ARM
 
-1.  首先，从[`www.raspberrypi.com/software/`](https://www.raspberrypi.com/software/)下载并安装**Raspberry Pi Imager**。
+1.  首先，从[`www.raspberrypi.com/software/`](https://www.raspberrypi.com/software/)下载并安装`Raspberry Pi Imager`。
 
-1.  接下来，从[`www.kali.org/get-kali/`](https://www.kali.org/get-kali/)下载适用于您的 Raspberry Pi 版本的官方**Kali Linux ARM**操作系统：
+1.  接下来，从[`www.kali.org/get-kali/`](https://www.kali.org/get-kali/)下载适用于您的 Raspberry Pi 版本的官方`Kali Linux ARM`操作系统：
 
 ![图 6.35 – Kali Linux ARM](img/Figure_6.35_B19448.jpg)
 
@@ -504,7 +504,7 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 1.  接下来，使用 SD 卡读卡器将 microSD 卡连接到主机电脑。
 
-1.  要将 Kali Linux ARM 操作系统加载到 microSD 卡中，启动**Raspberry Pi Imager**并点击**选择操作系统**，如图所示：
+1.  要将 Kali Linux ARM 操作系统加载到 microSD 卡中，启动`Raspberry Pi Imager`并点击**选择操作系统**，如图所示：
 
 ![图 6.36 – Raspberry Pi Imager](img/Figure_6.36_B19448.jpg)
 
@@ -516,25 +516,25 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 图 6.37 – 操作系统菜单
 
-1.  接下来，选择**Kali Linux ARM**文件并点击**打开**将其加载到**Raspberry Pi Imager**中：
+1.  接下来，选择`Kali Linux ARM`文件并点击**打开**将其加载到`Raspberry Pi Imager`中：
 
 ![图 6.38 – Kali Linux ARM 文件](img/Figure_6.38_B19448.jpg)
 
 图 6.38 – Kali Linux ARM 文件
 
-1.  接下来，返回**Raspberry Pi Imager**的主菜单，点击**选择存储**，并选择 microSD 卡作为**存储**设备。然后，点击齿轮图标打开高级选项：
+1.  接下来，返回`Raspberry Pi Imager`的主菜单，点击**选择存储**，并选择 microSD 卡作为**存储**设备。然后，点击齿轮图标打开高级选项：
 
 ![图 6.39 – 写入操作系统](img/Figure_6.39_B19448.jpg)
 
 图 6.39 – 写入操作系统
 
-1.  接下来，将出现**高级选项**菜单。勾选**启用 SSH**框，设置用户名和密码（**kali**/**kali**），然后点击**保存**，如以下截图所示：
+1.  接下来，将出现**高级选项**菜单。勾选**启用 SSH**框，设置用户名和密码（`kali**/`kali**），然后点击**保存**，如以下截图所示：
 
 ![图 6.40 – 启用 SSH](img/Figure_6.40_B19448.jpg)
 
 图 6.40 – 启用 SSH
 
-1.  接下来，您将自动返回到**Raspberry Pi Imager**主窗口。点击**写入**开始将 Kali Linux ARM 操作系统镜像写入 microSD 卡：
+1.  接下来，您将自动返回到`Raspberry Pi Imager`主窗口。点击**写入**开始将 Kali Linux ARM 操作系统镜像写入 microSD 卡：
 
 ![图 6.41 – 写入按钮](img/Figure_6.41_B19448.jpg)
 
@@ -550,9 +550,9 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 ### 第二部分 – 配置 Kismet 与 GPS
 
-1.  如果你正在使用**Windows 10**计算机，请打开**命令提示符**并执行**powershell**命令，然后继续下一步。
+1.  如果你正在使用`Windows 10`计算机，请打开**命令提示符**并执行`powershell`命令，然后继续下一步。
 
-1.  如果你正在使用**Windows 11**或基于 Linux 的操作系统，请打开**终端**并使用**ssh kali@ip-address**语法，其中**ip-address**是你网络中 Raspberry Pi 的 IP 地址。使用默认的用户凭证**kali**/**kali**作为用户名和密码登录，如下所示：
+1.  如果你正在使用`Windows 11`或基于 Linux 的操作系统，请打开**终端**并使用`ssh kali@ip-address`语法，其中`ip-address`是你网络中 Raspberry Pi 的 IP 地址。使用默认的用户凭证`kali**/**kali`作为用户名和密码登录，如下所示：
 
 ![图 6.42 – 连接到 Raspberry Pi](img/Figure_6.42_B19448.jpg)
 
@@ -578,9 +578,9 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 提示
 
-你可以使用**dmesg | grep tty**命令显示与**电传打字机**（**tty**）子系统相关的内核消息。这个命令帮助你确定操作系统是否检测到并识别了附加的 USB 设备。
+你可以使用`dmesg | grep tty`命令显示与**电传打字机**（**tty**）子系统相关的内核消息。这个命令帮助你确定操作系统是否检测到并识别了附加的 USB 设备。
 
-1.  接下来，你需要修改 Kismet 的配置，以确保**gpsd**软件包能够连接到 GPS 加密狗并将数据发送到 Kismet。为此，使用以下命令在**nano**命令行文本编辑器中打开**kismet.conf**文件：
+1.  接下来，你需要修改 Kismet 的配置，以确保`gpsd`软件包能够连接到 GPS 加密狗并将数据发送到 Kismet。为此，使用以下命令在`nano`命令行文本编辑器中打开`kismet.conf`文件：
 
     ```
     kali@kali-raspberry-pi:~$ sudo nano /etc/kismet/kismet.conf
@@ -598,35 +598,35 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
 
 图 6.43 – 在 Kismet 中修改 GPS 设置
 
-1.  接下来，按*Ctrl* + *X*保存对**kismet.conf**文件的修改，然后按*Y*，并按*Enter*键确认。
+1.  接下来，按*Ctrl* + *X*保存对`kismet.conf`文件的修改，然后按*Y*，并按*Enter*键确认。
 
-1.  接下来，使用以下命令配置**gpsd**与 USB0 上的 GPS 接收器配合使用：
+1.  接下来，使用以下命令配置`gpsd`与 USB0 上的 GPS 接收器配合使用：
 
     ```
     kali@kali-raspberry-pi:~$ sudo gpsd -b /dev/ttyUSB0
     ```
 
-1.  使用**sudo reboot**命令重启 Raspberry Pi 并重新登录。
+1.  使用`sudo reboot`命令重启 Raspberry Pi 并重新登录。
 
-1.  接下来，确保 GPS 加密狗能够清晰地垂直看到天空，使用**cgps –s**或**gpsmon**命令接收来自轨道卫星的 GPS 数据，如下所示的截图所示：
+1.  接下来，确保 GPS 加密狗能够清晰地垂直看到天空，使用**cgps –s**或`gpsmon`命令接收来自轨道卫星的 GPS 数据，如下所示的截图所示：
 
 ![图 6.44 – cgps 数据](img/Figure_6.44_B19448.jpg)
 
 图 6.44 – cgps 数据
 
-如前面的截图所示，GPS 软件和加密狗能够识别并连接到一些卫星（右栏）。此外，Raspberry Pi 能够获取其当前的 GPS 坐标（为保护隐私已模糊处理）以及用于定位和跟踪的其他数据。按*Ctrl* + *C*停止**cgps**运行。
+如前面的截图所示，GPS 软件和加密狗能够识别并连接到一些卫星（右栏）。此外，Raspberry Pi 能够获取其当前的 GPS 坐标（为保护隐私已模糊处理）以及用于定位和跟踪的其他数据。按*Ctrl* + *C*停止`cgps`运行。
 
 ### 第三部分 – 在 Raspberry Pi 上设置接入点
 
 将 Raspberry Pi 设置为工作为接入点，使我们能够通过移动设备（如笔记本电脑或智能手机）无线连接到它，从而无需有线连接。这使得 Raspberry Pi 在进行战车、步行或飞行的测试时，变得完全自主和移动。我们按如下方式操作：
 
-1.  在 Raspberry Pi 上，下载并安装**dnsmasq**和**hostapd**软件包，用于配置无线和 IP 服务：
+1.  在 Raspberry Pi 上，下载并安装`dnsmasq`和`hostapd`软件包，用于配置无线和 IP 服务：
 
     ```
     kali@kali-raspberry-pi:~$ sudo apt install dnsmasq hostapd
     ```
 
-1.  接下来，使用以下命令停止**dnsmasq**和**hostapd**服务，直到稍后需要它们：
+1.  接下来，使用以下命令停止`dnsmasq`和`hostapd`服务，直到稍后需要它们：
 
     ```
     kali@kali-raspberry-pi:~$ sudo systemctl stop dnsmasq
@@ -636,13 +636,13 @@ PimEyes 使用人脸识别技术，更好地识别图片中的人物。以下截
     kali@kali-raspberry-pi:~$ sudo systemctl stop hostapd
     ```
 
-1.  接下来，我们需要为将从**wlan0**接口广播的无线网络设置参数。使用以下命令编辑**hostapd.conf**文件：
+1.  接下来，我们需要为将从`wlan0`接口广播的无线网络设置参数。使用以下命令编辑`hostapd.conf`文件：
 
     ```
     kali@kali-raspberry-pi:~$ sudo nano /etc/hostapd/hostapd.conf
     ```
 
-然后，将以下配置插入到**hostapd.conf**文件中：
+然后，将以下配置插入到`hostapd.conf`文件中：
 
 ```
 interface=wlan0
@@ -660,7 +660,7 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ```
 
-请记住，您可以将**MyNetwork**更改为您选择的任何无线网络名称，将**Password123**更改为更强的密码。以下截图显示了**hostapd.conf**文件中的前述配置：
+请记住，您可以将`MyNetwork`更改为您选择的任何无线网络名称，将`Password123`更改为更强的密码。以下截图显示了`hostapd.conf`文件中的前述配置：
 
 ![图 6.45 – Hostapd 配置](img/Figure_6.45_B19448.jpg)
 
@@ -668,19 +668,19 @@ rsn_pairwise=CCMP
 
 按*Ctrl* + *X*，然后按*Y*，最后按*Enter*保存文件。
 
-1.  接下来，安装**dhcpcd**软件包，我们将用它来配置 Raspberry Pi 上**wlan0**接口的静态 IP 地址：
+1.  接下来，安装`dhcpcd`软件包，我们将用它来配置 Raspberry Pi 上`wlan0`接口的静态 IP 地址：
 
     ```
     kali@kali-raspberry-pi:~$ sudo apt install dhcpcd
     ```
 
-1.  接下来，修改**dhcpcd**配置文件，使用以下命令将**192.168.4.1**地址分配给**wlan0**无线适配器：
+1.  接下来，修改`dhcpcd`配置文件，使用以下命令将`192.168.4.1`地址分配给`wlan0`无线适配器：
 
     ```
     kali@kali-raspberry-pi:~$ sudo nano /etc/dhcpcd.conf
     ```
 
-将以下参数插入到**dhcpcd.conf**文件的末尾：
+将以下参数插入到`dhcpcd.conf`文件的末尾：
 
 ```
 interface wlan0
@@ -696,7 +696,7 @@ interface wlan0
 
 按*Ctrl* + *X*，然后按*Y*，最后按*Enter*保存文件。
 
-1.  接下来，重启**dhcpcd**服务，并使其在系统启动时自动启动：
+1.  接下来，重启`dhcpcd`服务，并使其在系统启动时自动启动：
 
     ```
     kali@kali-raspberry-pi:~$ sudo service dhcpcd restart
@@ -706,7 +706,7 @@ interface wlan0
     kali@kali-raspberry-pi:~$ sudo systemctl enable dhcpcd
     ```
 
-1.  接下来，备份**dnsmasq**配置文件并使用以下命令创建一个新文件：
+1.  接下来，备份`dnsmasq`配置文件并使用以下命令创建一个新文件：
 
     ```
     kali@kali-raspberry-pi:~$ sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
@@ -716,22 +716,22 @@ interface wlan0
     kali@kali-raspberry-pi:~$ sudo nano /etc/dnsmasq.conf
     ```
 
-然后，将以下参数插入新的**dnsmasq**配置文件中：
+然后，将以下参数插入新的`dnsmasq`配置文件中：
 
 ```
 interface=wlan0
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 ```
 
-以下截图显示了**dnsmasq**配置文件中的前述参数：
+以下截图显示了`dnsmasq`配置文件中的前述参数：
 
 ![图 6.47 – DNSmasq 配置](img/Figure_6.47_B19448.jpg)
 
 图 6.47 – DNSmasq 配置
 
-上述截图中显示的配置用于为任何连接到 Raspberry Pi 上**wlan0**接口生成的无线网络的客户端提供 IP 地址和子网掩码。
+上述截图中显示的配置用于为任何连接到 Raspberry Pi 上`wlan0`接口生成的无线网络的客户端提供 IP 地址和子网掩码。
 
-1.  接下来，使用以下命令启用并重启**dnsmasq**和**hostapd**服务：
+1.  接下来，使用以下命令启用并重启`dnsmasq`和`hostapd`服务：
 
     ```
     kali@kali-raspberry-pi:~$ sudo systemctl enable dnsmasq
@@ -753,37 +753,37 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
     kali@kali-raspberry-pi:~$ sudo systemctl restart hostapd
     ```
 
-1.  最后，使用 **sudo reboot** 命令重启 Raspberry Pi。设备重启后，你将看到 **MyNetwork** 无线网络可用。现在，你可以通过无线网络连接到 Raspberry Pi，设备将获得 **192.168.4.2** – **192.168.4.20** 范围内的 IP 地址。然后，你可以通过其 **wlan0** 接口上静态配置的 **192.168.4.1** 地址通过 SSH 访问 Raspberry Pi。
+1.  最后，使用 `sudo reboot` 命令重启 Raspberry Pi。设备重启后，你将看到 `MyNetwork` 无线网络可用。现在，你可以通过无线网络连接到 Raspberry Pi，设备将获得 `192.168.4.2` – `192.168.4.20` 范围内的 IP 地址。然后，你可以通过其 `wlan0` 接口上静态配置的 `192.168.4.1` 地址通过 SSH 访问 Raspberry Pi。
 
 ### 第四部分 – 监控与数据收集
 
-1.  你需要将外部无线网络适配器的操作模式从管理模式更改为监视模式。使用 **iwconfig** 命令查看 Raspberry Pi 上的无线适配器列表，如下所示：
+1.  你需要将外部无线网络适配器的操作模式从管理模式更改为监视模式。使用 `iwconfig` 命令查看 Raspberry Pi 上的无线适配器列表，如下所示：
 
 ![图 6.48 – 无线网络适配器](img/Figure_6.48_B19448.jpg)
 
 图 6.48 – 无线网络适配器
 
-如前所示，**wlan0** 是用于 Raspberry Pi 接入点的嵌入式无线适配器，**wlan1** 是外部适配器。
+如前所示，`wlan0` 是用于 Raspberry Pi 接入点的嵌入式无线适配器，`wlan1` 是外部适配器。
 
-1.  接下来，使用 **airmon-ng** 命令在 **wlan1** 适配器上启用监视模式：
+1.  接下来，使用 `airmon-ng` 命令在 `wlan1` 适配器上启用监视模式：
 
     ```
     kali@kali-raspberry-pi:~$ sudo airmon-ng start wlan1
     ```
 
-以下截图显示了创建 **wlan1mon**（具有监视模式的适配器）时预期的结果：
+以下截图显示了创建 `wlan1mon`（具有监视模式的适配器）时预期的结果：
 
 ![图 6.49 – 启用监视模式](img/Figure_6.49_B19448.jpg)
 
 图 6.49 – 启用监视模式
 
-1.  接下来，使用 **iwconfig** 命令验证 **wlan1mon** 是否已创建，并且它是否以监视模式运行，如下所示：
+1.  接下来，使用 `iwconfig` 命令验证 `wlan1mon` 是否已创建，并且它是否以监视模式运行，如下所示：
 
 ![图 6.50 – 验证适配器](img/Figure_6.50_B19448.jpg)
 
 图 6.50 – 验证适配器
 
-1.  接下来，创建一个名为 **wardrive** 的新目录来存储收集到的数据：
+1.  接下来，创建一个名为 `wardrive` 的新目录来存储收集到的数据：
 
     ```
     kali@kali-raspberry-pi:~$ mkdir wardrive
@@ -795,15 +795,15 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 
 提示
 
-当 Kismet 运行时，你需要保持与 Kismet 终端的连接。任何连接中断都会停止 Kismet。为了防止这个问题，我们将使用 **Tmux**，它是一个多路复用终端，可以让我们将终端窗口发送到后台而不会丢失会话。因此，我们可以启动一个 Tmux 会话，断开与 Raspberry Pi 的连接，然后重新连接并恢复访问 Tmux 会话。要了解更多关于 Tmux 的信息，请访问 [`github.com/tmux/tmux`](https://github.com/tmux/tmux)。
+当 Kismet 运行时，你需要保持与 Kismet 终端的连接。任何连接中断都会停止 Kismet。为了防止这个问题，我们将使用 `Tmux`，它是一个多路复用终端，可以让我们将终端窗口发送到后台而不会丢失会话。因此，我们可以启动一个 Tmux 会话，断开与 Raspberry Pi 的连接，然后重新连接并恢复访问 Tmux 会话。要了解更多关于 Tmux 的信息，请访问 [`github.com/tmux/tmux`](https://github.com/tmux/tmux)。
 
-1.  接下来，使用以下命令启动 **Tmux** 会话：
+1.  接下来，使用以下命令启动 `Tmux` 会话：
 
     ```
     kali@kali-raspberry-pi:~/wardrive$ tmux
     ```
 
-1.  一旦新 Tmux 会话启动，使用以下命令运行 **Kismet** 并将监视模式无线适配器连接到它：
+1.  一旦新 Tmux 会话启动，使用以下命令运行 `Kismet` 并将监视模式无线适配器连接到它：
 
     ```
     kali@kali-raspberry-pi:~/wardrive$ kismet -c wlan1mon
@@ -833,7 +833,7 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 
 如前所示的截图所示，Kismet 捕获并分析了信标和探测帧。信标是接入点发送的 WLAN 帧，探测帧则是客户端发送的。此外，在右上角，你会看到显示了你的 GPS 坐标。
 
-1.  接下来，点击**设备** | **Wi-Fi 接入点**以显示附近所有接入点，如下所示：
+1.  接下来，点击**设备` | `Wi-Fi 接入点**以显示附近所有接入点，如下所示：
 
 ![图 6.53 – 过滤接入点](img/Figure_6.53_B19448.jpg)
 
@@ -873,7 +873,7 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 
 ### 第六部分 – 将数据映射到 Google Earth
 
-1.  收集数据后，使用 **tmux ls** 命令查看后台会话的 Tmux 会话 ID：
+1.  收集数据后，使用 `tmux ls` 命令查看后台会话的 Tmux 会话 ID：
 
     ```
     kali@kali-raspberry-pi:~/wardrive$ tmux ls
@@ -883,7 +883,7 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
     0: 1 windows (created Fri Mar 31 16:09:42 2023)
     ```
 
-如此处所示，会话 ID **0** 是正在运行 Kismet 的后台会话。
+如此处所示，会话 ID `0` 是正在运行 Kismet 的后台会话。
 
 1.  要重新将后台会话附加到 Tmux，使用以下命令：
 
@@ -903,19 +903,19 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 
 图 6.59 – 停止 Kismet
 
-一旦停止 Kismet，系统会自动创建一个 **.kismet** 文件，其中包含所有收集到的数据：
+一旦停止 Kismet，系统会自动创建一个 `.kismet` 文件，其中包含所有收集到的数据：
 
 ![图 6.60 – Kismet 文件](img/Figure_6.60_B19448.jpg)
 
 图 6.60 – Kismet 文件
 
-1.  接下来，输入 **exit** 以退出 Tmux 终端并返回到 Linux 终端的默认 shell：
+1.  接下来，输入 `exit` 以退出 Tmux 终端并返回到 Linux 终端的默认 shell：
 
     ```
     kali@kali-raspberry-pi:~/wardrive$ exit
     ```
 
-1.  接下来，使用以下命令将 **.kismet** 文件转换为 **.****kml** 文件：
+1.  接下来，使用以下命令将 `.kismet` 文件转换为 `.****kml` 文件：
 
     ```
     kali@kali-raspberry-pi:~/wardrive$ sudo kismetdb_to_kml --in Kismet-20230302-16-15-13-1.kismet --out wardrive1.kml
@@ -929,19 +929,19 @@ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 
 重要提示
 
-**Keyhole Markup Language** (**KML**) 是一种用于表示地理数据以及在 2D 和 3D 映射系统中可视化数据的数据格式，如 **Google Earth**。
+`Keyhole Markup Language** (`KML**) 是一种用于表示地理数据以及在 2D 和 3D 映射系统中可视化数据的数据格式，如 `Google Earth`。
 
-1.  接下来，将树莓派重新连接到您的网络，并使用如 **WinSCP** 这样的工具安全连接并将 **.kml** 文件下载到主机计算机上。
+1.  接下来，将树莓派重新连接到您的网络，并使用如 `WinSCP` 这样的工具安全连接并将 `.kml` 文件下载到主机计算机上。
 
-1.  接下来，从 [`www.google.com/earth/versions/`](https://www.google.com/earth/versions/) 下载并安装 **Google Earth Pro**。
+1.  接下来，从 [`www.google.com/earth/versions/`](https://www.google.com/earth/versions/) 下载并安装 `Google Earth Pro`。
 
-1.  接下来，在您的计算机上启动 **Google Earth Pro** 应用程序，并点击 **文件 | 打开...** 来附加 **.kml** 文件，如所示：
+1.  接下来，在您的计算机上启动 `Google Earth Pro` 应用程序，并点击 **文件 | 打开...** 来附加 `.kml` 文件，如所示：
 
 ![图 6.62 – Google Earth Pro 文件菜单](img/Figure_6.62_B19448.jpg)
 
 图 6.62 – Google Earth Pro 文件菜单
 
-加载 **.kml** 文件后，Google Earth Pro 会显示代表无线设备（如接入点和使用 Kismet 发现的站点）位置的黄色图钉，如下截图所示：
+加载 `.kml` 文件后，Google Earth Pro 会显示代表无线设备（如接入点和使用 Kismet 发现的站点）位置的黄色图钉，如下截图所示：
 
 ![图 6.63 – 映射无线设备](img/Figure_6.63_B19448.jpg)
 

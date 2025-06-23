@@ -48,15 +48,15 @@
 
 为了更好地理解构建实验室环境所需的组件，让我们来看看每个主要组件的作用和功能：
 
-+   **虚拟机监控器** – 虚拟机监控器将使您能够创建虚拟化环境，在个人计算机上安装并同时运行多个操作系统。在实验室环境中，**Oracle VM VirtualBox** 将是首选虚拟机监控器，因为它是免费的，并且支持许多主机操作系统和硬件。
++   **虚拟机监控器** – 虚拟机监控器将使您能够创建虚拟化环境，在个人计算机上安装并同时运行多个操作系统。在实验室环境中，`Oracle VM VirtualBox` 将是首选虚拟机监控器，因为它是免费的，并且支持许多主机操作系统和硬件。
 
 +   **虚拟网络** – 虚拟机监控器包含虚拟网络组件，如**虚拟交换机**（**vSwitch**）和**虚拟网络接口卡**（**vNIC**），这些组件使虚拟机能够与同一虚拟机监控器上的其他虚拟机以及物理网络上的系统进行互联通信。
 
-+   **攻击者机器** – 攻击者机器将用于执行被动和主动侦察以及扫描技术。我们将使用**Kali Linux 2022.4**（非 Kali Linux Purple）和**Trace Labs OSINT 虚拟机**，因为它们是免费的，并且包含了您学习和执行侦察及扫描所需的所有工具。
++   **攻击者机器** – 攻击者机器将用于执行被动和主动侦察以及扫描技术。我们将使用`Kali Linux 2022.4`（非 Kali Linux Purple）和**Trace Labs OSINT 虚拟机**，因为它们是免费的，并且包含了您学习和执行侦察及扫描所需的所有工具。
 
 +   **易受攻击的服务器** – 要对目标进行主动侦察和扫描，实验室环境中需要一台易受攻击的服务器。推荐选择**Metasploitable 3 Windows 虚拟机**，因为它专为学习伦理黑客和渗透测试而设计。
 
-+   **易受攻击的 Web 应用** – 为了安全地对 Web 应用进行主动侦察，我们将设置**OWASP Juice Shop**，这是一个易受攻击的 Web 应用，旨在帮助网络安全专业人员更好地理解行业中的**OWASP Top 10: 2021 Web 应用安全风险**。
++   **易受攻击的 Web 应用** – 为了安全地对 Web 应用进行主动侦察，我们将设置`OWASP Juice Shop`，这是一个易受攻击的 Web 应用，旨在帮助网络安全专业人员更好地理解行业中的**OWASP Top 10: 2021 Web 应用安全风险**。
 
 以下图示展示了将在您的个人计算机上构建并运行的实验室拓扑结构：
 
@@ -64,7 +64,7 @@
 
 图 2.1 – 实验室基础设施
 
-虚拟化程序将安装在您的主机操作系统上，使您能够创建虚拟机。当需要时，Kali Linux、Trace Labs OSINT VM 和 Metasploitable 3 Windows VM 将作为虚拟机在虚拟化程序上运行。此外，虚拟化程序将为每个虚拟机分配虚拟网络接口卡（vNIC），通过虚拟交换机（vSwitch）连接虚拟和物理网络。**PentestNet**（**172.30.1.0/24**）是 Kali Linux 和 Metasploitable 3 Windows VM 之间的一个虚拟隔离网络，将严格用于主动侦察。然而，Kali Linux 和 Trace Labs OSINT VM 将连接到互联网。
+虚拟化程序将安装在您的主机操作系统上，使您能够创建虚拟机。当需要时，Kali Linux、Trace Labs OSINT VM 和 Metasploitable 3 Windows VM 将作为虚拟机在虚拟化程序上运行。此外，虚拟化程序将为每个虚拟机分配虚拟网络接口卡（vNIC），通过虚拟交换机（vSwitch）连接虚拟和物理网络。`PentestNet`（**172.30.1.0/24**）是 Kali Linux 和 Metasploitable 3 Windows VM 之间的一个虚拟隔离网络，将严格用于主动侦察。然而，Kali Linux 和 Trace Labs OSINT VM 将连接到互联网。
 
 在下一部分，您将学习如何在计算机上设置虚拟化程序和虚拟网络环境。
 
@@ -74,7 +74,7 @@
 
 在开始之前，请确保您的系统满足以下要求：
 
-+   确保您的处理器支持 **VT-x**/**AMD-V** 功能
++   确保您的处理器支持 `VT-x**/**AMD-V` 功能
 
 +   请确保通过 BIOS/UEFI 启用了处理器的虚拟化功能。
 
@@ -84,7 +84,7 @@
 
 要开始在主机操作系统上设置虚拟化程序，请按照以下步骤进行：
 
-1.  首先，要下载 **Oracle VM VirtualBox** 应用程序，请访问 [`www.virtualbox.org/`](https://www.virtualbox.org/) 并点击 **下载 VirtualBox**，如图所示：
+1.  首先，要下载 `Oracle VM VirtualBox` 应用程序，请访问 [`www.virtualbox.org/`](https://www.virtualbox.org/) 并点击 **下载 VirtualBox**，如图所示：
 
 ![图 2.2 – VirtualBox 网站](img/Figure_2.02_B19448.jpg)
 
@@ -114,7 +114,7 @@
 
 1.  在你的 Windows 主机操作系统上，打开命令提示符。
 
-1.  接下来，使用以下命令将工作目录更改为 VirtualBox 的安装位置，并在 VirtualBox 管理器中创建 **动态主机配置协议** (**DHCP**) 服务器：
+1.  接下来，使用以下命令将工作目录更改为 VirtualBox 的安装位置，并在 VirtualBox 管理器中创建 **动态主机配置协议` (`DHCP**) 服务器：
 
     ```
     C:\Users\Glen> cd C:\Program Files\Oracle\VirtualBox
@@ -152,7 +152,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 图 2.6 – Kali Linux 下载页面
 
-1.  接下来，点击 **VirtualBox 64** 以下载 Kali Linux VirtualBox 文件，如下所示的截图：
+1.  接下来，点击 `VirtualBox 64` 以下载 Kali Linux VirtualBox 文件，如下所示的截图：
 
 ![图 2.7 – Kali Linux 虚拟文件](img/Figure_2.07_B19448.jpg)
 
@@ -160,7 +160,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 这将是一个压缩（ZIP）文件，包含 Kali Linux 虚拟硬盘和设置配置，使我们能够轻松地将其导入到 VirtualBox 管理器中。
 
-1.  下载完 Kali Linux VirtualBox 文件后，你需要使用如 **7-Zip** 之类的解压应用程序来提取下载文件的内容。你可以从 [`www.7-zip.org/`](https://www.7-zip.org/) 下载并安装它。
+1.  下载完 Kali Linux VirtualBox 文件后，你需要使用如 `7-Zip` 之类的解压应用程序来提取下载文件的内容。你可以从 [`www.7-zip.org/`](https://www.7-zip.org/) 下载并安装它。
 
 1.  接下来，右击 Kali Linux 压缩文件并选择 **显示更多选项**，如下图所示：
 
@@ -168,7 +168,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 图 2.8 – 显示更多选项
 
-1.  接下来，选择 **7-Zip** > **在此提取** 来提取当前工作目录中的内容：
+1.  接下来，选择 `7-Zip** > `在此提取** 来提取当前工作目录中的内容：
 
 ![图 2.9 – 7-Zip 提取选项](img/Figure_2.09_B19448.jpg)
 
@@ -182,13 +182,13 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 提取完成后，内容将出现在相同目录下。
 
-1.  接下来，打开 **VirtualBox 管理器** 应用程序，并点击 **机器** > **添加…**，如下图所示：
+1.  接下来，打开 **VirtualBox 管理器** 应用程序，并点击 **机器` > `添加…**，如下图所示：
 
 ![图 2.11 – 添加新虚拟机](img/Figure_2.11_B19448.jpg)
 
 图 2.11 – 添加新虚拟机
 
-1.  将会出现一个新窗口。导航到提取的文件夹位置，选择 **kali-linux-2022.4-virtualbox-amd64** 文件，并点击 **打开**，如下图所示：
+1.  将会出现一个新窗口。导航到提取的文件夹位置，选择 `kali-linux-2022.4-virtualbox-amd64` 文件，并点击 **打开**，如下图所示：
 
 ![图 2.12 – 选择虚拟机文件](img/Figure_2.12_B19448.jpg)
 
@@ -206,7 +206,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
     +   **启用网络适配器**: 勾选框以启用
 
-    +   **附加到**: **桥接适配器**
+    +   **附加到`: `桥接适配器**
 
     +   **名称**: 选择连接到互联网的物理网络适配器
 
@@ -222,13 +222,13 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
     +   **启用网络适配器**: 勾选框以启用
 
-    +   **附加到**: **内部网络**
+    +   **附加到`: `内部网络**
 
-    +   **名称**: 手动输入 **PentestNet** 到字段中
+    +   **名称**: 手动输入 `PentestNet` 到字段中
 
     +   **电缆连接**: 是 – 勾选框
 
-    +   **混杂模式**: **允许所有**
+    +   **混杂模式`: `允许所有**
 
 以下代码片段显示了**适配器 2**的配置：
 
@@ -244,13 +244,13 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 要开始此练习，请按照以下步骤操作：
 
-1.  让我们启动 Kali Linux 虚拟机；选择**Kali Linux**并点击**启动**，如图所示：
+1.  让我们启动 Kali Linux 虚拟机；选择`Kali Linux`并点击**启动**，如图所示：
 
 ![图 2.16 – 启动 Kali Linux](img/Figure_2.16_B19448.jpg)
 
 图 2.16 – 启动 Kali Linux
 
-1.  接下来，登录 Kali Linux 时，使用默认的用户名和密码**kali**，如图所示：
+1.  接下来，登录 Kali Linux 时，使用默认的用户名和密码`kali`，如图所示：
 
 ![图 2.17 – 登录界面](img/Figure_2.17_B19448.jpg)
 
@@ -300,7 +300,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 要开始更改默认密码并测试网络连接，请按照以下步骤操作：
 
-1.  首先，使用默认用户凭据（**kali**/**kali**）登录 Kali Linux。
+1.  首先，使用默认用户凭据（`kali**/`kali**）登录 Kali Linux。
 
 1.  接下来，点击 Kali Linux 左上角的图标，展开 Kali Linux 菜单并选择 **终端仿真器**，如下所示：
 
@@ -308,7 +308,7 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
 
 图 2.23 – 定位终端
 
-1.  接下来，使用以下命令更改 **kali** 用户账户的默认密码：
+1.  接下来，使用以下命令更改 `kali` 用户账户的默认密码：
 
     ```
     kali@kali:~$ passwd
@@ -326,13 +326,13 @@ Kali Linux 是网络安全行业中最流行的基于 Linux 的渗透测试操�
     kali@kali:~$ ip address
     ```
 
-以下代码片段显示 Kali Linux 上的两个网络适配器——**eth0**，它连接到互联网，和 **eth1**，它连接到 **172.30.1.0/24** 子网上的 *PentestNet* 网络：
+以下代码片段显示 Kali Linux 上的两个网络适配器——`eth0`，它连接到互联网，和 `eth1`，它连接到 `172.30.1.0/24` 子网上的 *PentestNet* 网络：
 
 ![图 2.25 – 检查网络适配器](img/Figure_2.25_B19448.jpg)
 
 图 2.25 – 检查网络适配器
 
-**eth0** 网络适配器应具有来自个人网络的 IP 地址，而 **eth1** 被分配了来自 *PentestNet* 虚拟网络的 IP 地址。
+`eth0` 网络适配器应具有来自个人网络的 IP 地址，而 `eth1` 被分配了来自 *PentestNet* 虚拟网络的 IP 地址。
 
 1.  接下来，为了测试 Kali Linux 上的 DNS 解析和互联网连接性，请使用以下命令向 Google 的网页服务器发送四个 **互联网控制消息协议**（**ICMP**）**回显请求**消息：
 
@@ -376,7 +376,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 图 2.28 – Trace Labs 下载页面
 
-1.  接下来，选择**TL OSINT VM 2022.1 OVA**发行版文件进行下载：
+1.  接下来，选择`TL OSINT VM 2022.1 OVA`发行版文件进行下载：
 
 ![图 2.29 – OSINT VM OVA 文件](img/Figure_2.29_B19448.jpg)
 
@@ -388,7 +388,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 图 2.30 – VirtualBox 管理器
 
-1.  接下来，将弹出一个新窗口；只需导航到存储**OSINT VM OVA**文件的位置，选择该文件并点击**打开**，如以下截图所示：
+1.  接下来，将弹出一个新窗口；只需导航到存储`OSINT VM OVA`文件的位置，选择该文件并点击**打开**，如以下截图所示：
 
 ![图 2.31 – OSINT VM OVA 文件](img/Figure_2.31_B19448.jpg)
 
@@ -422,7 +422,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 提示
 
-在 OSINT 虚拟机设置中，您可以增加虚拟机分配的内存。在虚拟机内，转到 **设置** > **系统** > **主板** > **基本内存**。如果您的主机计算机有额外的内存，请考虑将内存分配增加到 4,096 MB（4GB）。
+在 OSINT 虚拟机设置中，您可以增加虚拟机分配的内存。在虚拟机内，转到 **设置` > `系统` > `主板` > `基本内存**。如果您的主机计算机有额外的内存，请考虑将内存分配增加到 4,096 MB（4GB）。
 
 1.  接下来，点击 **网络** 并为 **适配器 1** 使用以下设置：
 
@@ -448,7 +448,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 1.  打开 **VirtualBox 管理器**，选择 TL OSINT 虚拟机，然后点击 **启动** 以启动虚拟机。
 
-1.  一旦 OSINT 虚拟机启动，使用 **osint** 作为 **用户名** 和 **密码** 登录，如下截图所示：
+1.  一旦 OSINT 虚拟机启动，使用 `osint` 作为 **用户名** 和 **密码** 登录，如下截图所示：
 
 ![图 2.37 – OSINT 虚拟机](img/Figure_2.37_B19448.jpg)
 
@@ -456,7 +456,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 1.  登录后，请按照上一节中的步骤禁用 OSINT 虚拟机上的 IPv6，并重启以使更改生效。
 
-1.  （可选）要更改 **osint** 用户账户的默认密码，请打开终端并使用 **passwd** 命令。
+1.  （可选）要更改 `osint` 用户账户的默认密码，请打开终端并使用 `passwd` 命令。
 
 1.  接下来，打开终端并使用以下命令识别网络适配器及其 IP 地址，并测试与互联网的连接：
 
@@ -474,11 +474,11 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 图 2.38 – OSINT 虚拟机连接测试
 
-如前面的代码段所示，**eth0** 网络适配器从物理网络中的 DHCP 服务器获取 IP 地址。根据您的网络设置，该 IP 地址会有所不同。此外，OSINT 虚拟机能够成功执行 DNS 解析，并能够连接到互联网上 Google 的 Web 服务器。
+如前面的代码段所示，`eth0` 网络适配器从物理网络中的 DHCP 服务器获取 IP 地址。根据您的网络设置，该 IP 地址会有所不同。此外，OSINT 虚拟机能够成功执行 DNS 解析，并能够连接到互联网上 Google 的 Web 服务器。
 
 提示
 
-在 Kali Linux 和 OSINT 虚拟机上执行某些命令时，需要使用 **sudo** 后跟命令以调用根权限，例如 **sudo ip address**。要使用 root 账户，请在终端中使用 **sudo su -** 命令。
+在 Kali Linux 和 OSINT 虚拟机上执行某些命令时，需要使用 `sudo` 后跟命令以调用根权限，例如 `sudo ip address`。要使用 root 账户，请在终端中使用 `sudo su -` 命令。
 
 完成本节后，您已经将 OSINT 虚拟机部署为虚拟机。在下一节中，您将学习如何在实验室环境中设置一个易受攻击的 Web 应用程序和服务器。
 
@@ -548,7 +548,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 图 2.42 – 软件包列表已更新
 
-1.  接下来，使用以下命令安装 **docker-ce**：
+1.  接下来，使用以下命令安装 `docker-ce`：
 
     ```
     kali@kali:~$ sudo apt install -y docker-ce docker-ce-cli containerd.io
@@ -600,7 +600,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
 
 要开始设置 Metasploitable 3 Windows 虚拟机，请按照以下步骤操作：
 
-1.  首先，你需要下载并安装 Vagrant，这是一个开源应用程序，可以让用户构建和维护虚拟机和应用程序。在主机计算机上打开网页浏览器，访问[`developer.hashicorp.com/vagrant/downloads`](https://developer.hashicorp.com/vagrant/downloads)，然后下载**Vagrant** **2.3.3 AMD64**版本：
+1.  首先，你需要下载并安装 Vagrant，这是一个开源应用程序，可以让用户构建和维护虚拟机和应用程序。在主机计算机上打开网页浏览器，访问[`developer.hashicorp.com/vagrant/downloads`](https://developer.hashicorp.com/vagrant/downloads)，然后下载`Vagrant** **2.3.3 AMD64`版本：
 
 ![图 2.47 – Vagrant 下载页面](img/Figure_2.47_B19448.jpg)
 
@@ -630,7 +630,7 @@ Trace Labs OSINT 虚拟机是定制版的 Kali Linux，专为学习和执行侦�
     C:\Users\Glen> vagrant box add rapid7/metasploitable3-win2k8
     ```
 
-确保输入**1**来指定 VirtualBox 作为提供程序，如下所示：
+确保输入`1`来指定 VirtualBox 作为提供程序，如下所示：
 
 ![图 2.49 – 选择提供程序类型](img/Figure_2.49_B19448.jpg)
 
@@ -642,7 +642,7 @@ Vagrant 将开始下载 Metasploitable 3 Windows 虚拟机文件，如下所示�
 
 图 2.50 – 下载状态
 
-1.  接下来，打开**Windows 资源管理器**，导航到**C:\Users\yourusername\.vagrant.d\boxes**，在该位置你将找到**rapid7-VAGRANTSLASH-metasploitable3-win2k8**文件夹。将**rapid7-VAGRANTSLASH-metasploitable3-win2k8**文件夹重命名为**metasploitable3-win2k8**。
+1.  接下来，打开**Windows 资源管理器**，导航到`C:\Users\yourusername\.vagrant.d\boxes`，在该位置你将找到`rapid7-VAGRANTSLASH-metasploitable3-win2k8`文件夹。将`rapid7-VAGRANTSLASH-metasploitable3-win2k8`文件夹重命名为`metasploitable3-win2k8`。
 
 1.  接下来，在 Windows 命令提示符中，使用以下命令更改工作目录并初始化 Metasploitable 3 Windows 虚拟机的构建配置：
 
@@ -668,7 +668,7 @@ Vagrant 将开始下载 Metasploitable 3 Windows 虚拟机文件，如下所示�
 
 重要提示
 
-如果**vagrant up**命令出现错误，请再次执行该命令。
+如果`vagrant up`命令出现错误，请再次执行该命令。
 
 该过程通常需要几分钟才能完成。
 
@@ -678,13 +678,13 @@ Vagrant 将开始下载 Metasploitable 3 Windows 虚拟机文件，如下所示�
 
 图 2.52 – Metasploitable 3 Windows 虚拟机
 
-1.  一旦虚拟机窗口出现，点击**输入** > **键盘** > **插入 Ctrl-Alt-Del**，如截图所示：
+1.  一旦虚拟机窗口出现，点击**输入` > `键盘` > `插入 Ctrl-Alt-Del**，如截图所示：
 
 ![图 2.53 – 启动屏幕](img/Figure_2.53_B19448.jpg)
 
 图 2.53 – 启动屏幕
 
-1.  接下来，选择**Administrator**账户，并使用默认密码（**vagrant**）登录，如下图所示：
+1.  接下来，选择`Administrator`账户，并使用默认密码（**vagrant**）登录，如下图所示：
 
 ![图 2.54 – 登录窗口](img/Figure_2.54_B19448.jpg)
 
@@ -710,7 +710,7 @@ Vagrant 将开始下载 Metasploitable 3 Windows 虚拟机文件，如下所示�
 
     +   **附加到**：**内部网络**
 
-    +   **名称**：手动输入**PentestNet**到字段中
+    +   **名称**：手动输入`PentestNet`到字段中
 
     +   **电缆连接**：是 – 勾选框
 
@@ -722,9 +722,9 @@ Vagrant 将开始下载 Metasploitable 3 Windows 虚拟机文件，如下所示�
 
 图 2.57 – 网络适配器设置
 
-1.  接下来，点击**OK**保存配置。
+1.  接下来，点击`OK`保存配置。
 
-1.  最后，打开虚拟机并登录到 Metasploitable 3 Windows 虚拟机的**Administrator**用户账户，打开命令提示符，使用**ipconfig**命令来验证虚拟机是否从**172.30.1.0/24**网络获得了 IP 地址，如下所示：
+1.  最后，打开虚拟机并登录到 Metasploitable 3 Windows 虚拟机的`Administrator`用户账户，打开命令提示符，使用`ipconfig`命令来验证虚拟机是否从`172.30.1.0/24`网络获得了 IP 地址，如下所示：
 
 ![图 2.58 – 验证网络连接](img/Figure_2.58_B19448.jpg)
 

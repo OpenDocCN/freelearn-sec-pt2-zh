@@ -42,7 +42,7 @@ Mutillidae 是一个开放源代码、不安全且易受攻击的 Web 应用程�
 
 图 5.2 – Mutillidae 目录
 
-1.  一旦 Docker 设置完成，请打开浏览器并导航到 localhost。您可能注意到 localhost URL 将重定向到**localhost/database-offline.php**，如*图 5**.3*所示：
+1.  一旦 Docker 设置完成，请打开浏览器并导航到 localhost。您可能注意到 localhost URL 将重定向到`localhost/database-offline.php`，如*图 5**.3*所示：
 
 ![图 5.3 – Mutillidae 的本地主机](img/Figure_05.03_B18829.jpg)
 
@@ -70,27 +70,27 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 +   **Secure 属性**：
 
-**Secure**属性确保 cookie 通过 HTTPS 发送，以防止中间人攻击。
+`Secure`属性确保 cookie 通过 HTTPS 发送，以防止中间人攻击。
 
 +   **HttpOnly 属性**：
 
-**HttpOnly**属性被设置为防止客户端脚本访问 cookie 数据。此属性作为防御跨站脚本攻击的另一层保护。
+`HttpOnly`属性被设置为防止客户端脚本访问 cookie 数据。此属性作为防御跨站脚本攻击的另一层保护。
 
 +   **Domain 属性**：
 
-**Domain**属性用于设置 cookie 可以使用的域范围。如果请求 URL 中的域与**Domain**属性中的域不匹配，cookie 将无效。
+`Domain`属性用于设置 cookie 可以使用的域范围。如果请求 URL 中的域与`Domain`属性中的域不匹配，cookie 将无效。
 
 +   **Path 属性**：
 
-**Path**属性被设置为指定 cookie 可以使用的路径。如果路径匹配，则 cookie 将在请求中发送。
+`Path`属性被设置为指定 cookie 可以使用的路径。如果路径匹配，则 cookie 将在请求中发送。
 
 +   **Expires 属性**：
 
-**Expires**属性被设置为指定 cookie 的生命周期。
+`Expires`属性被设置为指定 cookie 的生命周期。
 
 +   **SameSite 属性**：
 
-**SameSite**属性被设置为限制在跨站请求中发送 cookie。此属性用于限制与第三方共享 cookie，并作为防御**跨站请求伪造**（**CSRF**）攻击的保护。**SameSite**属性可以设置为以下值之一：**Strict**、**Lax**或**None**。如果将值设置为**None**，cookie 将会在跨站请求中发送。如果将值设置为**Strict**，cookie 将仅发送到它的来源站点。如果将值设置为**Lax**，即使 cookie 是由第三方创建的，只要 URL 与 cookie 的域匹配，cookie 仍会被发送。
+`SameSite`属性被设置为限制在跨站请求中发送 cookie。此属性用于限制与第三方共享 cookie，并作为防御**跨站请求伪造**（**CSRF**）攻击的保护。`SameSite`属性可以设置为以下值之一：`Strict`、`Lax`或`None`。如果将值设置为`None`，cookie 将会在跨站请求中发送。如果将值设置为`Strict`，cookie 将仅发送到它的来源站点。如果将值设置为`Lax`，即使 cookie 是由第三方创建的，只要 URL 与 cookie 的域匹配，cookie 仍会被发送。
 
 ## 准备工作
 
@@ -100,9 +100,9 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 默认情况下，ZAP 在被动扫描器中具有规则，如果未设置之前定义的某个属性，将发出警报。在本教程中，我们将启动 PortSwigger 实验室，查看 ZAP 中的 cookie 警报。以下步骤将引导您完成此过程：
 
-1.  第一步是浏览[portswigger.net/web-security](http://portswigger.net/web-security)，然后点击顶部导航栏中的**All Labs**。
+1.  第一步是浏览[portswigger.net/web-security](http://portswigger.net/web-security)，然后点击顶部导航栏中的`All Labs`。
 
-1.  一旦进入实验室页面，点击**Exploiting cross-site scripting to steal cookies >>**，如*图 5.6*所示：
+1.  一旦进入实验室页面，点击`Exploiting cross-site scripting to steal cookies >>`，如*图 5.6*所示：
 
 ![图 5.6 – PortSwigger 实验室](img/Figure_05.06_B18829.jpg)
 
@@ -130,7 +130,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 这样做会将爬虫添加到 ZAP 的底部窗口（如果它不在那里），你会看到进度条。
 
-1.  完成蜘蛛爬取后，点击底部窗口中的 **警报** 标签。你会看到 ZAP 发现该应用程序的 cookie 没有包含 **HttpOnly** 标志和 **SameSite** 属性，如 *图 5.10* 所示：
+1.  完成蜘蛛爬取后，点击底部窗口中的 **警报** 标签。你会看到 ZAP 发现该应用程序的 cookie 没有包含 `HttpOnly` 标志和 `SameSite` 属性，如 *图 5.10* 所示：
 
 ![图 5.10 – Cookie 警报](img/Figure_05.10_B18829.jpg)
 
@@ -160,7 +160,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 图 5.12 – Mutillidae 当前博客条目
 
-1.  进入 ZAP Proxy，右键点击 POST 请求，点击 **生成反-CSRF** **测试表单**：
+1.  进入 ZAP Proxy，右键点击 POST 请求，点击 **生成反-CSRF` `测试表单**：
 
 ![图 5.13 – 生成反-CSRF 测试表单](img/Figure_05.13_B18829.jpg)
 
@@ -216,7 +216,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 1.  打开 ZAP 并点击绿色圆圈**设置在所有请求和响应上断点**按钮来添加断点。绿色圆圈按钮会变为红色。
 
-1.  以管理员身份登录。管理员凭据是 admin@juice-sh.op 作为电子邮件地址，**admin123**作为密码。
+1.  以管理员身份登录。管理员凭据是 admin@juice-sh.op 作为电子邮件地址，`admin123`作为密码。
 
 1.  点击**步骤**按钮，直到看到包含令牌 ID 的登录请求响应，如*图 5.17*所示。然后点击**继续**：
 
@@ -232,7 +232,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 1.  点击**账户**，然后点击**注销**，以退出 Juice Shop。
 
-1.  打开 ZAP，在**历史**标签中，搜索以下**/rest/order-history** URL 的 GET 请求，如*图 5.19*所示：
+1.  打开 ZAP，在**历史**标签中，搜索以下`/rest/order-history` URL 的 GET 请求，如*图 5.19*所示：
 
 ![图 5.19 – /rest/order-history 的 GET 请求](img/Figure_05.19_B18829.jpg)
 
@@ -294,9 +294,9 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 1.  首先，进入**账户**，选择**登录**，然后选择**还不是客户**。
 
-1.  创建一个**User1@email.com**，密码可以随便设置，安全问题也随便填写。
+1.  创建一个`User1@email.com`，密码可以随便设置，安全问题也随便填写。
 
-1.  创建第一个用户后，重复*步骤 1*和*步骤 2*来创建**User2@email.com**。
+1.  创建第一个用户后，重复*步骤 1*和*步骤 2*来创建`User2@email.com`。
 
 1.  使用*User1*账户登录到 Juice Shop。
 
@@ -308,9 +308,9 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 图 5.24 – 在所有请求和响应上设置断点
 
-1.  在 ZAP 中，您将看到一个新的标签页，名为**Break**，如*图 5.25*所示，它会显示捕获的*User1*会话（JWT）令牌。
+1.  在 ZAP 中，您将看到一个新的标签页，名为`Break`，如*图 5.25*所示，它会显示捕获的*User1*会话（JWT）令牌。
 
-1.  复制请求中**token=**和**Upgrade-Insecure-Requests**之间的所有文本：
+1.  复制请求中`token=`和`Upgrade-Insecure-Requests`之间的所有文本：
 
 ![图 5.25 – 捕获的会话令牌](img/Figure_05.25_B18829.jpg)
 
@@ -328,7 +328,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 ## 它是如何工作的……
 
-用户会话在未获得用户知情或同意的情况下被控制的行为称为会话劫持。此操作通常通过获取用户的**JSON Web Token**（**JWT**）来实现，该令牌用于在网页应用程序中验证用户身份。
+用户会话在未获得用户知情或同意的情况下被控制的行为称为会话劫持。此操作通常通过获取用户的`JSON Web Token`（**JWT**）来实现，该令牌用于在网页应用程序中验证用户身份。
 
 获取受害者 JWT 的攻击者可以冒充受害者并访问其账户。这是通过将被窃取的 JWT 放入网页应用请求的 HTTP 头部来实现的。由于 JWT 看起来是合法的，并且由应用程序提供，应用程序会将请求当作来自受害者的请求处理。
 
@@ -336,7 +336,7 @@ Cookies 是网站存储在计算机上的文本文件。网站使用 cookies 来
 
 ## 还有更多……
 
-ZAP 可以通过进入**选项**并滚动到**常规**中的**JWT**设置来扫描 JWT 令牌漏洞，勾选**启用客户端配置扫描**。稍后，在*第十章*，“*高级攻击技术*”中，在*操作 JSON Web 令牌*这一食谱中，我们将回顾如何在 ZAP 中使用和滥用它。此外，这些令牌可以通过**编码/解码/哈希**工具进行解码，以查看其中的内容，如头部算法、用户名、密码、令牌过期时间等。在*第十二章*中，我们将进一步讨论 JWT 令牌的结构、如何解码它们，并展示可以尝试的攻击方法。
+ZAP 可以通过进入**选项**并滚动到**常规**中的`JWT`设置来扫描 JWT 令牌漏洞，勾选**启用客户端配置扫描**。稍后，在*第十章*，“*高级攻击技术*”中，在*操作 JSON Web 令牌*这一食谱中，我们将回顾如何在 ZAP 中使用和滥用它。此外，这些令牌可以通过**编码/解码/哈希**工具进行解码，以查看其中的内容，如头部算法、用户名、密码、令牌过期时间等。在*第十二章*中，我们将进一步讨论 JWT 令牌的结构、如何解码它们，并展示可以尝试的攻击方法。
 
 ## 参见
 

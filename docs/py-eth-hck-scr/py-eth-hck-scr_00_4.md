@@ -28,9 +28,9 @@
 
 如前所述，我们将在本章中为**渗透测试**（**pen testing**）配置我们的设置。我们首先需要的就是虚拟化软件。虚拟化软件帮助我们在现有操作系统上运行完整的操作系统。虚拟化的主要优势是，你可以在不购买额外硬件（如 PC）的情况下运行完整的操作系统，同时享受这些硬件所提供的所有功能。随着我们深入学习，你会更详细地了解这些优势。以下是一些流行的虚拟化软件列表：
 
-+   **VMware Workstation Player**
++   `VMware Workstation Player`
 
-+   **VirtualBox**
++   `VirtualBox`
 
 虽然也有其他选项，但我推荐使用其中之一。我将在本书中使用 VirtualBox，因为它是免费的。VMware Player 也免费，但没有适当的许可证无法用于商业用途。
 
@@ -132,17 +132,17 @@
 
 # 安装 Python
 
-本章接下来我们需要设置的是 Python。本书中我们将使用 Python 3 版本，即**python3**。Python 3 是 Python 的一个*重大*版本，且与旧版 2 不兼容。要下载 Python，请访问 [`www.python.org/`](https://www.python.org/) 并下载最新版。截至本书撰写时，推荐使用 Python 3.8 版本；不过，任何高于 3.2 的 Python 版本都适用于本书。推荐使用 64 位版本的 Python。我假设你使用的是 Windows 作为主要操作系统；不过，本书中的代码也应该可以在 Linux 和 macOS 上运行，因为我们会使用虚拟机。
+本章接下来我们需要设置的是 Python。本书中我们将使用 Python 3 版本，即`python3`。Python 3 是 Python 的一个*重大*版本，且与旧版 2 不兼容。要下载 Python，请访问 [`www.python.org/`](https://www.python.org/) 并下载最新版。截至本书撰写时，推荐使用 Python 3.8 版本；不过，任何高于 3.2 的 Python 版本都适用于本书。推荐使用 64 位版本的 Python。我假设你使用的是 Windows 作为主要操作系统；不过，本书中的代码也应该可以在 Linux 和 macOS 上运行，因为我们会使用虚拟机。
 
 ## 在 Windows 上安装 Python
 
-在 Windows 上安装 Python 的过程相当简单。打开您在 *安装虚拟操作系统* 部分刚刚安装的 Windows 10 虚拟机。请注意，从现在开始，大部分工作将在这些虚拟机上完成，而不是托管这些虚拟机的宿主操作系统。在安装过程中，只需勾选 **Add Python 3.8 to PATH** 选项（版本号将取决于您下载的版本），这样您就可以从命令提示符的任何位置访问 Python：
+在 Windows 上安装 Python 的过程相当简单。打开您在 *安装虚拟操作系统* 部分刚刚安装的 Windows 10 虚拟机。请注意，从现在开始，大部分工作将在这些虚拟机上完成，而不是托管这些虚拟机的宿主操作系统。在安装过程中，只需勾选 `Add Python 3.8 to PATH` 选项（版本号将取决于您下载的版本），这样您就可以从命令提示符的任何位置访问 Python：
 
 ![图 2.8 – Python 安装](img/B14788_02_08.jpg)
 
 图 2.8 – Python 安装
 
-一旦选择了 *图 2.8* 中高亮的选项，点击 **Install Now**。安装完成后，关闭安装窗口并打开终端/命令提示符。在命令提示符中，只需输入 **python** 命令。您应该会在终端中看到以下输出。此时 Python shell 应该已经打开：
+一旦选择了 *图 2.8* 中高亮的选项，点击 `Install Now`。安装完成后，关闭安装窗口并打开终端/命令提示符。在命令提示符中，只需输入 `python` 命令。您应该会在终端中看到以下输出。此时 Python shell 应该已经打开：
 
 ![图 2.9 – Python shell](img/B14788_02_09.jpg)
 
@@ -152,7 +152,7 @@
 
 ## 在 Kali Linux 上安装 Python
 
-大多数渗透测试操作系统都已经预装了 Python。要检查您的发行版是否已安装 Python，请打开 Kali 并搜索 **Terminal**。打开终端并在其中输入以下命令：
+大多数渗透测试操作系统都已经预装了 Python。要检查您的发行版是否已安装 Python，请打开 Kali 并搜索 `Terminal`。打开终端并在其中输入以下命令：
 
 python --version
 
@@ -176,7 +176,7 @@ python3 --version
 
 # 集成开发环境
 
-IDE 是一种帮助我们高效编写代码的软件工具。您也可以在记事本中编写 Python 脚本；然而，IDE 提供的功能帮助我们更轻松地编写代码。有很多可用的选项，我们将重点介绍免费的 IDE。我们推荐的最佳选项是 **Visual Studio Code**（**VS Code**），它完全免费。请继续为两个虚拟操作系统（Windows 10 和 Kali）下载 VS Code：[`code.visualstudio.com/download`](https://code.visualstudio.com/download)。
+IDE 是一种帮助我们高效编写代码的软件工具。您也可以在记事本中编写 Python 脚本；然而，IDE 提供的功能帮助我们更轻松地编写代码。有很多可用的选项，我们将重点介绍免费的 IDE。我们推荐的最佳选项是 `Visual Studio Code`（**VS Code**），它完全免费。请继续为两个虚拟操作系统（Windows 10 和 Kali）下载 VS Code：[`code.visualstudio.com/download`](https://code.visualstudio.com/download)。
 
 在 Windows 上的安装非常简单：您只需要按照安装程序进行操作。在 Linux 上的安装则需要您下载一个 Debian 包文件。打开终端并导航到下载文件的位置。然后，运行以下命令：
 
@@ -190,7 +190,7 @@ sudo dpkg -i /path/to/file
 
 请注意，它会提示您输入密码以进行安装。
 
-安装完成后，你需要安装扩展。在 VS Code 中打开，点击左侧的 **扩展** 标签，搜索 **Python**。它应该看起来像这样：
+安装完成后，你需要安装扩展。在 VS Code 中打开，点击左侧的 **扩展** 标签，搜索 `Python`。它应该看起来像这样：
 
 ![图 2.13 – Python 扩展](img/B14788_02_13.jpg)
 
@@ -230,15 +230,15 @@ Python 有一个非常整洁的功能，叫做虚拟环境。通过使用这些�
 
 在 Kali 中创建一个新文件夹，所有的项目文件将保存在这个文件夹中：
 
-1.  打开你的 Kali 主目录，创建一个名为 **python-hacking** 的新文件夹。我们所有的未来工作将在这里进行。
+1.  打开你的 Kali 主目录，创建一个名为 `python-hacking` 的新文件夹。我们所有的未来工作将在这里进行。
 
 1.  在 VS Code 中打开此文件夹：![图 2.15 – VS Code 中的文件夹结构    ](img/B14788_02_15.jpg)
 
     图 2.15 – VS Code 中的文件夹结构
 
-1.  在 **python-hacking** 文件夹中，创建一个名为 **m1-hello-world** 的新文件夹。在这里我们将测试我们的虚拟环境。在 **m1-hello-world** 文件夹中，创建一个名为 **main.py** 的新文件。
+1.  在 `python-hacking` 文件夹中，创建一个名为 `m1-hello-world` 的新文件夹。在这里我们将测试我们的虚拟环境。在 `m1-hello-world` 文件夹中，创建一个名为 `main.py` 的新文件。
 
-1.  使用以下命令在终端中检查 Python 包管理器 **pip** 是否在 Kali 中正确安装：
+1.  使用以下命令在终端中检查 Python 包管理器 `pip` 是否在 Kali 中正确安装：
 
     **pip3 –version**
 
@@ -248,11 +248,11 @@ Python 有一个非常整洁的功能，叫做虚拟环境。通过使用这些�
 
     图 2.16 – pip 未安装
 
-1.  如果你看到与前面类似的输出，意味着 **pip** 没有在系统上安装。要安装 **pip**，请运行以下命令。确保系统已更新：
+1.  如果你看到与前面类似的输出，意味着 `pip` 没有在系统上安装。要安装 `pip`，请运行以下命令。确保系统已更新：
 
-    **sudo apt install python3-pip**
+    `sudo apt install python3-pip`
 
-    一旦 **pip** 正确安装，输出应该像这样：
+    一旦 `pip` 正确安装，输出应该像这样：
 
     ![图 2.17 – pip 安装](img/B14788_02_17.jpg)
 
@@ -260,21 +260,21 @@ Python 有一个非常整洁的功能，叫做虚拟环境。通过使用这些�
 
     图 2.17 – pip 安装
 
-    如果 Windows 中没有安装 **pip3**，请安装它。
+    如果 Windows 中没有安装 `pip3`，请安装它。
 
-1.  现在打开 **main.py** 文件并编写一些 Python 代码。我们将使用以下代码。在 VS Code 中打开终端，按 *Ctrl* + *`*。
+1.  现在打开 `main.py` 文件并编写一些 Python 代码。我们将使用以下代码。在 VS Code 中打开终端，按 *Ctrl* + *`*。
 
 1.  现在我们将安装 Python 虚拟环境模块。运行以下命令来安装它：
 
-    **apt-get install python3-venv**
+    `apt-get install python3-venv`
 
-1.  一旦 Python 虚拟环境模块安装完成，我们可以通过在终端中运行以下命令来创建 **virtual-env** 文件夹：
+1.  一旦 Python 虚拟环境模块安装完成，我们可以通过在终端中运行以下命令来创建 `virtual-env` 文件夹：
 
-    **python3 -m venv my-virtualenv**
+    `python3 -m venv my-virtualenv`
 
-1.  如果命令成功运行，您会看到一个新文件夹 **my-virtualenv** 被创建。这个文件夹包含一个与系统环境隔离的 Python 环境。要启用此环境，运行以下命令：
+1.  如果命令成功运行，您会看到一个新文件夹 `my-virtualenv` 被创建。这个文件夹包含一个与系统环境隔离的 Python 环境。要启用此环境，运行以下命令：
 
-    **source my-virtualenv/bin/activate**
+    `source my-virtualenv/bin/activate`
 
     它将像 *图 2.18* 中的输出一样：
 
@@ -284,9 +284,9 @@ Python 有一个非常整洁的功能，叫做虚拟环境。通过使用这些�
 
 图 2.18 – 激活环境
 
-一旦环境被激活，您将看到每个终端行的开头显示环境名称 **my-virtualenv**。现在，您在这个 shell 中使用 **pip** 安装的每个包都将只安装在该环境中，并与主环境隔离。
+一旦环境被激活，您将看到每个终端行的开头显示环境名称 `my-virtualenv`。现在，您在这个 shell 中使用 `pip` 安装的每个包都将只安装在该环境中，并与主环境隔离。
 
-在 **python** 文件中编写以下代码，以测试一切是否正常工作：
+在 `python` 文件中编写以下代码，以测试一切是否正常工作：
 
 if __name__ == "__main__":
 
@@ -312,7 +312,7 @@ python3 main.py
 
 图 2.20 – 运行 Python 脚本
 
-如果您看到 **hello world** 输出，说明一切已正确安装。
+如果您看到 `hello world` 输出，说明一切已正确安装。
 
 # 总结
 

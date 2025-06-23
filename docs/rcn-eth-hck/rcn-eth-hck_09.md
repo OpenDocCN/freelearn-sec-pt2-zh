@@ -38,9 +38,9 @@
 
 要开始识别域名的 IP 地址，请使用以下说明：
 
-1.  首先，启动 **Kali Linux** 虚拟机，并确保它具有互联网连接。
+1.  首先，启动 `Kali Linux` 虚拟机，并确保它具有互联网连接。
 
-1.  接下来，打开终端并使用 **host <domain-name>** 命令检索目标的 IPv4 和 IPv6 地址，如下所示：
+1.  接下来，打开终端并使用 `host <domain-name>` 命令检索目标的 IPv4 和 IPv6 地址，如下所示：
 
 ![图 9.1 – host 命令](img/Figure_9.01_B19448.jpg)
 
@@ -52,37 +52,37 @@
 
 要识别网络地址的地理位置，请访问 [`whatismyipaddress.com/ip-lookup`](https://whatismyipaddress.com/ip-lookup)，对任何公共 IP 地址执行 IP 查询。
 
-1.  接下来，**nslookup** 工具用于排查 **DNS** 问题并检索主机名的 IP 地址。要获取域名的 IP 地址，请使用 **nslookup <domain-name> <DNS-server>** 命令，如下所示：
+1.  接下来，`nslookup` 工具用于排查 `DNS` 问题并检索主机名的 IP 地址。要获取域名的 IP 地址，请使用 `nslookup <domain-name> <DNS-server>` 命令，如下所示：
 
 ![图 9.2 – nslookup 工具](img/Figure_9.02_B19448.jpg)
 
 图 9.2 – nslookup 工具
 
-如前面的代码片段所示，**nslookup** 将 DNS 查询发送到 Google 的 DNS 服务器 **8.8.8.8**，并且响应提供了输出中显示的 IP 地址。
+如前面的代码片段所示，`nslookup` 将 DNS 查询发送到 Google 的 DNS 服务器 `8.8.8.8`，并且响应提供了输出中显示的 IP 地址。
 
 重要提示
 
-有不同类型的 DNS 记录，例如 **A**，将主机名解析为 IPv4 地址；**AAAA**，将主机名解析为 IPv6 地址；**MX**，指定邮件交换服务器；**CNAME**，指定域名的规范名称或别名；**PTR**，将 IP 地址解析为主机名；**TXT**，指定文本记录；**RP**，指定负责该域名的人；**NS**，指定该域名的权威名称服务器。
+有不同类型的 DNS 记录，例如 `A`，将主机名解析为 IPv4 地址；`AAAA`，将主机名解析为 IPv6 地址；`MX`，指定邮件交换服务器；`CNAME`，指定域名的规范名称或别名；`PTR`，将 IP 地址解析为主机名；`TXT`，指定文本记录；`RP`，指定负责该域名的人；`NS`，指定该域名的权威名称服务器。
 
-1.  在基于 Linux 的系统中，**dig** 工具允许你使用 **@** 语法查询特定的 DNS 服务器，后面跟上域名。要检索域名的 DNS 记录，请使用 **dig @<dns-server> <target-domain>** 命令，如下所示：
+1.  在基于 Linux 的系统中，`dig` 工具允许你使用 `@` 语法查询特定的 DNS 服务器，后面跟上域名。要检索域名的 DNS 记录，请使用 `dig @<dns-server> <target-domain>` 命令，如下所示：
 
 ![图 9.3 – dig 命令](img/Figure_9.03_B19448.jpg)
 
 图 9.3 – dig 命令
 
-要检索特定的 DNS 记录类型，只需在命令的末尾添加 **A**、**AAAA**、**MX**、**NS**、**PTR**、**CNAME** 或 **RP** 记录类型，如下所示：
+要检索特定的 DNS 记录类型，只需在命令的末尾添加 `A`、`AAAA`、`MX`、`NS`、`PTR`、`CNAME` 或 `RP` 记录类型，如下所示：
 
 ![图 9.4 – 获取特定的 DNS 记录](img/Figure_9.04_B19448.jpg)
 
 图 9.4 – 获取特定的 DNS 记录
 
-如前面的代码片段所示，**dig** 成功检索了域名的名称服务器。
+如前面的代码片段所示，`dig` 成功检索了域名的名称服务器。
 
 重要提示
 
 如果攻击者能够破坏一个域名的名称服务器，黑客可以操控存储在服务器上的 DNS 记录。这使得攻击者能够执行各种基于 DNS 的攻击和欺骗攻击。
 
-1.  接下来，**dnsrecon** 工具允许你自动化地检索域名的公共 DNS 记录；使用 **dnsrecon -d <domain-name> -n <dns-server>** 命令，如下所示：
+1.  接下来，`dnsrecon` 工具允许你自动化地检索域名的公共 DNS 记录；使用 `dnsrecon -d <domain-name> -n <dns-server>` 命令，如下所示：
 
 ![图 9.5 – dnsrecon 工具](img/Figure_9.05_B19448.jpg)
 
@@ -96,7 +96,7 @@
 
 要开始识别域名基础设施，请按照以下说明操作：
 
-1.  始终建议在 Web 应用程序服务器前面实现 **Web 应用防火墙** (**WAF**) 来防止 Web 应用程序攻击。**WAFW00F** 工具帮助道德黑客确定目标网站是否位于 WAF 后面，因此使用 **wafw00f <target>** 命令，如下所示：
+1.  始终建议在 Web 应用程序服务器前面实现 **Web 应用防火墙` (`WAF**) 来防止 Web 应用程序攻击。`WAFW00F` 工具帮助道德黑客确定目标网站是否位于 WAF 后面，因此使用 `wafw00f <target>` 命令，如下所示：
 
 ![图 9.6 – 检测 WAF](img/Figure_9.06_B19448.jpg)
 
@@ -104,7 +104,7 @@
 
 如果目标位于 WAF 后面，你将无法检索到目标的真实公共 IP 地址；相反，由于反向代理功能，你将获得 WAF 应用程序的地址。此外，WAF 会分析所有访问目标网站的 web 流量，并阻止任何可能的恶意流量。
 
-1.  **WHOIS** 工具允许你检索目标域名的公共注册商记录；使用 **whois <domain>** 命令，如下所示：
+1.  `WHOIS` 工具允许你检索目标域名的公共注册商记录；使用 `whois <domain>` 命令，如下所示：
 
 ![图 9.7 – 收集域名注册详情](img/Figure_9.07_B19448.jpg)
 
@@ -112,7 +112,7 @@
 
 有时，组织在注册域名时可能不会支付额外的隐私保护费用，因此其敏感信息将公开可用，威胁行为者可以利用这些信息规划未来的攻击，例如社会工程学攻击。
 
-1.  接下来，**Netcraft** 的站点报告工具帮助道德黑客对互联网上的一个网站的基础设施和技术进行分析。访问 [`sitereport.netcraft.com/`](https://sitereport.netcraft.com/) 并输入一个域名，如下所示：
+1.  接下来，`Netcraft` 的站点报告工具帮助道德黑客对互联网上的一个网站的基础设施和技术进行分析。访问 [`sitereport.netcraft.com/`](https://sitereport.netcraft.com/) 并输入一个域名，如下所示：
 
 ![图 9.8 – Netcraft](img/Figure_9.08_B19448.jpg)
 
@@ -164,9 +164,9 @@
 
 要开始识别一个网站的技术，请使用以下步骤：
 
-1.  首先，启动**Kali Linux** 虚拟机。
+1.  首先，启动`Kali Linux` 虚拟机。
 
-1.  **WhatWeb** 工具帮助道德黑客分析目标网站上发现的 web 技术。要识别 web 技术，请在终端中使用 **whatweb <domain>** 命令，如下所示：
+1.  `WhatWeb` 工具帮助道德黑客分析目标网站上发现的 web 技术。要识别 web 技术，请在终端中使用 `whatweb <domain>` 命令，如下所示：
 
 ![图 9.15 – 识别 web 技术](img/Figure_9.15_B19448.jpg)
 
@@ -174,7 +174,7 @@
 
 如前面的代码片段所示，WhatWeb 能够获取特定的 web 应用程序和技术版本信息，这些信息可以用来识别目标上的安全漏洞。
 
-1.  接下来，**Wappalyzer** 是用于识别网站上的 Web 技术的浏览器插件。打开 **Mozilla Firefox** 浏览器，访问 [`addons.mozilla.org/en-US/firefox/addon/wappalyzer/`](https://addons.mozilla.org/en-US/firefox/addon/wappalyzer/)，点击 **Add to Firefox** 安装插件，如图所示：
+1.  接下来，`Wappalyzer` 是用于识别网站上的 Web 技术的浏览器插件。打开 `Mozilla Firefox` 浏览器，访问 [`addons.mozilla.org/en-US/firefox/addon/wappalyzer/`](https://addons.mozilla.org/en-US/firefox/addon/wappalyzer/)，点击 `Add to Firefox` 安装插件，如图所示：
 
 ![图 9.16 – Wappalyzer](img/Figure_9.16_B19448.jpg)
 
@@ -188,7 +188,7 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 图 9.17 – Wappalyzer 详细信息
 
-1.  接下来，**BuiltWith** 是另一个 Mozilla Firefox 插件，用于分析网站的 Web 技术。访问 [`addons.mozilla.org/en-US/firefox/addon/builtwith/`](https://addons.mozilla.org/en-US/firefox/addon/builtwith/)，点击 **Add to Firefox** 安装插件，如图所示：
+1.  接下来，`BuiltWith` 是另一个 Mozilla Firefox 插件，用于分析网站的 Web 技术。访问 [`addons.mozilla.org/en-US/firefox/addon/builtwith/`](https://addons.mozilla.org/en-US/firefox/addon/builtwith/)，点击 `Add to Firefox` 安装插件，如图所示：
 
 ![图 9.18 – BuiltWith 插件页面](img/Figure_9.18_B19448.jpg)
 
@@ -212,11 +212,11 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 ## 使用 Sublist3r 发现子域
 
-**Sublist3r** 是一个流行的工具，用于收集和分析 OSINT，以识别目标的子域。
+`Sublist3r` 是一个流行的工具，用于收集和分析 OSINT，以识别目标的子域。
 
 要开始使用 Sublist3r 进行子域枚举，请使用以下说明：
 
-1.  首先，启动 **Kali Linux** 虚拟机。
+1.  首先，启动 `Kali Linux` 虚拟机。
 
 1.  接下来，打开终端并使用以下命令更新软件包仓库列表：
 
@@ -232,7 +232,7 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 上述 GitHub 仓库是来自 [`github.com/aboul3la/Sublist3r`](https://github.com/aboul3la/Sublist3r) 官方仓库的一个工作分支。不幸的是，官方 GitHub 仓库中的软件包在写作时已无法使用。
 
-1.  接下来，使用以下命令将当前工作目录切换到 **Sublist3r** 文件夹，并安装其依赖：
+1.  接下来，使用以下命令将当前工作目录切换到 `Sublist3r` 文件夹，并安装其依赖：
 
     ```
     kali@kali:~$ cd Sublist3r
@@ -264,11 +264,11 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 ## 使用 theHarvester 查找子域
 
-**theHarvester** 是一个广泛使用的工具，伦理黑客在被动侦察过程中使用它来收集目标的电子邮件地址、主机名、IP 地址和子域，来源于多个在线数据源。
+`theHarvester` 是一个广泛使用的工具，伦理黑客在被动侦察过程中使用它来收集目标的电子邮件地址、主机名、IP 地址和子域，来源于多个在线数据源。
 
 要开始使用 theHarvester 查找子域，请使用以下说明：
 
-1.  首先，启动 **Kali Linux** 虚拟机。
+1.  首先，启动 `Kali Linux` 虚拟机。
 
 1.  接下来，打开终端并使用以下命令查看 theHarvester 的可用选项和语法：
 
@@ -282,13 +282,13 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 图 9.22 – theHarvester 选项
 
-1.  要收集子域名，使用 **theHarvester -d <target> -b <source>** 命令，格式如下：
+1.  要收集子域名，使用 `theHarvester -d <target> -b <source>` 命令，格式如下：
 
     ```
     kali@kali:~$ theHarvester -d microsoft.com -b dnsdumpster
     ```
 
-**source** 指定收集目标信息时使用的数据源。以下代码片段显示 theHarvester 已经能够为目标收集子域名及其 IP 地址：
+`source` 指定收集目标信息时使用的数据源。以下代码片段显示 theHarvester 已经能够为目标收集子域名及其 IP 地址：
 
 ![图 9.23 – 子域名](img/Figure_9.23_B19448.jpg)
 
@@ -298,13 +298,13 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 ## 使用 Knockpy 收集子域名
 
-**Knockpy** 是一个被动的子域名枚举工具，利用开放源情报（OSINT）并执行字典扫描，以识别目标的子域名。
+`Knockpy` 是一个被动的子域名枚举工具，利用开放源情报（OSINT）并执行字典扫描，以识别目标的子域名。
 
 要开始使用 Knockpy 进行子域名枚举，请按照以下说明操作：
 
-1.  首先，启动 **Kali Linux** 虚拟机。
+1.  首先，启动 `Kali Linux` 虚拟机。
 
-1.  接下来，打开终端并使用以下命令更新软件包仓库列表并安装 **Knockpy**：
+1.  接下来，打开终端并使用以下命令更新软件包仓库列表并安装 `Knockpy`：
 
     ```
     kali@kali:~$ sudo apt update
@@ -338,13 +338,13 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 ## 使用 GoBuster 查找隐藏目录
 
-**GoBuster** 是一个暴力破解工具，用于识别目标的子域名、目录、文件和主机名。
+`GoBuster` 是一个暴力破解工具，用于识别目标的子域名、目录、文件和主机名。
 
 要开始使用 GoBuster 查找域名的隐藏目录和文件，请按照以下说明操作：
 
-1.  首先，启动 **Kali Linux** 虚拟机。
+1.  首先，启动 `Kali Linux` 虚拟机。
 
-1.  接下来，打开终端并使用以下命令更新软件包仓库列表并安装 **GoBuster**：
+1.  接下来，打开终端并使用以下命令更新软件包仓库列表并安装 `GoBuster`：
 
     ```
     kali@kali:~$ sudo apt update
@@ -360,11 +360,11 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
     kali@kali:~$ gobuster dns -d microsoft.com -w /usr/share/wordlists/dirb/common.txt
     ```
 
-**dns** 是一种特定语法的 DNS 暴力破解模式，**-w** 用于指定离线字典文件。
+`dns` 是一种特定语法的 DNS 暴力破解模式，`-w` 用于指定离线字典文件。
 
 提示
 
-在 Kali Linux 中，**/usr/share/wordlists/** 目录中有许多离线字典文件，这些字典文件通常用于暴力破解攻击和目录枚举。此外，你还可以从 [`github.com/danielmiessler/SecLists`](https://github.com/danielmiessler/SecLists) 下载其他字典文件。
+在 Kali Linux 中，`/usr/share/wordlists/` 目录中有许多离线字典文件，这些字典文件通常用于暴力破解攻击和目录枚举。此外，你还可以从 [`github.com/danielmiessler/SecLists`](https://github.com/danielmiessler/SecLists) 下载其他字典文件。
 
 以下代码段显示了 GoBuster 对目标进行子域名枚举：
 
@@ -384,7 +384,7 @@ Wappalyzer 将分析您访问的任何网站上的 Web 应用程序，以识别�
 
 图 9.26 – 目录
 
-HTTP 状态码 301 表示资源的位置已永久改变，新的 **统一资源定位符** (**URL**) 会在 Web 服务器的响应中给出。此外，HTTP 状态码 **200** 表示资源已找到，对道德黑客而言是一个好消息。
+HTTP 状态码 301 表示资源的位置已永久改变，新的 **统一资源定位符` (`URL**) 会在 Web 服务器的响应中给出。此外，HTTP 状态码 `200` 表示资源已找到，对道德黑客而言是一个好消息。
 
 提示
 
@@ -400,19 +400,19 @@ HTTP 状态码 301 表示资源的位置已永久改变，新的 **统一资源�
 
 ## 使用 DIRB 进行目录枚举
 
-**DIRB** 是一个流行的 Web 应用程序扫描器，用于查找 Web 服务器上的隐藏目录和文件。DIRB 使用一个单词列表对目标进行字典式攻击，查询列表中的每个单词来识别 Web 资源。
+`DIRB` 是一个流行的 Web 应用程序扫描器，用于查找 Web 服务器上的隐藏目录和文件。DIRB 使用一个单词列表对目标进行字典式攻击，查询列表中的每个单词来识别 Web 资源。
 
 要开始使用 DIRB 识别隐藏的 Web 目录和文件，请按照以下说明操作：
 
-1.  首先，启动 **Kali Linux** 虚拟机。
+1.  首先，启动 `Kali Linux` 虚拟机。
 
-1.  接下来，打开终端并使用以下命令运行 **OWASP JuiceShop** Docker 容器：
+1.  接下来，打开终端并使用以下命令运行 `OWASP JuiceShop` Docker 容器：
 
     ```
     kali@kali:~$ sudo docker run --rm -p 3000:3000 bkimminich/juice-shop
     ```
 
-1.  接下来，打开一个新的终端窗口，并使用以下命令对 **开放 Web 应用程序安全项目** (**OWASP**) JuiceShop Web 应用程序进行基于目录的暴力破解：
+1.  接下来，打开一个新的终端窗口，并使用以下命令对 **开放 Web 应用程序安全项目` (`OWASP**) JuiceShop Web 应用程序进行基于目录的暴力破解：
 
     ```
     kali@kali:~$ dirb http://127.0.0.1:3000/
@@ -424,7 +424,7 @@ HTTP 状态码 301 表示资源的位置已永久改变，新的 **统一资源�
 
 图 9.27 – 目录枚举
 
-手动访问每个 URL 以确定隐藏资源是否有价值并在未来攻击目标时加以利用非常重要。例如，**/assets**目录可能包含敏感信息，如目标拥有的其他系统的 IP 地址，**/robots.txt**资源可能包含其他子目录。
+手动访问每个 URL 以确定隐藏资源是否有价值并在未来攻击目标时加以利用非常重要。例如，`/assets`目录可能包含敏感信息，如目标拥有的其他系统的 IP 地址，`/robots.txt`资源可能包含其他子目录。
 
 提示
 
@@ -434,7 +434,7 @@ HTTP 状态码 301 表示资源的位置已永久改变，新的 **统一资源�
 
 # Web 应用程序漏洞
 
-作为道德黑客，理解 Web 应用程序安全和 OWASP 的**Top 10** Web 应用程序安全风险至关重要。Web 应用程序是运行在服务器上的特殊软件，用于托管网站，并且可以通过标准 Web 浏览器轻松访问。例如，当你访问你喜欢的搜索引擎时，你的 Web 浏览器会发送一个**超文本传输协议**（**HTTP**）或**安全 HTTP**（**HTTPS**）**GET**消息，以请求目标 Web 服务器（互联网搜索引擎）上的资源。一旦 Web 应用程序收到 HTTP **GET**消息（请求），它会处理并返回请求的数据响应给 Web 浏览器：
+作为道德黑客，理解 Web 应用程序安全和 OWASP 的`Top 10` Web 应用程序安全风险至关重要。Web 应用程序是运行在服务器上的特殊软件，用于托管网站，并且可以通过标准 Web 浏览器轻松访问。例如，当你访问你喜欢的搜索引擎时，你的 Web 浏览器会发送一个**超文本传输协议**（**HTTP**）或**安全 HTTP**（**HTTPS**）`GET`消息，以请求目标 Web 服务器（互联网搜索引擎）上的资源。一旦 Web 应用程序收到 HTTP `GET`消息（请求），它会处理并返回请求的数据响应给 Web 浏览器：
 
 以下图示展示了浏览器与 Web 应用程序之间的通信：
 
@@ -448,13 +448,13 @@ Web 应用程序是由开发者使用大量代码创建的。然而，互联网�
 
 本书重点关注道德黑客的侦察，不涉及漏洞利用。如果你有兴趣了解更多关于 Web 应用程序安全风险的信息，请访问 OWASP 官网：[`owasp.org/www-project-top-ten/`](https://owasp.org/www-project-top-ten/)。
 
-行业内有许多商业 Web 应用程序扫描器表现良好。然而，**Nikto**是一个免费的 Web 应用程序扫描器，旨在对目标 Web 应用程序或服务器进行快速的安全检查，我们将在这里使用它。
+行业内有许多商业 Web 应用程序扫描器表现良好。然而，`Nikto`是一个免费的 Web 应用程序扫描器，旨在对目标 Web 应用程序或服务器进行快速的安全检查，我们将在这里使用它。
 
 要开始使用 Nikto 发现网络应用程序漏洞，请使用以下说明：
 
-1.  首先，启动**Kali Linux**虚拟机。
+1.  首先，启动`Kali Linux`虚拟机。
 
-1.  接下来，打开终端并执行以下命令以运行**OWASP JuiceShop** Docker 容器：
+1.  接下来，打开终端并执行以下命令以运行`OWASP JuiceShop` Docker 容器：
 
     ```
     kali@kali:~$ sudo docker run --rm -p 3000:3000 bkimminich/juice-shop
@@ -494,11 +494,11 @@ Web 应用程序是由开发者使用大量代码创建的。然而，互联网�
 
 ## 使用 Sn1per 自动化侦察
 
-**Sn1per** 是一个全能的网络侦察框架，旨在执行广泛的信息收集工作，帮助发现目标上隐藏的资产和安全漏洞，从而协助网络安全专业人员和组织进行**攻击面管理**（**ASM**）。与其使用多个侦察工具从不同来源收集和分析数据，不如使用 Sn1per 框架来自动化整个数据收集过程，从分析到最终提供可供人类阅读的报告。因此，它帮助道德黑客自动化那些耗时且单调的任务，提升侦察阶段的效率，并通过高效的数据分析来创建目标情报。
+`Sn1per` 是一个全能的网络侦察框架，旨在执行广泛的信息收集工作，帮助发现目标上隐藏的资产和安全漏洞，从而协助网络安全专业人员和组织进行**攻击面管理**（**ASM**）。与其使用多个侦察工具从不同来源收集和分析数据，不如使用 Sn1per 框架来自动化整个数据收集过程，从分析到最终提供可供人类阅读的报告。因此，它帮助道德黑客自动化那些耗时且单调的任务，提升侦察阶段的效率，并通过高效的数据分析来创建目标情报。
 
 要开始使用 Sn1per 进行侦察，请使用以下说明：
 
-1.  首先，启动**Kali Linux**虚拟机。
+1.  首先，启动`Kali Linux`虚拟机。
 
 1.  接下来，打开终端并使用以下命令更新软件包仓库列表：
 
@@ -512,7 +512,7 @@ Web 应用程序是由开发者使用大量代码创建的。然而，互联网�
     kali@kali:~$ git clone https://github.com/1N3/Sn1per
     ```
 
-1.  接下来，使用以下命令将当前工作目录更改为 **Sn1per** 文件夹，并执行安装脚本：
+1.  接下来，使用以下命令将当前工作目录更改为 `Sn1per` 文件夹，并执行安装脚本：
 
     ```
     kali@kali:~$ cd Sn1per
@@ -554,7 +554,7 @@ Web 应用程序是由开发者使用大量代码创建的。然而，互联网�
     kali@kali:~$ sudo sniper -t <domain-name> -m stealth -o -re
     ```
 
-**-o** 语法指定使用 OSINT，**-re** 指定为侦察。
+`-o` 语法指定使用 OSINT，`-re` 指定为侦察。
 
 重要提示
 
@@ -566,7 +566,7 @@ Web 应用程序是由开发者使用大量代码创建的。然而，互联网�
     kali@kali:~$ sudo sniper --help
     ```
 
-Sn1per 扫描可能需要几分钟时间才能完成每个任务，因为它会对目标进行广泛的信息收集。扫描完成后，收集到的数据（战利品）会存储在 **/usr/share/sn1per/loot/** 目录中，并生成一个 HTML 格式的摘要报告，报告存储在 **/usr/share/sn1per/loot/workspace/<target-name>/reports/** 目录中。
+Sn1per 扫描可能需要几分钟时间才能完成每个任务，因为它会对目标进行广泛的信息收集。扫描完成后，收集到的数据（战利品）会存储在 `/usr/share/sn1per/loot/` 目录中，并生成一个 HTML 格式的摘要报告，报告存储在 `/usr/share/sn1per/loot/workspace/<target-name>/reports/` 目录中。
 
 重要提示
 
@@ -576,13 +576,13 @@ Sn1per 扫描可能需要几分钟时间才能完成每个任务，因为它会�
 
 ## 使用 Amass 进行网站侦察
 
-**Amass** 是由 OWASP 开发的一个网络侦察框架，用于执行高级 DNS 枚举，帮助网络安全专业人员和组织进行攻击面映射。Amass 通过使用自动化的被动和主动侦察技术及工具，识别组织的外部资产。因此，它帮助道德黑客高效地从多个来源收集和分析数据，进而创建目标的概况。
+`Amass` 是由 OWASP 开发的一个网络侦察框架，用于执行高级 DNS 枚举，帮助网络安全专业人员和组织进行攻击面映射。Amass 通过使用自动化的被动和主动侦察技术及工具，识别组织的外部资产。因此，它帮助道德黑客高效地从多个来源收集和分析数据，进而创建目标的概况。
 
-Amass 可以通过 **应用程序编程接口** (**API**)、数字证书、DNS 信息、公共路由数据库、WHOIS 记录和网页归档数据库从多个在线数据库中收集信息。
+Amass 可以通过 **应用程序编程接口` (`API**)、数字证书、DNS 信息、公共路由数据库、WHOIS 记录和网页归档数据库从多个在线数据库中收集信息。
 
 要开始使用 Amass 进行网络侦察，请按照以下说明操作：
 
-1.  首先，打开 **Kali Linux** 虚拟机。
+1.  首先，打开 `Kali Linux` 虚拟机。
 
 1.  接下来，打开终端并使用以下命令更新软件包仓库列表并安装 Amass：
 
@@ -614,7 +614,7 @@ Amass 可以通过 **应用程序编程接口** (**API**)、数字证书、DNS �
 
 图 9.33 – 网络块信息
 
-网络块数据可以用于识别地理位置、托管提供商、国家、**自治系统** (**AS**) 和 **互联网服务提供商** (**ISP**) 的详细信息。
+网络块数据可以用于识别地理位置、托管提供商、国家、**自治系统` (`AS**) 和 **互联网服务提供商` (`ISP**) 的详细信息。
 
 1.  要执行情报扫描以发现用于枚举的目标，请使用以下命令：
 
@@ -622,7 +622,7 @@ Amass 可以通过 **应用程序编程接口** (**API**)、数字证书、DNS �
     kali@kali:~$ amass intel -whois -d microsoft.com -dir /home/kali/amass-target1
     ```
 
-**-dir** 语法指定了在 Kali Linux 上存储输出的本地文件夹位置。情报扫描帮助道德黑客收集目标的开放源情报（OSINT），并识别与目标相关的额外根域名，如下所示：
+`-dir` 语法指定了在 Kali Linux 上存储输出的本地文件夹位置。情报扫描帮助道德黑客收集目标的开放源情报（OSINT），并识别与目标相关的额外根域名，如下所示：
 
 ![图 9.34 – 情报扫描](img/Figure_9.34_B19448.jpg)
 

@@ -24,7 +24,7 @@ ISBN: 978-1-83898-177-8
 
 ![](img/B15443.png)
 
-**Mastering Windows Security and Hardening**
+`Mastering Windows Security and Hardening`
 
 Mark Dunkerley, Matt Tumbarello
 
