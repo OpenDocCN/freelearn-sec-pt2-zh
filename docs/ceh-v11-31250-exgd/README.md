@@ -1,6 +1,6 @@
-# 高度安全环境下的高级渗透测试
+# CEH v11 31250 备考指南
 
-> 原文：[`annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E`](https://annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E)
+> 原文：[`annas-archive.org/md5/28d1f586e1c9996605326ebee42bc698`](https://annas-archive.org/md5/28d1f586e1c9996605326ebee42bc698)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

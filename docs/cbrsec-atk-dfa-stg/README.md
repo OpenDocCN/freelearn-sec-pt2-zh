@@ -1,6 +1,6 @@
-# 高度安全环境下的高级渗透测试
+# 网络安全攻击与防御策略
 
-> 原文：[`annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E`](https://annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E)
+> 原文：[`annas-archive.org/md5/b29686b6b24c8cef828858786514f699`](https://annas-archive.org/md5/b29686b6b24c8cef828858786514f699)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

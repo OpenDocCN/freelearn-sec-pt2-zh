@@ -1,6 +1,6 @@
-# 高度安全环境下的高级渗透测试
+# 网络扫描实践指南
 
-> 原文：[`annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E`](https://annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E)
+> 原文：[`annas-archive.org/md5/60b2ca6f3a787faa0c1c8d75391c306e`](https://annas-archive.org/md5/60b2ca6f3a787faa0c1c8d75391c306e)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

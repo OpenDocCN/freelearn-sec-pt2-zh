@@ -1,6 +1,6 @@
-# 高度安全环境下的高级渗透测试
+# 权限维持技术
 
-> 原文：[`annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E`](https://annas-archive.org/md5/37A61AD0202D37F5F9B9CA71821CCC1E)
+> 原文：[`annas-archive.org/md5/9805e2a1c16e127b366157a83eb2f43d`](https://annas-archive.org/md5/9805e2a1c16e127b366157a83eb2f43d)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
