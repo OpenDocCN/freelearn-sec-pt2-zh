@@ -54,23 +54,23 @@ PowerShell 不仅仅运行在 Windows 操作系统上。自 2016 年发布 Power
 
 ## PowerShell 的历史
 
-在 PowerShell 创建之前，已经有了 **命令行界面**（**CLIs**），每个操作系统都自带命令行工具来管理系统：**COMMAND.COM** 是 MS DOS 和 Windows 9.x 的默认工具，而 **cmd.exe** 是 Windows NT 系列的默认工具。后者 **cmd.exe** 仍然集成在现代 Windows 操作系统中，例如 Windows 10。
+在 PowerShell 创建之前，已经有了 **命令行界面**（**CLIs**），每个操作系统都自带命令行工具来管理系统：`COMMAND.COM` 是 MS DOS 和 Windows 9.x 的默认工具，而 `cmd.exe` 是 Windows NT 系列的默认工具。后者 `cmd.exe` 仍然集成在现代 Windows 操作系统中，例如 Windows 10。
 
 这些命令行工具不仅可以用来执行命令行中的命令，还可以使用批处理文件语法编写脚本来自动化任务。
 
 由于 **图形用户界面**（**GUI**）并未提供所有功能，无法通过命令行自动化所有任务。此外，语言本身存在不一致性，因此脚本编写不像预期的那样简便。
 
-1998 年，微软在 Windows 98 中发布了 **Windows Script Host**（**cscript.exe**），以克服以前命令行界面的局限性，并改善脚本编写体验。通过 **cscript.exe**，现在可以与 **组件对象模型**（**COM**）的 API 进行交互，这使得该接口变得非常强大；如此强大，以至于不仅系统管理员利用这一新功能，恶意软件作者也开始使用它。这很快使得 **cscript.exe** 获得了作为操作系统脆弱向量的声誉。
+1998 年，微软在 Windows 98 中发布了 `Windows Script Host`（**cscript.exe**），以克服以前命令行界面的局限性，并改善脚本编写体验。通过 `cscript.exe`，现在可以与 **组件对象模型**（**COM**）的 API 进行交互，这使得该接口变得非常强大；如此强大，以至于不仅系统管理员利用这一新功能，恶意软件作者也开始使用它。这很快使得 `cscript.exe` 获得了作为操作系统脆弱向量的声誉。
 
-此外，Windows Script Host 的文档不容易获取，而且除了 **cscript.exe** 之外，还开发了更多用于不同用途的命令行工具，如 **netsh** 和 **wmic**。
+此外，Windows Script Host 的文档不容易获取，而且除了 `cscript.exe` 之外，还开发了更多用于不同用途的命令行工具，如 `netsh` 和 `wmic`。
 
 1999 年，*Jeffrey Snover*，一位具有 UNIX 背景的工程师，开始为微软工作。*Snover* 是命令行和自动化的忠实粉丝，因此他的初衷是将 UNIX 工具应用于微软系统，支持微软的 Windows **UNIX 服务**（**SFU**）。
 
 然而，由于 Windows 和基于 UNIX 的系统之间存在巨大的架构差异，他很快意识到，在 Windows 上使 UNIX 工具可用，并没有为 Windows 系统带来任何价值。
 
-虽然 UNIX 系统依赖于可以轻松使用如**awk**、**sed**、**grep**等工具进行操作和处理的 ASCII 文件，但 Windows 系统则是基于 API 的，依靠结构化数据。
+虽然 UNIX 系统依赖于可以轻松使用如`awk`、`sed`、`grep`等工具进行操作和处理的 ASCII 文件，但 Windows 系统则是基于 API 的，依靠结构化数据。
 
-因此，他决定自己做得更好，并在 2002 年开始开发一种新的命令行工具——**Monad**（也称为 **Microsoft Shell/MSH**）。
+因此，他决定自己做得更好，并在 2002 年开始开发一种新的命令行工具——`Monad`（也称为 **Microsoft Shell/MSH**）。
 
 现在，Monad 不仅可以将结构化数据（对象）传递到管道中，而不是简单的文本，还可以在多个设备上远程运行脚本。此外，管理员使用 Monad 进行管理变得更容易，因为许多默认任务在此框架内被简化了。
 
@@ -90,7 +90,7 @@ PowerShell Core 的第一个正式版本是 6.0，它也提供了对跨平台（
 
 ## 为什么 PowerShell 对网络安全有用？
 
-PowerShell 默认在大多数现代 Windows 系统上运行。它帮助管理员自动化日常工作流程。由于 PowerShell 在所有系统上都可用，它也使得攻击者更容易利用这个脚本语言达到他们的目的——例如，如果攻击者通过 **凭证** **盗窃** 攻击获取了系统的访问权限。
+PowerShell 默认在大多数现代 Windows 系统上运行。它帮助管理员自动化日常工作流程。由于 PowerShell 在所有系统上都可用，它也使得攻击者更容易利用这个脚本语言达到他们的目的——例如，如果攻击者通过 **凭证` `盗窃** 攻击获取了系统的访问权限。
 
 对于攻击者来说，这听起来太棒了：一个预安装的脚本框架，提供对 cmdlet 和底层 .NET 框架的直接访问。自动化可以让你做很多事情——不仅仅是出于好目的。
 
@@ -102,11 +102,11 @@ PowerShell 默认在大多数现代 Windows 系统上运行。它帮助管理员
 
 最终，当你设置服务器时，你不仅仅是安装它并将其连接到互联网。PowerShell 也一样：你不能仅仅启用 PowerShell 远程使用，让任何人都能远程连接到你的服务器，而不考虑他们的角色。
 
-PowerShell 只是一个脚本语言，类似于预安装的 **cscript** 或 **batch**。从技术上讲，它提供的潜在影响与 **Java** 或 **.NET** 相似。
+PowerShell 只是一个脚本语言，类似于预安装的 `cscript` 或 `batch`。从技术上讲，它提供的潜在影响与 `Java` 或 `.NET` 相似。
 
 如果我们将其与 Linux 或 macOS 相比较，说 PowerShell 危险就像说 **Bash 或 zsh** 危险一样。
 
-一位在事件响应领域工作多年的朋友曾告诉我，攻击者将 **C#** 代码文件放置到目标机器上，并调用 **csc.exe**（.NET 框架的一部分）直接在机器上编译这些文件。这是一个非常有效的方式，能够利用预装的软件在系统上安装攻击者的代码，而不需要借助 PowerShell。
+一位在事件响应领域工作多年的朋友曾告诉我，攻击者将 `C#` 代码文件放置到目标机器上，并调用 `csc.exe`（.NET 框架的一部分）直接在机器上编译这些文件。这是一个非常有效的方式，能够利用预装的软件在系统上安装攻击者的代码，而不需要借助 PowerShell。
 
 换句话说，危险或恶意的并不是语言本身；对手仍然需要身份或授权才能执行操作，而这些可以由负责环境安全的安全专家或管理员加以限制。
 
@@ -122,17 +122,17 @@ PowerShell 不仅使您的 IT 专业人员能够更高效地工作并更快地�
 
 PowerShell 提供了许多内置的安全防护措施，您将在本书中进一步了解这些内容：
 
-+   **自动化与合规性**：其中一个主要的好处是，您可以自动化重复且枯燥的任务。您的管理员不仅能从自动化任务中受益，而且您的 **安全运营中心** (**SOC**) 还可以在特定事件触发时自动执行响应操作。
++   **自动化与合规性**：其中一个主要的好处是，您可以自动化重复且枯燥的任务。您的管理员不仅能从自动化任务中受益，而且您的 **安全运营中心` (`SOC**) 还可以在特定事件触发时自动执行响应操作。
 
-组织遭到入侵的主要原因之一是缺少安全更新。保持所有系统更新并不容易——即使是像 **Windows Server Update Services** (**WSUS**) 这样的更新管理系统也很难完全保证。PowerShell 可以帮助构建一个机制，定期检查是否缺少更新，从而保持您的环境安全。
+组织遭到入侵的主要原因之一是缺少安全更新。保持所有系统更新并不容易——即使是像 `Windows Server Update Services** (`WSUS**) 这样的更新管理系统也很难完全保证。PowerShell 可以帮助构建一个机制，定期检查是否缺少更新，从而保持您的环境安全。
 
-审计和执行合规性可以通过使用 **所需状态配置** (**DSC**) 来轻松实现。
+审计和执行合规性可以通过使用 **所需状态配置` (`DSC**) 来轻松实现。
 
 自动化安全检查以审核 Active Directory 或服务器安全性，并强制执行您的安全基线。DSC 使您能够随时控制服务器的配置。您可以将您的机器配置为每 15 分钟重置其配置到您指定的设置。
 
 此外，如果你将 DSC 集成到你的事件响应计划中，重新构建可能被入侵的服务器将变得非常容易。
 
-+   **控制谁可以做什么以及在哪里做**：通过配置**PowerShell 远程管理**/**WinRM**，你可以指定*谁*被允许登录到*哪个设备或服务器*。当然，这对**凭证盗窃**无济于事（因为这不是 PowerShell 的话题），但它有助于细化定义哪个身份可以做什么。此外，它还提供了远程连接的出色审计能力。
++   **控制谁可以做什么以及在哪里做**：通过配置**PowerShell 远程管理`/**WinRM`，你可以指定*谁*被允许登录到*哪个设备或服务器*。当然，这对**凭证盗窃**无济于事（因为这不是 PowerShell 的话题），但它有助于细化定义哪个身份可以做什么。此外，它还提供了远程连接的出色审计能力。
 
 **受限语言模式**允许你限制会话中可以使用的 PowerShell 元素。这已经可以帮助防止某些攻击。
 
@@ -150,7 +150,7 @@ PowerShell 提供了许多内置的安全防护措施，您将在本书中进一
 
 对你的代码进行签名可以帮助你验证执行的脚本是否被认为是合法的：如果只允许签名的脚本运行，这是防止用户直接运行从互联网下载的脚本的绝佳方式。
 
-**AppLocker**与**代码签名**结合使用，可以帮助你控制在组织中哪些脚本可以运行。
+`AppLocker`与**代码签名**结合使用，可以帮助你控制在组织中哪些脚本可以运行。
 
 然而，前述解决方案并未限制交互式代码的执行。
 
@@ -202,9 +202,9 @@ Alice 担任**首席信息安全官**（**CISO**），并且经常在会议之�
 
 **封装**的实现方式是，如果每个对象将其状态保持为类内的**私有**，其他对象不能直接访问它，必须通过调用方法来改变它的状态。
 
-比如，爱丽丝的状态包括私有的**EnergyLevel**、**RelaxationStatus**和**Money**属性。她还有一个私有的**SighHappily()**方法。她可以在任何时候调用这个方法；其他类无法影响爱丽丝何时开心地叹气。当爱丽丝和她的猫咪“喵先生”玩耍时，**SighHappily()**方法会默认被调用——爱丽丝真的很喜欢这个活动。
+比如，爱丽丝的状态包括私有的`EnergyLevel`、`RelaxationStatus`和`Money`属性。她还有一个私有的`SighHappily()`方法。她可以在任何时候调用这个方法；其他类无法影响爱丽丝何时开心地叹气。当爱丽丝和她的猫咪“喵先生”玩耍时，`SighHappily()`方法会默认被调用——爱丽丝真的很喜欢这个活动。
 
-其他类所能做的，是调用公共的**Work()**、**DrinkCoffee()**、**Sleep()**和**PlayWithCat()**函数。这些函数能够改变内部状态，甚至在爱丽丝和她的猫咪“喵先生”玩耍时，调用私有的**SighHappily()**方法：
+其他类所能做的，是调用公共的`Work()`、`DrinkCoffee()`、`Sleep()`和`PlayWithCat()`函数。这些函数能够改变内部状态，甚至在爱丽丝和她的猫咪“喵先生”玩耍时，调用私有的`SighHappily()`方法：
 
 ![图 1.3 – 近距离观察公共方法和私有方法](img/B16679_01_003.jpg)
 
@@ -216,11 +216,11 @@ Alice 担任**首席信息安全官**（**CISO**），并且经常在会议之�
 
 **抽象**可以看作是封装的自然扩展。通常，代码库会变得非常庞大，这时你可能会失去对代码的整体把握。应用抽象意味着每个对象应仅暴露其高级方法，隐藏不必要的细节，避免其他对象的干扰。
 
-例如，我们在**human**类中定义了**Work()**方法。
+例如，我们在`human`类中定义了`Work()`方法。
 
 根据你父母的技术理解能力，他们可能能理解你日常工作中的内容。然而，我的父母对我说的一个字也不懂，他们只知道我在做与计算机相关的工作。所以，如果我和父母通话，我不会告诉他们每一个细节，也不会让他们无聊死。我只是告诉他们，我已经完成工作。
 
-写面向对象代码时，也应遵循类似的原则。虽然**Work()**方法背后有许多不同的操作，但它被抽象化了，只有相关的数据会被显示出来。
+写面向对象代码时，也应遵循类似的原则。虽然`Work()`方法背后有许多不同的操作，但它被抽象化了，只有相关的数据会被显示出来。
 
 另一个例子是办公室里的电梯。当你按下按钮去到不同的楼层时，表面下发生了某些事情。但电梯用户只能看到按钮和显示楼层的屏幕。这一原则被称为抽象，有助于保持任务的概览。
 
@@ -230,15 +230,15 @@ Alice 担任**首席信息安全官**（**CISO**），并且经常在会议之�
 
 所以，我们的 Alice 和 Bob 对象非常相似，共享一个*共同的逻辑*，但它们*并不完全相同*。它们都是人类，但拥有不同的职业，要求具备不同的技能和任务。
 
-所有 CISO 和所有安全顾问都是人类，因此这两个角色都**继承**了**human**类的所有属性和方法。
+所有 CISO 和所有安全顾问都是人类，因此这两个角色都**继承**了`human`类的所有属性和方法。
 
-类似于**SecurityConsultant**类，**CISO**类继承了**human**类的所有属性和方法。然而，虽然**CISO**类还引入了**StrategicPlanningSkillset**属性和**CalculateRisk()**方法，但它们对于**SecurityConsultant**类并不必要。
+类似于`SecurityConsultant`类，`CISO`类继承了`human`类的所有属性和方法。然而，虽然`CISO`类还引入了`StrategicPlanningSkillset`属性和`CalculateRisk()`方法，但它们对于`SecurityConsultant`类并不必要。
 
-**SecurityConsultant**类定义了自己的**TechnicalAuditingSkillset**属性以及**AnalyzeSystem()**和**TalkToCustomer()**方法。
+`SecurityConsultant`类定义了自己的`TechnicalAuditingSkillset`属性以及`AnalyzeSystem()`和`TalkToCustomer()`方法。
 
-Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这构建了一个*层次结构*：**human**现在是**CISO**类的父类，而**CISO**类是 Alice 的**父类**—在这个案例中，Alice 是**子对象**。
+Alice 继承了`human`类中定义的所有技能，而在`CISO`类中，这构建了一个*层次结构*：`human`现在是`CISO`类的父类，而`CISO`类是 Alice 的**父类**—在这个案例中，Alice 是**子对象**。
 
-此外，Bob 继承了**human**类中定义的所有属性和方法，但与 Alice 相比，他继承了**SecurityConsultant**类中的所有内容：
+此外，Bob 继承了`human`类中定义的所有属性和方法，但与 Alice 相比，他继承了`SecurityConsultant`类中的所有内容：
 
 ![图 1.4 – 继承：父类和子类以及对象](img/B16679_01_004.jpg)
 
@@ -246,7 +246,7 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 另外，亲爱的安全顾问和 CISO 们，我知道你们的职业要求远多于此示例所显示的技能，而且你们的角色比这个示例所展示的要挑战得多。我尽量将其抽象化，以保持简单。
 
-看看 Alice 和 Bob，Alice 喜欢和她的猫 Mr. Meow 一起度过时光，所以她有自己独特的**PlayWithCat()**和**SighHappily()**方法。Bob 没有猫，但他喜欢画画，因此他有独特的**Paint()**方法。
+看看 Alice 和 Bob，Alice 喜欢和她的猫 Mr. Meow 一起度过时光，所以她有自己独特的`PlayWithCat()`和`SighHappily()`方法。Bob 没有猫，但他喜欢画画，因此他有独特的`Paint()`方法。
 
 使用**继承**，我们只需要添加必要的部分来实现所需的更改，同时使用父类中的现有逻辑。
 
@@ -254,7 +254,7 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 既然我们已经了解了继承的概念，那么**多态性**也就不远了。多态性意味着，尽管你可以从不同的类创建不同的对象，但所有类和对象都可以像它们的父类一样使用。
 
-如果我们看一下 Alice 和 Bob，两者都是人类。这意味着我们可以依赖于两者都支持**EnergyLevel**、**RelaxationStatus**和**Money**属性，以及**Work()**、**DrinkCoffee()**和**Sleep()**方法。
+如果我们看一下 Alice 和 Bob，两者都是人类。这意味着我们可以依赖于两者都支持`EnergyLevel`、`RelaxationStatus`和`Money`属性，以及`Work()`、`DrinkCoffee()`和`Sleep()`方法。
 
 此外，他们可以支持其他独特的属性和方法，但始终支持与父类相同的内容，以避免混淆。
 
@@ -264,7 +264,7 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 ## Windows PowerShell
 
-默认情况下，Windows PowerShell 5.1 会安装在所有较新的系统上，从 Windows 10 开始。你可以通过在开始菜单中搜索**PowerShell**来打开它，也可以通过按 *Windows 键* + *R*，然后输入 **powershell** 或 **powershell.exe** 来启动它。
+默认情况下，Windows PowerShell 5.1 会安装在所有较新的系统上，从 Windows 10 开始。你可以通过在开始菜单中搜索`PowerShell`来打开它，也可以通过按 *Windows 键* + *R*，然后输入 `powershell` 或 `powershell.exe` 来启动它。
 
 在这个控制台中，你可以运行命令、脚本或 cmdlet：
 
@@ -274,17 +274,17 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 在 Windows 10 设备上，Windows PowerShell v5.1 的默认位置如下：
 
-+   Windows PowerShell: **%SystemRoot%\system32\WindowsPowerShell\v1.0\powershell.exe**
++   Windows PowerShell: `%SystemRoot%\system32\WindowsPowerShell\v1.0\powershell.exe`
 
-+   Windows PowerShell (x86): **%SystemRoot%\syswow64\WindowsPowerShell\v1.0\powershell.exe**
++   Windows PowerShell (x86): `%SystemRoot%\syswow64\WindowsPowerShell\v1.0\powershell.exe`
 
 为什么路径中会有 v1.0？这是否意味着我在运行旧版本？
 
 由于本书中也会更详细地讲解 PowerShell 版本，你可能会想：*天啊，我听说旧版本没有提供所有必要的安全功能，比如日志记录等！我是不是* *处于风险之中？*
 
-不是的，实际上即便路径中包含 **v1**，新版本仍然会被安装到这个路径中。最初计划为每个版本创建一个新的文件夹，并使用正确的版本名称，但后来微软决定不这样做，以避免引发破坏性更改。
+不是的，实际上即便路径中包含 `v1`，新版本仍然会被安装到这个路径中。最初计划为每个版本创建一个新的文件夹，并使用正确的版本名称，但后来微软决定不这样做，以避免引发破坏性更改。
 
-你可能也注意到了 **.ps1** 脚本扩展名。这里的原因是相同的：最初也计划通过脚本扩展名来区分每个版本，但出于向后兼容的原因，PowerShell v2 的逻辑并未实现这一点。
+你可能也注意到了 `.ps1` 脚本扩展名。这里的原因是相同的：最初也计划通过脚本扩展名来区分每个版本，但出于向后兼容的原因，PowerShell v2 的逻辑并未实现这一点。
 
 但由于 Windows PowerShell 将不再进一步开发，因此安装并使用最新的 PowerShell Core 二进制文件是合理的选择。
 
@@ -302,7 +302,7 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 图 1.6 – 安装 PowerShell 7
 
-如果你尚未启用 **PowerShell 远程管理**，不用担心。你可以稍后配置此选项。向导将会运行并将 PowerShell Core 安装到单独的**$env:ProgramFiles\PowerShell\7**目录。PowerShell 7 设计为与 PowerShell 5.1 并行运行。
+如果你尚未启用 **PowerShell 远程管理**，不用担心。你可以稍后配置此选项。向导将会运行并将 PowerShell Core 安装到单独的`$env:ProgramFiles\PowerShell\7`目录。PowerShell 7 设计为与 PowerShell 5.1 并行运行。
 
 设置完成后，你可以启动新的 PowerShell 控制台并将其固定到任务栏或开始菜单：
 
@@ -316,23 +316,23 @@ Alice 继承了**human**类中定义的所有技能，而在**CISO**类中，这
 
 为你的环境中的服务器定义一致的选项时，组策略能够帮助进行配置。
 
-在安装 PowerShell 7 时，组策略模板以及安装脚本会被填充到**$PSHOME**目录下。
+在安装 PowerShell 7 时，组策略模板以及安装脚本会被填充到`$PSHOME`目录下。
 
-组策略需要两种模板（**.admx**，**.adml**）来配置基于注册表的设置。
+组策略需要两种模板（`.admx`，**.adml**）来配置基于注册表的设置。
 
-你可以使用**Get-ChildItem -Path $PSHOME -Filter *****Core*Policy*** 命令查找模板和安装脚本：
+你可以使用`Get-ChildItem -Path $PSHOME -Filter *****Core*Policy*` 命令查找模板和安装脚本：
 
 ![图 1.8 – 查找 PowerShell Core 组策略模板和安装脚本](img/B16679_01_008.jpg)
 
 图 1.8 – 查找 PowerShell Core 组策略模板和安装脚本
 
-在你的域控制器中输入 **$PSHOME\InstallPSCorePolicyDefinitions.ps1**，按下*Tab*键并按*Enter*键确认。
+在你的域控制器中输入 `$PSHOME\InstallPSCorePolicyDefinitions.ps1`，按下*Tab*键并按*Enter*键确认。
 
 PowerShell Core 的组策略模板将被安装，你可以通过以下路径访问它们：
 
-+   **计算机配置** | **管理模板** | **PowerShell Core**
++   **计算机配置` | `管理模板` | **PowerShell Core`
 
-+   **用户配置** | **管理模板** | **PowerShell Core**
++   **用户配置` | `管理模板` | **PowerShell Core`
 
 现在你可以使用这些模板来配置 PowerShell Core 环境，和 Windows PowerShell 一起使用。
 
@@ -360,17 +360,17 @@ PowerShell Core 的组策略模板将被安装，你可以通过以下路径访�
 
 所有最近使用的命令都会显示出来。使用箭头键浏览最近使用的命令，修改它们并重新执行。
 
-在这个例子中，最后执行的命令之一是**Enter-PSSession**命令，它启动一个 PowerShell 远程会话连接到指定的主机——在这个例子中，是连接到**PSSEC-PC01**。
+在这个例子中，最后执行的命令之一是`Enter-PSSession`命令，它启动一个 PowerShell 远程会话连接到指定的主机——在这个例子中，是连接到`PSSEC-PC01`。
 
-如果你想启动另一个 PowerShell 远程会话连接到**PSSEC-PC02**而不是**PSSEC-PC01**，你不必再次输入整个命令：只需按一次*向上箭头键*，然后将**-ComputerName**改为**PSSEC-PC02**并按*Enter*键执行即可。
+如果你想启动另一个 PowerShell 远程会话连接到`PSSEC-PC02`而不是`PSSEC-PC01`，你不必再次输入整个命令：只需按一次*向上箭头键*，然后将`-ComputerName`改为`PSSEC-PC02`并按*Enter*键执行即可。
 
-如果你的配置允许你使用相同的凭据从这台 PC 连接到**PSSEC-PC02**，则连接会建立，你可以在**PSSEC-PC02**上远程工作。
+如果你的配置允许你使用相同的凭据从这台 PC 连接到`PSSEC-PC02`，则连接会建立，你可以在`PSSEC-PC02`上远程工作。
 
 我们将在*第三章*中更详细地探讨 PowerShell 远程管理技术和*PowerShell 远程管理*。
 
 ### 搜索 PowerShell 历史
 
-要搜索历史记录，将**Get-History**命令管道传输到**Select-String**并定义你要搜索的字符串：
+要搜索历史记录，将`Get-History`命令管道传输到`Select-String`并定义你要搜索的字符串：
 
 ```
 Get-History | Select-String <string to search>
@@ -382,37 +382,37 @@ Get-History | Select-String <string to search>
 h | sts <string to search>
 ```
 
-如果你想查看在本次会话中建立的所有 PowerShell 远程会话，可以搜索**Enter-PSSession**字符串：
+如果你想查看在本次会话中建立的所有 PowerShell 远程会话，可以搜索`Enter-PSSession`字符串：
 
 ![图 1.11 – 搜索会话历史](img/B16679_01_011.jpg)
 
 图 1.11 – 搜索会话历史
 
-然而，如果你只搜索子字符串，比如**PSSession**，你可以找到**PSSession**字符串的**所有**出现，包括最后执行的**Get-History**命令：
+然而，如果你只搜索子字符串，比如`PSSession`，你可以找到`PSSession`字符串的**所有**出现，包括最后执行的`Get-History`命令：
 
 ![图 1.12 – 搜索会话历史](img/B16679_01_012.jpg)
 
 图 1.12 – 搜索会话历史
 
-当你在寻找最近执行的命令时，你不需要查询整个历史记录。要仅获取最近的*X*条历史记录，可以指定**-Count**参数。
+当你在寻找最近执行的命令时，你不需要查询整个历史记录。要仅获取最近的*X*条历史记录，可以指定`-Count`参数。
 
-在这个例子中，要获取最后五条记录，指定**-Count 5**：
+在这个例子中，要获取最后五条记录，指定`-Count 5`：
 
 ![图 1.13 – 获取最后五条历史记录](img/B16679_01_013.jpg)
 
 图 1.13 – 获取最后五条历史记录
 
-当你关闭 PowerShell 会话时，*会话历史*会被删除。这意味着如果你在启动新会话时使用会话绑定的**Get-History**命令，你将得不到任何结果。
+当你关闭 PowerShell 会话时，*会话历史*会被删除。这意味着如果你在启动新会话时使用会话绑定的`Get-History`命令，你将得不到任何结果。
 
-但是，也有一个*持久历史*，你可以查询，正如**PSReadline**模块所提供的。
+但是，也有一个*持久历史*，你可以查询，正如`PSReadline`模块所提供的。
 
-历史记录存储在一个文件中，该文件存储在**(Get-PSReadlineOption).HistorySavePath**配置的路径下：
+历史记录存储在一个文件中，该文件存储在`(Get-PSReadlineOption).HistorySavePath`配置的路径下：
 
 ![图 1.14 – 显示持久历史的位置](img/B16679_01_014.jpg)
 
 图 1.14 – 显示持久历史的位置
 
-你可以通过**Get-Content**来打开文件或查看其内容：
+你可以通过`Get-Content`来打开文件或查看其内容：
 
 ```
 > Get-Content (Get-PSReadlineOption).HistorySavePath
@@ -438,9 +438,9 @@ h | sts <string to search>
 > Clear
 ```
 
-输入**Clear**命令并按*Enter*确认后，当前的 PowerShell 控制台将被清空，你可以从一个全新的控制台开始。此会话中设置的所有变量仍然可访问，历史记录仍然可用。
+输入`Clear`命令并按*Enter*确认后，当前的 PowerShell 控制台将被清空，你可以从一个全新的控制台开始。此会话中设置的所有变量仍然可访问，历史记录仍然可用。
 
-除了**Clear**，你还可以使用**cls**别名或*Ctrl* + *L*快捷键。
+除了`Clear`，你还可以使用`cls`别名或*Ctrl* + *L*快捷键。
 
 ### 取消命令
 
@@ -454,7 +454,7 @@ h | sts <string to search>
 
 图 1.16 – 尝试在执行策略配置为“Restricted”的系统上执行脚本
 
-执行策略是一个限制系统上 PowerShell 脚本执行的功能。使用**Get-ExecutionPolicy**来查看当前执行策略的配置：
+执行策略是一个限制系统上 PowerShell 脚本执行的功能。使用`Get-ExecutionPolicy`来查看当前执行策略的配置：
 
 ![图 1.17 – 查找当前执行策略设置](img/B16679_01_017.jpg)
 
@@ -474,37 +474,37 @@ h | sts <string to search>
 
 以下是执行策略选项，用于决定是否允许在当前系统上运行脚本，或者是否需要签名才能运行：
 
-+   **AllSigned**：只有由受信任的发布者签名的脚本可以执行，包括本地脚本。
++   `AllSigned`：只有由受信任的发布者签名的脚本可以执行，包括本地脚本。
 
 在 *1*，*AppLocker、应用控制和代码签名* 中，你可以了解更多关于 **脚本签名** 的内容，或者你可以参考在线文档 [`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_signing`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_signing)。
 
-+   **Bypass**：不阻止任何内容，脚本运行时不会生成警告或提示。
++   `Bypass`：不阻止任何内容，脚本运行时不会生成警告或提示。
 
-+   **RemoteSigned**：只有本地创建的脚本可以在未签名的情况下运行。所有从互联网下载的脚本或存储在远程网络位置的脚本需要由受信任的发布者签名。
++   `RemoteSigned`：只有本地创建的脚本可以在未签名的情况下运行。所有从互联网下载的脚本或存储在远程网络位置的脚本需要由受信任的发布者签名。
 
-+   **Restricted**：这是默认配置。无法运行 PowerShell 脚本或加载配置文件。但仍然可以运行交互式代码。
++   `Restricted`：这是默认配置。无法运行 PowerShell 脚本或加载配置文件。但仍然可以运行交互式代码。
 
-+   **Unrestricted**：所有脚本都可以运行，无论它们是从互联网下载的还是本地创建的。如果脚本是从互联网下载的，仍然会提示你是否要运行该文件。
++   `Unrestricted`：所有脚本都可以运行，无论它们是从互联网下载的还是本地创建的。如果脚本是从互联网下载的，仍然会提示你是否要运行该文件。
 
 ### 执行策略作用范围
 
-要指定谁或什么会受到执行策略功能的影响，你可以定义 **作用范围**。**-scope** 参数允许你设置受执行策略功能影响的作用范围：
+要指定谁或什么会受到执行策略功能的影响，你可以定义 **作用范围**。`-scope` 参数允许你设置受执行策略功能影响的作用范围：
 
-+   **CurrentUser**：意味着此计算机上的当前用户会受到影响。
++   `CurrentUser`：意味着此计算机上的当前用户会受到影响。
 
-+   **LocalMachine**：这是默认作用范围。此计算机上的所有用户都会受到影响。
++   `LocalMachine`：这是默认作用范围。此计算机上的所有用户都会受到影响。
 
-+   **MachinePolicy**：这会影响此计算机上的所有用户。
++   `MachinePolicy`：这会影响此计算机上的所有用户。
 
-+   **Process**：这只会影响当前的 PowerShell 会话。
++   `Process`：这只会影响当前的 PowerShell 会话。
 
-一种好的方法是对你们组织中运行的所有脚本进行签名。通过这种方式，你不仅可以识别哪些脚本是被允许的，还可以更好地使用像 AppLocker 这样的进一步防护措施（你可以在 *"第 11 页" 第* 435*页*中阅读更多关于 AppLocker 的信息，*AppLocker、应用控制和代码签名*）– 并且你可以将执行策略配置为 **AllSigned**。
+一种好的方法是对你们组织中运行的所有脚本进行签名。通过这种方式，你不仅可以识别哪些脚本是被允许的，还可以更好地使用像 AppLocker 这样的进一步防护措施（你可以在 *"第 11 页" 第* 435*页*中阅读更多关于 AppLocker 的信息，*AppLocker、应用控制和代码签名*）– 并且你可以将执行策略配置为 `AllSigned`。
 
 当然，如果你在开发自己的 PowerShell 脚本，在你还在工作时，这些脚本是没有签名的。
 
-为了保持对无意间运行脚本的保护，同时仍能运行本地开发的脚本，**RemoteSigned** 设置是一个很好的选择。在这种情况下，只有本地脚本（即那些没有从互联网下载并签名的脚本）可以运行；来自互联网的未签名脚本将被阻止执行。
+为了保持对无意间运行脚本的保护，同时仍能运行本地开发的脚本，`RemoteSigned` 设置是一个很好的选择。在这种情况下，只有本地脚本（即那些没有从互联网下载并签名的脚本）可以运行；来自互联网的未签名脚本将被阻止执行。
 
-使用 **Set-ExecutionPolicy** cmdlet 作为管理员配置执行策略设置：
+使用 `Set-ExecutionPolicy` cmdlet 作为管理员配置执行策略设置：
 
 ![图 1.18 – 使用 GPO 配置执行策略设置](img/B16679_01_018.jpg)
 
@@ -516,15 +516,15 @@ h | sts <string to search>
 
 如果你不想手动为组织中的每台机器设置执行策略设置，你还可以通过组策略全局配置它。
 
-要为 *Windows PowerShell* 配置组策略，请创建一个新的 **组策略对象** (**GPO**)，并将其链接到包含所有设备并且你希望配置执行策略的根文件夹。
+要为 *Windows PowerShell* 配置组策略，请创建一个新的 **组策略对象` (`GPO**)，并将其链接到包含所有设备并且你希望配置执行策略的根文件夹。
 
-然后，导航到 **计算机配置** | **策略** | **管理模板** | **Windows 组件** | **Windows PowerShell**：
+然后，导航到 **计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell`：
 
 ![图 1.19 – 使用 GPO 配置 Windows PowerShell 的执行策略功能](img/B16679_01_019.jpg)
 
 图 1.19 – 使用 GPO 配置 Windows PowerShell 的执行策略功能
 
-配置 **启用脚本执行** 设置，并选择 **允许本地脚本和远程签名脚本** 选项，这将执行策略配置为 **RemoteSigned**。
+配置 **启用脚本执行** 设置，并选择 **允许本地脚本和远程签名脚本** 选项，这将执行策略配置为 `RemoteSigned`。
 
 ### PowerShell Core – 通过组策略配置执行策略
 
@@ -532,9 +532,9 @@ h | sts <string to search>
 
 PowerShell Core 的组策略设置位于以下路径：
 
-+   **计算机配置** | **管理模板** | **PowerShell Core**
++   **计算机配置` | `管理模板` | **PowerShell Core`
 
-+   **用户配置** | **管理模板** | **PowerShell Core**：
++   **用户配置` | `管理模板` | **PowerShell Core`：
 
 ![图 1.20 – 使用 GPO 配置 PowerShell Core 的执行策略设置](img/B16679_01_020.jpg)
 
@@ -550,31 +550,31 @@ PowerShell Core 的组策略设置位于以下路径：
 
 本质上，当我们谈论*绕过执行策略*时，我们仅仅是在**避免**执行策略，正如你将在本节中看到的那样。虽然这不是*真正的黑客行为*，但一些安全社区的人仍然喜欢称绕过执行策略为*绕过*。
 
-绕过执行策略非常简单——最简单的方法就是使用它自己的**-Bypass**参数。
+绕过执行策略非常简单——最简单的方法就是使用它自己的`-Bypass`参数。
 
 该参数是在人们开始将执行策略视为安全控制时引入的。PowerShell 团队希望避免这种误解，以免组织陷入虚假的安全感中。
 
-我创建了一个简单的脚本，它只会将**Hello World!**写入控制台，你可以在 GitHub 上找到该脚本，链接为 https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1。
+我创建了一个简单的脚本，它只会将`Hello World!`写入控制台，你可以在 GitHub 上找到该脚本，链接为 https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1。
 
 当执行策略设置为受限时，如果我尝试在没有任何附加参数的情况下运行脚本，会收到错误消息。
 
-然而，如果我以管理员身份使用**powershell.exe**运行脚本，并将**-ExecutionPolicy**参数设置为**Bypass**，该脚本就能正常运行：
+然而，如果我以管理员身份使用`powershell.exe`运行脚本，并将`-ExecutionPolicy`参数设置为`Bypass`，该脚本就能正常运行：
 
 ```
 > powershell.exe -ExecutionPolicy Bypass -File .\HelloWorld.ps1
 Hello World!
 ```
 
-如果执行策略通过*组策略*进行配置，则不能仅通过使用**-Bypass**参数来绕过它。
+如果执行策略通过*组策略*进行配置，则不能仅通过使用`-Bypass`参数来绕过它。
 
-由于执行策略仅限制脚本的执行，另一种方法是将脚本的内容传递给**Invoke-Expression**。同样，脚本内容可以正常运行——即使执行策略是通过组策略进行配置的：
+由于执行策略仅限制脚本的执行，另一种方法是将脚本的内容传递给`Invoke-Expression`。同样，脚本内容可以正常运行——即使执行策略是通过组策略进行配置的：
 
 ```
 Get-Content .\HelloWorld.ps1 | Invoke-Expression
 Hello World!
 ```
 
-将脚本的内容传递给**Invoke-Expression**，使得脚本的内容被处理得就像在本地使用命令行执行命令一样；这绕过了执行策略，而执行策略仅适用于执行脚本，而不适用于本地命令。
+将脚本的内容传递给`Invoke-Expression`，使得脚本的内容被处理得就像在本地使用命令行执行命令一样；这绕过了执行策略，而执行策略仅适用于执行脚本，而不适用于本地命令。
 
 这些只是避免**执行策略**的众多方法中的一些示例，更多避免**执行策略**的示例可以参见*"8"页* *337*，*红队任务和手册*。因此，不要误以为**执行策略**能够保护你免受攻击者的侵害。
 
@@ -586,21 +586,21 @@ Hello World!
 
 有三个功能可以在你使用 PowerShell 时让你的工作更加轻松：
 
-+   **Get-Help**
++   `Get-Help`
 
-+   **Get-Command**
++   `Get-Command`
 
-+   **Get-Member**
++   `Get-Member`
 
 让我们更深入地了解如何使用它们，以及它们如何帮助你。
 
 ### Get-Help
 
-如果你熟悉 Linux 系统的操作，**Get-Help** 类似于 Linux 中的 **man** 页面，即关于如何以最佳方式使用特定命令的教程和帮助页面的集合。
+如果你熟悉 Linux 系统的操作，`Get-Help` 类似于 Linux 中的 `man` 页面，即关于如何以最佳方式使用特定命令的教程和帮助页面的集合。
 
-如果你不知道如何使用某个命令，只需使用 **Get-Help <command>**，你将知道它提供了哪些选项以及如何使用它。
+如果你不知道如何使用某个命令，只需使用 `Get-Help <command>`，你将知道它提供了哪些选项以及如何使用它。
 
-当你第一次在计算机上运行 **Get-Help** 时，你可能只会看到帮助页面的非常有限版本，并带有说明，指出此计算机上缺少该 cmdlet 的帮助文件：
+当你第一次在计算机上运行 `Get-Help` 时，你可能只会看到帮助页面的非常有限版本，并带有说明，指出此计算机上缺少该 cmdlet 的帮助文件：
 
 ```
 Get-Help -Name Get-Help
@@ -630,7 +630,7 @@ Update-Help
 
 PowerShell 帮助文件默认不部署，因为这些文件更新速度太快。由于提供过时的帮助文件没有意义，因此默认情况下不会安装它们。
 
-你可以使用以下 **Get-Help** 参数：
+你可以使用以下 `Get-Help` 参数：
 
 +   **详细**: 这将显示基本的帮助页面，并添加参数描述和示例。
 
@@ -644,29 +644,29 @@ PowerShell 帮助文件默认不部署，因为这些文件更新速度太快。
 
 +   **显示窗口**: 这将帮助页面显示在一个单独的窗口中。它不仅提供更好的阅读舒适度，还允许你搜索和配置设置。
 
-获取帮助文件提供的所有信息的最简单方法是使用 **-** **完整** 参数：
+获取帮助文件提供的所有信息的最简单方法是使用 `-** `完整** 参数：
 
 ```
 Get-Help -Name Get-Content -Full
 ```
 
-运行此命令将获取 **Get-Content** 函数的完整帮助页面：
+运行此命令将获取 `Get-Content` 函数的完整帮助页面：
 
 ![图 1.23 – Get-Content 函数的完整帮助页面](img/B16679_01_023.jpg)
 
 图 1.23 – Get-Content 函数的完整帮助页面
 
-还请查看官方 PowerShell 文档，了解 **Get-Help** 的更多高级使用方法：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-help`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-help)。
+还请查看官方 PowerShell 文档，了解 `Get-Help` 的更多高级使用方法：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-help`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-help)。
 
 ### Get-Command
 
-**Get-Command** 获取计算机上当前安装的所有命令，包括别名、应用程序、cmdlet、筛选器、函数和脚本：
+`Get-Command` 获取计算机上当前安装的所有命令，包括别名、应用程序、cmdlet、筛选器、函数和脚本：
 
 ```
 Get-Command
 ```
 
-此外，它还可以向你展示某个模块的可用命令。在此案例中，我们探讨了从**PowerShell Gallery**安装的**EventList**模块，PowerShell Gallery 是一个集中式的模块、脚本和其他 PowerShell 相关资源的存储库：
+此外，它还可以向你展示某个模块的可用命令。在此案例中，我们探讨了从`PowerShell Gallery`安装的`EventList`模块，PowerShell Gallery 是一个集中式的模块、脚本和其他 PowerShell 相关资源的存储库：
 
 ```
 > Get-Command -Module EventList
@@ -690,7 +690,7 @@ Function    Remove-EventListConfiguration       2.0.0      Even
 Function    Remove-OneBaseline                  2.0.0      EventList
 ```
 
-**Get-Command**也非常有用，特别是当你寻找某个特定的 cmdlet，但又记不住其名称时。例如，如果你想找出电脑上所有名称中包含**Alias**的 cmdlet，**Get-Command**会非常有帮助：
+`Get-Command`也非常有用，特别是当你寻找某个特定的 cmdlet，但又记不住其名称时。例如，如果你想找出电脑上所有名称中包含`Alias`的 cmdlet，`Get-Command`会非常有帮助：
 
 ```
 > Get-Command -Name "*Alias*" -CommandType Cmdlet
@@ -703,7 +703,7 @@ Cmdlet       New-Alias      3.1.0.0    Microsoft.PowerShell.Uti
 Cmdlet       Set-Alias      3.1.0.0    Microsoft.PowerShell.Utility
 ```
 
-如果你不完全记得某个命令，使用**-UseFuzzyMatching**参数。它会显示所有相关命令：
+如果你不完全记得某个命令，使用`-UseFuzzyMatching`参数。它会显示所有相关命令：
 
 ```
 Get-Command get-commnd -UseFuzzyMatching
@@ -714,15 +714,15 @@ Application   getconf      0.0.0.0   /usr/bin/getconf
 Application   command      0.0.0.0   /usr/bin/command
 ```
 
-此外，请查看文档，了解**Get-Command**如何帮助你获取更多高级示例：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-command`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-command)。
+此外，请查看文档，了解`Get-Command`如何帮助你获取更多高级示例：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-command`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/get-command)。
 
 ### Get-Member
 
-**Get-Member**帮助你显示对象中的成员。
+`Get-Member`帮助你显示对象中的成员。
 
-在 PowerShell 中，一切都是对象，甚至是一个简单的字符串。**Get-Member**对于查看可执行的操作非常有用。
+在 PowerShell 中，一切都是对象，甚至是一个简单的字符串。`Get-Member`对于查看可执行的操作非常有用。
 
-所以，如果你想查看使用**"Hello World!"**字符串时可以执行哪些操作，只需输入以下内容：
+所以，如果你想查看使用`"Hello World!"`字符串时可以执行哪些操作，只需输入以下内容：
 
 ```
 "Hello World!" | Get-Member
@@ -734,11 +734,11 @@ Application   command      0.0.0.0   /usr/bin/command
 
 图 1.24 – 显示字符串的所有可用成员
 
-在前面的示例中，我还添加了**| Sort-Object Name**字符串。它会按字母顺序对输出进行排序，帮助你通过名称快速找到方法或属性。
+在前面的示例中，我还添加了`| Sort-Object Name`字符串。它会按字母顺序对输出进行排序，帮助你通过名称快速找到方法或属性。
 
-如果未指定**Sort-Object**，**Get-Member**会按**MemberType**（即**Method**、**ParameterizedProperty**和**Property**）字母顺序对输出进行排序。
+如果未指定`Sort-Object`，`Get-Member`会按`MemberType`（即`Method`、`ParameterizedProperty`和**Property**）字母顺序对输出进行排序。
 
-选择要运行的操作后，你可以通过添加**.**（一个*点*），然后跟上*操作*来使用它。所以，如果你想查看字符串的长度，添加**Length**操作：
+选择要运行的操作后，你可以通过添加`.`（一个*点*），然后跟上*操作*来使用它。所以，如果你想查看字符串的长度，添加`Length`操作：
 
 ```
 > ("Hello World!").Length
@@ -747,7 +747,7 @@ Application   command      0.0.0.0   /usr/bin/command
 
 当然，你还可以与变量、数字以及所有其他对象一起工作。
 
-要显示变量的数据类型，可以使用**GetType()**。在此示例中，我们使用**GetType()**来查找**$x**变量的数据类型是整数：
+要显示变量的数据类型，可以使用`GetType()`。在此示例中，我们使用`GetType()`来查找`$x`变量的数据类型是整数：
 
 ```
 > $x = 4
@@ -757,13 +757,13 @@ IsPublic IsSerial Name  BaseType
 True     True     Int32 System.ValueType
 ```
 
-若要获取有关如何使用**Get-Member**的更多高级示例，请务必查看[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-member`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-member)上的官方文档。
+若要获取有关如何使用`Get-Member`的更多高级示例，请务必查看[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-member`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-member)上的官方文档。
 
 ## PowerShell 版本
 
 由于 PowerShell 功能通常与特定版本相关联，因此检查你系统上安装的 PowerShell 版本可能会很有用。
 
-你可以使用**$PSVersionTable.PSVersion**环境变量：
+你可以使用`$PSVersionTable.PSVersion`环境变量：
 
 ```
 > $PSVersionTable.PSVersion
@@ -784,9 +784,9 @@ PowerShell 向后兼容早期版本。因此，始终升级到最新版本是有
 
 第一版 PowerShell，PowerShell v1，于 2006 年作为独立版本发布。它引入了以下一系列与安全相关的功能：
 
-+   签名脚本和 PowerShell **主题接口** **包**（**SIP**）。
++   签名脚本和 PowerShell **主题接口` `包**（**SIP**）。
 
-+   **Get-AuthenticodeSignature**、***-Acl** 和 **Get-PfxCertificate cmdlet**。
++   `Get-AuthenticodeSignature`、`*-Acl` 和 `Get-PfxCertificate cmdlet`。
 
 +   执行策略。
 
@@ -794,7 +794,7 @@ PowerShell 向后兼容早期版本。因此，始终升级到最新版本是有
 
 +   如果脚本被双击，则不会运行。
 
-+   PowerShell 引擎日志记录：某些命令可以通过 **LogPipelineExecutionDetails** 进行记录，尽管这很难配置。
++   PowerShell 引擎日志记录：某些命令可以通过 `LogPipelineExecutionDetails` 进行记录，尽管这很难配置。
 
 +   通过电子邮件直接发送的脚本的内置保护：这会故意将 PowerShell 扩展添加到 Windows 的 *不安全的* *电子邮件* 列表中。
 
@@ -822,7 +822,7 @@ PowerShell 向后兼容早期版本。因此，始终升级到最新版本是有
 
     +   这非常难以配置，需要 DIY 受限端点。
 
-+   **Add-Type**
++   `Add-Type`
 
 +   数据语言
 
@@ -856,7 +856,7 @@ PowerShell v5 于 2015 年发布，并默认包含在 Windows 10 操作系统中
 
 +   安全透明性
 
-+   **AMSI**
++   `AMSI`
 
 +   转录
 
@@ -874,11 +874,11 @@ PowerShell v5 于 2015 年发布，并默认包含在 Windows 10 操作系统中
 
 +   受限语言
 
-+   **加密消息语法**（**CMS**）cmdlet，***-FileCatalog** cmdlet，**ConvertFrom-SddlString**，**Format-Hex** 和 **Get-FileHash**
++   **加密消息语法**（**CMS**）cmdlet，`*-FileCatalog` cmdlet，`ConvertFrom-SddlString`，`Format-Hex` 和 `Get-FileHash`
 
 +   PowerShell Gallery 安全性
 
-+   **Revoke-Obfuscation**
++   `Revoke-Obfuscation`
 
 +   Injection Hunter 模块
 
@@ -894,15 +894,15 @@ PowerShell v5 于 2015 年发布，并默认包含在 Windows 10 操作系统中
 
 ## PowerShell 编辑器
 
-在我们开始之前，您可能想选择一个编辑器。在您开始将脚本输入到 **notepad.exe** 中，或者想使用 PowerShell 7 版的 PowerShell ISE 之前，让我们先看看有哪些 PowerShell 编辑器是可以免费使用的，以及它们的潜在缺点。
+在我们开始之前，您可能想选择一个编辑器。在您开始将脚本输入到 `notepad.exe` 中，或者想使用 PowerShell 7 版的 PowerShell ISE 之前，让我们先看看有哪些 PowerShell 编辑器是可以免费使用的，以及它们的潜在缺点。
 
 ### Windows PowerShell ISE
 
-**Windows PowerShell** **集成脚本环境**（**ISE**）是一个集成在 Microsoft Windows 系统中的主机应用程序。由于此应用程序是预安装的，这使得初学者非常容易直接打开 Windows PowerShell ISE 并编写他们的第一个脚本。
+`Windows PowerShell** `集成脚本环境**（**ISE**）是一个集成在 Microsoft Windows 系统中的主机应用程序。由于此应用程序是预安装的，这使得初学者非常容易直接打开 Windows PowerShell ISE 并编写他们的第一个脚本。
 
 Windows PowerShell ISE 的缺点是，目前它**不支持 PowerShell Core**——并且目前，PowerShell 团队没有计划添加支持。
 
-要打开它，您可以打开 Windows 开始菜单并搜索 **PowerShell ISE**，或者您也可以通过打开命令行，使用 *Windows 键* + *R* 快捷键，输入 **powershell_ise** 或 **powershell_ise.exe** 来运行它。
+要打开它，您可以打开 Windows 开始菜单并搜索 `PowerShell ISE`，或者您也可以通过打开命令行，使用 *Windows 键* + *R* 快捷键，输入 `powershell_ise` 或 `powershell_ise.exe` 来运行它。
 
 当您启动 Windows PowerShell ISE 时，您只会看到 PowerShell 命令行、菜单和可用的命令。在您使用编辑器之前，您需要打开一个文件或创建一个新的空白文件。
 
@@ -916,11 +916,11 @@ Windows PowerShell ISE 的缺点是，目前它**不支持 PowerShell Core**—�
 
 +   Windows PowerShell ISE：
 
-**%****windir%\system32\WindowsPowerShell\v1.0\PowerShell_ISE.exe**
+`%****windir%\system32\WindowsPowerShell\v1.0\PowerShell_ISE.exe`
 
 +   Windows PowerShell ISE (x86)：
 
-**%****windir%\syswow64\WindowsPowerShell\v1.0\PowerShell_ISE.exe**
+`%****windir%\syswow64\WindowsPowerShell\v1.0\PowerShell_ISE.exe`
 
 那些讨厌的错误是从哪里来的？
 
@@ -944,7 +944,7 @@ Visual Studio Code 不是唯一推荐的用于编辑 PowerShell 的编辑器，�
 
 当你搜索 Visual Studio Code 时，常常会误入 Visual Studio，尽管名字相似，但它实际上是一个完全不同的产品。
 
-Visual Studio 是一个功能齐全的**集成开发环境**（**IDE**），它由多个工具组成，帮助开发者进行开发、调试、编译和部署代码。Visual Studio 甚至包含了一个工具，可以轻松设计**GUI**组件。
+Visual Studio 是一个功能齐全的**集成开发环境**（**IDE**），它由多个工具组成，帮助开发者进行开发、调试、编译和部署代码。Visual Studio 甚至包含了一个工具，可以轻松设计`GUI`组件。
 
 Visual Studio Code 是一个提供了许多功能的编辑器，但最终它对于代码开发者非常有用。此外，它还提供了 Git 集成，使你能够轻松地与版本控制系统连接，跟踪更改并最终回退更改。
 
@@ -968,13 +968,13 @@ Visual Studio Code 是一个提供了许多功能的编辑器，但最终它对�
 
 要在 Visual Studio Code 中正确使用 PowerShell，应安装并激活 PowerShell 扩展。
 
-如果在安装 PowerShell 扩展之前启动新项目或文件并使用 PowerShell 代码，Visual Studio Code 会建议安装 PowerShell 扩展。在安装 PowerShell 扩展的提示上确认选择 **Yes**。
+如果在安装 PowerShell 扩展之前启动新项目或文件并使用 PowerShell 代码，Visual Studio Code 会建议安装 PowerShell 扩展。在安装 PowerShell 扩展的提示上确认选择 `Yes`。
 
 如果想要手动下载扩展，可以通过以下链接下载 Visual Studio PowerShell 扩展：[`marketplace.visualstudio.com/items?itemName=ms-vscode.PowerShell`](https://marketplace.visualstudio.com/items?itemName=ms-vscode.PowerShell)。
 
-通过按下 *Ctrl* + *P* 打开快速打开选项，并输入 **ext install powershell**。然后按 *Enter*。
+通过按下 *Ctrl* + *P* 打开快速打开选项，并输入 `ext install powershell`。然后按 *Enter*。
 
-打开扩展面板。搜索**PowerShell**并点击**安装**按钮。按照指示操作。
+打开扩展面板。搜索`PowerShell`并点击**安装**按钮。按照指示操作。
 
 安装后，PowerShell 扩展会自动显示。如果稍后再次访问它，您可以直接从菜单打开**扩展**面板，或使用快捷键 *Ctrl* + *Shift* + *X*：
 

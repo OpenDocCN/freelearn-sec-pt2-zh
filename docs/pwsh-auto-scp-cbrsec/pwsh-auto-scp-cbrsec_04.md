@@ -64,7 +64,7 @@ PowerShell 在攻击中的使用多次被媒体报道。勒索病毒通过发送
 
 ## PowerShell 模块日志记录
 
-PowerShell 模块日志记录在 **PowerShell 3.0** 中新增。此功能提供对系统上执行的所有 PowerShell 命令的广泛日志记录。如果启用了模块日志记录，管道执行事件将生成并写入 **Microsoft-Windows-Powershell/Operational** 事件日志，事件 ID 为 **4103**。
+PowerShell 模块日志记录在 `PowerShell 3.0` 中新增。此功能提供对系统上执行的所有 PowerShell 命令的广泛日志记录。如果启用了模块日志记录，管道执行事件将生成并写入 `Microsoft-Windows-Powershell/Operational` 事件日志，事件 ID 为 `4103`。
 
 ### 如何配置模块日志记录
 
@@ -72,7 +72,7 @@ PowerShell 模块日志记录在 **PowerShell 3.0** 中新增。此功能提供�
 
 仅在单个会话中启用它只有在您想要排查某个特定模块的行为时才有意义。如果您想要检测对手在您的基础设施中运行的命令，那么开启模块日志记录并使其保持常开是有意义的。
 
-要仅在当前会话中为某个特定模块启用模块日志记录，您需要先导入该模块。在此示例中，我们将使用**EventList**模块：
+要仅在当前会话中为某个特定模块启用模块日志记录，您需要先导入该模块。在此示例中，我们将使用`EventList`模块：
 
 ```
 > Import-Module EventList
@@ -81,7 +81,7 @@ PowerShell 模块日志记录在 **PowerShell 3.0** 中新增。此功能提供�
 True
 ```
 
-当然，您可以将模块名称**EventList**替换为任何您希望记录管道执行详细信息的模块名称：
+当然，您可以将模块名称`EventList`替换为任何您希望记录管道执行详细信息的模块名称：
 
 ```
 Import-Module <Module-Name>
@@ -92,13 +92,13 @@ Import-Module <Module-Name>
 
 创建一个新的**组策略对象**（**GPO**）。由于 Windows PowerShell 和 PowerShell Core 被设计为共存并可以单独配置，因此取决于您想要配置哪个 PowerShell 版本：
 
-+   要配置 Windows PowerShell，请导航至**计算机配置** | **策略** | **管理模板** | **Windows 组件** | **Windows PowerShell**
++   要配置 Windows PowerShell，请导航至**计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell`
 
-+   要配置 PowerShell Core，请导航至**计算机配置** | **管理模板** | **PowerShell Core**
++   要配置 PowerShell Core，请导航至**计算机配置` | `管理模板` | **PowerShell Core`
 
 我的 PowerShell Core .admx 模板在哪里？
 
-如果您尚未将**.admx**模板导入到您的组策略中来配置 PowerShell Core，请参见*第一章*，*开始使用 PowerShell*。
+如果您尚未将`.admx`模板导入到您的组策略中来配置 PowerShell Core，请参见*第一章*，*开始使用 PowerShell*。
 
 选择并编辑**启用模块日志记录**策略。此时将打开一个窗口以配置模块日志记录：
 
@@ -130,18 +130,18 @@ Import-Module <Module-Name>
 
 **脚本块**是由表达式和命令组成的集合，这些表达式和命令被组合在一起并作为一个单位执行。当然，单个命令也可以作为脚本块执行。
 
-许多命令支持 **-ScriptBlock** 参数，例如 **Invoke-Command** 命令，你可以使用它来运行整个脚本块，本地或远程执行：
+许多命令支持 `-ScriptBlock` 参数，例如 `Invoke-Command` 命令，你可以使用它来运行整个脚本块，本地或远程执行：
 
 ```
 > Invoke-Command -ComputerName PSSec-PC01 -ScriptBlock {Restart-Service -Name Spooler -Verbose}
 VERBOSE: Performing the operation "Restart-Service" on target "Print Spooler (Spooler)".
 ```
 
-需要注意的是，所有在 PowerShell 中执行的操作都被视为脚本块，如果启用了*脚本块日志记录*，它们将被记录——无论是否使用 **-****ScriptBlock** 参数。
+需要注意的是，所有在 PowerShell 中执行的操作都被视为脚本块，如果启用了*脚本块日志记录*，它们将被记录——无论是否使用 `-****ScriptBlock` 参数。
 
 大多数情况下，企业和组织并不关心日志记录和事件日志分析，除非发生安全事件。然而，到了那时，已经为时过晚，无法事后启用日志记录。因此，PowerShell 团队决定默认记录所有安全相关的脚本块。
 
-从 PowerShell 5 开始，默认启用*脚本块日志记录的基础版本*——只有常用于恶意攻击的脚本技术会被写入 **Microsoft-Windows-Powershell/Operational** 事件日志。
+从 PowerShell 5 开始，默认启用*脚本块日志记录的基础版本*——只有常用于恶意攻击的脚本技术会被写入 `Microsoft-Windows-Powershell/Operational` 事件日志。
 
 这种基础版本的脚本块日志记录并不能替代完整的脚本块日志记录；它应该仅仅作为最后的手段，如果在攻击发生时未启用日志记录时使用。
 
@@ -163,21 +163,21 @@ VERBOSE: Performing the operation "Restart-Service" on target "Print Spooler (Sp
 HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging
 ```
 
-使用**EnableScriptBlockLogging**（**REG_DWORD**）注册表项，可以配置启用脚本块日志记录：
+使用`EnableScriptBlockLogging`（**REG_DWORD**）注册表项，可以配置启用脚本块日志记录：
 
-+   **启用**：将值设置为**1**以启用它
++   **启用**：将值设置为`1`以启用它
 
-+   **禁用**：将值设置为**0**以禁用它
++   **禁用**：将值设置为`0`以禁用它
 
-如果启用了脚本块日志记录，您将在事件 ID **4104** 下找到所有执行的代码。
+如果启用了脚本块日志记录，您将在事件 ID `4104` 下找到所有执行的代码。
 
-使用**EnableScriptBlockInvocationLogging**（**REG_DWORD**）注册表项，可以配置启用脚本块调用日志记录（事件 ID **4105** 和 **4106**）：
+使用`EnableScriptBlockInvocationLogging`（**REG_DWORD**）注册表项，可以配置启用脚本块调用日志记录（事件 ID `4105` 和 **4106**）：
 
-+   **启用**：将值设置为**1**以启用它
++   **启用**：将值设置为`1`以启用它
 
-+   **禁用**：将值设置为**0**以禁用它
++   **禁用**：将值设置为`0`以禁用它
 
-如果启用了脚本块日志记录以及脚本块调用日志记录，将会生成事件 ID **4105** 和 **4106**。
+如果启用了脚本块日志记录以及脚本块调用日志记录，将会生成事件 ID `4105` 和 `4106`。
 
 如果启用了脚本块调用日志记录，则会生成大量噪音，日志文件的大小会增加。因此，应该重新配置最大日志大小（请参见*增加日志大小*部分）。对于一般的安全监控，您不需要配置详细的脚本块日志记录。
 
@@ -190,19 +190,19 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 第一个命令会在注册表项不存在时创建所有注册表键，第二个命令启用脚本块日志记录。
 
-启用**ScriptBlockLogging**时，使用上述命令，**ScriptBlockLogging**将同时为 32 位和 64 位应用程序启用。您可以通过以下方式验证两个设置是否已配置：
+启用`ScriptBlockLogging`时，使用上述命令，`ScriptBlockLogging`将同时为 32 位和 64 位应用程序启用。您可以通过以下方式验证两个设置是否已配置：
 
-+   **HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging**
++   `HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging`
 
-+   **HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging**
++   `HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging`
 
-在受管环境中，将机器集中管理是有意义的。当然，这可以通过 PowerShell 和/或**Desired State Configuration**（**DSC**）来完成，但也可以通过组策略来完成。
+在受管环境中，将机器集中管理是有意义的。当然，这可以通过 PowerShell 和/或`Desired State Configuration`（**DSC**）来完成，但也可以通过组策略来完成。
 
 创建一个新的 GPO。根据您要配置的 PowerShell 版本，导航到以下任一项：
 
-+   **计算机配置** | **策略** | **管理模板** | **Windows 组件** | **Windows PowerShell** 用于 Windows PowerShell
++   **计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell` 用于 Windows PowerShell
 
-+   **计算机配置** | **管理模板** | **PowerShell Core** 用于 PowerShell Core
++   **计算机配置` | `管理模板` | **PowerShell Core` 用于 PowerShell Core
 
 选择并编辑**启用 PowerShell 脚本块日志记录**策略。会打开一个窗口来配置模块日志记录。
 
@@ -212,7 +212,7 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 如果启用了脚本块调用日志记录，并且使用**日志记录脚本块调用开始/停止事件**选项，日志文件的大小会增加，最大大小应重新配置。
 
-只有在启用**日志记录脚本块调用开始/停止事件**选项时，才会生成事件 ID **4105** 和 **4106**。
+只有在启用**日志记录脚本块调用开始/停止事件**选项时，才会生成事件 ID `4105` 和 `4106`。
 
 在我们的示例中，我们将*不*配置**日志记录脚本块调用开始/停止事件**以避免噪音；因此，我们将保持该复选框未选中：
 
@@ -252,26 +252,26 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 这里有一篇很棒的 SANS 博客文章，您可以查看如何检查证书的属性：[`www.sans.org/blog/powershell-protect-cmsmessage-example-code/`](https://www.sans.org/blog/powershell-protect-cmsmessage-example-code/)。
 
-受保护的事件日志记录利用**IETF CMS**来保护事件日志内容。因此，您还可以参考**Protect-CMSMessage**和**Unprotect-CMSMessage** cmdlet 的文档页面，了解有关使用 CMS 加密和解密的更多信息：
+受保护的事件日志记录利用`IETF CMS`来保护事件日志内容。因此，您还可以参考`Protect-CMSMessage`和`Unprotect-CMSMessage` cmdlet 的文档页面，了解有关使用 CMS 加密和解密的更多信息：
 
-+   **Protect-CMSMessage**：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/protect-cmsmessage`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/protect-cmsmessage)
++   `Protect-CMSMessage`：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/protect-cmsmessage`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/protect-cmsmessage)
 
-+   **Unprotect-CMSMessage**：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage)
++   `Unprotect-CMSMessage`：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage)
 
 请注意，您计划部署的证书文件**不能**包含私钥。获得证书后，您可以手动启用它，或使用组策略启用它。
 
-在博客文章*PowerShell* *♥* *the blue team*中，PowerShell 团队为您提供了**Enable-ProtectedEventLogging**函数，您可以使用该函数通过 PowerShell 启用受保护的事件日志记录：[`devblogs.microsoft.com/powershell/powershell-the-blue-team/#protected-event-logging`](https://devblogs.microsoft.com/powershell/powershell-the-blue-team/#protected-event-logging)。
+在博客文章*PowerShell* *♥* *the blue team*中，PowerShell 团队为您提供了`Enable-ProtectedEventLogging`函数，您可以使用该函数通过 PowerShell 启用受保护的事件日志记录：[`devblogs.microsoft.com/powershell/powershell-the-blue-team/#protected-event-logging`](https://devblogs.microsoft.com/powershell/powershell-the-blue-team/#protected-event-logging)。
 
-要使用此脚本，请将证书保存在**$cert**变量中，您将在第二个命令中使用该变量将公钥证书传递给**Enable-ProtectedEventLogging**函数，从而在本地系统上启用受保护的事件日志记录：
+要使用此脚本，请将证书保存在`$cert`变量中，您将在第二个命令中使用该变量将公钥证书传递给`Enable-ProtectedEventLogging`函数，从而在本地系统上启用受保护的事件日志记录：
 
 ```
 > $cert = Get-Content C:\tmp\PEL_certificate.cer –Raw
 > Enable-ProtectedEventLogging –Certificate $cert
 ```
 
-您还可以通过组策略启用受保护的事件日志记录。创建一个新的 GPO 或重复使用现有的 GPO，然后导航到**计算机配置** | **策略** | **管理模板** | **Windows 组件** | **事件日志记录**。
+您还可以通过组策略启用受保护的事件日志记录。创建一个新的 GPO 或重复使用现有的 GPO，然后导航到**计算机配置` | `策略` | `管理模板` | `Windows 组件` | `事件日志记录**。
 
-打开**启用受保护事件** **日志记录**策略。
+打开**启用受保护事件` `日志记录**策略。
 
 ![图 4.6 – 启用受保护的事件日志记录](img/B16679_04_006.jpg)
 
@@ -279,21 +279,21 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 将**启用受保护的事件日志记录**设置为**启用**，提供您的证书，并点击**确定**确认。
 
-在安全且受保护的系统上使用**Unprotect-CmsMessage** cmdlet 解密数据，然后将其存储到你的 SIEM 中，前提是机器上已安装了适当的解密证书（即包含私钥的证书）。
+在安全且受保护的系统上使用`Unprotect-CmsMessage` cmdlet 解密数据，然后将其存储到你的 SIEM 中，前提是机器上已安装了适当的解密证书（即包含私钥的证书）。
 
-要在将数据存储到 SIEM 中之前解密数据，请在安全且受保护的系统上使用**Unprotect-CmsMessage** cmdlet，前提是该系统上已安装包含私钥的适当解密证书：
+要在将数据存储到 SIEM 中之前解密数据，请在安全且受保护的系统上使用`Unprotect-CmsMessage` cmdlet，前提是该系统上已安装包含私钥的适当解密证书：
 
 ```
 > Get-WinEvent Microsoft-Windows-PowerShell/Operational | Where-Object Id -eq 4104 | Unprotect-CmsMessage
 ```
 
-在这个示例中，所有来自操作 PowerShell 日志的事件 ID **4104**的事件将被解密，前提是私钥存在。
+在这个示例中，所有来自操作 PowerShell 日志的事件 ID `4104`的事件将被解密，前提是私钥存在。
 
 还可以记录会话中执行了哪些命令以及显示了哪些输出。这个选项叫做记录，我们将在下一节中详细讨论。
 
 ## PowerShell 记录
 
-自 PowerShell 版本 1.0 以来，PowerShell 记录就作为**Microsoft.PowerShell.Host**模块的一部分提供。记录是监控 PowerShell 会话中发生事件的好方法。
+自 PowerShell 版本 1.0 以来，PowerShell 记录就作为`Microsoft.PowerShell.Host`模块的一部分提供。记录是监控 PowerShell 会话中发生事件的好方法。
 
 如果启动了 PowerShell 记录，则所有执行的 PowerShell 命令及其输出都会被记录并保存到指定的文件夹中。如果没有另行指定，默认输出文件夹是当前用户的**我的文档**文件夹（**%userprofile%\Documents**）。
 
@@ -303,33 +303,33 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 图 4.7 – PowerShell 记录的截图
 
-**.txt**文件的名称以**PowerShell_transcript**开头，后跟**computername**、一个随机字符串和时间戳。
+`.txt`文件的名称以`PowerShell_transcript`开头，后跟`computername`、一个随机字符串和时间戳。
 
-这是一个典型的 PowerShell 记录文件名示例，该记录是在*PSSec-PC01*上启动的 – **PowerShell_transcript.PSSEC-PC01.MUxdLMnA.20210320152800.txt**。
+这是一个典型的 PowerShell 记录文件名示例，该记录是在*PSSec-PC01*上启动的 – `PowerShell_transcript.PSSEC-PC01.MUxdLMnA.20210320152800.txt`。
 
 ### 如何启动记录
 
-启用记录的方式有几种。然而，记录 PowerShell 记录的最简单方法是直接在当前会话中输入**Start-Transcript**命令并按*Enter*。在这种情况下，只有在此本地会话中执行的命令才会被捕获。
+启用记录的方式有几种。然而，记录 PowerShell 记录的最简单方法是直接在当前会话中输入`Start-Transcript`命令并按*Enter*。在这种情况下，只有在此本地会话中执行的命令才会被捕获。
 
-直接运行**Start-Transcript** cmdlet 时，最常用的参数是**-OutputDirectory**、**-Append**、**-NoClobber**和**-IncludeInvocationHeader**：
+直接运行`Start-Transcript` cmdlet 时，最常用的参数是`-OutputDirectory`、`-Append`、`-NoClobber`和`-IncludeInvocationHeader`：
 
-+   **-Append**: 新的记录将被添加到现有文件中。
++   `-Append`: 新的记录将被添加到现有文件中。
 
-+   **-IncludeInvocationHeader**: 记录命令执行的时间戳，并在命令之间添加分隔符，以便通过自动化工具更容易解析记录。
++   `-IncludeInvocationHeader`: 记录命令执行的时间戳，并在命令之间添加分隔符，以便通过自动化工具更容易解析记录。
 
-+   **-NoClobber**: 该记录不会覆盖现有文件。通常，如果定义位置中已存在记录文件（例如，定义的文件与现有文件同名，或者文件名是通过**-Path**或**-LiteralPath**参数配置的），**Start-Transcript**会覆盖该文件且不会发出警告。
++   `-NoClobber`: 该记录不会覆盖现有文件。通常，如果定义位置中已存在记录文件（例如，定义的文件与现有文件同名，或者文件名是通过`-Path`或`-LiteralPath`参数配置的），`Start-Transcript`会覆盖该文件且不会发出警告。
 
-+   **-OutputDirectory**：使用此参数，你可以配置存储转录文件的路径。
++   `-OutputDirectory`：使用此参数，你可以配置存储转录文件的路径。
 
-+   **-UseMinimalHeader**：此参数在**PowerShell 版本 6.2**中添加，确保仅添加简短的头部，而不是详细的头部。
++   `-UseMinimalHeader`：此参数在**PowerShell 版本 6.2**中添加，确保仅添加简短的头部，而不是详细的头部。
 
-了解**Start-Transcript**帮助文件中所有参数的完整列表，或者在官方 PowerShell 文档中查看：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters)。
+了解`Start-Transcript`帮助文件中所有参数的完整列表，或者在官方 PowerShell 文档中查看：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters)。
 
 确保你的转录安全
 
 和你收集的任何安全日志一样，确保将转录文件安全存储，以防止攻击者篡改它们非常重要。确保配置一个安全路径，令攻击者难以访问，并考虑到企业身份被盗的可能性。一旦攻击者获得转录的访问权限，他们可以修改它们，从而使你的检测工作失效。
 
-使用**Start-Transcript**初始化的转录只会在会话处于活动状态或执行**Stop-Transcript**命令时停止，后者会停止记录执行的 PowerShell 命令。
+使用`Start-Transcript`初始化的转录只会在会话处于活动状态或执行`Stop-Transcript`命令时停止，后者会停止记录执行的 PowerShell 命令。
 
 ### 默认启用转录
 
@@ -343,23 +343,23 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 ```
 
-例如，要启用转录，使用调用头并设置**C:\tmp**输出文件夹，你需要将以下值配置到注册表键中：
+例如，要启用转录，使用调用头并设置`C:\tmp`输出文件夹，你需要将以下值配置到注册表键中：
 
-+   **[REG_DWORD]EnableTranscripting = 1**
++   `[REG_DWORD]EnableTranscripting = 1`
 
-+   **[REG_DWORD]EnableInvocationHeader = 1**
++   `[REG_DWORD]EnableInvocationHeader = 1`
 
-+   **[REG_SZ]OutputDirectory =** **C:\tmp**
++   `[REG_SZ]OutputDirectory =** **C:\tmp`
 
-要管理多个机器，使用 GPO 更为方便，但在某些情况下，有些机器不属于 Active Directory 域，因此无法管理。对于本示例，我将**Enable-PSTranscription**函数添加到本书的 GitHub 存储库中：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Enable-PSTranscription.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Enable-PSTranscription.ps1)。
+要管理多个机器，使用 GPO 更为方便，但在某些情况下，有些机器不属于 Active Directory 域，因此无法管理。对于本示例，我将`Enable-PSTranscription`函数添加到本书的 GitHub 存储库中：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Enable-PSTranscription.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Enable-PSTranscription.ps1)。
 
-将**Enable-PSTranscription**函数加载到当前会话中，并指定转录文件应保存的文件夹，例如以下示例：
+将`Enable-PSTranscription`函数加载到当前会话中，并指定转录文件应保存的文件夹，例如以下示例：
 
 ```
 > Enable-PSTranscription -OutputDirectory "C:\PSLogs"
 ```
 
-如果未指定**-OutputDirectory**，脚本将默认将转录写入**C:\ProgramData\WindowsPowerShell\Transcripts**。
+如果未指定`-OutputDirectory`，脚本将默认将转录写入`C:\ProgramData\WindowsPowerShell\Transcripts`。
 
 此函数仅配置所有已定义的值，并覆盖现有的注册表键。你可以根据需要调整此函数并重新使用它。
 
@@ -369,7 +369,7 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 在 Active Directory 管理的环境中，配置转录的最简单方法是使用组策略。
 
-创建一个新的 GPO 或重用现有的 GPO。然后，导航至**计算机配置** | **策略** | **管理模板** | **Windows 组件** | **Windows PowerShell**。
+创建一个新的 GPO 或重用现有的 GPO。然后，导航至**计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell`。
 
 双击并打开**启用 PowerShell 转录**策略来配置 PowerShell 转录：
 
@@ -383,13 +383,13 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 **自定义端点**是为 PowerShell 远程会话应用默认设置的绝佳方式。如果已经配置了转录，它将默认启用本地会话，但在**足够的管理权限**中额外配置它，可以在用于远程会话时按端点分组并收集日志。通过在自定义端点上配置转录和其他设置，您可以强制执行这些设置，以确保所有连接到该端点的远程会话都符合一致性和合规性要求。
 
-要开始使用，请创建一个会话配置文件，使用**New-PSSessionConfigurationFile** cmdlet，并通过**-TranscriptDirectory**参数指定转录内容应该写入的目录：
+要开始使用，请创建一个会话配置文件，使用`New-PSSessionConfigurationFile` cmdlet，并通过`-TranscriptDirectory`参数指定转录内容应该写入的目录：
 
 ```
 > New-PSSessionConfigurationFile -Path "$env:userprofile\Documents\PSSession.pssc" -TranscriptDirectory "C:\tmp"
 ```
 
-该命令创建一个新的会话配置文件，强制启用转录，并将其存储在**%userprofile%\Documents\PSSession.pssc**路径下，该路径是通过**-Path**参数定义的。
+该命令创建一个新的会话配置文件，强制启用转录，并将其存储在`%userprofile%\Documents\PSSession.pssc`路径下，该路径是通过`-Path`参数定义的。
 
 ![图 4.9 – 新创建的会话配置](img/B16679_04_009.jpg)
 
@@ -421,47 +421,47 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 有几种方法可以使用 PowerShell 操作 Windows 事件日志。当然，你可以将事件日志转发到你选择的 SIEM，但有时你可能需要直接分析某台机器上的事件日志。在这种用例下，查看 PowerShell 提供的选项是有意义的。
 
-如果你只是想分析事件或创建新事件，最简单的选择是使用***-WinEvent** cmdlets，它们在 PowerShell Core 7 中仍然可用。你可以使用**Get-Command**查找所有可用的 cmdlet：
+如果你只是想分析事件或创建新事件，最简单的选择是使用`*-WinEvent` cmdlets，它们在 PowerShell Core 7 中仍然可用。你可以使用`Get-Command`查找所有可用的 cmdlet：
 
 ![图 4.10 – 可用的 *-WinEvent cmdlets](img/B16679_04_010.jpg)
 
 图 4.10 – 可用的 *-WinEvent cmdlets
 
-在 PowerShell 5.1 中，也可以使用 ***-EventLog** cmdlets，但它们在 PowerShell Core 6 及以上版本中被移除。由于 PowerShell 5.1 默认安装在所有 Windows 10 操作系统上，因此这里提到 ***-EventLog**。同样，使用**Get-Command**查找所有可用的 cmdlet：
+在 PowerShell 5.1 中，也可以使用 `*-EventLog` cmdlets，但它们在 PowerShell Core 6 及以上版本中被移除。由于 PowerShell 5.1 默认安装在所有 Windows 10 操作系统上，因此这里提到 `*-EventLog`。同样，使用`Get-Command`查找所有可用的 cmdlet：
 
 ![图 4.11 – 可用的 *-EventLog cmdlets](img/B16679_04_011.jpg)
 
 图 4.11 – 可用的 *-EventLog cmdlets
 
-第三个选项是使用 **wevtutil**。这个命令行可执行文件并不容易理解，但可以用来操作和分析事件日志。使用 **/?** 参数，你可以获取更多关于用法的详细信息。
+第三个选项是使用 `wevtutil`。这个命令行可执行文件并不容易理解，但可以用来操作和分析事件日志。使用 `/?` 参数，你可以获取更多关于用法的详细信息。
 
 ![图 4.12 – wevtutil.exe 使用方法](img/B16679_04_012.jpg)
 
 图 4.12 – wevtutil.exe 使用方法
 
-例如，清除 **Security** 事件日志可以通过以下命令实现：
+例如，清除 `Security` 事件日志可以通过以下命令实现：
 
 ```
 > wevtutil.exe cl Security
 ```
 
-请参考官方文档以获取有关 **wevtutil** 的更多详细信息：[`docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil`](https://docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil)。
+请参考官方文档以获取有关 `wevtutil` 的更多详细信息：[`docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil`](https://docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil)。
 
 ## 查找系统中存在的日志
 
-如果你想查找系统中存在的哪些事件日志，可以使用 **-ListLog** 参数，后面跟一个通配符（*****）– **Get-WinEvent -ListLog ***：
+如果你想查找系统中存在的哪些事件日志，可以使用 `-ListLog` 参数，后面跟一个通配符（*****）– `Get-WinEvent -ListLog *`：
 
 ![图 4.13 – 列出所有事件日志](img/B16679_04_013.jpg)
 
 图 4.13 – 列出所有事件日志
 
-你可能希望将输出传递给 **Sort-Object** 以按记录数、最大日志大小、日志模式或日志名称进行排序。
+你可能希望将输出传递给 `Sort-Object` 以按记录数、最大日志大小、日志模式或日志名称进行排序。
 
 ## 一般查询事件
 
 要开始，先看看我们如何分析 PowerShell 审计的最常见场景。
 
-使用 **Get-WinEvent** 命令，你可以从指定的事件日志中获取所有事件 ID – **Get-WinEvent Microsoft-Windows-PowerShell/Operational**：
+使用 `Get-WinEvent` 命令，你可以从指定的事件日志中获取所有事件 ID – `Get-WinEvent Microsoft-Windows-PowerShell/Operational`：
 
 ![图 4.14 – 查询 Microsoft Windows PowerShell 操作日志](img/B16679_04_014.jpg)
 
@@ -469,7 +469,7 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 在这个例子中，你会看到 PowerShell 操作日志中生成的所有事件 ID。
 
-如果你只想查询最近的 *x* 个事件，**-MaxEvents** 参数将帮助你完成此任务。例如，要查询 *Security* 事件日志中的最后 15 个事件，请使用 **Get-WinEvent Security -MaxEvents 15**：
+如果你只想查询最近的 *x* 个事件，`-MaxEvents` 参数将帮助你完成此任务。例如，要查询 *Security* 事件日志中的最后 15 个事件，请使用 `Get-WinEvent Security -MaxEvents 15`：
 
 ![图 4.15 – 查询安全事件日志中的最后 15 个事件](img/B16679_04_015.jpg)
 
@@ -477,25 +477,25 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 这对于你想要分析最近的事件而不查询整个事件日志时特别有帮助。
 
-使用 **-Oldest** 参数可以反转顺序，以便你查看日志中的最旧事件 – **Get-WinEvent Security -MaxEvents 15 -Oldest**：
+使用 `-Oldest` 参数可以反转顺序，以便你查看日志中的最旧事件 – `Get-WinEvent Security -MaxEvents 15 -Oldest`：
 
 ![图 4.16 – 安全事件日志中的 15 条最旧事件](img/B16679_04_016.jpg)
 
 图 4.16 – 安全事件日志中的 15 条最旧事件
 
-要查找所有在 Microsoft Windows PowerShell 操作日志中执行并被 **ScriptBlockLogging** 记录的代码，可以筛选事件 ID **4104**：**Get-WinEvent Microsoft-Windows-PowerShell/Operational | Where-Object { $_.Id -eq 4104 } | fl**：
+要查找所有在 Microsoft Windows PowerShell 操作日志中执行并被 `ScriptBlockLogging` 记录的代码，可以筛选事件 ID `4104`：`Get-WinEvent Microsoft-Windows-PowerShell/Operational | Where-Object { $_.Id -eq 4104 } | fl`：
 
 ![图 4.17 – 查找所有执行并记录的代码](img/B16679_04_017.jpg)
 
 图 4.17 – 查找所有执行并记录的代码
 
-你还可以根据消息部分中的特定关键字进行过滤。例如，要查找所有消息中包含 **"logon"** 字符串的事件，可以使用 **-match** 比较运算符 – **Get-WinEvent Security | Where-Object { $_.Message -match "****logon" }**：
+你还可以根据消息部分中的特定关键字进行过滤。例如，要查找所有消息中包含 `"logon"` 字符串的事件，可以使用 `-match` 比较运算符 – `Get-WinEvent Security | Where-Object { $_.Message -match "****logon" }`：
 
 ![图 4.18 – 查找所有消息中包含“logon”的事件](img/B16679_04_018.jpg)
 
 图 4.18 – 查找所有消息中包含“logon”的事件
 
-你还可以使用基于 XPath 的查询进行过滤，使用 **-****FilterXPath** 参数：
+你还可以使用基于 XPath 的查询进行过滤，使用 `-****FilterXPath` 参数：
 
 ```
 Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -FilterXPath "*[System[(EventID=4100 or EventID=4101 or EventID=4102 or EventID=4103 or EventID=4104)]]"
@@ -507,22 +507,22 @@ Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -FilterXPath "*
 
 图 4.19 – 使用 XPath 查询进行过滤
 
-还可以通过指定的 **哈希表** 进行过滤，使用 **-****FilterHashtable** 参数：
+还可以通过指定的 **哈希表** 进行过滤，使用 `-****FilterHashtable` 参数：
 
 ```
 > $eventLog = @{ ProviderName="Microsoft-Windows-PowerShell"; Id = 4104 }
 > Get-WinEvent -FilterHashtable $eventLog
 ```
 
-使用哈希表可以显著减少对**Where-Object**过滤子句的使用。
+使用哈希表可以显著减少对`Where-Object`过滤子句的使用。
 
-如果你想查询复杂的事件结构，可以使用 **-FilterXml** 参数并提供 **XML** 字符串。我已经准备了这样的示例，并将其上传到本书的 GitHub 仓库：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-AllPowerShellEvents.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-AllPowerShellEvents.ps1)：
+如果你想查询复杂的事件结构，可以使用 `-FilterXml` 参数并提供 `XML` 字符串。我已经准备了这样的示例，并将其上传到本书的 GitHub 仓库：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-AllPowerShellEvents.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-AllPowerShellEvents.ps1)：
 
 ![图 4.20 – 使用 Get-AllPowerShellEvents.ps1 脚本](img/B16679_04_020.jpg)
 
 图 4.20 – 使用 Get-AllPowerShellEvents.ps1 脚本
 
-这个示例查询了 **Microsoft-Windows-PowerShell/Operational**、**PowerShellCore/Operational** 和 **Windows PowerShell** 事件日志，并检索了我将在本章的 *基本 PowerShell 事件日志* 部分中描述的所有事件。
+这个示例查询了 `Microsoft-Windows-PowerShell/Operational`、`PowerShellCore/Operational` 和 `Windows PowerShell` 事件日志，并检索了我将在本章的 *基本 PowerShell 事件日志* 部分中描述的所有事件。
 
 现在你已经知道如何处理事件日志并查询事件，接下来让我们看看如何检测和分析系统上运行了哪个代码。
 
@@ -530,20 +530,20 @@ Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -FilterXPath "*
 
 如果你决定手动执行此任务，过滤并滚动浏览所有包含已执行代码的事件可能是一项繁琐的工作。但是，幸运的是，PowerShell 允许你自动化此任务并快速找到你需要的内容。
 
-一般来说，所有包含已记录代码的事件可以在 Microsoft Windows PowerShell 或 PowerShell Core 操作日志中找到，事件 ID 为 **4104**：
+一般来说，所有包含已记录代码的事件可以在 Microsoft Windows PowerShell 或 PowerShell Core 操作日志中找到，事件 ID 为 `4104`：
 
 ```
 > Get-WinEvent Microsoft-Windows-PowerShell/Operational | Where-Object Id -eq 4104
 > Get-WinEvent PowerShellCore/Operational | Where-Object Id -eq 4104
 ```
 
-为了更好地查找和过滤执行的代码，我编写了 **Get-ExecutedCode** 函数，你可以在本书的 GitHub 仓库中找到它：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-ExecutedCode.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-ExecutedCode.ps1)。
+为了更好地查找和过滤执行的代码，我编写了 `Get-ExecutedCode` 函数，你可以在本书的 GitHub 仓库中找到它：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-ExecutedCode.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter04/Get-ExecutedCode.ps1)。
 
 ## 降级攻击
 
 由于 5.1 及以上版本引入了许多新的安全功能，较旧的 PowerShell 版本，如 2.0，变得对攻击者更具吸引力。因此，攻击者常用的一种手段就是所谓的**降级攻击**。
 
-可以通过在运行 **powershell.exe** 时指定版本号来执行降级攻击：
+可以通过在运行 `powershell.exe` 时指定版本号来执行降级攻击：
 
 ```
 > powershell.exe -version 2 –command <command>
@@ -553,7 +553,7 @@ Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -FilterXPath "*
 
 所有运行 Windows 7 及以上版本的机器至少安装了 PowerShell 2.0 版本。虽然 Windows 7 已不再获得支持，也不再接收安全更新，但它仍然广泛使用。
 
-此外，PowerShell 2.0 仍然依赖于**.NET Framework 2.0**，该版本不包含先进的安全功能，也没有高级日志记录功能。因此，这对那些不希望任何人知道他们在系统上做了什么的攻击者来说非常适用。
+此外，PowerShell 2.0 仍然依赖于`.NET Framework 2.0`，该版本不包含先进的安全功能，也没有高级日志记录功能。因此，这对那些不希望任何人知道他们在系统上做了什么的攻击者来说非常适用。
 
 .NET Framework 2.0 默认不包括在 Windows 10 中，但可以手动安装——例如，由攻击者或管理员安装。在 Windows 10 之前的操作系统中，.NET Framework 2.0 是默认安装的。
 
@@ -565,7 +565,7 @@ Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2
 
 运行 PowerShell 2.0 所需的 .NET Framework 2.0 默认不会安装在如 Windows 10 这样的较新系统上。
 
-所以，如果你尝试运行**powershell.exe -version 2**，你会收到一个错误信息，提示缺少 .NET Framework 2.0 版本：
+所以，如果你尝试运行`powershell.exe -version 2`，你会收到一个错误信息，提示缺少 .NET Framework 2.0 版本：
 
 ```
 > powershell.exe -version 2
@@ -614,15 +614,15 @@ FeatureName : MicrosoftWindowsPowerShellV2
 State       : Disabled
 ```
 
-然而，在 Windows 7 上，无法禁用 PowerShell 2.0。唯一不允许使用 PowerShell 2.0 的方式是利用**应用程序控制**或**AppLocker**，我们将在*第十一章*中讨论，*AppLocker、应用程序控制和* *代码签名*。
+然而，在 Windows 7 上，无法禁用 PowerShell 2.0。唯一不允许使用 PowerShell 2.0 的方式是利用**应用程序控制**或`AppLocker`，我们将在*第十一章*中讨论，*AppLocker、应用程序控制和* *代码签名*。
 
 对于对手而言，还有另一种运行降级攻击的方法 - 例如，如果编译的应用程序利用旧版本的 PowerShell，并链接到编译的 PowerShell v2 二进制文件，攻击者可以通过利用该应用程序发起降级攻击。因此，每当此应用程序运行时，PowerShell v2 也处于活动状态，如果攻击者设法利用该应用程序，则可以使用它。
 
 在这种情况下，禁用 PowerShell 2.0 可以帮助防止此类攻击，方法是阻止全局程序集缓存（**GAC**）中的不推荐的二进制文件，或者完全移除 PowerShell 组件。然而，重要的是要注意，依赖这些二进制文件的其他应用程序也将被阻止，因为它们通常不会随所有 PowerShell 二进制文件一起发布。
 
-通常，降级攻击是一个非常关键的问题，因此，您应该对其进行监控。您可以通过监控 Windows PowerShell 事件日志中的事件 ID **400** 来执行此操作 - 如果指定版本低于 **[Version] "5"**，则应进一步进行调查。
+通常，降级攻击是一个非常关键的问题，因此，您应该对其进行监控。您可以通过监控 Windows PowerShell 事件日志中的事件 ID `400` 来执行此操作 - 如果指定版本低于 `[Version] "5"`，则应进一步进行调查。
 
-李·霍姆斯（Lee Holmes）曾是微软 Windows PowerShell 团队的一员，他在他的博客文章*检测和防止 PowerShell 降级攻击*中提供了一个很好的例子，通过查找 PowerShell 事件日志中的事件 ID **400** 来监控潜在的降级攻击：[`www.leeholmes.com/detecting-and-preventing-powershell-downgrade-attacks/`](https://www.leeholmes.com/detecting-and-preventing-powershell-downgrade-attacks/)。
+李·霍姆斯（Lee Holmes）曾是微软 Windows PowerShell 团队的一员，他在他的博客文章*检测和防止 PowerShell 降级攻击*中提供了一个很好的例子，通过查找 PowerShell 事件日志中的事件 ID `400` 来监控潜在的降级攻击：[`www.leeholmes.com/detecting-and-preventing-powershell-downgrade-attacks/`](https://www.leeholmes.com/detecting-and-preventing-powershell-downgrade-attacks/)。
 
 使用此示例查找加载较低版本的 PowerShell 引擎的情况：
 
@@ -661,7 +661,7 @@ Get-WinEvent -LogName "Windows PowerShell" | Where-Object Id -eq 400 | Foreach-O
 
 正如你能想象的那样，我并不特别兴奋于这个新任务。这看起来像是一个非常枯燥且令人疲惫的工作，可能需要多年才能完成。
 
-因此，我考虑到需要自动化基线与事件 ID 的匹配，这也就是我的开源工具**EventList**诞生的背景。
+因此，我考虑到需要自动化基线与事件 ID 的匹配，这也就是我的开源工具`EventList`诞生的背景。
 
 尽管最初它只是一个包含 Visual Basic 宏的 Excel 文档，但它在这期间变成了一个庞大的项目，背后有着庞大的数据库支持。
 
@@ -691,11 +691,11 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 图 4.22 – EventList 用户界面
 
-在左上角，您可以选择现有基线并查看在 UI 中填充的**MITRE ATT&CK**技术和领域。因此，您可以直接查看应用某个基线时涵盖的 MITRE ATT&CK 技术。
+在左上角，您可以选择现有基线并查看在 UI 中填充的`MITRE ATT&CK`技术和领域。因此，您可以直接查看应用某个基线时涵盖的 MITRE ATT&CK 技术。
 
 您还有可能性导入您自己的基线或导出的 GPO 并删除现有的基线。
 
-一旦您选择了一个基线并填写了 MITRE ATT&CK 复选框，请选择**生成** **事件列表**。
+一旦您选择了一个基线并填写了 MITRE ATT&CK 复选框，请选择**生成` `事件列表**。
 
 ![图 4.23 - EventList - 显示基线事件](img/B16679_04_023.jpg)
 
@@ -711,7 +711,7 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 生成了一个 EventList，在其中您可以看到应用此基线时将生成的每个事件 ID，以及（如果有的话）指向文档的链接以及关于是否应监视此事件的建议。
 
-如果选中**导出为 CSV**，则可以选择输出保存的位置，并生成一个**.csv**文件。
+如果选中**导出为 CSV**，则可以选择输出保存的位置，并生成一个`.csv`文件。
 
 由于**高级审计日志**，微软安全基线主要依赖于**基线**功能，EventList 在理解和揭示高级审计日志方面提供了很大帮助。
 
@@ -721,7 +721,7 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 > Get-BaselineEventList -BaselineName "MSFT Windows Server 2019 - Domain Controller"
 ```
 
-需要将基线导入 EventList 数据库，因此在使用**Get-BaselineNameFromDB**功能验证基线名称时，请确保显示基线名称。
+需要将基线导入 EventList 数据库，因此在使用`Get-BaselineNameFromDB`功能验证基线名称时，请确保显示基线名称。
 
 当然，您还可以选择不同的 MITRE ATT&CK 技术和领域，并生成一个 EventList，查看哪些事件 ID 涵盖特定的 MITRE ATT&CK 领域。生成一个 EventList，选择**所有 MITRE ATT&CK 事件**，然后确认选择**确定**。
 
@@ -731,7 +731,7 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 图 4.25 - MITRE ATT&CK EventList
 
-再次强调，这可以通过将基线或 MITRE ATT&CK 技术编号传递给**Get-MitreEventList**功能，使用**-Identity**参数来实现：
+再次强调，这可以通过将基线或 MITRE ATT&CK 技术编号传递给`Get-MitreEventList`功能，使用`-Identity`参数来实现：
 
 ```
 > Get-MitreEventList -Identity "T1039"
@@ -757,9 +757,9 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 为了更全面地了解 EventList 的功能，我建议阅读文档和帮助文件，并观看我关于它的一些讲座录音：
 
-+   **Hack.lu 2019: (版本** **1.1.0)**: [`www.youtube.com/watch?v=nkMDsw4MA48`](https://www.youtube.com/watch?v=nkMDsw4MA48)
++   **Hack.lu 2019: (版本` **1.1.0)`: [`www.youtube.com/watch?v=nkMDsw4MA48`](https://www.youtube.com/watch?v=nkMDsw4MA48)
 
-+   **Black Hat 2020 (版本** **2.0.0)**: [`www.youtube.com/watch?v=3x5-nZ2bfbo`](https://www.youtube.com/watch?v=3x5-nZ2bfbo)
++   **Black Hat 2020 (版本` **2.0.0)`: [`www.youtube.com/watch?v=3x5-nZ2bfbo`](https://www.youtube.com/watch?v=3x5-nZ2bfbo)
 
 如果你有任何关于 EventList 的改进建议，我很乐意听到更多，并期待你在 GitHub 上的 Pull Request 或通过 Twitter 或电子邮件与我联系。
 
@@ -769,7 +769,7 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 如果你想选择一个 SIEM 系统，选择非常多——适应各种预算和场景。多年来，我见过许多不同的 SIEM 系统，每一个都非常适合各自的组织。
 
-我见过的最流行的 SIEM 系统包括**Splunk**、**Azure Sentinel**、**ArcSight**、**qRadar**和**“ELK 堆栈” (Elastic, LogStash, 和 Kibana)**，仅举几例。我还使用过**Windows 事件转发** (**WEF**) 来实现事件日志监控。
+我见过的最流行的 SIEM 系统包括`Splunk`、`Azure Sentinel`、`ArcSight`、`qRadar`和**“ELK 堆栈” (Elastic, LogStash, 和 Kibana)**，仅举几例。我还使用过**Windows 事件转发` (`WEF**) 来实现事件日志监控。
 
 当然，也可以分析本地机器上的事件，但这并不实际——根据配置，如果达到最大日志大小，旧事件会被删除，且很难将其与其他系统的日志相关联。
 
@@ -793,9 +793,9 @@ Windows PowerShell 一直以来都非常注重安全性和日志记录，甚至�
 
 +   **完整名称**：Windows PowerShell
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Windows PowerShell.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Windows PowerShell.evtx`
 
-+   **UI 中的路径**：**应用程序和服务** | **Windows PowerShell**
++   **UI 中的路径**：**应用程序和服务` | **Windows PowerShell`
 
 在这些事件日志中，*最有趣的事件 ID* 包括以下几种：
 
@@ -803,71 +803,71 @@ Windows PowerShell 一直以来都非常注重安全性和日志记录，甚至�
 
 查找**主机应用程序**以获取有关执行命令的更多详细信息。
 
-+   **事件 ID 400**：**引擎状态从无** **变为可用。**
++   **事件 ID 400**：**引擎状态从无` `变为可用。**
 
-这个事件可能是*最有趣的事件*，因为它表明引擎何时启动，以及使用的是哪个版本。此事件对于识别和终止过时的 PowerShell 版本（监控**HostVersion** 小于 5.0）非常理想——并且通常用于降级攻击（有关更多信息，请参见*检测降级攻击*部分）。
+这个事件可能是*最有趣的事件*，因为它表明引擎何时启动，以及使用的是哪个版本。此事件对于识别和终止过时的 PowerShell 版本（监控`HostVersion` 小于 5.0）非常理想——并且通常用于降级攻击（有关更多信息，请参见*检测降级攻击*部分）。
 
-+   **事件 ID 800**：**命令行的管道执行详情 –** *<**命令行命令>***。**
++   **事件 ID 800**：**命令行的管道执行详情 –` *<`命令行命令>***。**
 
-尽管事件 ID **800** 提供了包含 cmdlet 的命令行执行的详细信息，但它不包括其他可执行文件的信息，如**wmic**。为了获得更多详细信息，监视来自*Microsoft Windows PowerShell 操作日志*的事件 ID **4103** 和 **4104** 可能更有用。
+尽管事件 ID `800` 提供了包含 cmdlet 的命令行执行的详细信息，但它不包括其他可执行文件的信息，如`wmic`。为了获得更多详细信息，监视来自*Microsoft Windows PowerShell 操作日志*的事件 ID `4103` 和 `4104` 可能更有用。
 
 Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有相关信息——例如，**模块日志记录**和**脚本块日志记录**事件都会写入此日志。
 
 #### Microsoft Windows PowerShell 操作日志
 
-从 Windows Vista 开始，微软引入了一种新的日志记录系统，称为 **ETW**。作为这一变化的一部分，*Microsoft Windows PowerShell 操作日志* 被引入，包含了一系列事件 ID，如 **4100**、**4103**（尽管配置它们可能很具挑战性），以及 **40961**、**40862** 等与 PowerShell 远程日志相关的事件 ID。
+从 Windows Vista 开始，微软引入了一种新的日志记录系统，称为 `ETW`。作为这一变化的一部分，*Microsoft Windows PowerShell 操作日志* 被引入，包含了一系列事件 ID，如 `4100`、`4103`（尽管配置它们可能很具挑战性），以及 `40961`、`40862` 等与 PowerShell 远程日志相关的事件 ID。
 
 随着 *KB3000850* 的发布，像 **模块日志记录**、**脚本块日志记录** 和 **转录** 等高级审计功能可以移植到 PowerShell 版本 4（Windows Server 2012 R2 和 Windows 8.1）。随后，在 PowerShell 版本 5（Windows Server 2016 和 Windows 10）中，这些功能默认启用。
 
-随着这些新的审计功能的引入，也有新的事件类型被加入，比如事件 ID **4104**、**4105** 和 **4106**，它们为你提供了更高级的日志记录功能：
+随着这些新的审计功能的引入，也有新的事件类型被加入，比如事件 ID `4104`、`4105` 和 `4106`，它们为你提供了更高级的日志记录功能：
 
-+   **完整** **名称**： **Microsoft-Windows-Powershell/Operational**
++   **完整` `名称**： `Microsoft-Windows-Powershell/Operational`
 
-+   **日志** **路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-PowerShell%4Operational.evtx**
++   **日志` `路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-PowerShell%4Operational.evtx`
 
-+   **UI 中的路径**：**应用程序和服务** | **Microsoft** | **Windows** | **PowerShell** | **Operational**
++   **UI 中的路径**：**应用程序和服务` | **Microsoft** | **Windows** | **PowerShell** | **Operational`
 
 此事件日志中*最有趣的事件 ID*如下：
 
 +   **事件 ID 4103**：**执行管道/命令调用。如果启用了 PowerShell 模块日志记录，则会生成此事件**。
 
-+   **事件 ID 4104**：**创建** **脚本块文本**。
++   **事件 ID 4104**：**创建` `脚本块文本**。
 
-如果启用了 **ScriptBlockLogging**，则会生成此事件。常见的恶意活动，如加载恶意模块或执行可疑命令，都会被记录，无论是否启用 **ScriptBlockLogging**。
+如果启用了 `ScriptBlockLogging`，则会生成此事件。常见的恶意活动，如加载恶意模块或执行可疑命令，都会被记录，无论是否启用 `ScriptBlockLogging`。
 
 +   **事件 ID 4105**：**ScriptBlock_Invoke_Start_Detail（消息：已启动/完成一个脚本块的调用）**。
 
-如果启用了 **ScriptBlockLogging**，则会生成此事件。这记录了开始/停止事件。它非常嘈杂，未必适用于安全监控。
+如果启用了 `ScriptBlockLogging`，则会生成此事件。这记录了开始/停止事件。它非常嘈杂，未必适用于安全监控。
 
 +   **事件 ID 4106**：**ScriptBlock_Invoke_Complete_Detail（消息：已启动/完成一个脚本块的调用）**。
 
-如果启用了 **ScriptBlockLogging**，则会生成此事件。这记录了开始/停止事件。它非常嘈杂，未必适用于安全监控。
+如果启用了 `ScriptBlockLogging`，则会生成此事件。这记录了开始/停止事件。它非常嘈杂，未必适用于安全监控。
 
-+   **事件 ID 40961**：**PowerShell 控制台正在** **启动**。
++   **事件 ID 40961**：**PowerShell 控制台正在` `启动**。
 
 该事件表示 PowerShell 控制台已打开。特别是通过此事件监控用户的异常行为（例如，如果 PowerShell 控制台是由不应登录此系统的用户执行，或者是由系统账户执行的）。
 
-+   **事件 ID 40962**：**PowerShell 控制台已准备好接收** **用户输入**。
++   **事件 ID 40962**：**PowerShell 控制台已准备好接收` `用户输入**。
 
 该事件表示 PowerShell 控制台已启动，并且现在已准备好接收用户输入。特别是通过此事件监控用户的异常行为（例如，如果 PowerShell 控制台是由不应登录此系统的用户执行，或者是由系统账户执行的）。
 
-要筛选特定的事件 ID，可以将**Get-WinEvent**的输出通过管道传递给**Where-Object**：
+要筛选特定的事件 ID，可以将`Get-WinEvent`的输出通过管道传递给`Where-Object`：
 
 ```
 > Get-WinEvent Microsoft-Windows-PowerShell/Operational | Where-Object Id -eq 4104
 ```
 
-在此示例中，您将获取所有事件 ID 为**4104**的事件，这表示已创建脚本块。
+在此示例中，您将获取所有事件 ID 为`4104`的事件，这表示已创建脚本块。
 
 #### PowerShellCore 操作日志
 
 当 PowerShell Core 被引入时，PowerShellCore 操作日志也随之推出。它提供了 PowerShell Core 事件日志的高级审计功能：
 
-+   **完整名称**：**PowerShellCore/Operational**
++   **完整名称**：`PowerShellCore/Operational`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\PowerShellCore%4Operational.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\PowerShellCore%4Operational.evtx`
 
-+   **UI 路径**：**应用程序和服务** | **PowerShellCore** | **操作日志**
++   **UI 路径**：**应用程序和服务` | **PowerShellCore** | `操作日志**
 
 记录在此日志文件中的事件 ID 与记录在 Microsoft Windows PowerShell 操作日志中的事件 ID 相同。请参考前面部分的事件 ID。
 
@@ -875,27 +875,27 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 **Microsoft Windows WinRM 操作日志**记录了进出 WinRM 的连接。由于 PowerShell 依赖 WinRM 进行远程管理，因此你也可以在此事件日志中找到 PowerShell 远程连接。因此，监控和分析该日志中的事件 ID 是非常重要的。
 
-+   **完整名称**：**Microsoft-Windows-WinRM/Operational**
++   **完整名称**：`Microsoft-Windows-WinRM/Operational`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-WinRM%4Operational.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-WinRM%4Operational.evtx`
 
-+   **UI 路径**：**应用程序和服务** | **Microsoft** | **Windows** | **Windows 远程管理** | **操作日志**
++   **UI 路径**：**应用程序和服务` | **Microsoft** | **Windows** | `Windows 远程管理` | `操作日志**
 
 在使用 PowerShell 和 WinRM 时，以下是*最值得关注的事件*，它们通常会出现在 WinRM 事件日志中。
 
-+   **事件 ID 6**：**创建一个** **WSMan 会话。**
++   **事件 ID 6**：**创建一个` `WSMan 会话。**
 
 每当建立远程连接时，都会记录此事件。它还包含用户名、目标地址和使用的 PowerShell 版本。
 
 +   **事件 ID 81**：**处理来自客户端的 CreateShell 操作请求或处理来自客户端的 DeleteShell 操作请求。**
 
-+   **事件 ID 82**：**为 CreateShell 操作进入插件，资源 URI 为** **<http://schemas.microsoft.com/powershell/Microsoft.PowerShell>**
++   **事件 ID 82**：**为 CreateShell 操作进入插件，资源 URI 为` **<http://schemas.microsoft.com/powershell/Microsoft.PowerShell>`
 
-+   **事件 ID 134**：**为** **CreateShell 操作发送响应。**
++   **事件 ID 134**：**为` `CreateShell 操作发送响应。**
 
-+   **事件 ID 169**：**用户** *<domain>\<user>* **使用 NTLM 身份验证成功登录。**
++   **事件 ID 169**：**用户` *<domain>\<user>* `使用 NTLM 身份验证成功登录。**
 
-可以使用**Get-WinEvent Microsoft-Windows-WinRM/Operational**查询 WinRM 日志中的所有事件。
+可以使用`Get-WinEvent Microsoft-Windows-WinRM/Operational`查询 WinRM 日志中的所有事件。
 
 ### 安全性
 
@@ -903,9 +903,9 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 +   **完整名称**：**安全性**
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Security.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Security.evtx`
 
-+   **UI 路径**：**Windows 日志** | **安全性**
++   **UI 路径**：**Windows 日志` | `安全性**
 
 虽然并非所有的安全日志中的事件 ID 都是默认生成的，但最重要的事件 ID 旨在帮助识别安全问题。如果您想实现全面的安全日志记录，我建议将 Microsoft 安全工具包中的 Microsoft 安全基准应用到您的系统中。然而，重要的是要注意，安全基准中的设置应与您组织的资源和能力相匹配。因此，在应用基准之前，建议评估哪些日志设置适合您组织的需求和能力。
 
@@ -913,23 +913,23 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 此事件日志中的事件 ID 是一些最重要的安全监控事件。虽然并非所有事件 ID 都特定于 PowerShell，但它们仍然对维护安全环境至关重要。以下是此事件日志中*最有趣的事件 ID*：
 
-+   **事件 ID 4657**：**注册表值** **已修改**
++   **事件 ID 4657**：**注册表值` `已修改**
 
-+   **事件 ID 4688**：**新进程已创建。请查找“新进程名称”中包含 powershell.exe 的进程。您可以使用创建者进程 ID 来链接哪个进程启动了哪些** **其他进程。**
++   **事件 ID 4688**：**新进程已创建。请查找“新进程名称”中包含 powershell.exe 的进程。您可以使用创建者进程 ID 来链接哪个进程启动了哪些` `其他进程。**
 
-+   **事件 ID 1100**：**事件日志服务已** **关闭。**
++   **事件 ID 1100**：**事件日志服务已` `关闭。**
 
-+   **事件 ID 1102**：**审核日志** **已清除。**
++   **事件 ID 1102**：**审核日志` `已清除。**
 
-+   **事件 ID 1104**：**安全日志** **已满。**
++   **事件 ID 1104**：**安全日志` `已满。**
 
-+   **事件 ID 4624**：**账户已成功** **登录。**
++   **事件 ID 4624**：**账户已成功` `登录。**
 
 +   **事件 ID 4625**：**账户登录失败。**
 
 安全日志内容丰富，包含大量重要的事件 ID。仅仅覆盖安全日志就可以写成一本完整的书；因此，这个列表并不完整，我这里只列出了与 PowerShell 相关的一些最重要的事件 ID。
 
-然而，*哪些安全事件 ID 重要*的问题让我失眠了很多个夜晚，因此我开发了一个名为**EventList**的开源工具。如果你想了解哪些事件 ID 重要，可以查看本章中的*转发和分析事件日志 – EventList*部分。
+然而，*哪些安全事件 ID 重要*的问题让我失眠了很多个夜晚，因此我开发了一个名为`EventList`的开源工具。如果你想了解哪些事件 ID 重要，可以查看本章中的*转发和分析事件日志 – EventList*部分。
 
 ### 系统
 
@@ -937,13 +937,13 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 +   **全名**：**系统**
 
-+   **日志** **路径**：**%SystemRoot%\System32\Winevt\Logs\System.evtx**
++   **日志` `路径**：`%SystemRoot%\System32\Winevt\Logs\System.evtx`
 
-+   **UI 中的路径**：**Windows 日志** | **系统**
++   **UI 中的路径**：**Windows 日志` | `系统**
 
 在此事件日志中，*最有趣的事件 ID* 如下：
 
-+   **事件 ID 104** – **日志** *<name>* **已清除。** 此事件表明名为 *<name>* 的事件日志已被清除，可能表示攻击者试图隐藏痕迹。特别使用此事件 ID 监控日志名为 *“Windows PowerShell,"* *“PowerShell Operational,"* 或 *“PowerShellCore”* 的日志，以检测与 PowerShell 相关的事件日志清除。
++   **事件 ID 104** – **日志` *<name>* `已清除。** 此事件表明名为 *<name>* 的事件日志已被清除，可能表示攻击者试图隐藏痕迹。特别使用此事件 ID 监控日志名为 *“Windows PowerShell,"* *“PowerShell Operational,"* 或 *“PowerShellCore”* 的日志，以检测与 PowerShell 相关的事件日志清除。
 
 根据你监控的内容，在此日志中有许多有趣的事件——例如，每次安装的详细信息。
 
@@ -951,17 +951,17 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 从 Windows 10 和 Windows Server 2016 起，默认启用了 Windows Defender 日志，并提供了许多有用的事件。例如，它还包含与**恶意软件扫描接口**（**AMSI**）相关的事件，AMSI 是 Windows Defender 的一部分：
 
-+   **完整名称**：**Microsoft-Windows-Windows Defender/Operational**
++   **完整名称**：`Microsoft-Windows-Windows Defender/Operational`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-Windows Defender%4Operational.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-Windows Defender%4Operational.evtx`
 
-+   **UI 中的路径**：**应用程序和服务** | **Microsoft** | **Windows** | **Windows Defender** | **操作日志**
++   **UI 中的路径**：**应用程序和服务` | **Microsoft** | **Windows** | **Windows Defender** | `操作日志**
 
 此事件日志中关于 PowerShell 安全日志记录的*最有趣的事件 ID*如下：
 
-+   **事件 ID 1116**：**Microsoft Defender Antivirus 已检测到恶意软件或其他潜在的** **不需要的软件。**
++   **事件 ID 1116**：**Microsoft Defender Antivirus 已检测到恶意软件或其他潜在的` `不需要的软件。**
 
-+   **事件 ID 1117**：**Microsoft Defender Antivirus 已采取措施保护此计算机免受恶意软件或其他潜在的** **不需要的软件的影响。**
++   **事件 ID 1117**：**Microsoft Defender Antivirus 已采取措施保护此计算机免受恶意软件或其他潜在的` `不需要的软件的影响。**
 
 如果在你的机器上使用了 Microsoft Defender，你会在此事件日志中找到更多与 Defender 相关的有趣事件。你可以使用以下参考资料了解更多关于每个 Microsoft Defender 相关事件 ID 的信息：[`learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/troubleshoot-microsoft-defender-antivirus`](https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/troubleshoot-microsoft-defender-antivirus)。
 
@@ -969,7 +969,7 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 ### Windows Defender 应用控制与 AppLocker
 
-**Windows Defender 应用控制**（**WDAC**）和**AppLocker**可用于允许列应用程序，以限制组织内允许使用的软件。两种解决方案都有助于防止未经授权的软件使用。
+**Windows Defender 应用控制**（**WDAC**）和`AppLocker`可用于允许列应用程序，以限制组织内允许使用的软件。两种解决方案都有助于防止未经授权的软件使用。
 
 我们将在*第十一章*中更详细地了解 WDAC 和 AppLocker，*AppLocker、应用控制和* *代码签名*。
 
@@ -983,51 +983,51 @@ WDAC 有两个主要的事件日志——一个名为**MSI 和脚本**的事件�
 
 **代码完整性**
 
-+   **完整名称**：**Microsoft-Windows-CodeIntegrity/Operational**
++   **完整名称**：`Microsoft-Windows-CodeIntegrity/Operational`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-CodeIntegrity%4Operational.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-CodeIntegrity%4Operational.evtx`
 
-+   **界面路径**：**应用程序和服务日志** | **Microsoft** | **Windows** | **CodeIntegrity** | **Operational**
++   **界面路径**：**应用程序和服务日志` | **Microsoft** | **Windows** | **CodeIntegrity** | **Operational`
 
 PowerShell 安全日志中这个事件日志最*有趣的事件 ID*如下：
 
 +   **事件 ID 3001**：**未签名的驱动程序尝试在系统上加载。**
 
-+   **事件 ID 3023**：**验证中的驱动程序文件未满足通过应用程序** **控制策略的要求。**
++   **事件 ID 3023**：**验证中的驱动程序文件未满足通过应用程序` `控制策略的要求。**
 
-+   **事件 ID 3033**：**验证中的文件未满足通过应用程序** **控制策略的要求。**
++   **事件 ID 3033**：**验证中的文件未满足通过应用程序` `控制策略的要求。**
 
 +   **事件 ID 3034**：**如果执行了应用程序控制策略，验证中的文件未满足通过该策略的要求。由于该策略处于审核模式，文件被允许。**
 
 +   **事件 ID 3064**：**如果应用程序控制策略已执行，验证中的用户模式 DLL 未满足通过应用程序控制策略的要求。由于该策略处于审核模式，DLL 被允许运行。**
 
-+   **事件 ID 3065**：**如果应用程序控制策略已执行，验证中的用户模式 DLL 未满足通过应用程序** **控制策略的要求。**
++   **事件 ID 3065**：**如果应用程序控制策略已执行，验证中的用户模式 DLL 未满足通过应用程序` `控制策略的要求。**
 
 +   **事件 ID 3076**：**此事件是审核模式策略的主要应用程序控制阻止事件。它表明，如果执行策略，该文件将被阻止。**
 
-+   **事件 ID 3077**：**此事件是执行策略的主要应用程序控制阻止事件。它表示该文件未通过你的策略并被** **阻止。**
++   **事件 ID 3077**：**此事件是执行策略的主要应用程序控制阻止事件。它表示该文件未通过你的策略并被` `阻止。**
 
-你可以使用 **Get-WinEvent Microsoft-Windows-CodeIntegrity/Operational** 查询 WDAC 日志中的所有事件。监视和分析这些事件可以帮助识别潜在的安全漏洞，并改善系统的整体安全态势。
+你可以使用 `Get-WinEvent Microsoft-Windows-CodeIntegrity/Operational` 查询 WDAC 日志中的所有事件。监视和分析这些事件可以帮助识别潜在的安全漏洞，并改善系统的整体安全态势。
 
-**MSI** **和脚本**
+`MSI** `和脚本**
 
 所有与 Microsoft 安装程序和脚本相关的事件 ID 都可以在此事件日志中找到：
 
-+   **完整名称**：**Microsoft-Windows-AppLocker/MSI** **和脚本**
++   **完整名称**：`Microsoft-Windows-AppLocker/MSI** `和脚本**
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4MSI** **和脚本.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4MSI** `和脚本.evtx**
 
-+   **界面路径**：**应用程序和服务日志** | **Microsoft** | **Windows** | **Applocker** | **MSI** **和脚本**
++   **界面路径**：**应用程序和服务日志` | **Microsoft** | **Windows** | **Applocker** | **MSI** `和脚本**
 
 PowerShell 安全日志中最*有趣的事件 ID*如下：
 
-+   **事件 ID 8028**：*** **被允许运行，但如果执行了配置 CI 策略，则将被阻止。**
++   **事件 ID 8028**：`* `被允许运行，但如果执行了配置 CI 策略，则将被阻止。**
 
-+   **事件 ID 8029**：*** **由于配置 CI 策略，未能运行。**
++   **事件 ID 8029**：`* `由于配置 CI 策略，未能运行。**
 
-+   **事件 ID 8036**：*** **由于配置 CI 策略，未能运行。**
++   **事件 ID 8036**：`* `由于配置 CI 策略，未能运行。**
 
-+   **事件 ID 8037**：*** **通过了配置 CI 策略并被允许** **运行。**
++   **事件 ID 8037**：`* `通过了配置 CI 策略并被允许` `运行。**
 
 如果你想了解更多关于应用控制的事件 ID，可以查看 *AppLocker* 部分以及以下文档：[`learn.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/event-id-explanations`](https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/event-id-explanations)。
 
@@ -1037,65 +1037,65 @@ PowerShell 安全日志中最*有趣的事件 ID*如下：
 
 在 UI 中，你可以在相同的路径下找到所有四个日志——只需将 **<日志名称>** 替换为每个事件日志的名称，如下所示：
 
-**UI 中的路径**：**应用程序和服务** | **Microsoft** | **Windows** | **AppLocker** | **<日志名称>**
+**UI 中的路径**：**应用程序和服务` | **Microsoft** | **Windows** | **AppLocker** | `<日志名称>**
 
 以下是每个与 AppLocker 相关的事件日志的完整名称和路径（请注意，必须启用审计才能显示这些事件日志）：
 
-+   **EXE** **和 DLL**
++   `EXE** `和 DLL**
 
 所有与执行二进制文件（EXE）和 DLL 相关的事件 ID 都可以在此事件日志中找到：
 
-+   **完整名称**：**Microsoft-Windows-AppLocker/EXE** **和 DLL**
++   **完整名称**：`Microsoft-Windows-AppLocker/EXE** `和 DLL**
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4EXE** **和 DLL.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4EXE** `和 DLL.evtx**
 
-+   **MSI** **和脚本**
++   `MSI** `和脚本**
 
 所有与 Microsoft Installer 和脚本相关的事件 ID 都可以在此事件日志中找到：
 
-+   **完整名称**：**Microsoft-Windows-AppLocker/MSI** **和脚本**
++   **完整名称**：`Microsoft-Windows-AppLocker/MSI** `和脚本**
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4MSI** **和脚本.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4MSI** `和脚本.evtx**
 
 +   **打包应用-部署**
 
 如果部署了打包应用，你可以在此事件日志中找到所有相关的事件 ID：
 
-+   **完整名称**：**Microsoft-Windows-AppLocker/Packaged app-Deployment**
++   **完整名称**：`Microsoft-Windows-AppLocker/Packaged app-Deployment`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Deployment.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Deployment.evtx`
 
 +   **打包应用-执行**
 
 所有与打包应用执行相关的事件 ID 可以在此事件日志中找到。
 
-+   **完整名称**：**Microsoft-Windows-AppLocker/Packaged app-Execution**
++   **完整名称**：`Microsoft-Windows-AppLocker/Packaged app-Execution`
 
-+   **日志路径**：**%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Execution.evtx**
++   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Execution.evtx`
 
 对于 PowerShell 安全日志记录而言，这些事件日志中最有趣的事件 ID 如下：
 
-+   **事件 ID 8000（错误）**：**应用身份策略转换失败。状态 *<%1> 这表示策略未正确应用于计算机。状态消息用于** **故障排除目的。**
++   **事件 ID 8000（错误）**：**应用身份策略转换失败。状态 *<%1> 这表示策略未正确应用于计算机。状态消息用于` `故障排除目的。**
 
-+   **事件 ID 8001（信息）**：**AppLocker 策略已成功应用于此计算机。这表示 AppLocker 策略已成功应用于** **该计算机。**
++   **事件 ID 8001（信息）**：**AppLocker 策略已成功应用于此计算机。这表示 AppLocker 策略已成功应用于` `该计算机。**
 
 +   **事件 ID 8002（信息）**：*<文件名>* **被允许运行。这表示该 .exe 或 .dll 文件被 AppLocker 规则允许。**
 
 +   **事件 ID 8003 (警告)**：*<文件名>* **被允许运行，但如果启用了 AppLocker 策略，则会被阻止运行。仅在启用了“仅审核”执行模式时应用。它指定，如果启用了强制规则执行模式，则该 .exe 或 .dll 文件将被阻止运行。**
 
-+   **事件 ID 8004 (错误)**：*<文件名>* **未被允许运行。访问 <文件名> 被管理员限制。这仅在强制规则执行模式直接或通过组策略继承间接设置时应用。该 .exe 或 .dll 文件** **无法运行。**
++   **事件 ID 8004 (错误)**：*<文件名>* **未被允许运行。访问 <文件名> 被管理员限制。这仅在强制规则执行模式直接或通过组策略继承间接设置时应用。该 .exe 或 .dll 文件` `无法运行。**
 
-+   **事件 ID 8005 (信息)**：*<文件名>* **被允许运行。这表示该脚本或 .msi 文件被** **AppLocker 规则允许运行。**
++   **事件 ID 8005 (信息)**：*<文件名>* **被允许运行。这表示该脚本或 .msi 文件被` `AppLocker 规则允许运行。**
 
 +   **事件 ID 8006 (警告)**：*<文件名>* **被允许运行，但如果启用了 AppLocker 策略，则会被阻止运行。仅在启用了“仅审核”执行模式时应用。它指定，如果启用了强制规则执行模式，则该脚本或 .msi 文件将被阻止运行。**
 
-+   **事件 ID 8007 (错误)**：*<文件名>* **未被允许运行。访问 <文件名> 被管理员限制。这仅在强制规则执行模式直接或通过组策略继承间接设置时应用。该脚本或 .msi 文件** **无法运行。**
++   **事件 ID 8007 (错误)**：*<文件名>* **未被允许运行。访问 <文件名> 被管理员限制。这仅在强制规则执行模式直接或通过组策略继承间接设置时应用。该脚本或 .msi 文件` `无法运行。**
 
-+   **事件 ID 8008 (错误)**：**AppLocker 在此 SKU 中被禁用。此功能在 Windows Server 2012 和** **Windows 8 中添加。**
++   **事件 ID 8008 (错误)**：**AppLocker 在此 SKU 中被禁用。此功能在 Windows Server 2012 和` `Windows 8 中添加。**
 
 如果你有兴趣了解更多关于 AppLocker 事件 ID 的信息，请参考以下链接：[`learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/applocker/using-event-viewer-with-applocker`](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/applocker/using-event-viewer-with-applocker)。
 
-当然，还有许多其他有趣的日志文件，例如 **防火墙** 和 **DSC**。提到并描述所有这些文件会超出本书的内容，因此我只在涉及 PowerShell 安全时提到了其中一些最有趣的日志文件。
+当然，还有许多其他有趣的日志文件，例如 **防火墙** 和 `DSC`。提到并描述所有这些文件会超出本书的内容，因此我只在涉及 PowerShell 安全时提到了其中一些最有趣的日志文件。
 
 ## 增加日志文件大小
 
@@ -1103,7 +1103,7 @@ PowerShell 安全日志中最*有趣的事件 ID*如下：
 
 当然，始终建议将日志转发到中央日志库，以确保日志不会丢失。但是，如果你希望在本地分析事件，增加日志文件大小也很有帮助。
 
-**Limit-EventLog** cmdlet 可以帮助你在 Windows PowerShell 中完成此任务：
+`Limit-EventLog` cmdlet 可以帮助你在 Windows PowerShell 中完成此任务：
 
 ```
 > Limit-EventLog -LogName "Windows PowerShell" -MaximumSize 4194240KB
@@ -1119,13 +1119,13 @@ PowerShell 安全日志中最*有趣的事件 ID*如下：
 
 然后，将其除以条目的数量。这样你就可以计算出事件日志的预估大小，以及在事件日志被轮换之前，它应该能容纳多少个事件。
 
-如果你使用的是 PowerShell 7，**Limit-EventLog** cmdlet 是不可用的。相反，你需要通过使用 **New-ItemProperty** 来修改注册表：
+如果你使用的是 PowerShell 7，`Limit-EventLog` cmdlet 是不可用的。相反，你需要通过使用 `New-ItemProperty` 来修改注册表：
 
 ```
 > New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Windows PowerShell\' -Name 'MaxSize' -Value 4000MB -PropertyType DWORD -Force
 ```
 
-使用 **Limit-EventLog** 命令，你还可以指定当事件日志已满时的行为：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog)。
+使用 `Limit-EventLog` 命令，你还可以指定当事件日志已满时的行为：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog)。
 
 # 总结
 
@@ -1141,13 +1141,13 @@ PowerShell 安全日志中最*有趣的事件 ID*如下：
 
 最后，如果你想更深入地了解安全监控，EventList 可以帮助你找出哪些事件是值得监控的。
 
-当我们谈论审计、检测和监控时；本地系统也不可忽视。让我们深入探讨系统，并看看 Windows 注册表、Windows API、COM、CIM/WMI，及如何在不运行 **powershell.exe** 的情况下运行 PowerShell，下一章会介绍这些内容。
+当我们谈论审计、检测和监控时；本地系统也不可忽视。让我们深入探讨系统，并看看 Windows 注册表、Windows API、COM、CIM/WMI，及如何在不运行 `powershell.exe` 的情况下运行 PowerShell，下一章会介绍这些内容。
 
 # 深入阅读
 
 如果你想探索本章中提到的一些主题，可以参考以下资源：
 
-+   **审计 –** **更多资源**：
++   **审计 –` `更多资源**：
 
     +   检测攻击性 PowerShell 攻击工具：[`adsecurity.org/?p=2604`](https://adsecurity.org/?p=2604)
 
@@ -1161,23 +1161,23 @@ PowerShell 安全日志中最*有趣的事件 ID*如下：
 
     +   *PowerShell 后期利用，帝国已倒塌，你可以检测 PowerShell 利用*，作者：Michael Gough：[`de.slideshare.net/Hackerhurricane/you-can-detect-powershell-attacks`](https://de.slideshare.net/Hackerhurricane/you-can-detect-powershell-attacks)
 
-+   **EventList**：
++   `EventList`：
 
     +   GitHub：[`github.com/miriamxyra/EventList`](https://github.com/miriamxyra/EventList)
 
     +   Black Hat 2020 演讲（版本 2.0.0）：[`www.youtube.com/watch?v=3x5-nZ2bfbo`](https://www.youtube.com/watch?v=3x5-nZ2bfbo)
 
-+   **有用的 cmdlet** **和命令**：
++   **有用的 cmdlet` `和命令**：
 
-    +   **Limit-EventLog** 文档：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog?view=powershell-5.1`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog?view=powershell-5.1)
+    +   `Limit-EventLog` 文档：[`learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog?view=powershell-5.1`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/limit-eventlog?view=powershell-5.1)
 
-    +   **Start-Transcript** 文档：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters)
+    +   `Start-Transcript` 文档：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-7#parameters)
 
-    +   **wevtutil** 文档：[`docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil`](https://docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil)
+    +   `wevtutil` 文档：[`docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil`](https://docs.microsoft.com/de-de/windows-server/administration/windows-commands/wevtutil)
 
-    +   **Unprotect-CmsMessage**：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage)
+    +   `Unprotect-CmsMessage`：[`docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/unprotect-cmsmessage)
 
-+   **PowerShell 日志记录和** **事件日志**：
++   **PowerShell 日志记录和` `事件日志**：
 
     +   RFC – CMS：[`www.rfc-editor.org/rfc/rfc5652`](https://www.rfc-editor.org/rfc/rfc5652)
 

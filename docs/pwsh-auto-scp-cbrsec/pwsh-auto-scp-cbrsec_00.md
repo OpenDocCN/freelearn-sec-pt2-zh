@@ -30,7 +30,7 @@ PowerShell 本身提供了多种功能，不仅可以帮助你提高环境的安
 
 *第四章*，*检测 – 审计与监控*，探讨了日志记录在 PowerShell 环境中进行有效检测和监控的重要性。你将学习基本的日志文件、日志功能，如模块和脚本块日志记录、受保护事件日志记录、PowerShell 转录，以及如何使用 PowerShell 分析事件日志。
 
-*第五章*，*PowerShell 强大功能 - 系统与 API 访问*，探讨了 PowerShell 的系统和 API 访问功能。你将学习如何操作 Windows 注册表，使用 Windows API，利用 .NET 类进行高级技巧，以及如何利用 WMI 的强大功能。本章还介绍了如何在不直接调用 **powershell.exe** 的情况下执行 PowerShell。
+*第五章*，*PowerShell 强大功能 - 系统与 API 访问*，探讨了 PowerShell 的系统和 API 访问功能。你将学习如何操作 Windows 注册表，使用 Windows API，利用 .NET 类进行高级技巧，以及如何利用 WMI 的强大功能。本章还介绍了如何在不直接调用 `powershell.exe` 的情况下执行 PowerShell。
 
 *第六章*，*Active Directory – 攻击与缓解*，探讨了 AD 安全性，包括身份验证协议、枚举、特权账户、密码喷洒、访问权限、凭证盗窃风险以及缓解策略。我们还将研究 Microsoft 安全基准和安全合规工具包。
 
@@ -54,7 +54,7 @@ PowerShell 本身提供了多种功能，不仅可以帮助你提高环境的安
 
 根据你跟随的章节，我们还将讨论其他技术，如 Windows PowerShell 5.1、Visual Studio、C/C++/C#、Visual Basic、汇编语言、Ghidra、Wireshark 和 Microsoft Excel。
 
-| **书中涉及的软件/硬件** | **操作系统要求** |
+| 书中涉及的软件/硬件 | 操作系统要求 |
 | --- | --- |
 | PowerShell 7.3 及以上 | Windows 10 及以上 |
 | Windows PowerShell 5.1 | Windows Server 2019 及以上版本 |
@@ -66,17 +66,17 @@ PowerShell 本身提供了多种功能，不仅可以帮助你提高环境的安
 
 对于我的演示环境，我设置了以下机器，在本书中将多次提及：
 
-+   **PSSec-PC01**: **172.29.0.12**, Windows 10 企业版，22H2，加入域 **PSSec.local**
++   `PSSec-PC01**: **172.29.0.12`, Windows 10 企业版，22H2，加入域 `PSSec.local`
 
-+   **PSSec-PC02**: **172.29.0.13**, Windows 10 企业版，22H2，加入域 **PSSec.local**
++   `PSSec-PC02**: **172.29.0.13`, Windows 10 企业版，22H2，加入域 `PSSec.local`
 
-+   **PSSec-Server**: **172.29.0.20**, Windows Server 2019 数据中心版，加入域 **PSSec.local**
++   `PSSec-Server**: **172.29.0.20`, Windows Server 2019 数据中心版，加入域 `PSSec.local`
 
-+   **DC01**: **172.29.0.10**, Windows Server 2019 数据中心版，托管域 **PSSec.local**
++   `DC01**: **172.29.0.10`, Windows Server 2019 数据中心版，托管域 `PSSec.local`
 
     +   **已安装相关角色**：活动目录证书、活动目录域服务、DNS 服务器和组策略管理
 
-+   针对 *第七章* 的 **Azure 演示环境**：**PSSec-Demo.onmicrosoft.com**
++   针对 *第七章* 的 **Azure 演示环境**：`PSSec-Demo.onmicrosoft.com`
 
 +   **可选**：Linux 和 macOS 跟随 *第三章* 配置 PowerShell 远程（SSH）连接
 
@@ -102,7 +102,7 @@ PowerShell 本身提供了多种功能，不仅可以帮助你提高环境的安
 
 本书中使用了若干文本约定。
 
-**文本中的代码**：表示文本中的代码词汇、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟网址、用户输入和 Twitter 用户名。例如：“导出一个或多个别名，使用 **Export-Alias** — 可以作为 **.csv** 文件或脚本导出。”
+**文本中的代码**：表示文本中的代码词汇、数据库表名、文件夹名、文件名、文件扩展名、路径名、虚拟网址、用户输入和 Twitter 用户名。例如：“导出一个或多个别名，使用 `Export-Alias` — 可以作为 `.csv` 文件或脚本导出。”
 
 代码块如下所示：
 

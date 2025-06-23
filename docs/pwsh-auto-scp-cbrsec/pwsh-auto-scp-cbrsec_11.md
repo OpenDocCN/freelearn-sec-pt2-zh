@@ -36,7 +36,7 @@
 
 WSH 语言家族通过一种非常直接的方式实现了应用程序控制意识：它们只是阻止执行任何不被政策允许的脚本。
 
-当我们在早些章节讨论**执行策略**时，例如在*第一章*，*PowerShell 入门*中，我们查看了**AllSigned**或**RemoteSigned**参数。如果配置了**AllSigned**，则所有未签名的 PowerShell 脚本将被阻止运行；如果配置了**RemoteSigned**，则仅允许本地未签名脚本。当然，执行策略可以随时被绕过，因为它不是安全边界—但是，这可以防止用户无意中运行他们不知情的脚本。
+当我们在早些章节讨论**执行策略**时，例如在*第一章*，*PowerShell 入门*中，我们查看了`AllSigned`或`RemoteSigned`参数。如果配置了`AllSigned`，则所有未签名的 PowerShell 脚本将被阻止运行；如果配置了`RemoteSigned`，则仅允许本地未签名脚本。当然，执行策略可以随时被绕过，因为它不是安全边界—但是，这可以防止用户无意中运行他们不知情的脚本。
 
 将代码签名与其他工具（如 AppLocker 或**WDAC**）结合使用非常强大，因为你可以确保在你的基础设施中，只有配置的签名脚本可以运行，其他任何脚本都不被允许。
 
@@ -52,11 +52,11 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 本章中，我们将使用自签名证书来签署我们的脚本—如果你希望在生产环境中使用，请确保调整你的证书。
 
-自签名证书仅在本地计算机上有效，可以使用**New-SelfSignedCertificate** cmdlet 创建。在早期，**makecert.exe** 被用来创建自签名证书，但自从 Windows 8 引入了**New-SelfSignedCertificate**后，你可以直接使用 PowerShell 创建自签名证书并签署脚本。
+自签名证书仅在本地计算机上有效，可以使用`New-SelfSignedCertificate` cmdlet 创建。在早期，`makecert.exe` 被用来创建自签名证书，但自从 Windows 8 引入了`New-SelfSignedCertificate`后，你可以直接使用 PowerShell 创建自签名证书并签署脚本。
 
-使用此 cmdlet 创建的证书可以存储在当前用户的个人证书存储中，路径为**证书** | **当前用户** | **个人**（**Cert:\CurrentUser\My**），也可以存储在本地计算机的个人证书存储中，路径为**证书** | **本地计算机** | **个人**（**Cert:\LocalMachine\My**）。在本地计算机的证书存储中创建的证书可供整个计算机使用，而在当前用户存储中创建的证书仅限于当前用户。
+使用此 cmdlet 创建的证书可以存储在当前用户的个人证书存储中，路径为**证书` | `当前用户` | `个人**（**Cert:\CurrentUser\My**），也可以存储在本地计算机的个人证书存储中，路径为**证书` | `本地计算机` | `个人**（**Cert:\LocalMachine\My**）。在本地计算机的证书存储中创建的证书可供整个计算机使用，而在当前用户存储中创建的证书仅限于当前用户。
 
-让我们创建一个自签名证书并将其添加到计算机的根证书存储区，以及计算机的**受信任发布者**存储区。首先，我们必须在本地计算机的证书存储区中创建一个名为**“测试证书”**的新证书，并将输出保存在**$testCert**变量中。我们稍后将需要这个变量来注册**authenticode 证书**：
+让我们创建一个自签名证书并将其添加到计算机的根证书存储区，以及计算机的**受信任发布者**存储区。首先，我们必须在本地计算机的证书存储区中创建一个名为**“测试证书”**的新证书，并将输出保存在`$testCert`变量中。我们稍后将需要这个变量来注册**authenticode 证书**：
 
 ```
 > $testCert = New-SelfSignedCertificate -Subject "Test Certificate" -CertStoreLocation Cert:\LocalMachine\My -Type CodeSigningCert
@@ -64,7 +64,7 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 完成此操作后，我们将把 authenticode 证书添加到计算机的根证书存储区。根证书存储区是一个受信任的根 CA 证书列表，因此存储区中的每个证书都会被信任。
 
-我们必须将新创建的证书从中间 CA 存储移动到**根** **证书存储区**：
+我们必须将新创建的证书从中间 CA 存储移动到**根` `证书存储区**：
 
 ```
 > Move-Item Cert:\LocalMachine\CA\$($testCert.Thumbprint) Cert:\LocalMachine\Root
@@ -76,7 +76,7 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 +   **本地计算机的根证书存储区**：将证书添加到计算机的根证书存储区可以确保本地计算机信任个人证书存储区以及**受信任发布者**证书存储区中的证书。
 
-你可以通过使用 PowerShell 或者通过使用**mmc**和本地计算机的证书管理单元来验证所有证书是否都在正确的位置（运行**mmc**，添加**证书**管理单元，并选择本地计算机范围），如下图所示：
+你可以通过使用 PowerShell 或者通过使用`mmc`和本地计算机的证书管理单元来验证所有证书是否都在正确的位置（运行`mmc`，添加**证书**管理单元，并选择本地计算机范围），如下图所示：
 
 ![图 11.2 – 查找新创建的测试证书](img/B16679_11_002.jpg)
 
@@ -94,13 +94,13 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 图 11.3 – 验证所有证书是否都在正确的位置
 
-现在我们已经创建了本地证书，可以开始使用**Set-AuthenticodeSignature** cmdlet 来对脚本进行自签名。
+现在我们已经创建了本地证书，可以开始使用`Set-AuthenticodeSignature` cmdlet 来对脚本进行自签名。
 
-在这个示例中，我重用了我们在*第一章*中创建的**HelloWorld.ps1** PowerShell 脚本，*开始使用 PowerShell*，该脚本可以从本书的 GitHub 仓库下载：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1)。
+在这个示例中，我重用了我们在*第一章*中创建的`HelloWorld.ps1` PowerShell 脚本，*开始使用 PowerShell*，该脚本可以从本书的 GitHub 仓库下载：[`github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1`](https://github.com/PacktPublishing/PowerShell-Automation-and-Scripting-for-Cybersecurity/blob/master/Chapter01/HelloWorld.ps1)。
 
-将脚本保存在**C:\tmp\HelloWorld.ps1**下。
+将脚本保存在`C:\tmp\HelloWorld.ps1`下。
 
-如果你在会话中仍然可以使用之前创建证书时使用的**$testCert**变量，你当然可以重用它，但大多数情况下，当你想要签署脚本时，时间已经过去，你可能已经关闭了会话，这样该变量就无法使用了。
+如果你在会话中仍然可以使用之前创建证书时使用的`$testCert`变量，你当然可以重用它，但大多数情况下，当你想要签署脚本时，时间已经过去，你可能已经关闭了会话，这样该变量就无法使用了。
 
 因此，首先，将证书分配给一个变量，以便您用它来签署脚本：
 
@@ -110,13 +110,13 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 请确保指定您之前创建的证书的正确名称。
 
-为确保文件上的签名保持有效，即使证书在一年后过期，在签名脚本时使用一个可信的时间戳服务器也非常重要。您可以使用**Set-AuthenticodeSignature**来做到这一点。时间戳服务器会将时间戳添加到签名代码中，表示代码签名的确切日期和时间。这个时间戳用于证明代码是在证书过期之前签名的，即使证书已经过期。
+为确保文件上的签名保持有效，即使证书在一年后过期，在签名脚本时使用一个可信的时间戳服务器也非常重要。您可以使用`Set-AuthenticodeSignature`来做到这一点。时间戳服务器会将时间戳添加到签名代码中，表示代码签名的确切日期和时间。这个时间戳用于证明代码是在证书过期之前签名的，即使证书已经过期。
 
-因此，建议始终使用一个可靠且知名的时间戳服务器，以确保签名代码的长期有效性和真实性。**时间戳协议**（**TSP**）标准定义在**RFC3161**中，您可以在这里阅读更多内容：[`www.ietf.org/rfc/rfc3161.txt`](https://www.ietf.org/rfc/rfc3161.txt)。
+因此，建议始终使用一个可靠且知名的时间戳服务器，以确保签名代码的长期有效性和真实性。**时间戳协议**（**TSP**）标准定义在`RFC3161`中，您可以在这里阅读更多内容：[`www.ietf.org/rfc/rfc3161.txt`](https://www.ietf.org/rfc/rfc3161.txt)。
 
 由 David Manouchehri 发布了一个很棒（但当然不是完整的）列表，您可以使用它来选择您首选的时间戳服务器：[`gist.github.com/Manouchehri/fd754e402d98430243455713efada710`](https://gist.github.com/Manouchehri/fd754e402d98430243455713efada710)。
 
-对于我们的示例，我使用的是**http://timestamp.digicert.com**服务器：
+对于我们的示例，我使用的是`http://timestamp.digicert.com`服务器：
 
 ```
 > Set-AuthenticodeSignature -FilePath "C:\tmp\HelloWorld.ps1" -Certificate $signingCertificate -TimeStampServer "http://timestamp.digicert.com"
@@ -128,7 +128,7 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 图 11.4 – 脚本签名成功
 
-您可以通过使用**Get-AuthenticodeSignature -FilePath C:\tmp\HelloWorld.ps1 | Format-List**命令来验证脚本是否已签名，如以下截图所示：
+您可以通过使用`Get-AuthenticodeSignature -FilePath C:\tmp\HelloWorld.ps1 | Format-List`命令来验证脚本是否已签名，如以下截图所示：
 
 ![图 11.5 – 验证文件是否已签名](img/B16679_11_005.jpg)
 
@@ -140,19 +140,19 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 图 11.6 – 使用文件属性验证文件是否已签名
 
-此外，如果您打开新签名的脚本，您会看到其内容发生了变化：除了代码之外，您还会看到签名——由**# SIG # Begin signature block**引入，并由**# SIG # End signature block**结束，中间是一个巨大的签名块。如以下截图所示，我已经缩短了签名块，因为签名会太大，无法在本书中显示为图片：
+此外，如果您打开新签名的脚本，您会看到其内容发生了变化：除了代码之外，您还会看到签名——由`# SIG # Begin signature block`引入，并由`# SIG # End signature block`结束，中间是一个巨大的签名块。如以下截图所示，我已经缩短了签名块，因为签名会太大，无法在本书中显示为图片：
 
 ![图 11.7 – 签名后的文件现在包含签名块](img/B16679_11_007.jpg)
 
 图 11.7 – 签名后的文件现在包含签名块
 
-如果我们启用**ExecutionPolicy AllSigned**并尝试运行自签名脚本，则会询问我们是否真的想要从此不受信任的发布者运行软件：
+如果我们启用`ExecutionPolicy AllSigned`并尝试运行自签名脚本，则会询问我们是否真的想要从此不受信任的发布者运行软件：
 
 ![图 11.8 – 执行策略提示](img/B16679_11_008.jpg)
 
 图 11.8 – 执行策略提示
 
-要执行此脚本，我们必须选择**[R] Run once**。如果您希望每次都无需提示即可永久运行来自此发布者的脚本，可以使用**[A] Always** **Run**选项。
+要执行此脚本，我们必须选择`[R] Run once`。如果您希望每次都无需提示即可永久运行来自此发布者的脚本，可以使用`[A] Always** **Run`选项。
 
 如果您希望无需任何提示即可运行来自此发布者的脚本，可以将自签名证书添加到**受信任的发布者**存储中。这允许您在发布者和您的计算机之间建立一个信任关系，确保来自发布者的脚本自动受信并且无中断地执行。
 
@@ -165,9 +165,9 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 > $publisherCertStore.Close()
 ```
 
-通过将证书添加到**受信任的发布者**存储中，您可以确保所有由您的自签名证书签名的代码都是可信的。由于不能使用**Copy-Item**从一个存储复制证书到另一个存储，因此我们必须使用**证书存储 API**接口来访问**受信任的发布者**证书存储，然后以读写权限打开它，添加我们之前创建的证书，然后再次关闭存储。
+通过将证书添加到**受信任的发布者**存储中，您可以确保所有由您的自签名证书签名的代码都是可信的。由于不能使用`Copy-Item`从一个存储复制证书到另一个存储，因此我们必须使用**证书存储 API**接口来访问**受信任的发布者**证书存储，然后以读写权限打开它，添加我们之前创建的证书，然后再次关闭存储。
 
-现在，如果我们再次执行**HelloWorld.ps1**脚本，它将在不提示我们的情况下运行，而未经签名的文件将被拒绝：
+现在，如果我们再次执行`HelloWorld.ps1`脚本，它将在不提示我们的情况下运行，而未经签名的文件将被拒绝：
 
 ![图 11.9 – 经过签名的文件可以无问题执行](img/B16679_11_009.jpg)
 
@@ -175,13 +175,13 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 如果您已经实施了任何应用程序控制机制，例如 AppLocker 或 WDAP，则只允许运行经过签名的文件 – *如果* 发布者已添加为信任的应用程序控制机制运行的可信来源。根据所使用的应用程序控制系统，可以通过策略中的**发布者规则**或其他类似机制来信任发布者。
 
-由于脚本签名为签署的确切文件添加了签名，如果要保持签名的有效性，则无法修改该文件。如果您修改了已签名文件的内容，并使用**Get-AuthenticodeSignature**验证签名，您会发现签名的哈希值不再与文件内容匹配。因此，签名将无效，如果已应用未签名脚本的保护机制，则无法再执行该文件：
+由于脚本签名为签署的确切文件添加了签名，如果要保持签名的有效性，则无法修改该文件。如果您修改了已签名文件的内容，并使用`Get-AuthenticodeSignature`验证签名，您会发现签名的哈希值不再与文件内容匹配。因此，签名将无效，如果已应用未签名脚本的保护机制，则无法再执行该文件：
 
 ![图 11.10 – 修改已签名文件内容后的哈希不匹配](img/B16679_11_010.jpg)
 
 图 11.10 – 修改已签名文件内容后的哈希不匹配
 
-因此，每当您修改已签名文件的内容时，您需要再次对其进行签名。如果您有一个**持续集成/持续交付**（**CI/CD**）管道，脚本签名可以通过**Set-AuthenticodeSignature** cmdlet 轻松自动化。
+因此，每当您修改已签名文件的内容时，您需要再次对其进行签名。如果您有一个**持续集成/持续交付**（**CI/CD**）管道，脚本签名可以通过`Set-AuthenticodeSignature` cmdlet 轻松自动化。
 
 如果您是 CI/CD 概念的初学者，有多种方法可以构建 CI/CD 管道。仅举几例，CI/CD 管道可以通过 Azure DevOps 或 GitHub 来实现。
 
@@ -203,7 +203,7 @@ WSH 语言家族通过一种非常直接的方式实现了应用程序控制意�
 
 需要牢记的是，尽管 PowerShell 攻击可能是许多专业人员关心的问题，但它们只占通过系统传播的恶意软件的一小部分。必须重视传统的可执行文件和 DLL 攻击所带来的威胁，切勿忽视这一点。
 
-应用程序控制解决方案通常提供禁止单个不需要的应用程序的功能，但理想的结果应始终是禁止所有应用程序并配置所有允许的应用程序。如您在*第五章*中所回忆的，*PowerShell 非常强大——系统和 API 访问*，即使您在环境中阻止了**PowerShell.exe**，也仍然可以通过使用本地 API 函数来运行它，无论是否有必要阻止 PowerShell（当然，您不应该这么做；更好的做法是实施并利用正确的日志记录和安全策略）。
+应用程序控制解决方案通常提供禁止单个不需要的应用程序的功能，但理想的结果应始终是禁止所有应用程序并配置所有允许的应用程序。如您在*第五章*中所回忆的，*PowerShell 非常强大——系统和 API 访问*，即使您在环境中阻止了`PowerShell.exe`，也仍然可以通过使用本地 API 函数来运行它，无论是否有必要阻止 PowerShell（当然，您不应该这么做；更好的做法是实施并利用正确的日志记录和安全策略）。
 
 如果你只是禁止不需要的应用程序，攻击者总是能找到绕过你限制的方法——要屏蔽的东西实在太多，仅仅禁止不需要的应用程序会让你的环境始终处于攻击的脆弱状态。
 
@@ -281,17 +281,17 @@ AppLocker 是微软推出的 SRP 的继任者，并在 Windows 7 中引入。您
 
 在使用 AppLocker 时，你可以配置五种不同的规则类型：
 
-+   **可执行规则**：使用 **可执行规则**，你可以限制以 **.exe** 和 **.com** 结尾的可执行文件。
++   **可执行规则**：使用 **可执行规则**，你可以限制以 `.exe` 和 `.com` 结尾的可执行文件。
 
-+   **Windows 安装程序规则**：通过配置 **Windows 安装程序规则**，你可以限制 **.msi**、**.mst** 和 **.msp** Windows 安装程序文件。
++   **Windows 安装程序规则**：通过配置 **Windows 安装程序规则**，你可以限制 `.msi`、`.mst` 和 `.msp` Windows 安装程序文件。
 
-+   **脚本规则**：使用 **脚本规则**，你可以限制 **.ps1**、**.bat**、**.cmd**、**.vbs** 和 **.js** 脚本文件。
++   **脚本规则**：使用 **脚本规则**，你可以限制 `.ps1`、`.bat`、`.cmd`、`.vbs` 和 `.js` 脚本文件。
 
-+   **DLL 规则**：你可以使用 DLL 规则来限制 **.dll** 和 **.ocx** 文件。
++   **DLL 规则**：你可以使用 DLL 规则来限制 `.dll` 和 `.ocx` 文件。
 
-尽管由于性能问题，DLL 规则曾经被认为是可选的，但在当今的安全环境中，没有启用 DLL 强制执行的应用程序控制系统是不完整的，会使您的环境容易受到攻击。这些规则必须在使用和配置之前启用，并且可以使用 GPO 或本地组策略进行配置。如果您正在使用 GPO 进行配置，请转到**计算机配置** | **策略** | **Windows 设置** | **安全设置** | **应用程序控制策略** | **AppLocker**。然后，右键单击**AppLocker**，选择**属性** | **高级** | **启用 DLL 规则集合**。
+尽管由于性能问题，DLL 规则曾经被认为是可选的，但在当今的安全环境中，没有启用 DLL 强制执行的应用程序控制系统是不完整的，会使您的环境容易受到攻击。这些规则必须在使用和配置之前启用，并且可以使用 GPO 或本地组策略进行配置。如果您正在使用 GPO 进行配置，请转到**计算机配置` | `策略` | `Windows 设置` | `安全设置` | `应用程序控制策略` | **AppLocker`。然后，右键单击`AppLocker`，选择**属性` | `高级` | `启用 DLL 规则集合**。
 
-+   **打包应用规则**：使用**打包应用规则**，您可以限制**.appx**包文件。
++   **打包应用规则**：使用**打包应用规则**，您可以限制`.appx`包文件。
 
 对于您创建的每个规则，您需要选择一个操作。在这里，您必须决定文件是应该被允许还是被阻止，通过选择**允许**或**拒绝**。通常，您希望阻止一切，只允许选定的应用程序。
 
@@ -319,31 +319,31 @@ AaronLocker 的背后 - 名字是从哪里来的？
 
 ### GPO
 
-如果您使用 GPO 或本地组策略进行配置，请导航到**计算机配置** | **策略** | **Windows 设置** | **安全设置** | **应用程序控制策略** | **AppLocker**。在此部分，您将看到**可执行规则**、**Windows 安装程序规则**、**脚本规则**和**打包应用规则**选项，如下所示：
+如果您使用 GPO 或本地组策略进行配置，请导航到**计算机配置` | `策略` | `Windows 设置` | `安全设置` | `应用程序控制策略` | **AppLocker`。在此部分，您将看到**可执行规则**、**Windows 安装程序规则**、**脚本规则**和**打包应用规则**选项，如下所示：
 
 ![图 11.12 – 使用 GPO 配置 AppLocker](img/B16679_11_012.jpg)
 
 图 11.12 – 使用 GPO 配置 AppLocker
 
-要启用强制执行或审计行为，右键单击**AppLocker**并选择**属性**。在弹出的窗口中，您可以配置哪些 AppLocker 规则应被强制执行或审计。
+要启用强制执行或审计行为，右键单击`AppLocker`并选择**属性**。在弹出的窗口中，您可以配置哪些 AppLocker 规则应被强制执行或审计。
 
 如果您使用 GPO 作为配置方法，请确保您要配置的所有系统至少安装了 Windows 10 企业版。否则，您无法强制执行 AppLocker 规则。
 
-如果您还想启用 DLL 规则，可以通过右键单击**AppLocker**并选择**属性** | **高级** | **启用 DLL 规则集合**来实现。请参考 DLL 规则的描述以了解更多信息。启用 DLL 规则后，它们将在 AppLocker 下显示。
+如果您还想启用 DLL 规则，可以通过右键单击`AppLocker`并选择**属性` | `高级` | `启用 DLL 规则集合**来实现。请参考 DLL 规则的描述以了解更多信息。启用 DLL 规则后，它们将在 AppLocker 下显示。
 
 ### Intune
 
-在您通过 Intune 配置 AppLocker 之前，您需要使用 GPO 或本地组策略创建一个 AppLocker 策略。配置完成后，通过右键单击**AppLocker**并选择**导出策略**来导出策略：
+在您通过 Intune 配置 AppLocker 之前，您需要使用 GPO 或本地组策略创建一个 AppLocker 策略。配置完成后，通过右键单击`AppLocker`并选择**导出策略**来导出策略：
 
 ![图 11.13 – 导出 AppLocker 策略](img/B16679_11_013.jpg)
 
 图 11.13 – 导出 AppLocker 策略
 
-将弹出一个窗口，您需要选择导出策略保存的路径。选择一个路径并确认；您的 AppLocker 策略将成功导出为**.****xml**文件。
+将弹出一个窗口，您需要选择导出策略保存的路径。选择一个路径并确认；您的 AppLocker 策略将成功导出为`.****xml`文件。
 
-不幸的是，您不能仅将文件内容复制并粘贴到 Intune 配置中。因此，使用编辑器打开文件并搜索每个规则类型的部分。该部分由**<RuleCollection …> … </RuleCollection>**标签表示，来自**RuleCollection**。
+不幸的是，您不能仅将文件内容复制并粘贴到 Intune 配置中。因此，使用编辑器打开文件并搜索每个规则类型的部分。该部分由**<RuleCollection …> … </RuleCollection>**标签表示，来自`RuleCollection`。
 
-每种规则类型都有一个**RuleCollection**部分，因此，如果您想获取所有可执行文件的**RuleCollection**部分，请选择**<RuleCollection Type="Exe" EnforcementMode="NotConfigured">**之间的所有内容，包括周围的标签，如下图所示。如有需要，重复此操作以获取其他可用规则类型的部分：
+每种规则类型都有一个`RuleCollection`部分，因此，如果您想获取所有可执行文件的`RuleCollection`部分，请选择`<RuleCollection Type="Exe" EnforcementMode="NotConfigured">`之间的所有内容，包括周围的标签，如下图所示。如有需要，重复此操作以获取其他可用规则类型的部分：
 
 ![图 11.14 – 选择可执行规则的 RuleCollection 部分](img/B16679_11_014.jpg)
 
@@ -361,7 +361,7 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 +   *通过 Intune 部署 OMA-URI 以针对 CSP，及与* *本地部署的对比*: [`learn.microsoft.com/en-us/troubleshoot/mem/intune/device-configuration/deploy-oma-uris-to-target-csp-via-intune`](https://learn.microsoft.com/en-us/troubleshoot/mem/intune/device-configuration/deploy-oma-uris-to-target-csp-via-intune)
 
-现在，在 Intune 中，转到 **设备** | **配置文件**，然后点击 **创建配置文件**。
+现在，在 Intune 中，转到 **设备` | `配置文件**，然后点击 **创建配置文件**。
 
 在 **平台**下选择**Windows 10 及以后版本**，在**配置文件类型**下选择**模板**，在**模板**下选择**自定义**，然后点击 **创建**：
 
@@ -371,23 +371,23 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 在下一页中，为您的 AppLocker 策略命名—例如，**AppLocker 策略**—然后点击 **下一步**。
 
-在 **OMA-URI 设置**部分，选择 **添加** 来添加您的 AppLocker 规则配置。在这里，您将使用从 **.xml** 导出的片段创建实际的策略。
+在 **OMA-URI 设置**部分，选择 **添加** 来添加您的 AppLocker 规则配置。在这里，您将使用从 `.xml` 导出的片段创建实际的策略。
 
-首先，输入一个能够很好地代表策略的名称，例如 **Exe 策略**，如果您想开始为您的环境中的 **.exe** 文件配置策略。
+首先，输入一个能够很好地代表策略的名称，例如 **Exe 策略**，如果您想开始为您的环境中的 `.exe` 文件配置策略。
 
-在 **OMA-URI** 字段中，按照您刚刚配置的策略输入字符串：
+在 `OMA-URI` 字段中，按照您刚刚配置的策略输入字符串：
 
-+   **Exe**: **./Vendor/MSFT/AppLocker/AppLocker/ApplicationLaunchRestrictions/apps/EXE/Policy**
++   `Exe**: **./Vendor/MSFT/AppLocker/AppLocker/ApplicationLaunchRestrictions/apps/EXE/Policy`
 
-+   **MSI**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/MSI/Policy**
++   `MSI**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/MSI/Policy`
 
-+   **脚本**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/Script/Policy**
++   **脚本`: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/Script/Policy`
 
-+   **DLL**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/DLL/Policy**
++   `DLL**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/DLL/Policy`
 
-+   **Appx**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/StoreApps/Policy**
++   `Appx**: **./Vendor/MSFT/AppLocker/ApplicationLaunchRestrictions/apps/StoreApps/Policy`
 
-将**数据类型**更改为**字符串**，并粘贴你之前从导出的**.xml**文件中复制的**RuleCollection**行。点击**保存**。对于每个要配置的规则类型，在**OMA-URI 设置**区域中添加一个策略。一旦完成，点击**审核 + 保存**以保存你的配置：
+将**数据类型**更改为**字符串**，并粘贴你之前从导出的`.xml`文件中复制的`RuleCollection`行。点击**保存**。对于每个要配置的规则类型，在**OMA-URI 设置**区域中添加一个策略。一旦完成，点击**审核 + 保存**以保存你的配置：
 
 ![图 11.16 – 配置 OMA-URI 设置](img/B16679_11_016.jpg)
 
@@ -407,7 +407,7 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 类似于使用 Intune 进行的配置，我们也可以使用 AppLocker CSP 来配置配置管理器。
 
-接下来，选择你要配置 AppLocker 的平台——在我的示例中，我只选择了**Windows 10**并点击**下一步**。
+接下来，选择你要配置 AppLocker 的平台——在我的示例中，我只选择了`Windows 10`并点击**下一步**。
 
 下一步，不要选择任何设备设置；相反，勾选**配置不在默认设置组中的附加设置**复选框，然后点击**下一步**。
 
@@ -419,7 +419,7 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 在**创建设置**对话框中，输入设置的**名称**并指定 OMA-URI 的字符串，就像我们在*Intune 配置*部分所做的那样（这也是你可以在本书中找到总结的 OMA-URI 字符串的地方）。点击**确定**。
 
-下一步，通过双击刚刚创建的设置来指定此设置的规则，并输入一个有意义的**名称**，在**规则类型**下选择**值**，并确保**EXE 策略**（或你之前配置的设置名称）**等于**我们在**Intune**部分创建的*RuleCollection XML 片段*。
+下一步，通过双击刚刚创建的设置来指定此设置的规则，并输入一个有意义的**名称**，在**规则类型**下选择**值**，并确保**EXE 策略**（或你之前配置的设置名称）**等于**我们在`Intune`部分创建的*RuleCollection XML 片段*。
 
 通常，配置管理器项目用于查询状态。如果状态与期望的结果不同，你可以选择配置规则，使其在**支持**的情况下自动修复不合规的规则。
 
@@ -443,15 +443,15 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 初看起来，这个模块提供的功能非常有限，但让我们深入研究每个函数，它们的功能比你预期的要多得多，允许你比使用用户界面更加高效地工作。
 
-**Get-AppLockerPolicy**帮助你找出是否存在 AppLocker 策略。使用**-Effective**参数，你可以看到是否已经指定了策略：
+`Get-AppLockerPolicy`帮助你找出是否存在 AppLocker 策略。使用`-Effective`参数，你可以看到是否已经指定了策略：
 
 ![图 11.20 – 使用 Get-AppLockerPolicy 获取有效的 AppLocker 策略](img/B16679_11_020.jpg)
 
 图 11.20 – 使用 Get-AppLockerPolicy 获取有效的 AppLocker 策略
 
-你也可以使用**-Local**参数查看本地 AppLocker 策略中定义的内容。**-Domain**参数与**-Ldap**参数结合使用，帮助你查看当前域配置的 AppLocker 策略。当然，你还可以使用**-Xml**参数从**.xml**文件中调查策略。
+你也可以使用`-Local`参数查看本地 AppLocker 策略中定义的内容。`-Domain`参数与`-Ldap`参数结合使用，帮助你查看当前域配置的 AppLocker 策略。当然，你还可以使用`-Xml`参数从`.xml`文件中调查策略。
 
-使用**Get-AppLockerFileInformation**可以获取来自文件、路径或事件日志的所有信息：
+使用`Get-AppLockerFileInformation`可以获取来自文件、路径或事件日志的所有信息：
 
 ![图 11.21 – 使用 Get-AppLockerFileInformation 检索 AppLocker 文件信息](img/B16679_11_021.jpg)
 
@@ -459,9 +459,9 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 
 在前面的截图中，你可以看到我们代码签名示例中两个演示脚本的 AppLocker 信息。通常，如果脚本是由企业或公共 CA 签名的，你还会看到发布者信息，但由于我们使用的是自签名脚本，这个证书仅用于测试目的，因此没有发布者信息，因此我们无法使用它来创建 AppLocker 发布者规则。
 
-通常，生成 AppLocker 规则最常见的方法是基于服务器或客户端系统的**黄金镜像**创建策略，而不是手动选择单个文件和目录。为此，你可以使用**Get-AppLockerFileInformation** cmdlet 来识别图像上所有被授权运行的文件，然后使用**New-AppLockerPolicy** cmdlet 为每个文件自动生成相应的 AppLocker 规则。
+通常，生成 AppLocker 规则最常见的方法是基于服务器或客户端系统的**黄金镜像**创建策略，而不是手动选择单个文件和目录。为此，你可以使用`Get-AppLockerFileInformation` cmdlet 来识别图像上所有被授权运行的文件，然后使用`New-AppLockerPolicy` cmdlet 为每个文件自动生成相应的 AppLocker 规则。
 
-以下示例将**C:\**驱动器中的所有文件进行处理，并为每个文件生成一个规则—生成的文件将保存在**C:\tmp\Applocker.xml**中：
+以下示例将`C:\`驱动器中的所有文件进行处理，并为每个文件生成一个规则—生成的文件将保存在`C:\tmp\Applocker.xml`中：
 
 ```
 > Get-AppLockerFileInformation -Directory 'C:\' -Recurse -ErrorAction SilentlyContinue | New-AppLockerPolicy -RuleType Publisher,Hash -User Everyone -RuleNamePrefix PSTmp -Xml | Out-File -FilePath "C:\tmp\Applocker.xml"
@@ -475,47 +475,47 @@ CSP 提供了一个接口，允许**移动设备管理**（**MDM**）解决方�
 > Get-AppLockerFileInformation -EventLog -EventType Audited | New-AppLockerPolicy -RuleType Publisher,Hash -User Everyone -RuleNamePrefix AuditedApps -Xml | Out-File -FilePath "C:\tmp\AuditedApps-Applocker.xml"
 ```
 
-然后，你可以使用**Set-AppLockerPolicy** cmdlet 来配置组策略或本地组策略，并应用指定的 AppLocker 配置：
+然后，你可以使用`Set-AppLockerPolicy` cmdlet 来配置组策略或本地组策略，并应用指定的 AppLocker 配置：
 
 ```
 Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 ```
 
-要在远程域控制器上配置 GPO，确保使用**-Ldap**参数，并配置 LDAP 路径到策略所在的位置。如果你想将现有策略与新配置的策略合并，确保指定**-Merge**参数。
+要在远程域控制器上配置 GPO，确保使用`-Ldap`参数，并配置 LDAP 路径到策略所在的位置。如果你想将现有策略与新配置的策略合并，确保指定`-Merge`参数。
 
 此 cmdlet 仅适用于组策略或本地策略。如果你通过 AppLocker CSP 配置了 AppLocker，则此 cmdlet 将无法工作。
 
-使用**Test-AppLockerPolicy** cmdlet，你可以测试 AppLocker 策略，看看在指定策略应用的情况下，某个文件是否会被允许执行：
+使用`Test-AppLockerPolicy` cmdlet，你可以测试 AppLocker 策略，看看在指定策略应用的情况下，某个文件是否会被允许执行：
 
 ![图 11.22 – 使用 Test-AppLockerPolicy 来查看 notepad.exe 或 putty.exe 是否被允许运行](img/B16679_11_022.jpg)
 
 图 11.22 – 使用 Test-AppLockerPolicy 来查看 notepad.exe 或 putty.exe 是否被允许运行
 
-在这个截图中，你可以看到，使用此 AppLocker 策略，**notepad.exe**将被允许运行，而**putty.exe**将被禁止运行，因为没有配置匹配的允许规则。
+在这个截图中，你可以看到，使用此 AppLocker 策略，`notepad.exe`将被允许运行，而`putty.exe`将被禁止运行，因为没有配置匹配的允许规则。
 
 在开始以强制规则执行模式部署 AppLocker 之前，您需要定期使用**仅审核执行**模式审核哪些应用程序和脚本可以在您的环境中使用。这样，您可以在执行规则之前将它们列入允许名单。您可以通过查看事件日志来利用日志功能实现这一点。
 
 ## 审核 AppLocker 事件
 
-使用事件日志时，您不仅可以找出在使用**仅审核执行**模式时哪些应用程序会被阻止——还可以获得更多有趣的信息，了解您的 AppLocker 策略是如何应用的，或者哪些应用程序在**强制规则** **执行**模式下运行。
+使用事件日志时，您不仅可以找出在使用**仅审核执行**模式时哪些应用程序会被阻止——还可以获得更多有趣的信息，了解您的 AppLocker 策略是如何应用的，或者哪些应用程序在**强制规则` `执行**模式下运行。
 
-使用 PowerShell，您可以通过运行**Get-WinEvent -****ListLog *AppLocker***快速概览所有与 AppLocker 相关的事件日志：
+使用 PowerShell，您可以通过运行`Get-WinEvent -****ListLog *AppLocker*`快速概览所有与 AppLocker 相关的事件日志：
 
 ![图 11.23 – AppLocker 事件日志](img/B16679_11_023.jpg)
 
 图 11.23 – AppLocker 事件日志
 
-若要从特定日志中获取所有事件 ID，使用**Get-WinEvent**，后跟事件日志的名称。例如，如果您想获取**Microsoft-Windows-AppLocker/EXE 和 DLL**日志中的所有事件 ID，您可以运行**Get-WinEvent "Microsoft-Windows-AppLocker/EXE** **and DLL"**。
+若要从特定日志中获取所有事件 ID，使用`Get-WinEvent`，后跟事件日志的名称。例如，如果您想获取**Microsoft-Windows-AppLocker/EXE 和 DLL**日志中的所有事件 ID，您可以运行`Get-WinEvent "Microsoft-Windows-AppLocker/EXE** **and DLL"`。
 
 您可以在*第四章*中找到关于 AppLocker 事件日志及所有事件 ID 的更多详细信息，*检测 – 审核* *和监控*。
 
-在规划 AppLocker 部署时，查看哪些应用程序被允许、拒绝或审核的统计数据也是非常有用的。您可以使用**Get-AppLockerFileInformation**来实现这一点，如下图所示：
+在规划 AppLocker 部署时，查看哪些应用程序被允许、拒绝或审核的统计数据也是非常有用的。您可以使用`Get-AppLockerFileInformation`来实现这一点，如下图所示：
 
 ![图 11.24 – 审核应用程序的统计数据](img/B16679_11_024.jpg)
 
 图 11.24 – 审核应用程序的统计数据
 
-使用**EventType**，您可以选择**已允许**、**已拒绝**或**已审核**。这样，您可以查看有关文件的所有信息，以及它尝试运行应用程序的频率和文件是否被允许或是否会被拒绝的决定。
+使用`EventType`，您可以选择**已允许**、**已拒绝**或**已审核**。这样，您可以查看有关文件的所有信息，以及它尝试运行应用程序的频率和文件是否被允许或是否会被拒绝的决定。
 
 请参考以下链接了解如何使用 AppLocker 监控应用程序使用情况：[`docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/applocker/monitor-application-usage-with-applocker`](https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/applocker/monitor-application-usage-with-applocker)。
 
@@ -529,7 +529,7 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 例如，从微软应用商店安装的应用程序被认为是可信的，因为每个进入商店的应用都经过严格的审核过程。默认的 Windows 应用程序也被认为是可信的，无需单独列入允许名单。其他应用程序也可以通过 Microsoft Intelligence Security Graph 获得信任。
 
-是否允许应用程序在系统上执行由所谓的 **代码** **完整性策略** 来确保。
+是否允许应用程序在系统上执行由所谓的 **代码` `完整性策略** 来确保。
 
 ## 创建代码完整性策略
 
@@ -537,7 +537,7 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 用于配置自定义 WDAC 规则的策略称为 **代码完整性策略**（**CI 策略**）。与其他应用程序控制机制类似，建议先在审计模式下部署策略，并在启用强制执行模式之前监控是否有意外行为。
 
-在每个支持 WDAC 的 Windows 系统中，你可以在 **C:\Windows\schemas\CodeIntegrity\ExamplePolicies** 下找到一些示例策略，如以下截图所示：
+在每个支持 WDAC 的 Windows 系统中，你可以在 `C:\Windows\schemas\CodeIntegrity\ExamplePolicies` 下找到一些示例策略，如以下截图所示：
 
 ![图 11.25 – 内置示例代码完整性策略](img/B16679_11_025.jpg)
 
@@ -545,19 +545,19 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 如果你创建自定义策略，建议从现有的示例策略开始，然后根据需要进行修改，以构建你自己的自定义策略。以下列表将帮助你确定哪个 **示例策略** 最适合作为添加自定义规则的基础：
 
-+   **AllowAll.xml**：如果你打算禁止不需要的应用程序，这是一个很好的基础——你只需要添加所有拒绝规则。请记住，保护系统免受未经授权访问的最佳方法是控制所有应用程序，只允许选定的应用程序。
++   `AllowAll.xml`：如果你打算禁止不需要的应用程序，这是一个很好的基础——你只需要添加所有拒绝规则。请记住，保护系统免受未经授权访问的最佳方法是控制所有应用程序，只允许选定的应用程序。
 
-+   **AllowAll_EnableHVCI.xml**：应用此策略后，您可以启用**内存完整性**/**虚拟化保护代码完整性**，以防止内存攻击。有关此主题的更多信息，请参阅以下文档：[`support.microsoft.com/en-us/windows/core-isolation-e30ed737-17d8-42f3-a2a9-87521df09b78`](https://support.microsoft.com/en-us/windows/core-isolation-e30ed737-17d8-42f3-a2a9-87521df09b78)。
++   `AllowAll_EnableHVCI.xml`：应用此策略后，您可以启用**内存完整性`/`虚拟化保护代码完整性**，以防止内存攻击。有关此主题的更多信息，请参阅以下文档：[`support.microsoft.com/en-us/windows/core-isolation-e30ed737-17d8-42f3-a2a9-87521df09b78`](https://support.microsoft.com/en-us/windows/core-isolation-e30ed737-17d8-42f3-a2a9-87521df09b78)。
 
-+   **AllowMicrosoft.xml**：此策略允许 Windows、第三方硬件和软件内核驱动程序、Windows 商店应用以及由 Microsoft 产品根证书签名的应用。
++   `AllowMicrosoft.xml`：此策略允许 Windows、第三方硬件和软件内核驱动程序、Windows 商店应用以及由 Microsoft 产品根证书签名的应用。
 
-+   **DefaultWindows_Audit.xml**：审计模式允许 Windows、第三方硬件和软件内核驱动程序以及 Windows 商店应用。
++   `DefaultWindows_Audit.xml`：审计模式允许 Windows、第三方硬件和软件内核驱动程序以及 Windows 商店应用。
 
-+   **DefaultWindows_Enforced.xml**：强制模式允许 Windows、第三方硬件和软件内核驱动程序以及 Windows 商店应用，但阻止所有未配置的内容。
++   `DefaultWindows_Enforced.xml`：强制模式允许 Windows、第三方硬件和软件内核驱动程序以及 Windows 商店应用，但阻止所有未配置的内容。
 
-+   **DenyAllAudit.xml**：此策略用于跟踪关键系统上的所有二进制文件——它审计如果所有内容被阻止时将会发生什么。如果启用此策略，可能会导致 Windows Server 2019 操作系统长时间启动。
++   `DenyAllAudit.xml`：此策略用于跟踪关键系统上的所有二进制文件——它审计如果所有内容被阻止时将会发生什么。如果启用此策略，可能会导致 Windows Server 2019 操作系统长时间启动。
 
-在大多数使用场景中，**DefaultWindows_Audit.xml**和**DefaultWindows_Enforced.xml**策略是创建自定义策略并根据需要通过自定义规则扩展它们的最佳选择。
+在大多数使用场景中，`DefaultWindows_Audit.xml`和`DefaultWindows_Enforced.xml`策略是创建自定义策略并根据需要通过自定义规则扩展它们的最佳选择。
 
 还有一份 Microsoft 推荐的阻止规则列表，您应当遵循：[`learn.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/microsoft-recommended-block-rules`](https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/microsoft-recommended-block-rules)。
 
@@ -565,7 +565,7 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 尽管此列表中的许多项目在常见策略中默认可能是允许的，但重要的是要仔细考虑在您的场景中明确需要哪些可执行文件和二进制文件，并阻止所有不必要的文件。
 
-在使用配置管理器管理的设备上，**C:\Windows\CCM\DeviceGuard**目录下有一个额外的示例策略。此策略可以作为基础策略，用于通过配置管理器部署 WDAC 策略。
+在使用配置管理器管理的设备上，`C:\Windows\CCM\DeviceGuard`目录下有一个额外的示例策略。此策略可以作为基础策略，用于通过配置管理器部署 WDAC 策略。
 
 一旦选择了你想用作基础的示例策略，你可以开始修改所选策略的副本。你可以配置许多选项，所以你可能想要通过查看官方文档中所有可用的配置选项来开始：[`learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/design/select-types-of-rules-to-create`](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/design/select-types-of-rules-to-create)。
 
@@ -577,7 +577,7 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 一个例子是，使用 WDAC 策略向导，它利用了我们将在后续章节中查看的 WDAC CI cmdlet，并作为一个包装器，通过图形用户界面（GUI）来创建 CI 策略。你可以从官方网站下载这个有用的工具：[`webapp-wdac-wizard.azurewebsites.net/`](https://webapp-wdac-wizard.azurewebsites.net/)。
 
-也可以使用**New-CIPolicy** cmdlet 创建自定义的 XML 策略：一种方法是扫描参考系统并创建一个参考 XML 策略。
+也可以使用`New-CIPolicy` cmdlet 创建自定义的 XML 策略：一种方法是扫描参考系统并创建一个参考 XML 策略。
 
 ### 扫描参考系统以创建 XML CI 策略
 
@@ -589,55 +589,55 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 > New-CIPolicy -FilePath "C:\AppControlPolicies\Windows.xml" -Level Publisher -UserPEs -ScanPath "C:\Windows\System32"
 ```
 
-虽然**-ScanPath**参数表示应该被**New-CIPolicy**扫描的路径，**-UserPEs**参数表示也会扫描用户模式文件。只有在你没有提供驱动程序文件或规则，而是希望扫描参考系统或路径时，才使用**-UserPEs**和**-ScanPath**参数。
+虽然`-ScanPath`参数表示应该被`New-CIPolicy`扫描的路径，`-UserPEs`参数表示也会扫描用户模式文件。只有在你没有提供驱动程序文件或规则，而是希望扫描参考系统或路径时，才使用`-UserPEs`和`-ScanPath`参数。
 
-使用**-FilePath**参数，你可以指定新创建的 CI 策略应该保存到的输出文件夹。在此示例中，我们将其保存到了**C:\AppControlPolicies\Windows.xml**。
+使用`-FilePath`参数，你可以指定新创建的 CI 策略应该保存到的输出文件夹。在此示例中，我们将其保存到了`C:\AppControlPolicies\Windows.xml`。
 
-还有**-Level**参数，表示 CI 策略的级别。通过它，你可以指定允许运行哪些类型的文件。在此情况下，策略被设置为**Publisher**级别，意味着所有代码必须由受信任的发布者签名才能运行。
+还有`-Level`参数，表示 CI 策略的级别。通过它，你可以指定允许运行哪些类型的文件。在此情况下，策略被设置为`Publisher`级别，意味着所有代码必须由受信任的发布者签名才能运行。
 
 还可以使用以下级别：
 
-+   **None**：禁用代码完整性强制执行。没有规则被执行。如果你想配置一个稳健的 CI 策略，这个级别没有意义。
++   `None`：禁用代码完整性强制执行。没有规则被执行。如果你想配置一个稳健的 CI 策略，这个级别没有意义。
 
-+   **Hash**：仅允许在其哈希值与指定值匹配时，应用程序才能运行。
++   `Hash`：仅允许在其哈希值与指定值匹配时，应用程序才能运行。
 
-+   **FileName**：仅允许在应用程序位于特定文件路径时运行。这个级别一开始可能听起来很诱人，但它带来了更多的风险。如果攻击者能够访问系统上的文件，他们可能会轻松地将现有文件替换为恶意文件。最好不要使用这个选项。
++   `FileName`：仅允许在应用程序位于特定文件路径时运行。这个级别一开始可能听起来很诱人，但它带来了更多的风险。如果攻击者能够访问系统上的文件，他们可能会轻松地将现有文件替换为恶意文件。最好不要使用这个选项。
 
-+   **SignedVersion**：仅允许在应用程序具有特定签名版本时运行。
++   `SignedVersion`：仅允许在应用程序具有特定签名版本时运行。
 
-+   **Publisher**：仅允许在应用程序由指定发布者签名时运行。
++   `Publisher`：仅允许在应用程序由指定发布者签名时运行。
 
-+   **FilePublisher**：仅允许在应用程序由指定发布者签名且位于特定文件路径时运行。
++   `FilePublisher`：仅允许在应用程序由指定发布者签名且位于特定文件路径时运行。
 
-+   **LeafCertificate**：仅允许在应用程序由指定的叶证书签名时运行。
++   `LeafCertificate`：仅允许在应用程序由指定的叶证书签名时运行。
 
-+   **PcaCertificate**：仅允许在应用程序由指定 PCA 证书签名时运行。
++   `PcaCertificate`：仅允许在应用程序由指定 PCA 证书签名时运行。
 
-+   **RootCertificate**：仅允许在应用程序由指定根证书签名时运行。
++   `RootCertificate`：仅允许在应用程序由指定根证书签名时运行。
 
-+   **WHQL**：仅允许加载经过**Windows 硬件质量实验室**（**WHQL**）认证的签名驱动程序。
++   `WHQL`：仅允许加载经过**Windows 硬件质量实验室**（**WHQL**）认证的签名驱动程序。
 
-+   **WHQLPublisher**：仅允许加载经过 WHQL 认证并由特定发布者签名的驱动程序。
++   `WHQLPublisher`：仅允许加载经过 WHQL 认证并由特定发布者签名的驱动程序。
 
-+   **WHQLFilePublisher**：仅允许加载经过 WHQL 认证、由特定发布者签名并位于特定文件路径的签名驱动程序。
++   `WHQLFilePublisher`：仅允许加载经过 WHQL 认证、由特定发布者签名并位于特定文件路径的签名驱动程序。
 
-接下来，让我们扫描**Program Files**文件夹，以从指定的参考系统创建策略：
+接下来，让我们扫描`Program Files`文件夹，以从指定的参考系统创建策略：
 
 ```
 > New-CIPolicy -FilePath "C:\AppControlPolicies\ProgramFiles.xml" -Level Publisher -UserPEs -ScanPath "C:\Program Files" -NoScript -Fallback SignedVersion,FilePublisher,Hash
 ```
 
-再次说明，我们已将用户模式文件包含在扫描中，并希望确保所有包含在策略中的文件都由指定发布者签名。我们必须定义将新创建的策略保存到**C:\AppControlPolicies\ProgramFiles.xml**。为了避免脚本文件被包含在这个参考策略中，我们必须指定**-NoScript**参数。
+再次说明，我们已将用户模式文件包含在扫描中，并希望确保所有包含在策略中的文件都由指定发布者签名。我们必须定义将新创建的策略保存到`C:\AppControlPolicies\ProgramFiles.xml`。为了避免脚本文件被包含在这个参考策略中，我们必须指定`-NoScript`参数。
 
-使用**-Fallback**参数，您可以指定回退顺序；在这种情况下，如果在**FilePublisher**级别没有匹配项，策略引擎将回退到**SignedVersion**、**FilePublisher**和**Hash**级别——恰好是这个顺序。
+使用`-Fallback`参数，您可以指定回退顺序；在这种情况下，如果在`FilePublisher`级别没有匹配项，策略引擎将回退到`SignedVersion`、`FilePublisher`和`Hash`级别——恰好是这个顺序。
 
-最后但同样重要的是，我们需要将策略合并为一个。为此，我们可以使用**Merge-CIPolicy** cmdlet：
+最后但同样重要的是，我们需要将策略合并为一个。为此，我们可以使用`Merge-CIPolicy` cmdlet：
 
 ```
 > Merge-CIPolicy -PolicyPaths "C:\AppControlPolicies\Windows.xml", "C:\AppControlPolicies\ProgramFiles.xml" -OutputFilePath "C:\AppControlPolicies\AppControlPolicy.xml"
 ```
 
-使用**-PolicyPaths**参数，我们可以指定应合并的策略，而使用**-OutputFilePath**，我们可以定义合并后的策略保存的位置。在这个例子中，我们将把最终的策略保存到**C:\AppControlPolicies\AppControlPolicy.xml**。
+使用`-PolicyPaths`参数，我们可以指定应合并的策略，而使用`-OutputFilePath`，我们可以定义合并后的策略保存的位置。在这个例子中，我们将把最终的策略保存到`C:\AppControlPolicies\AppControlPolicy.xml`。
 
 策略以审计模式创建，因此它无法阻止应用程序，只会审计应用程序的使用。这对于测试和评估哪些应用程序应该被阻止非常有用。
 
@@ -651,15 +651,15 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 ### 将 XML 文件转换为二进制 CI 策略
 
-一旦你获得了 CI 策略的 XML 配置文件，你需要将其转换为二进制格式以进行部署。可以使用 **ConvertFrom-CIPolicy** cmdlet 完成此操作：
+一旦你获得了 CI 策略的 XML 配置文件，你需要将其转换为二进制格式以进行部署。可以使用 `ConvertFrom-CIPolicy` cmdlet 完成此操作：
 
 ```
 > ConvertFrom-CIPolicy -XmlFilePath "C:\AppControlPolicies\AppControlPolicy.xml" -BinaryFilePath "C:\Windows\System32\CodeIntegrity\AppControlPolicy.bin"
 ```
 
-这里，我们之前生成的 **AppControlPolicy.xml** CI 策略将被编译成 **AppControlPolicy.bin** 二进制文件，并保存在 **C:\Windows\System32\CodeIntegrity\AppControlPolicy.bin** 下。
+这里，我们之前生成的 `AppControlPolicy.xml` CI 策略将被编译成 `AppControlPolicy.bin` 二进制文件，并保存在 `C:\Windows\System32\CodeIntegrity\AppControlPolicy.bin` 下。
 
-如果一个二进制 CI 策略保存在 **C:\Windows\System32\CodeIntegrity\** 下，那么在相关系统重启后，它会立即启用。策略被移除后，再次重启系统，CI 策略引入的所有更改都会被撤销。
+如果一个二进制 CI 策略保存在 `C:\Windows\System32\CodeIntegrity\` 下，那么在相关系统重启后，它会立即启用。策略被移除后，再次重启系统，CI 策略引入的所有更改都会被撤销。
 
 当然，如果你计划使用 Intune、MEM、GPO 或其他需要二进制配置文件的部署机制来部署 WDAC，你也可以将转换后的 CI 策略保存在你选择的其他路径下。
 
@@ -671,9 +671,9 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 
 根据应用程序类型，这些事件可以在以下某个事件日志中找到：
 
-+   **二进制相关事件**: **应用程序和服务日志** | **Microsoft** | **Windows** | **CodeIntegrity** | **操作**
++   **二进制相关事件`: `应用程序和服务日志` | **Microsoft** | **Windows** | **CodeIntegrity** | `操作**
 
-+   **MSI 和脚本相关事件**: **应用程序和服务日志** | **Microsoft** | **Windows** | **AppLocker** | **MSI** **和脚本**
++   **MSI 和脚本相关事件`: `应用程序和服务日志` | **Microsoft** | **Windows** | **AppLocker** | **MSI** `和脚本**
 
 记录到这些事件日志中的所有事件现在可以被用来创建一个全新的 CI 策略，或者将审核的配置合并到现有策略中：
 
@@ -681,15 +681,15 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 > New-CIPolicy -FilePath "C:\AppControlPolicies\AuditEvents.xml" -Audit -Level FilePublisher -Fallback SignedVersion,FilePublisher,Hash –UserPEs -MultiplePolicyFormat
 ```
 
-此命令会在 **C:\AppControlPolicies\AuditEvents.xml** 路径下创建一个新的 CI 策略。**-Audit** 参数指定应使用事件日志中的实际审计事件来创建策略。
+此命令会在 `C:\AppControlPolicies\AuditEvents.xml` 路径下创建一个新的 CI 策略。`-Audit` 参数指定应使用事件日志中的实际审计事件来创建策略。
 
-**-MultiplePolicyFormat** 参数使我们能够同时使用多个策略，因为策略将以多策略格式存储，这一格式在 Windows 10 中被引入。
+`-MultiplePolicyFormat` 参数使我们能够同时使用多个策略，因为策略将以多策略格式存储，这一格式在 Windows 10 中被引入。
 
 现在，你可以在将新创建的策略与其他现有策略合并和/或将其转换为二进制格式以供进一步使用之前，进行审核和编辑。
 
 ### 使用 New-CIPolicyRule cmdlet 创建 CI 策略
 
-如果你想更精细地定义哪些应用程序应该出现在你的 CI 策略中，**New-CIPolicyRule** cmdlet 可以帮助你：
+如果你想更精细地定义哪些应用程序应该出现在你的 CI 策略中，`New-CIPolicyRule` cmdlet 可以帮助你：
 
 ```
 > $Rules = New-CIPolicyRule -FilePathRule "C:\Program Files\Notepad++\*"
@@ -697,11 +697,11 @@ Set-AppLockerPolicy -XmlPolicy "C:\tmp\AppLockerPolicy.xml"
 > New-CIPolicy -Rules $Rules -FilePath "C:\AppControlPolicies\GranularAppControlPolicy.xml" -UserPEs
 ```
 
-上述代码将为*Notepad++* 文件夹及其子文件夹创建一个 CI 策略规则，并为*PowerShell 7*路径创建另一个规则，并将这两个规则保存在**$****Rules**变量中。
+上述代码将为*Notepad++* 文件夹及其子文件夹创建一个 CI 策略规则，并为*PowerShell 7*路径创建另一个规则，并将这两个规则保存在`$****Rules`变量中。
 
-然后，这两个规则可以用来创建一个新的 CI 策略，并保存在 **C:\AppControlPolicies\GranularAppControlPolicy.xml** 路径下。
+然后，这两个规则可以用来创建一个新的 CI 策略，并保存在 `C:\AppControlPolicies\GranularAppControlPolicy.xml` 路径下。
 
-之后，你可以使用**Merge-CIPolicy**将其与其他策略结合，或借助**ConvertFrom-CIPolicy**将其转换为二进制格式，以便用于其他用途。
+之后，你可以使用`Merge-CIPolicy`将其与其他策略结合，或借助`ConvertFrom-CIPolicy`将其转换为二进制格式，以便用于其他用途。
 
 你可以使用 ConfigCI PowerShell 模块来探索与代码完整性相关的其他操作方式：[`learn.microsoft.com/en-us/powershell/module/configci`](https://learn.microsoft.com/en-us/powershell/module/configci)。
 
@@ -725,21 +725,21 @@ HVCI，也叫做**内存完整性**，是 VBS 的关键组件。HVCI 利用 VBS 
 
 HVCI 利用现代 CPU 中的硬件特性，如虚拟化扩展和**受信任的平台模块**（**TPM**），来创建一个安全的执行环境。TPM 用于存储系统引导固件、UEFI 和操作系统二进制文件的哈希值。在系统启动过程中，TPM 会对这些组件进行度量，并将度量结果提供给 HVCI 系统。HVCI 使用这些度量结果验证是否只有已知和受信任的组件被加载到内存中，从而防止未经授权的代码在内核模式下运行。
 
-如果你想为 CI 策略启用 HVCI 选项，可以使用**Set-HVCIOptions** cmdlet：
+如果你想为 CI 策略启用 HVCI 选项，可以使用`Set-HVCIOptions` cmdlet：
 
 ```
 > Set-HVCIOptions -Enabled -FilePath "C:\AppControlPolicies\GranularAppControlPolicy.xml"
 ```
 
-您还可以通过使用**-Strict**参数进一步加强这一点：
+您还可以通过使用`-Strict`参数进一步加强这一点：
 
 ```
 > Set-HVCIOptions -Strict -FilePath "C:\AppControlPolicies\GranularAppControlPolicy.xml"
 ```
 
-如果使用了**-Strict**选项，这意味着在应用此策略后，只允许加载 Microsoft 和 WHQL 签名的驱动程序。
+如果使用了`-Strict`选项，这意味着在应用此策略后，只允许加载 Microsoft 和 WHQL 签名的驱动程序。
 
-要从 CI 策略中删除所有 HVCI 设置，您可以指定**-None**参数：
+要从 CI 策略中删除所有 HVCI 设置，您可以指定`-None`参数：
 
 ```
 > Set-HVCIOptions -None -FilePath "C:\AppControlPolicies\GranularAppControlPolicy.xml"
@@ -751,13 +751,13 @@ HVCI 利用现代 CPU 中的硬件特性，如虚拟化扩展和**受信任的�
 
 **安全启动**确保系统以受信任的状态启动。这意味着所有用于启动系统的文件必须具有经组织信任的签名。通过这样做，如果这些文件被篡改，系统将无法启动。设备需要配备 TPM 芯片才能支持安全启动。
 
-要验证您的计算机是否启用了安全启动，您可以使用**Confirm-SecureBootUEFI** cmdlet：
+要验证您的计算机是否启用了安全启动，您可以使用`Confirm-SecureBootUEFI` cmdlet：
 
 ```
 > Confirm-SecureBootUEFI
 ```
 
-如果启用了安全启动，cmdlet 将返回**True**，如下图所示；如果没有启用，则返回**False**：
+如果启用了安全启动，cmdlet 将返回`True`，如下图所示；如果没有启用，则返回`False`：
 
 ![图 11.27 – 启用安全启动](img/B16679_11_027.jpg)
 
@@ -787,9 +787,9 @@ HVCI 利用现代 CPU 中的硬件特性，如虚拟化扩展和**受信任的�
 
 ### 组策略（GPO）
 
-组策略并不是配置 WDAC 的首选方法；它只支持单一策略格式的**CI 策略**，并且文件类型为 **.bin**、**.p7b** 或 **.p7**。这种格式用于 Windows 10 版本 1903 之前的设备。作为最佳实践，应使用除 GPO 之外的部署机制。
+组策略并不是配置 WDAC 的首选方法；它只支持单一策略格式的**CI 策略**，并且文件类型为 `.bin`、`.p7b` 或 `.p7`。这种格式用于 Windows 10 版本 1903 之前的设备。作为最佳实践，应使用除 GPO 之外的部署机制。
 
-但是，如果你仍然希望使用这种部署方式，可以在**计算机配置** | **管理模板** | **系统** | **设备保护** | **部署 Windows Defender 应用程序控制**下找到 WDAC GPO 设置。通过此设置，你可以部署 CI 策略。
+但是，如果你仍然希望使用这种部署方式，可以在**计算机配置` | `管理模板` | `系统` | `设备保护` | `部署 Windows Defender 应用程序控制**下找到 WDAC GPO 设置。通过此设置，你可以部署 CI 策略。
 
 你想要部署的二进制 CI 策略需要位于文件共享中，或者复制到每台你想要限制的机器的本地系统上。
 
@@ -801,19 +801,19 @@ HVCI 利用现代 CPU 中的硬件特性，如虚拟化扩展和**受信任的�
 
 当然，也可以使用 OMA-URI 创建自定义的 WDAC 策略，这与通过 Intune 配置 AppLocker 策略的方式类似。
 
-在每个 XML CI 策略文件中，你可以找到一个策略 ID。复制此 ID，并将**{PolicyID}**替换为以下字符串，以获取自定义策略的 OMA-URI：
+在每个 XML CI 策略文件中，你可以找到一个策略 ID。复制此 ID，并将`{PolicyID}`替换为以下字符串，以获取自定义策略的 OMA-URI：
 
 ```
 ./Vendor/MSFT/ApplicationControl/Policies/{PolicyID}/Policy
 ```
 
-请注意，你还需要替换大括号。以下截图显示了你可以找到**PolicyID**的位置：
+请注意，你还需要替换大括号。以下截图显示了你可以找到`PolicyID`的位置：
 
 ![图 11.29 – 你可以在 XML CI 策略文件中找到策略 ID](img/B16679_11_029.jpg)
 
 图 11.29 – 你可以在 XML CI 策略文件中找到策略 ID
 
-使用此**PolicyID**，相应的 OMA-URI 如下所示：
+使用此`PolicyID`，相应的 OMA-URI 如下所示：
 
 ```
 ./Vendor/MSFT/ApplicationControl/Policies/A244370E-44C9-4C06-B551-F6016E563076/Policy
@@ -835,7 +835,7 @@ HVCI 利用现代 CPU 中的硬件特性，如虚拟化扩展和**受信任的�
 
 对于这种方法，您还需要获取策略的二进制文件并将其复制到每个受管理的端点。然而，与 GPO 相比，您可以部署多个 WDAC 策略。要部署签名策略，您还需要将二进制策略文件复制到设备的 EFI 分区。签名策略通过确保仅应用由受信任实体签名的策略，为端点提供额外的安全层。如果使用 Intune 或 CSP 进行部署，此步骤将自动完成。
 
-Matt Graeber 的 **WDACTools** 也是简化部署过程的宝贵资源。这些工具专门设计用于简化构建、配置、部署和审核 WDAC 策略的过程。您可以从 Matt 的 GitHub 仓库下载它们：[`github.com/mattifestation/WDACTools`](https://github.com/mattifestation/WDACTools)。
+Matt Graeber 的 `WDACTools` 也是简化部署过程的宝贵资源。这些工具专门设计用于简化构建、配置、部署和审核 WDAC 策略的过程。您可以从 Matt 的 GitHub 仓库下载它们：[`github.com/mattifestation/WDACTools`](https://github.com/mattifestation/WDACTools)。
 
 有关如何使用 PowerShell 部署 WDAC 的详细信息，请参阅：[`learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/deployment/deploy-wdac-policies-with-script`](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/deployment/deploy-wdac-policies-with-script)。
 
@@ -845,11 +845,11 @@ Matt Graeber 的 **WDACTools** 也是简化部署过程的宝贵资源。这些�
 
 PowerShell 可以通过多种方式受到限制，包括禁用运行 PowerShell 脚本的能力或只允许运行已签名的 PowerShell 脚本。
 
-在*第五章*，*PowerShell 的强大——系统和 API 访问*中，我们讨论了如何在系统不受限制的情况下，使用 PowerShell 运行任意**.NET**代码，甚至执行编译后的代码。这会使防范恶意代码变得非常困难。在强制应用控制的情况下，可以消除如**Add-Type**、任意.NET 脚本和其他常用绕过安全机制的代码执行方法。
+在*第五章*，*PowerShell 的强大——系统和 API 访问*中，我们讨论了如何在系统不受限制的情况下，使用 PowerShell 运行任意`.NET`代码，甚至执行编译后的代码。这会使防范恶意代码变得非常困难。在强制应用控制的情况下，可以消除如`Add-Type`、任意.NET 脚本和其他常用绕过安全机制的代码执行方法。
 
 PowerShell 包括内置的**受限语言模式**，我们在*第十章*，*语言模式与足够的管理权限（JEA）*中进行了探讨。受限语言模式限制了 PowerShell，阻止用户执行危险的语言元素，如访问任意 API。
 
-这意味着某些*危险*的语言元素，如**Add-Type**、**COM 对象**和一些可以用于执行任意代码的.NET 类型，无法使用。如果强制执行，受限语言模式（Constrained Language mode）可以限制攻击者执行任意代码和修改系统配置的能力。在受限语言模式下，PowerShell 环境仅保留传统较弱交互式 shell 的核心基本功能，类似于 CMD、Windows 资源管理器或 Bash。
+这意味着某些*危险*的语言元素，如`Add-Type`、**COM 对象**和一些可以用于执行任意代码的.NET 类型，无法使用。如果强制执行，受限语言模式（Constrained Language mode）可以限制攻击者执行任意代码和修改系统配置的能力。在受限语言模式下，PowerShell 环境仅保留传统较弱交互式 shell 的核心基本功能，类似于 CMD、Windows 资源管理器或 Bash。
 
 确保 PowerShell 代码可信任的一种有效方法是强制使用**签名脚本**。在应用控制的情况下，如果脚本被信任并允许在**完全语言模式**下运行，则会按照要求执行。但是，如果脚本不被信任，则它将始终在受限语言模式下运行，这意味着如果脚本尝试调用任意 API 和其他危险语言元素，将会失败。
 
@@ -859,7 +859,7 @@ PowerShell 包括内置的**受限语言模式**，我们在*第十章*，*语�
 
 图 11.30 – 启用应用控制时，无法访问.NET 类型
 
-使用**Add-Type**从 PowerShell 中添加并访问 C 类型也会失效——你会收到以下错误消息：
+使用`Add-Type`从 PowerShell 中添加并访问 C 类型也会失效——你会收到以下错误消息：
 
 ![图 11.31 – 强制执行应用控制时，Add-Type 失败](img/B16679_11_031.jpg)
 
@@ -899,7 +899,7 @@ PowerShell 包括内置的**受限语言模式**，我们在*第十章*，*语�
 
 +   Get-AuthenticodeSignature：[`docs.microsoft.com/en-us/powershell/wwmodule/microsoft.powershell.security/get-authenticodesignature`](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature)
 
-**CI/CD**：
+`CI/CD`：
 
 +   CI/CD：是什么，为什么，如何：[`resources.github.com/ci-cd/`](https://resources.github.com/ci-cd/)
 
@@ -927,7 +927,7 @@ PowerShell 包括内置的**受限语言模式**，我们在*第十章*，*语�
 
 +   Windows Defender 应用程序控制向导：[`learn.microsoft.com/zh-cn/windows/security/application-security/application-control/windows-defender-application-control/design/wdac-wizard`](https://learn.microsoft.com/zh-cn/windows/security/application-security/application-control/windows-defender-application-control/design/wdac-wizard)
 
-**AppLocker**:
+`AppLocker`:
 
 +   AppLocker 操作指南：[`learn.microsoft.com/zh-cn/previous-versions/windows/it-pro/windows-server-2008-R2-and-2008/ee791916(v=ws.10)`](https://learn.microsoft.com/zh-cn/previous-versions/windows/it-pro/windows-server-2008-R2-and-2008/ee791916(v=ws.10))
 
