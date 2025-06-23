@@ -6,7 +6,7 @@
 
 利用为成功的渗透测试奠定了基础，并验证你能够在目标系统或网络上进行的操作范围。选择正确的*攻击向量*和*利用框架*或利用手段对于获取和保持目标系统的访问至关重要。
 
-在本章中，你将了解利用 Windows 和 Linux 系统的各种方法，以及如何利用像**Metasploit**这样的利用框架。
+在本章中，你将了解利用 Windows 和 Linux 系统的各种方法，以及如何利用像`Metasploit`这样的利用框架。
 
 本章将涉及以下主题：
 
@@ -56,11 +56,11 @@ Metasploit 有两个版本，提供不同的功能和特性：
 
 Metasploit 框架是预先打包的。它已安装在 *Kali Linux* 上，也可以在官方的 Kali 仓库中找到。因此，我们不会讨论如何手动安装 Metasploit。
 
-理解 Metasploit 模块如何结构化的最佳方法是浏览 Kali Linux 上的目录。默认的 Metasploit 框架目录位于 **/usr/share/metasploit-framework**，你可以通过运行以下命令列出该目录的内容：
+理解 Metasploit 模块如何结构化的最佳方法是浏览 Kali Linux 上的目录。默认的 Metasploit 框架目录位于 `/usr/share/metasploit-framework`，你可以通过运行以下命令列出该目录的内容：
 
 ls -al /usr/share/metasploit-framework
 
-*图 3.2* 概述了 Kali Linux 上默认 Metasploit 框架目录的内容。如图所示，该目录包含了根据功能分类的二进制文件和目录。例如，我们可以看到 **msfdb** 二进制文件，它负责与 Metasploit 框架数据库进行交互；同时也可以看到，模块已经被整理到各自的目录中：
+*图 3.2* 概述了 Kali Linux 上默认 Metasploit 框架目录的内容。如图所示，该目录包含了根据功能分类的二进制文件和目录。例如，我们可以看到 `msfdb` 二进制文件，它负责与 Metasploit 框架数据库进行交互；同时也可以看到，模块已经被整理到各自的目录中：
 
 ![图 3.2 – Metasploit 目录布局](img/B17389_03_002.jpg)
 
@@ -70,7 +70,7 @@ ls -al /usr/share/metasploit-framework
 
 ### Metasploit 模块
 
-由于框架的模块化特性，Metasploit 使用模块来划分功能。它通过根据模块在渗透测试生命周期中所扮演的角色，按照特定功能对模块进行分类。你可以通过查看 **/usr/share/metasploit/framework/modules** 目录中的内容来访问这些模块，如 *图 3.3* 所示：
+由于框架的模块化特性，Metasploit 使用模块来划分功能。它通过根据模块在渗透测试生命周期中所扮演的角色，按照特定功能对模块进行分类。你可以通过查看 `/usr/share/metasploit/framework/modules` 目录中的内容来访问这些模块，如 *图 3.3* 所示：
 
 ![图 3.3 – Metasploit 模块目录](img/B17389_03_003.jpg)
 
@@ -106,19 +106,19 @@ ls -al /usr/share/metasploit-framework
 
 1.  Metasploit 使用 *PostgreSQL* 数据库作为存储后端。首先，我们需要确保 PostgreSQL 服务正在运行，可以通过输入以下命令来检查：
 
-    **sudo systemctl start postgresql**
+    `sudo systemctl start postgresql`
 
 1.  现在我们可以通过运行以下命令并使用 root 权限来初始化 Metasploit 数据库：
 
-    **sudo msfdb init**
+    `sudo msfdb init`
 
-    初始化过程将创建 **msf** 数据库，并将 **msf_test** 角色添加到数据库配置中。
+    初始化过程将创建 `msf` 数据库，并将 `msf_test` 角色添加到数据库配置中。
 
-1.  我们现在可以访问 Metasploit 框架控制台，也叫做 **msfconsole**。这可以通过在终端中运行以下命令来完成：
+1.  我们现在可以访问 Metasploit 框架控制台，也叫做 `msfconsole`。这可以通过在终端中运行以下命令来完成：
 
-    **msfconsole**
+    `msfconsole`
 
-    如你所见，在 *图 3.4* 中，启动 **msfconsole** 需要几秒钟：
+    如你所见，在 *图 3.4* 中，启动 `msfconsole` 需要几秒钟：
 
     ![图 3.4 – 启动 msfconsole](img/B17389_03_004.jpg)
 
@@ -126,17 +126,17 @@ ls -al /usr/share/metasploit-framework
 
     图 3.4 – 启动 msfconsole
 
-1.  在 **msfconsole** 启动后，你将看到一个横幅和 **msf** 提示符，如下所示的截图所示：![图 3.5 – msfconsole 横幅](img/B17389_03_005.jpg)
+1.  在 `msfconsole` 启动后，你将看到一个横幅和 `msf` 提示符，如下所示的截图所示：![图 3.5 – msfconsole 横幅](img/B17389_03_005.jpg)
 
     ](Images/B17389_03_005.jpg)
 
     图 3.5 – msfconsole 横幅
 
-1.  在我们开始使用 **msfconsole** 之前，需要通过在 **msfconsole** 中运行以下命令来验证 Metasploit 数据库是否已连接：
+1.  在我们开始使用 `msfconsole` 之前，需要通过在 `msfconsole` 中运行以下命令来验证 Metasploit 数据库是否已连接：
 
-    **db_status**
+    `db_status`
 
-如你所见，在 *图 3.6* 中，输出告诉我们 **msfconsole** 已连接到数据库：
+如你所见，在 *图 3.6* 中，输出告诉我们 `msfconsole` 已连接到数据库：
 
 ![图 3.6 – Metasploit 数据库状态](img/B17389_03_006.jpg)
 
@@ -160,11 +160,11 @@ ls -al /usr/share/metasploit-framework
 
 请确保您已运行以下目标虚拟机，因为我们将在本章中使用它们：
 
-+   **Windows 7**
++   `Windows 7`
 
-+   **Metasploitable3**
++   `Metasploitable3`
 
-+   **Metasploitable2**
++   `Metasploitable2`
 
 现在我们已经清楚了要攻击的主机，我们可以开始使用 Nmap 进行主机发现。
 
@@ -174,7 +174,7 @@ ls -al /usr/share/metasploit-framework
 
 1.  我们可以通过运行以下命令，在*第二章*中创建的整个虚拟网络子网执行*ping 扫描*：
 
-    **sudo nmap -sn 10.10.10.1/24**
+    `sudo nmap -sn 10.10.10.1/24`
 
     如您所见，在*图 3.7*中，我们的网络上有四个活动主机。然而，我们仍然不知道这些主机运行的是哪种操作系统，这使得确定哪些 IP 地址对应我们的虚拟机变得非常困难：
 
@@ -186,9 +186,9 @@ ls -al /usr/share/metasploit-framework
 
 1.  为了确定目标虚拟机运行的操作系统，我们可以在虚拟网络子网上使用 Nmap 进行激进扫描。可以通过运行以下命令来实现：
 
-    **sudo nmap -A -T4 10.10.10.1/24**
+    `sudo nmap -A -T4 10.10.10.1/24`
 
-    此扫描将显示目标操作系统、运行的服务、服务版本以及在目标系统上开放的端口。例如，通过分析操作系统扫描发现的结果，你应该能够确定主机正在运行什么操作系统。*图 3.8*列出了 IP 地址为**10.10.10.7**的虚拟机的**操作系统发现结果**。如你所见，**操作系统发现结果**表明主机运行的是**Windows Server 2008 SP1**，这意味着它是 Metasploitable3 虚拟机：
+    此扫描将显示目标操作系统、运行的服务、服务版本以及在目标系统上开放的端口。例如，通过分析操作系统扫描发现的结果，你应该能够确定主机正在运行什么操作系统。*图 3.8*列出了 IP 地址为`10.10.10.7`的虚拟机的**操作系统发现结果**。如你所见，**操作系统发现结果**表明主机运行的是`Windows Server 2008 SP1`，这意味着它是 Metasploitable3 虚拟机：
 
     ![图 3.8 – 使用 Nmap 进行操作系统发现    ](img/B17389_03_008.jpg)
 
@@ -196,33 +196,33 @@ ls -al /usr/share/metasploit-framework
 
     注意
 
-    你还可以使用**-O**标志和**-sV**标志扫描特定信息，如操作系统和服务信息。
+    你还可以使用`-O`标志和`-sV`标志扫描特定信息，如操作系统和服务信息。
 
     鉴于我们虚拟网络的基础设施以及**动态主机配置协议**（**DHCP**）的使用，虚拟机的 IP 地址可能与此处的情景有所不同。在这种情况下，IP 地址对应以下主机：
 
-    a) Metasploitable3: **10.10.10.4**
+    a) Metasploitable3: `10.10.10.4`
 
-    b) Metasploitable2: **10.10.10.8**
+    b) Metasploitable2: `10.10.10.8`
 
-    c) Windows 7: **10.10.10.7**
+    c) Windows 7: `10.10.10.7`
 
     现在我们已经绘制了网络上主机的映射图，可以对所有网络上的主机进行个别扫描，以确定运行的服务和开放的端口。
 
-1.  要对目标进行全面扫描，我们将使用 Nmap 的*半开放高级扫描*（*SYN 扫描*）对所有 TCP 端口进行扫描。这将为我们提供目标系统上开放的服务和端口的准确图景。我们还将把结果输出为 XML 格式，以便导入到**msfconsole**中。这可以通过运行以下 Nmap 扫描来实现：
+1.  要对目标进行全面扫描，我们将使用 Nmap 的*半开放高级扫描*（*SYN 扫描*）对所有 TCP 端口进行扫描。这将为我们提供目标系统上开放的服务和端口的准确图景。我们还将把结果输出为 XML 格式，以便导入到`msfconsole`中。这可以通过运行以下 Nmap 扫描来实现：
 
-    **sudo nmap -sS -A -T4 -p- <IP-ADDRESS> -oX output_file.xml**
+    `sudo nmap -sS -A -T4 -p- <IP-ADDRESS> -oX output_file.xml`
 
     重要提示
 
     你需要对虚拟网络上的所有目标虚拟机运行此扫描，以确定开放的端口和运行的服务。我们将在下一节中使用这些信息，进行漏洞分析，以确定可能被利用的漏洞。
 
-1.  执行扫描后，你应该将扫描结果保存为 XML 格式。现在，我们可以开始将结果导入 Metasploit。首先，我们需要启动**msfconsole**。
+1.  执行扫描后，你应该将扫描结果保存为 XML 格式。现在，我们可以开始将结果导入 Metasploit。首先，我们需要启动`msfconsole`。
 
-1.  启动**msfconsole**后，我们可以通过运行**db_import**命令将 Nmap 的 XML 结果导入：
+1.  启动`msfconsole`后，我们可以通过运行`db_import`命令将 Nmap 的 XML 结果导入：
 
-    **db_import /home/kali/Desktop/outpute_file.xml**
+    `db_import /home/kali/Desktop/outpute_file.xml`
 
-    这将导入扫描结果，并且**msfconsole**将自动将扫描中指定的目标添加为主机，如以下屏幕截图所示：
+    这将导入扫描结果，并且`msfconsole`将自动将扫描中指定的目标添加为主机，如以下屏幕截图所示：
 
 ![图 3.9 – 导入 Nmap 扫描结果](img/B17389_03_009.jpg)
 
@@ -240,21 +240,21 @@ ls -al /usr/share/metasploit-framework
 
 ### Metasploitable3 漏洞
 
-我们可以在 **msfconsole** 中开始分析 Metasploitable3 虚拟机的 Nmap 扫描结果：
+我们可以在 `msfconsole` 中开始分析 Metasploitable3 虚拟机的 Nmap 扫描结果：
 
-1.  启动 **msfconsole** 后，我们可以列出活动主机，以识别 Metasploitable3 虚拟机。您可以通过在 **msfconsole** 中运行以下命令来完成此操作：
+1.  启动 `msfconsole` 后，我们可以列出活动主机，以识别 Metasploitable3 虚拟机。您可以通过在 `msfconsole` 中运行以下命令来完成此操作：
 
-    **hosts -u**
+    `hosts -u`
 
-    *图 3.10* 概述了我们从 Nmap 扫描结果中导入的所有活动主机。如您所见，**msfconsole** 列出了目标的 IP 地址和操作系统名称。这些信息很有用；然而，我们需要识别操作系统和服务版本：
+    *图 3.10* 概述了我们从 Nmap 扫描结果中导入的所有活动主机。如您所见，`msfconsole` 列出了目标的 IP 地址和操作系统名称。这些信息很有用；然而，我们需要识别操作系统和服务版本：
 
     ![图 3.10 – msfconsole 主机    ](img/B17389_03_010.jpg)
 
     图 3.10 – msfconsole 主机
 
-1.  要显示特定主机上运行的服务及其服务版本，我们可以在 **msfconsole** 中使用以下命令：
+1.  要显示特定主机上运行的服务及其服务版本，我们可以在 `msfconsole` 中使用以下命令：
 
-    **services <IP-ADDRESS>**
+    `services <IP-ADDRESS>`
 
     如 *图 3.11* 所示，我们可以识别出操作系统版本为 **Windows Server 2008 R2，服务包 1**：
 
@@ -270,33 +270,33 @@ ls -al /usr/share/metasploit-framework
 
     图 3.12 – 搜索漏洞
 
-    这个特定版本的 Windows Server 2008 易受*MS17-010*漏洞攻击，代号为**EternalBlue**。有关此漏洞的更多信息，请参见[`docs.microsoft.com/en-us/security-updates/securitybulletins/2017/ms17-010`](https://docs.microsoft.com/en-us/security-updates/securitybulletins/2017/ms17-010)。**EternalBlue**是一个漏洞利用，允许攻击者通过利用 Microsoft 的**服务器消息块（SMB）**V1 协议中的漏洞来远程执行任意代码。
+    这个特定版本的 Windows Server 2008 易受*MS17-010*漏洞攻击，代号为`EternalBlue`。有关此漏洞的更多信息，请参见[`docs.microsoft.com/en-us/security-updates/securitybulletins/2017/ms17-010`](https://docs.microsoft.com/en-us/security-updates/securitybulletins/2017/ms17-010)。`EternalBlue`是一个漏洞利用，允许攻击者通过利用 Microsoft 的**服务器消息块（SMB）**V1 协议中的漏洞来远程执行任意代码。
 
-1.  为了验证我们的目标是否易受此漏洞攻击，我们可以在**msfconsole**中搜索一个辅助扫描模块。可以通过运行以下命令来完成：
+1.  为了验证我们的目标是否易受此漏洞攻击，我们可以在`msfconsole`中搜索一个辅助扫描模块。可以通过运行以下命令来完成：
 
-    **search eternalblue**
+    `search eternalblue`
 
-    如*图 3.13*所示，这将显示多个与**eternalblue**搜索词匹配的模块。然而，我们要选择的辅助模块将识别我们的目标是否易受攻击：
+    如*图 3.13*所示，这将显示多个与`eternalblue`搜索词匹配的模块。然而，我们要选择的辅助模块将识别我们的目标是否易受攻击：
 
     ![图 3.13 – 辅助模块](img/B17389_03_013.jpg)
 
     图 3.13 – 辅助模块
 
-1.  要使用该模块，我们可以使用**use**命令并指定模块名称：
+1.  要使用该模块，我们可以使用`use`命令并指定模块名称：
 
-    **use auxiliary/scanner/smb/smb_ms17_010**
+    `use auxiliary/scanner/smb/smb_ms17_010`
 
-1.  在指定模块后，我们需要配置扫描器选项。我们需要修改的主要选项是**RHOSTS**选项。**RHOSTS**选项用于指定目标 IP 地址，如*图 3.14*所示：![图 3.14 – RHOSTS 选项](img/B17389_03_014.jpg)
+1.  在指定模块后，我们需要配置扫描器选项。我们需要修改的主要选项是`RHOSTS`选项。`RHOSTS`选项用于指定目标 IP 地址，如*图 3.14*所示：![图 3.14 – RHOSTS 选项](img/B17389_03_014.jpg)
 
     图 3.14 – RHOSTS 选项
 
-1.  我们可以通过运行以下命令设置**RHOSTS**选项：
+1.  我们可以通过运行以下命令设置`RHOSTS`选项：
 
-    **set RHOSTS <IP-ADDRESS>**
+    `set RHOSTS <IP-ADDRESS>`
 
-1.  设置完**RHOSTS**选项后，我们可以使用以下命令运行辅助模块：
+1.  设置完`RHOSTS`选项后，我们可以使用以下命令运行辅助模块：
 
-    **run**
+    `run`
 
     如*图 3.15*所示，我们的 Metasploitable3 虚拟机易受 EternalBlue 漏洞的攻击：
 
@@ -308,11 +308,11 @@ ls -al /usr/share/metasploit-framework
 
 ### Metasploitable2 漏洞
 
-与 Metasploitable3 类似，我们可以分析在**msfconsole**中导入的 Metasploitable2 虚拟机的 Nmap 结果。让我们执行以下步骤：
+与 Metasploitable3 类似，我们可以分析在`msfconsole`中导入的 Metasploitable2 虚拟机的 Nmap 结果。让我们执行以下步骤：
 
-1.  要显示 Metasploitable2 上运行的服务及其版本，我们可以在**msfconsole**中使用以下命令：
+1.  要显示 Metasploitable2 上运行的服务及其版本，我们可以在`msfconsole`中使用以下命令：
 
-    **services <IP-ADDRESS>**
+    `services <IP-ADDRESS>`
 
     如*图 3.16*所示，Metasploitable2 上有多个服务正在运行。鉴于服务版本，许多服务是过时的。我们还可以推断该服务器正在运行较旧版本的 Ubuntu：
 
@@ -322,19 +322,19 @@ ls -al /usr/share/metasploit-framework
 
     图 3.16 – Metasploitable2 服务
 
-1.  我们可以利用一个名为 **searchsploit** 的有用工具，它是 Kali Linux 中预装的，可以帮助我们找到与目标上运行的特定服务版本相关的潜在漏洞。我们可以通过运行以下命令来实现：
+1.  我们可以利用一个名为 `searchsploit` 的有用工具，它是 Kali Linux 中预装的，可以帮助我们找到与目标上运行的特定服务版本相关的潜在漏洞。我们可以通过运行以下命令来实现：
 
     **searchsploit <服务名称和版本>**
 
     注意
 
-    **Searchsploit** 是一个工具，可以让你在 **exploit-db** 上搜索可用的漏洞，而不必手动访问 **exploit-db** 网站。
+    `Searchsploit` 是一个工具，可以让你在 `exploit-db` 上搜索可用的漏洞，而不必手动访问 `exploit-db` 网站。
 
 1.  如果我们使用 searchsploit 扫描影响 *Samba smbd V3.0.20* 服务的漏洞，我们会发现它容易受到命令执行攻击，并且有一个相应的 Metasploit 模块可以用来利用这个漏洞。首先，你需要运行以下命令：
 
-    **searchsploit samba 3.0.20**
+    `searchsploit samba 3.0.20`
 
-    *图 3.17* 概述了针对 Samba **smbd V3.0.20** 可用的各种漏洞。我们将使用第二个漏洞，该漏洞有一个可用的 Metasploit 模块：
+    *图 3.17* 概述了针对 Samba `smbd V3.0.20` 可用的各种漏洞。我们将使用第二个漏洞，该漏洞有一个可用的 Metasploit 模块：
 
 ![图 3.17 – Metasploitable2 漏洞](img/B17389_03_017.jpg)
 
@@ -352,43 +352,43 @@ ls -al /usr/share/metasploit-framework
 
 在上一部分中，我们已经能够识别并验证 *EternalBlue* 漏洞作为 Metasploitable3 主机内的潜在访问路径。让我们看看如何使用这个漏洞来获得访问权限：
 
-1.  第一步是启动 **msfconsole**，并通过运行以下命令搜索 *EternalBlue* 漏洞模块：
+1.  第一步是启动 `msfconsole`，并通过运行以下命令搜索 *EternalBlue* 漏洞模块：
 
-    **search eternalblue**
+    `search eternalblue`
 
-1.  我们将使用的模块是名为 **exploit/windows/smb/ms17_010_eternalblue** 的利用模块，如下图所示：![图 3.18 – Metasploitable3 eternalblue 漏洞    ](img/B17389_03_018.jpg)
+1.  我们将使用的模块是名为 `exploit/windows/smb/ms17_010_eternalblue` 的利用模块，如下图所示：![图 3.18 – Metasploitable3 eternalblue 漏洞    ](img/B17389_03_018.jpg)
 
     图 3.18 – Metasploitable3 eternalblue 漏洞
 
 1.  使用此模块时，我们将运行以下命令：
 
-    **use exploit/windows/smb/ms17_010_eternalblue**
+    `use exploit/windows/smb/ms17_010_eternalblue`
 
-1.  在指定模块后，我们需要配置模块选项。我们需要修改的主要选项是 **RHOSTS** 选项。**RHOSTS** 选项用于指定目标 IP 地址，如以下截图所示：![图 3.19 – EternalBlue 模块选项](img/B17389_03_019.jpg)
+1.  在指定模块后，我们需要配置模块选项。我们需要修改的主要选项是 `RHOSTS` 选项。`RHOSTS` 选项用于指定目标 IP 地址，如以下截图所示：![图 3.19 – EternalBlue 模块选项](img/B17389_03_019.jpg)
 
     图 3.19 – EternalBlue 模块选项
 
-1.  我们可以通过运行以下命令来设置 **RHOSTS** 选项：
+1.  我们可以通过运行以下命令来设置 `RHOSTS` 选项：
 
-    **set RHOSTS <IP-ADDRESS>**
+    `set RHOSTS <IP-ADDRESS>`
 
 1.  我们还可以设置要使用的**有效载荷**和*有效载荷监听器*选项，如*图 3.20*所示。我们使用模块指定的默认选项。
 
-1.  设置 **RHOSTS** 选项后，我们可以使用以下命令运行辅助模块：
+1.  设置 `RHOSTS` 选项后，我们可以使用以下命令运行辅助模块：
 
-    **run**
+    `run`
 
-1.  如果漏洞利用成功，我们应该在目标系统上获得一个**Meterpreter**会话，如下面截图所示：![图 3.20 – 永恒之蓝漏洞利用成功    ](img/B17389_03_020.jpg)
+1.  如果漏洞利用成功，我们应该在目标系统上获得一个`Meterpreter`会话，如下面截图所示：![图 3.20 – 永恒之蓝漏洞利用成功    ](img/B17389_03_020.jpg)
 
     图 3.20 – 永恒之蓝漏洞利用成功
 
     什么是 Meterpreter？
 
-    **Meterpreter** 是一个高级有效载荷，利用内存中的**动态链接库**（**DLL**）注入，提供攻击者一个高级交互式 shell，可以用来探索目标系统、执行系统命令和执行代码。
+    `Meterpreter` 是一个高级有效载荷，利用内存中的**动态链接库**（**DLL**）注入，提供攻击者一个高级交互式 shell，可以用来探索目标系统、执行系统命令和执行代码。
 
-1.  **Meterpreter Shell** 使我们能够探索系统并执行命令。然而，我们仍然需要设置持久化，以防我们的连接被中断或系统重启。我们可以通过使用 Metasploit 中的持久化模块来实现这一点。然而，在使用此模块之前，我们需要通过运行以下命令将我们的*Meterpreter*会话转入**后台**：
+1.  `Meterpreter Shell` 使我们能够探索系统并执行命令。然而，我们仍然需要设置持久化，以防我们的连接被中断或系统重启。我们可以通过使用 Metasploit 中的持久化模块来实现这一点。然而，在使用此模块之前，我们需要通过运行以下命令将我们的*Meterpreter*会话转入**后台**：
 
-    **background**
+    `background`
 
     *图 3.21* 概述了一个活动的 Meterpreter 会话列表及其相关详细信息：
 
@@ -398,15 +398,15 @@ ls -al /usr/share/metasploit-framework
 
 1.  将 Meterpreter 会话转入后台后，我们可以通过运行以下命令加载持久化模块：
 
-    **use exploit/windows/local/persistence**
+    `use exploit/windows/local/persistence`
 
-1.  现在我们需要配置模块选项。在这种情况下，我们需要通过运行以下命令来更改**SESSION**选项：
+1.  现在我们需要配置模块选项。在这种情况下，我们需要通过运行以下命令来更改`SESSION`选项：
 
-    **set SESSION 1**
+    `set SESSION 1`
 
-    此外，我们还需要更改有效载荷选项，特别是**LPORT**选项，可以通过运行以下命令来完成：
+    此外，我们还需要更改有效载荷选项，特别是`LPORT`选项，可以通过运行以下命令来完成：
 
-    **set LPORT 4443**
+    `set LPORT 4443`
 
     *图 3.22* 概述了持久化模块的各种选项。突出显示的选项是需要更改的值：
 
@@ -416,7 +416,7 @@ ls -al /usr/share/metasploit-framework
 
 1.  设置模块选项后，我们可以使用以下命令运行模块：
 
-    **run**
+    `run`
 
 1.  如果成功，持久化模块应安装**VBS 脚本**并将其设置为自启动注册表项，如*图 3.23*所示：
 
@@ -424,17 +424,17 @@ ls -al /usr/share/metasploit-framework
 
 图 3.23 – 持久化模块成功
 
-我们已成功利用漏洞并在 Metasploitable3 主机上设置了持久化。接下来，我们将学习如何利用**Metasploitable2**，也就是我们的 Linux 主机。
+我们已成功利用漏洞并在 Metasploitable3 主机上设置了持久化。接下来，我们将学习如何利用`Metasploitable2`，也就是我们的 Linux 主机。
 
 ## 利用 Metasploitable2
 
 在*信息收集与足迹分析*部分，我们能够识别出针对*Samba smbd 3.0.20* 服务的漏洞利用。让我们看看如何使用这个漏洞来获取访问权限：
 
-1.  第一步是启动 **msfconsole**，并通过运行以下命令搜索 **Samba 3.0.20** 利用模块：
+1.  第一步是启动 `msfconsole`，并通过运行以下命令搜索 `Samba 3.0.20` 利用模块：
 
     **搜索 samba 3.0.20**
 
-1.  我们将使用的模块是利用模块，名为 **exploit/multi/samba/usermap_script**，如下图所示：![图 3.24 – Metasploitable2 利用模块](img/B17389_03_024.jpg)
+1.  我们将使用的模块是利用模块，名为 `exploit/multi/samba/usermap_script`，如下图所示：![图 3.24 – Metasploitable2 利用模块](img/B17389_03_024.jpg)
 
     ](Images/B17389_03_024.jpg)
 
@@ -444,19 +444,19 @@ ls -al /usr/share/metasploit-framework
 
     **使用 exploit/multi/samba/usermap_script**
 
-1.  在指定模块后，我们需要配置模块选项。我们需要修改的主要选项是 **RHOSTS** 选项。**RHOSTS** 选项用于指定目标 IP 地址，如 *图 3.25* 所示：![图 3.25 – Metasploitable2 利用模块选项](img/B17389_03_025.jpg)
+1.  在指定模块后，我们需要配置模块选项。我们需要修改的主要选项是 `RHOSTS` 选项。`RHOSTS` 选项用于指定目标 IP 地址，如 *图 3.25* 所示：![图 3.25 – Metasploitable2 利用模块选项](img/B17389_03_025.jpg)
 
     ](Images/B17389_03_025.jpg)
 
     图 3.25 – Metasploitable2 利用模块选项
 
-1.  我们可以通过运行以下命令来设置 **RHOSTS** 选项：
+1.  我们可以通过运行以下命令来设置 `RHOSTS` 选项：
 
     **设置 RHOSTS <IP-ADDRESS>**
 
 1.  我们还可以设置将要使用的负载以及负载监听器选项，如 *图 3.25* 所示。我们使用模块指定的默认选项。
 
-1.  设置 **RHOSTS** 选项后，我们可以使用以下命令运行辅助模块：
+1.  设置 `RHOSTS` 选项后，我们可以使用以下命令运行辅助模块：
 
     **运行**
 
@@ -464,7 +464,7 @@ ls -al /usr/share/metasploit-framework
 
     图 3.26 – Metasploitable2 命令 shell
 
-1.  我们可以使用命令 shell 会话来运行系统命令并探索系统。然而，为了获得更稳定的访问，我们需要将命令 shell 升级为 meterpreter 会话。我们可以通过将命令 shell 会话移到后台来实现。这可以通过使用键盘组合 **Ctrl + Z** 完成，如 *图 3.27* 所示：![图 3.27 – Metasploitable2 后台命令 shell](img/B17389_03_027.jpg)
+1.  我们可以使用命令 shell 会话来运行系统命令并探索系统。然而，为了获得更稳定的访问，我们需要将命令 shell 升级为 meterpreter 会话。我们可以通过将命令 shell 会话移到后台来实现。这可以通过使用键盘组合 `Ctrl + Z` 完成，如 *图 3.27* 所示：![图 3.27 – Metasploitable2 后台命令 shell](img/B17389_03_027.jpg)
 
     图 3.27 – Metasploitable2 后台命令 shell
 
@@ -472,15 +472,15 @@ ls -al /usr/share/metasploit-framework
 
     **使用 post/multi/manage/shell_to_meterpreter**
 
-1.  现在，我们需要配置模块选项。在这里，我们需要更改 **SESSION** 选项。可以通过运行以下命令来实现：
+1.  现在，我们需要配置模块选项。在这里，我们需要更改 `SESSION` 选项。可以通过运行以下命令来实现：
 
     **设置 SESSION 1**
 
-    此外，我们还可以通过运行以下命令来更改负载选项 **LPORT**：
+    此外，我们还可以通过运行以下命令来更改负载选项 `LPORT`：
 
     **设置 LPORT 4443**
 
-    *图 3.28* 概述了 **shell_to_meterpreter** 模块的可用选项：
+    *图 3.28* 概述了 `shell_to_meterpreter` 模块的可用选项：
 
     ![图 3.28 – shell_to_meterpreter 模块选项](img/B17389_03_028.jpg)
 
@@ -492,7 +492,7 @@ ls -al /usr/share/metasploit-framework
 
     **运行**
 
-1.  如果成功，**shell_to_meterpreter** 模块应当发送一个新阶段并在后台启动一个 meterpreter 会话，如以下截图所示：![图 3.29 – shell_to_meterpreter 模块成功运行](img/B17389_03_029.jpg)
+1.  如果成功，`shell_to_meterpreter` 模块应当发送一个新阶段并在后台启动一个 meterpreter 会话，如以下截图所示：![图 3.29 – shell_to_meterpreter 模块成功运行](img/B17389_03_029.jpg)
 
     ](Images/B17389_03_029.jpg)
 
@@ -500,7 +500,7 @@ ls -al /usr/share/metasploit-framework
 
 1.  我们可以通过运行以下命令切换到这个会话：
 
-    **sessions 2**
+    `sessions 2`
 
 1.  正如在*图 3.30*中所示，我们已成功将命令行 shell 升级为 meterpreter 会话：
 

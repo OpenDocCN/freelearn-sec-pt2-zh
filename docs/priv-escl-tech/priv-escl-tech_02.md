@@ -68,7 +68,7 @@
 
 # Windows 枚举
 
-我们将从 Windows 上手动开始枚举过程，并按照之前列出的类别进行方法。要开始本地枚举过程，您需要确保以 shell 的形式直接访问目标系统。如果您已经按照本书中展示的示例操作，您应该已经在目标系统上建立了一个**meterpreter**会话。
+我们将从 Windows 上手动开始枚举过程，并按照之前列出的类别进行方法。要开始本地枚举过程，您需要确保以 shell 的形式直接访问目标系统。如果您已经按照本书中展示的示例操作，您应该已经在目标系统上建立了一个`meterpreter`会话。
 
 ## 系统枚举
 
@@ -76,9 +76,9 @@
 
 我们可以通过以下步骤开始系统枚举过程：
 
-1.  我们将要运行的大部分命令都是 Windows 命令提示符的本地命令，因此需要在本地 shell 会话中运行。如果您已经有了这样的会话，可以跳过此步骤。或者，如果您正在运行 **meterpreter** 会话，您需要按照以下截图中的步骤运行以下命令，以获取命令提示符会话：
+1.  我们将要运行的大部分命令都是 Windows 命令提示符的本地命令，因此需要在本地 shell 会话中运行。如果您已经有了这样的会话，可以跳过此步骤。或者，如果您正在运行 `meterpreter` 会话，您需要按照以下截图中的步骤运行以下命令，以获取命令提示符会话：
 
-    **shell**
+    `shell`
 
     如下图所示，您应通过命令提示符在目标系统上获得一个活动的 shell，并且应该能够运行 Windows 特定的命令：
 
@@ -86,9 +86,9 @@
 
     图 4.1 – Meterpreter 命令提示符
 
-1.  第一步是枚举操作系统信息。这可以通过运行**systeminfo**命令并将输出通过管道传递给**findstr**工具来限制输出为必要的信息。可以通过运行以下命令来完成：
+1.  第一步是枚举操作系统信息。这可以通过运行`systeminfo`命令并将输出通过管道传递给`findstr`工具来限制输出为必要的信息。可以通过运行以下命令来完成：
 
-    **systeminfo | findstr /B /C:"OS Name" /C:"OS Version"**
+    `systeminfo | findstr /B /C:"OS Name" /C:"OS Version"`
 
     如下截图所示，命令将输出操作系统的名称、版本和架构。这些信息可以与自动化漏洞评估工具结合使用，以确定固有的权限提升漏洞。它对于筛选特定操作系统架构的利用也非常有用。操作系统版本还对于寻找特定版本操作系统的基于内核的漏洞非常有用。
 
@@ -98,9 +98,9 @@
 
     图 4.2 – systeminfo 命令输出
 
-1.  我们还可以使用**systeminfo**命令来确定已安装的 Windows 热修复或补丁。这可以通过运行以下命令来完成：
+1.  我们还可以使用`systeminfo`命令来确定已安装的 Windows 热修复或补丁。这可以通过运行以下命令来完成：
 
-    **systeminfo**
+    `systeminfo`
 
     前述命令的输出如下：
 
@@ -112,11 +112,11 @@
 
     注意
 
-    **systeminfo**命令的默认输出是详细的，提供了操作系统的完整概述。
+    `systeminfo`命令的默认输出是详细的，提供了操作系统的完整概述。
 
 1.  您还可以通过运行以下命令来确定系统上已安装的热修复和补丁：
 
-    **wmic qfe**
+    `wmic qfe`
 
     前述命令的输出如下截图所示：
 
@@ -126,7 +126,7 @@
 
     如前面的截图所示，命令输出了已安装的更新或补丁，并提供了额外的信息，例如补丁安装的日期和安装的用户。
 
-    **HotFixID**可用于确定特定热修复的潜在漏洞和利用。
+    `HotFixID`可用于确定特定热修复的潜在漏洞和利用。
 
     我们还可以在 Windows 10 系统上运行命令，以确定已安装的补丁以及安装的时间，如下图所示：
 
@@ -136,7 +136,7 @@
 
 1.  下一条必须枚举的信息是操作系统的主机名。可以通过运行以下命令来完成：
 
-    **hostname**
+    `hostname`
 
     前述命令的输出如下：
 
@@ -148,7 +148,7 @@
 
 1.  另一个需要枚举的重要信息是系统上附加的驱动器。我们可以通过运行以下命令来完成：
 
-    **wmic logicaldisk get caption**
+    `wmic logicaldisk get caption`
 
     前述命令的输出如下：
 
@@ -158,11 +158,11 @@
 
     图 4.7 – 逻辑磁盘
 
-    如前述截图所示，该命令将输出附加的驱动器列表及其标识符。在此案例中，唯一附加的磁盘是标记为**C:**的系统驱动器。
+    如前述截图所示，该命令将输出附加的驱动器列表及其标识符。在此案例中，唯一附加的磁盘是标记为`C:`的系统驱动器。
 
 1.  枚举当前正在运行的进程信息也很重要。可以通过运行以下命令来完成：
 
-    **tasklist /SVC**
+    `tasklist /SVC`
 
     前述命令的输出如下：
 
@@ -182,9 +182,9 @@
 
 1.  首先，我们需要确定当前正在使用的用户。可以通过运行以下命令来实现：
 
-    **whoami**
+    `whoami`
 
-    如果你有管理员权限，你的用户名应该是**nt authority**，如下图所示：
+    如果你有管理员权限，你的用户名应该是`nt authority`，如下图所示：
 
     ![图 4.9 - whoami](img/B17389_04_009.jpg)
 
@@ -194,7 +194,7 @@
 
 1.  我们还可以通过运行以下命令来确定我们的权限：
 
-    **whoami /priv**
+    `whoami /priv`
 
     前述命令的输出如下：
 
@@ -208,7 +208,7 @@
 
 1.  要确定我们的帐户所属的组，可以运行以下命令：
 
-    **whoami /groups**
+    `whoami /groups`
 
     前述命令的输出如下：
 
@@ -220,7 +220,7 @@
 
 1.  我们还可以通过运行以下命令枚举系统上活动的用户账户：
 
-    **net user**
+    `net user`
 
     前述命令的输出如下：
 
@@ -230,7 +230,7 @@
 
     如前面的截图所示，该命令将输出系统上所有用户的列表。这提供了关于我们可以以横向方式升级权限的帐户的有用信息。我们还可以通过运行以下命令获取特定用户的附加信息：
 
-    **net user <username>**
+    `net user <username>`
 
     这也有助于我们识别属于管理组并具有管理员特权的帐户，如下图所示：
 
@@ -240,7 +240,7 @@
 
 1.  我们还可以通过运行以下命令确定属于管理组的用户：
 
-    **net localgroup administrators**
+    `net localgroup administrators`
 
     前述命令的输出如下：
 
@@ -256,7 +256,7 @@
 
 1.  第一步涉及枚举目标网络接口及其详细信息。可以通过运行以下命令完成：
 
-    **ipconfig /all**
+    `ipconfig /all`
 
     前述命令的输出如下：
 
@@ -268,7 +268,7 @@
 
 1.  下一步是分析路由表。可以通过运行以下命令完成：
 
-    **route print**
+    `route print`
 
     前述命令的输出如下：
 
@@ -276,9 +276,9 @@
 
     图 4.16 – 路由表
 
-1.  我们还需确定正在运行的服务及其相应的端口。可以通过以下参数运行 **netstat** 命令完成：
+1.  我们还需确定正在运行的服务及其相应的端口。可以通过以下参数运行 `netstat` 命令完成：
 
-    **netstat -ano**
+    `netstat -ano`
 
     前述命令的输出如下：
 
@@ -306,23 +306,23 @@
 
 在本节中，我们将使用手动技术，如字符串匹配。让我们开始吧：
 
-1.  我们可以利用**findstr**实用程序来定位文件中的特定字符串。例如，我们可以运行以下命令，在常用的文件扩展名文件中查找**password**字符串：
+1.  我们可以利用`findstr`实用程序来定位文件中的特定字符串。例如，我们可以运行以下命令，在常用的文件扩展名文件中查找`password`字符串：
 
-    **findstr /si password *.doc *.txt *.ini *.config**
+    `findstr /si password *.doc *.txt *.ini *.config`
 
     这对于查找用户或管理员存储的明文密码很有用，这些密码可能包含其他帐户或服务的密码。
 
 1.  我们还可以搜索与服务相关的特定字符串，如**安全外壳**（**SSH**）和**文件传输协议**（**FTP**）。这可以通过运行以下命令完成：
 
-    **dir /s *pass* == *cred* == *ssh* == *.config***
+    `dir /s *pass* == *cred* == *ssh* == *.config*`
 
 1.  我们可以通过运行以下查询，在注册表中搜索特定程序和软件的密码：
 
-    **reg query HKLM /f password /t REG_SZ /s**
+    `reg query HKLM /f password /t REG_SZ /s`
 
-    这将显示包含**password**字符串的所有条目，位于**HKEY_LOCAL_MACHINE**注册表中，如下图所示。你也可以对**HKEY_CURRENT_USER**注册表运行相同的查询。这可以通过运行以下命令完成：
+    这将显示包含`password`字符串的所有条目，位于`HKEY_LOCAL_MACHINE`注册表中，如下图所示。你也可以对`HKEY_CURRENT_USER`注册表运行相同的查询。这可以通过运行以下命令完成：
 
-    **reg query HKCU /f password /t REG_SZ /s**
+    `reg query HKCU /f password /t REG_SZ /s`
 
     上述命令的输出如下：
 
@@ -338,7 +338,7 @@ reg query "HKCU\Software\SimonTatham\PuTTY\Sessions\<User>"
 
 注意
 
-用户 Simon Tatham 在 **HKCU\Software\SimonTatham\PuTTY\Sessions\<User>** 注册表目录中引用了 PuTTY 程序的开发者。
+用户 Simon Tatham 在 `HKCU\Software\SimonTatham\PuTTY\Sessions\<User>` 注册表目录中引用了 PuTTY 程序的开发者。
 
 现在我们已经了解如何使用手动查询技术从 Windows 中枚举密码，我们需要识别并列出当前在系统上启用的安全功能。
 
@@ -350,7 +350,7 @@ reg query "HKCU\Software\SimonTatham\PuTTY\Sessions\<User>"
 
 1.  首先，在复制任何文件之前，您需要确定 Windows Defender 的状态。这可以通过使用服务控制命令来完成：
 
-    **sc query windefend**
+    `sc query windefend`
 
     由于 Metasploitable3 虚拟机的设计故意存在漏洞，因此 Windows Defender 没有启用，因此我们必须使系统处于易受攻击和未受保护的状态，如下图所示：
 
@@ -368,7 +368,7 @@ reg query "HKCU\Software\SimonTatham\PuTTY\Sessions\<User>"
 
 1.  要识别第三方杀毒软件解决方案，您可以列出系统上正在运行的服务。这可以通过运行以下命令来完成：
 
-    **sc queryex type=service**
+    `sc queryex type=service`
 
     如果有第三方杀毒软件正在运行，您应该通过分析服务名称来识别它，如下图所示。在这里，我已经能够检测到一个与 Windows Defender 一同运行的第二个第三方杀毒程序：
 
@@ -378,7 +378,7 @@ reg query "HKCU\Software\SimonTatham\PuTTY\Sessions\<User>"
 
 1.  我们还需要枚举有关防火墙状态和配置的信息。这将帮助我们检测开放的端口，并可以利用这些端口进行进一步攻击。可以通过运行以下命令来完成：
 
-    **netsh firewall show state**
+    `netsh firewall show state`
 
     上述命令的输出如下：
 
@@ -402,9 +402,9 @@ reg query "HKCU\Software\SimonTatham\PuTTY\Sessions\<User>"
 
 本地漏洞建议工具是 Metasploit 的一个后期利用模块，用于根据操作系统信息扫描目标是否存在潜在的漏洞。它自动化了系统信息的枚举过程，并根据操作系统的版本和已安装的补丁提供漏洞建议。让我们来看看：
 
-1.  要使用该模块，您需要在目标系统上获得**meterpreter**访问权限，然后将**meterpreter**会话移到后台并加载**local_exploit_suggester**模块。这可以通过运行以下命令来完成：
+1.  要使用该模块，您需要在目标系统上获得`meterpreter`访问权限，然后将`meterpreter`会话移到后台并加载`local_exploit_suggester`模块。这可以通过运行以下命令来完成：
 
-    **use post/multi/recon/local_exploit_suggester**
+    `use post/multi/recon/local_exploit_suggester`
 
 1.  现在，您需要配置模块选项。我们需要设置的唯一选项是会话号，如下图所示。这可以通过运行以下命令来完成：
 
@@ -430,11 +430,11 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 它通过将 Windows 补丁级别与 Microsoft 漏洞数据库进行比较，来检测系统中的漏洞。它的工作原理是通过识别系统中缺失的补丁来实现这一点。
 
-它不需要在目标系统上本地运行，只需要目标系统上 **systeminfo** 命令的输出。我们开始吧：
+它不需要在目标系统上本地运行，只需要目标系统上 `systeminfo` 命令的输出。我们开始吧：
 
 1.  第一步是克隆 [`github.com/AonCyberLabs/Windows-Exploit-Suggester`](https://github.com/AonCyberLabs/Windows-Exploit-Suggester) 上的仓库到我们的 Kali 虚拟机。这可以通过运行以下命令来完成：
 
-    **git clone https://github.com/AonCyberLabs/Windows-Exploit-Suggester.git**
+    `git clone https://github.com/AonCyberLabs/Windows-Exploit-Suggester.git`
 
     该工具需要 Python2 才能工作，因为它使用了多个 Python2 模块。
 
@@ -444,9 +444,9 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  克隆仓库后，您需要安装所需的依赖项。可以通过运行以下命令来完成：
 
-    **sudo apt-get install python-xlrd**
+    `sudo apt-get install python-xlrd`
 
-    **pip install xlrd --upgrade**
+    `pip install xlrd --upgrade`
 
 1.  安装完依赖项后，您需要通过运行脚本并使用以下标志来更新数据库：
 
@@ -464,11 +464,11 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
     图 4.27 – Windows Exploit Suggester 数据库文件
 
-1.  下一步是通过运行 **systeminfo** 命令来枚举目标系统信息，之后需要将该命令的输出复制并粘贴到 **.txt** 文件中。
+1.  下一步是通过运行 `systeminfo` 命令来枚举目标系统信息，之后需要将该命令的输出复制并粘贴到 `.txt` 文件中。
 
-1.  在保存 **systeminfo** 命令的输出到 **.txt** 文件后，您可以运行脚本来检查漏洞，如下所示：
+1.  在保存 `systeminfo` 命令的输出到 `.txt` 文件后，您可以运行脚本来检查漏洞，如下所示：
 
-    **./windows-exploit-suggester.py --database <database-file>.xlsx --systeminfo <systeminfo-output>.txt**
+    `./windows-exploit-suggester.py --database <database-file>.xlsx --systeminfo <systeminfo-output>.txt`
 
     此命令的输出如下：
 
@@ -476,7 +476,7 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 图 4.28 – Windows Exploit Suggester 输出
 
-如前面的截图所示，脚本将执行扫描，并输出所有潜在漏洞及相关信息的列表，例如 POC 参考和可在 **exploit-db** 或 GitHub 上找到的利用代码或模块。
+如前面的截图所示，脚本将执行扫描，并输出所有潜在漏洞及相关信息的列表，例如 POC 参考和可在 `exploit-db` 或 GitHub 上找到的利用代码或模块。
 
 这些信息将在下一章中派上用场，当我们探索 Windows 上的内核利用时。
 
@@ -488,11 +488,11 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 +   **Windows 特权提升超级脚本 (winPEAS)**: [`github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe`](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS/winPEASexe)
 
-+   **Sherlock**: [`github.com/rasta-mouse/Sherlock`](https://github.com/rasta-mouse/Sherlock)
++   `Sherlock`: [`github.com/rasta-mouse/Sherlock`](https://github.com/rasta-mouse/Sherlock)
 
-+   **Just Another Windows Enumeration Script** (**JAWS**): [`github.com/411Hall/JAWS`](https://github.com/411Hall/JAWS)
++   `Just Another Windows Enumeration Script** (`JAWS**): [`github.com/411Hall/JAWS`](https://github.com/411Hall/JAWS)
 
-+   **Watson**: [`github.com/rasta-mouse/Watson`](https://github.com/rasta-mouse/Watson)
++   `Watson`: [`github.com/rasta-mouse/Watson`](https://github.com/rasta-mouse/Watson)
 
 现在我们知道如何在 Windows 上执行本地枚举，我们将学习如何在 Linux 上执行本地枚举。
 
@@ -512,19 +512,19 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  我们需要枚举的第一项信息是操作系统的信息。可以通过运行以下命令来完成：
 
-    **cat /etc/*-release**
+    `cat /etc/*-release`
 
-    你还可以使用 **Linux Standard Base** (**LSB**) 信息。可以通过运行以下命令来完成：
+    你还可以使用 `Linux Standard Base** (`LSB**) 信息。可以通过运行以下命令来完成：
 
-    **lsb_release -a**
+    `lsb_release -a`
 
     如果这些命令无效，你可以使用 hostname systemd 实用程序，运行以下命令：
 
-    **hostnamectl**
+    `hostnamectl`
 
 1.  你还需要知道内核版本和操作系统架构。这将有助于确定漏洞并寻找内核漏洞。可以通过运行以下命令来完成：
 
-    **uname -a**
+    `uname -a`
 
     前述命令的输出如下：
 
@@ -536,7 +536,7 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  你还需要识别作为 root 用户运行的进程。这很有用，因为你可以利用这些进程作为 root 用户执行任意命令。可以通过运行以下命令来完成：
 
-    **ps aux | grep root**
+    `ps aux | grep root`
 
     如下截图所示，这将列出所有作为 root 用户运行的进程：
 
@@ -546,51 +546,51 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  Linux 上的另一个潜在特权提升访问向量是已安装的程序和软件。我们可以通过列出以下目录的内容来确定系统上已安装的软件：
 
-    a) **/usr/local**
+    a) `/usr/local`
 
-    b) **/usr/local/bin**
+    b) `/usr/local/bin`
 
-    c) **/opt/**
+    c) `/opt/`
 
-    d) **/var**
+    d) `/var`
 
-    e) **/usr/src**
+    e) `/usr/src`
 
     你可以通过运行以下命令列出 Debian 系统上已安装的包：
 
-    **dpkg -l**
+    `dpkg -l`
 
     如果目标系统运行的是 RHEL 或 Fedora，可以通过运行以下命令列出已安装的软件：
 
-    **rpm -qa**
+    `rpm -qa`
 
     现在我们已经枚举了操作系统版本和内核版本的信息，接下来我们将学习如何在 Linux 上枚举用户和组信息。
 
 1.  我们还可以枚举 cron 中的信息，确定哪些 cron 作业正在运行，以及是否可以利用这些作业来执行命令或二进制文件。可以通过运行以下命令来完成：
 
-    **crontab -l**
+    `crontab -l`
 
-    **ls -al /var/spool/cron**
+    `ls -al /var/spool/cron`
 
-    **ls -al /etc/ | grep cron**
+    `ls -al /etc/ | grep cron`
 
-    **ls -al /etc/cron***
+    `ls -al /etc/cron*`
 
-    **cat /etc/cron***
+    `cat /etc/cron*`
 
-    **cat /etc/at.allow**
+    `cat /etc/at.allow`
 
-    **cat /etc/at.deny**
+    `cat /etc/at.deny`
 
-    **cat /etc/cron.allow**
+    `cat /etc/cron.allow`
 
-    **cat /etc/cron.deny**
+    `cat /etc/cron.deny`
 
-    **cat /etc/crontab**
+    `cat /etc/crontab`
 
-    **cat /etc/anacrontab**
+    `cat /etc/anacrontab`
 
-    **cat /var/spool/cron/crontabs/root**
+    `cat /var/spool/cron/crontabs/root`
 
 现在我们已经清楚了解目标系统上正在运行的内容，可以开始枚举用户和组信息了。
 
@@ -602,7 +602,7 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  首先，我们需要确定当前正在使用的用户。可以通过运行以下命令来完成：
 
-    **whoami**
+    `whoami`
 
     上述命令的输出如下：
 
@@ -610,15 +610,15 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
     图 4.31 – whoami Linux
 
-    如果你有管理员权限，你的用户名应该是**root**，如前面的截图所示。
+    如果你有管理员权限，你的用户名应该是`root`，如前面的截图所示。
 
     你还可以通过运行以下命令枚举系统中的其他用户账户：
 
-    **cat /etc/passwd**
+    `cat /etc/passwd`
 
 1.  为了确定我们账户所属的组，可以运行以下命令：
 
-    **groups <username>**
+    `groups <username>`
 
     上述命令的输出如下：
 
@@ -630,11 +630,11 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
     你还可以通过运行以下命令列出系统中的组：
 
-    **cat /etc/group**
+    `cat /etc/group`
 
 1.  你可以搜索可以被利用的 SUID 二进制文件，并用 root 权限运行这些文件来执行任意命令。可以通过运行以下命令来完成：
 
-    **find / -perm -u=s -type f 2>/dev/null**
+    `find / -perm -u=s -type f 2>/dev/null`
 
 现在，让我们学习如何从目标系统枚举网络信息。
 
@@ -644,7 +644,7 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  第一部是枚举目标网络接口及其详细信息。可以通过运行以下命令来完成：
 
-    **ifconfig**
+    `ifconfig`
 
     上述命令的输出如下：
 
@@ -654,7 +654,7 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
 1.  下一步是分析路由表。可以通过运行以下命令来完成：
 
-    **route**
+    `route`
 
     上述命令的输出如下：
 
@@ -664,9 +664,9 @@ Windows 漏洞建议工具是一个用 Python 开发的开源工具，它允许�
 
     图 4.34 – Linux 路由表
 
-1.  我们还需要确定运行的服务及其各自的端口。可以通过运行带有以下参数的**netstat**命令来完成：
+1.  我们还需要确定运行的服务及其各自的端口。可以通过运行带有以下参数的`netstat`命令来完成：
 
-    **netstat -ant**
+    `netstat -ant`
 
     上述命令的输出如下：
 
@@ -692,15 +692,15 @@ LinEnum 是一个 bash 脚本，自动化了 Linux 上的本地枚举过程，�
 
 1.  要使用该工具，我们需要从 GitHub 下载 bash 脚本并将其传输到目标系统。如果目标系统可以访问互联网，我们可以直接通过运行以下命令下载脚本：
 
-    **wget https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh**
+    `wget https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh`
 
-1.  如果目标系统阻止任何传入连接，我们可以通过**meterpreter**从本地系统上传脚本到目标，如下图所示：![图 4.36 – LinEnum 下载](img/B17389_04_036.jpg)
+1.  如果目标系统阻止任何传入连接，我们可以通过`meterpreter`从本地系统上传脚本到目标，如下图所示：![图 4.36 – LinEnum 下载](img/B17389_04_036.jpg)
 
     图 4.36 – LinEnum 下载
 
 1.  然后，我们可以使用以下参数执行脚本：
 
-    **./LinEnum.sh -t -r <report-name>**
+    `./LinEnum.sh -t -r <report-name>`
 
     这将枚举所有相关信息，并显示可能被利用的有用漏洞，如下图所示：
 
@@ -710,7 +710,7 @@ LinEnum 是一个 bash 脚本，自动化了 Linux 上的本地枚举过程，�
 
 1.  我们还可以使用关键词功能来枚举系统上的密码。可以通过运行以下命令来实现：
 
-    **./LinEnum.sh -k password**
+    `./LinEnum.sh -k password`
 
 现在，让我们学习如何枚举目标系统上的潜在漏洞。
 
@@ -718,13 +718,13 @@ LinEnum 是一个 bash 脚本，自动化了 Linux 上的本地枚举过程，�
 
 Linux Exploit Suggester 是一个开源 Shell 脚本，允许您扫描 Linux 系统中的潜在内核漏洞，并提供相应的漏洞利用或漏洞利用模块。让我们开始吧：
 
-1.  脚本需要在目标系统上本地运行。首先，我们需要将脚本下载到目标系统。这可以通过**wget**命令完成，如下所示：
+1.  脚本需要在目标系统上本地运行。首先，我们需要将脚本下载到目标系统。这可以通过`wget`命令完成，如下所示：
 
-    **wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -O les.sh**
+    `wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -O les.sh`
 
 1.  在将脚本下载到目标系统后，您需要确保该脚本具有可执行权限。可以通过运行以下命令来完成此操作：
 
-    **chmod +x les.sh**
+    `chmod +x les.sh`
 
 1.  现在，您可以运行脚本以开始扫描过程，之后脚本将输出潜在漏洞的列表以及相应的 POC 和漏洞利用方法。
 
@@ -738,7 +738,7 @@ Linux Exploit Suggester 是一个开源 Shell 脚本，允许您扫描 Linux 系
 
 +   Linux Smart Enumeration: [`github.com/diego-treitos/linux-smart-enumeration`](https://github.com/diego-treitos/linux-smart-enumeration)
 
-+   Linux Priv Checker – **linuxprivchecker.py**: 一个用于 Linux 权限提升检查的脚本
++   Linux Priv Checker – `linuxprivchecker.py`: 一个用于 Linux 权限提升检查的脚本
 
 +   权限提升脚本: [`github.com/carlospolop/privilege-escalation-awesome-scripts-suite`](https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite)
 
