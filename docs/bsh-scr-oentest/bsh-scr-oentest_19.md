@@ -2,7 +2,7 @@
 
 # 第十六章：渗透测试人员的 DevSecOps
 
-**DevSecOps** 是 *开发*、*安全* 和 *运维* 的结合体。DevSecOps 代表了组织在软件开发中如何看待安全的转变。将安全实践贯穿整个开发生命周期，有助于早期发现并缓解安全问题。
+`DevSecOps` 是 *开发*、*安全* 和 *运维* 的结合体。DevSecOps 代表了组织在软件开发中如何看待安全的转变。将安全实践贯穿整个开发生命周期，有助于早期发现并缓解安全问题。
 
 在本章中，我们将探索渗透测试人员在 DevSecOps 框架中的角色。我们将研究如何使用 Bash 脚本来自动化和增强安全流程。从将安全检查集成到**持续集成/持续交付**（**CI/CD**）管道，到构建定制的安全工具，我们将涵盖能帮助渗透测试人员在 DevSecOps 环境中应用的实用技术。
 
@@ -32,11 +32,11 @@
 
 +   两个虚拟 CPU
 
-一旦你拥有符合或超过前述规格的 Kali 安装，运行本章 GitHub 目录中的**ch16_setup_environment.sh**脚本。我们将在本章后续部分回顾这个脚本。
+一旦你拥有符合或超过前述规格的 Kali 安装，运行本章 GitHub 目录中的`ch16_setup_environment.sh`脚本。我们将在本章后续部分回顾这个脚本。
 
 接下来，配置系统邮件：
 
-1.  运行**ch16_setup_mail.sh**脚本。该脚本可以在本章的 GitHub 仓库目录中找到。
+1.  运行`ch16_setup_mail.sh`脚本。该脚本可以在本章的 GitHub 仓库目录中找到。
 
 1.  测试给自己发送邮件：
 
@@ -46,17 +46,17 @@
 
 1.  检查你的邮件：
 
-    1.  在终端输入**mail**命令
+    1.  在终端输入`mail`命令
 
     1.  按*Enter* / *Return* 键读取一条消息
 
-    1.  输入**q**退出阅读消息
+    1.  输入`q`退出阅读消息
 
-    1.  输入**d**删除一条消息
+    1.  输入`d`删除一条消息
 
-    1.  输入**h**再次显示消息列表
+    1.  输入`h`再次显示消息列表
 
-    1.  输入**q**退出邮件程序
+    1.  输入`q`退出邮件程序
 
 在了解了先决条件后，让我们深入学习吧！
 
@@ -68,7 +68,7 @@
 
 尽管 DevOps 和安全性看似是分开的，但它们在现代软件开发中正日益融合。DevOps 专注于协作、自动化和持续交付，已经改变了组织处理软件开发和部署的方式。然而，这一转变也带来了新的安全挑战，必须加以解决，以确保交付软件的完整性和可靠性。
 
-传统的安全实践通常涉及手动测试和审核，这些通常在开发周期的最后阶段进行。此方法既耗时又资源密集，且通常导致安全问题在过程中被发现较晚。这导致了昂贵的修复和发布延迟。随着 DevOps 的采用，重点转向从一开始就将安全性集成到开发过程中。这促生了**DevSecOps**的概念。
+传统的安全实践通常涉及手动测试和审核，这些通常在开发周期的最后阶段进行。此方法既耗时又资源密集，且通常导致安全问题在过程中被发现较晚。这导致了昂贵的修复和发布延迟。随着 DevOps 的采用，重点转向从一开始就将安全性集成到开发过程中。这促生了`DevSecOps`的概念。
 
 DevSecOps 将安全性集成到软件开发生命周期的每个阶段。这促进了开发人员、运维人员和安全团队之间的共同责任。通过将安全实践、工具和自动化嵌入到 DevOps 中，组织可以及早发现漏洞，最小化安全风险，并通过设计交付安全的软件。
 
@@ -104,11 +104,11 @@ DevSecOps 将安全性集成到软件开发生命周期的每个阶段。这促�
 
 # 使用 Bash 配置 CI/CD 管道
 
-在本节中，我们将介绍如何使用 Bash 脚本设置 CI/CD 测试实验环境。这将自动化安装本章剩余练习所需的所有工具。该脚本可以在 GitHub 上找到，文件名为**ch16_setup_environment.sh**。
+在本节中，我们将介绍如何使用 Bash 脚本设置 CI/CD 测试实验环境。这将自动化安装本章剩余练习所需的所有工具。该脚本可以在 GitHub 上找到，文件名为`ch16_setup_environment.sh`。
 
 ## 初始设置和错误处理
 
-这段代码设置了错误处理行为，防止在发生错误时脚本继续执行。这些安全措施有助于尽早捕捉问题，并防止级联故障，从而避免系统处于不一致的状态。与往常一样，代码以熟悉的**shebang**行开始：
+这段代码设置了错误处理行为，防止在发生错误时脚本继续执行。这些安全措施有助于尽早捕捉问题，并防止级联故障，从而避免系统处于不一致的状态。与往常一样，代码以熟悉的`shebang`行开始：
 
 ```
  #!/usr/bin/env bash
@@ -118,17 +118,17 @@ IFS=$'\n\t'
 SCRIPT_NAME=$(basename "$0")
 ```
 
-本节内容确立了核心脚本行为。**set** 命令配置了重要的安全功能：
+本节内容确立了核心脚本行为。`set` 命令配置了重要的安全功能：
 
-+   **-e** : 在发生任何错误时退出
++   `-e` : 在发生任何错误时退出
 
-+   **-u** : 将未设置的变量视为错误
++   `-u` : 将未设置的变量视为错误
 
-+   **-o pipefail** : 如果管道中的任何命令失败，返回错误
++   `-o pipefail` : 如果管道中的任何命令失败，返回错误
 
 内部字段分隔符（**IFS**）设置为换行符和制表符，防止在空格处拆分单词。
 
-请注意，日志文件可以在**/var/log/devsecops_setup.log** 找到。如果脚本失败，请检查日志文件的末尾。
+请注意，日志文件可以在`/var/log/devsecops_setup.log` 找到。如果脚本失败，请检查日志文件的末尾。
 
 ## 日志记录函数
 
@@ -155,9 +155,9 @@ log_warning() {
 
 1.  消息通过**日期**进行时间戳标记。
 
-1.  **tee -a** 将日志写入日志文件和标准输出。
+1.  `tee -a` 将日志写入日志文件和标准输出。
 
-1.  错误消息通过**>&2** 定向到标准错误（stderr）。
+1.  错误消息通过`>&2` 定向到标准错误（stderr）。
 
 ## 错误处理程序和初始化
 
@@ -182,11 +182,11 @@ init_logging() {
 
 错误处理系统使用以下功能：
 
-+   一个用于捕获错误的**trap**。trap 是一种机制，允许你在 shell 接收到指定信号或条件时，指定一条或多条命令进行执行。为了捕获错误，可以使用带有**ERR**信号的**trap**命令，当脚本中的命令返回非零退出状态时，会触发该信号。
++   一个用于捕获错误的`trap`。trap 是一种机制，允许你在 shell 接收到指定信号或条件时，指定一条或多条命令进行执行。为了捕获错误，可以使用带有`ERR`信号的`trap`命令，当脚本中的命令返回非零退出状态时，会触发该信号。
 
-+   **handle_error** 函数接收行号和退出代码。
++   `handle_error` 函数接收行号和退出代码。
 
-+   **init_logging** 在需要时创建日志文件并设置权限。
++   `init_logging` 在需要时创建日志文件并设置权限。
 
 ## 系统检查
 
@@ -235,15 +235,15 @@ DevSecOps 环境需要各种开发工具和语言。本节安装核心开发依�
 
 以下是此代码块的拆解：
 
-1.  通过设置环境变量来设置非交互式包安装。这将防止包管理器在安装过程中提示您：**export DEBIAN_FRONTEND=noninteractive**。
+1.  通过设置环境变量来设置非交互式包安装。这将防止包管理器在安装过程中提示您：`export DEBIAN_FRONTEND=noninteractive`。
 
 1.  更新包列表。
 
-1.  使用 **apt-get** 安装开发工具。
+1.  使用 `apt-get` 安装开发工具。
 
-1.  配置 Python 包管理工具 **pipx**。
+1.  配置 Python 包管理工具 `pipx`。
 
-1.  更新 **PATH**，以包括本地二进制文件。
+1.  更新 `PATH`，以包括本地二进制文件。
 
 ## 安全工具安装
 
@@ -264,7 +264,7 @@ DevSecOps 环境需要各种开发工具和语言。本节安装核心开发依�
 
 以下是前面代码的拆解：
 
-1.  下载并安装**OWASP Dependency-Check**
+1.  下载并安装`OWASP Dependency-Check`
 
 1.  从 GitHub API 获取最新的 Trivy 版本
 
@@ -352,7 +352,7 @@ stages:
 
 创建安全且易于维护的 Bash 脚本需要仔细关注防御性编码实践、正确的错误处理和详细的日志记录。让我们构建一个安全扫描脚本，利用我们的 DevSecOps 环境来展示这些原则。
 
-这个脚本可以在 GitHub 上找到，名为**ch16_devsecops_scanner.sh**。让我们将这个脚本分解成核心组件，并查看每个部分。
+这个脚本可以在 GitHub 上找到，名为`ch16_devsecops_scanner.sh`。让我们将这个脚本分解成核心组件，并查看每个部分。
 
 首先，我们将查看脚本初始化和安全措施。本节的目的是如下：
 
@@ -377,19 +377,19 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 REPORT_NAME="security_scan_${TIMESTAMP}"
 ```
 
-**set -euo pipefail** 命令通过修改错误处理方式来增强 Shell 脚本的健壮性：
+`set -euo pipefail` 命令通过修改错误处理方式来增强 Shell 脚本的健壮性：
 
-+   **-e** : 如果脚本中的任何命令以非零状态退出，则导致脚本立即退出
++   `-e` : 如果脚本中的任何命令以非零状态退出，则导致脚本立即退出
 
-    **-u** : 将未设置的变量视为错误，并导致脚本以错误退出
+    `-u` : 将未设置的变量视为错误，并导致脚本以错误退出
 
-+   **-o pipefail** : 确保如果管道中的任何命令失败，脚本都会以非零状态退出，而不仅仅是最后一个命令
++   `-o pipefail` : 确保如果管道中的任何命令失败，脚本都会以非零状态退出，而不仅仅是最后一个命令
 
 这些选项组合有助于早期捕获错误，使脚本更可靠。
 
-**IFS=$'\n\t'** 这一行将 IFS 定界符设置为换行符和制表符，以防止文件名中包含空格时出现单词拆分问题。
+`IFS=$'\n\t'` 这一行将 IFS 定界符设置为换行符和制表符，以防止文件名中包含空格时出现单词拆分问题。
 
-**SCAN_DIR=${1:-"."}** 这一行为**SCAN_DIR**变量赋值，如果存在第一个位置参数（**$1**），则使用该值。如果没有提供**$1**，则默认为**"."**，表示当前目录。
+`SCAN_DIR=${1:-"."}` 这一行为`SCAN_DIR`变量赋值，如果存在第一个位置参数（**$1**），则使用该值。如果没有提供`$1`，则默认为`"."`，表示当前目录。
 
 接下来，让我们查看日志记录函数。本节的目的是执行以下操作：
 
@@ -425,37 +425,37 @@ error_handler() {
 trap 'error_handler ${LINENO} $?' ERR
 ```
 
-**setup_logging()**函数检查日志文件是否存在，如果不存在，则执行以下操作：
+`setup_logging()`函数检查日志文件是否存在，如果不存在，则执行以下操作：
 
-1.  使用**sudo touch**创建它。
+1.  使用`sudo touch`创建它。
 
-1.  设置权限为**644**（所有者可读写，其他用户只能读取）。
+1.  设置权限为`644`（所有者可读写，其他用户只能读取）。
 
-1.  **[[ ! -f "$LOG_FILE" ]]** 测试检查文件是否 *不存在*（**-!**）。
+1.  `[[ ! -f "$LOG_FILE" ]]` 测试检查文件是否 *不存在*（**-!**）。
 
-**log()** 函数是一个多功能的日志记录工具。此函数执行以下功能：
+`log()` 函数是一个多功能的日志记录工具。此函数执行以下功能：
 
 1.  将日志级别作为第一个参数传递。
 
-1.  使用 **shift** 移除级别，将剩余的参数作为消息。
+1.  使用 `shift` 移除级别，将剩余的参数作为消息。
 
-1.  使用 **date** 创建时间戳，格式为 **YYYY-MM-DD HH:MM:SS**。
+1.  使用 `date` 创建时间戳，格式为 `YYYY-MM-DD HH:MM:SS`。
 
-1.  使用 **tee -a** 同时显示 *并* 将日志追加到文件中。
+1.  使用 `tee -a` 同时显示 *并* 将日志追加到文件中。
 
-1.  **$*** 将所有剩余的参数合并为消息。
+1.  `$*` 将所有剩余的参数合并为消息。
 
 这里解释了错误处理设置：
 
-1.  **error_handler** 接受行号和错误代码作为参数。
+1.  `error_handler` 接受行号和错误代码作为参数。
 
-1.  使用 **log** 函数记录错误。
+1.  使用 `log` 函数记录错误。
 
-1.  **trap** 命令捕获任何 **ERR**（错误）信号。
+1.  `trap` 命令捕获任何 `ERR`（错误）信号。
 
-1.  **${LINENO}** 是一个特殊变量，包含当前行号。
+1.  `${LINENO}` 是一个特殊变量，包含当前行号。
 
-1.  **$?** 包含上一个命令的退出代码。
+1.  `$?` 包含上一个命令的退出代码。
 
 验证函数确保环境已正确配置。本节的目的是执行以下操作：
 
@@ -494,7 +494,7 @@ validate_target() {
 }
 ```
 
-**validate_environment** 函数创建一个 **required_tools** 数组，并确保它们在路径中能找到。**validate_target** 函数确保要扫描的目录存在。最后，它检查权限，确保扫描目录可以被读取。
+`validate_environment` 函数创建一个 `required_tools` 数组，并确保它们在路径中能找到。`validate_target` 函数确保要扫描的目录存在。最后，它检查权限，确保扫描目录可以被读取。
 
 扫描函数实现了核心的安全检查。本节的目的是执行以下操作：
 
@@ -514,7 +514,7 @@ validate_target() {
     local output_file="${REPORT_DIR}/${REPORT_NAME}_sast.txt"
 ```
 
-在这里，我们只是记录一个状态消息并设置 **output_file** 变量。
+在这里，我们只是记录一个状态消息并设置 `output_file` 变量。
 
 ```
  if bandit -r "$SCAN_DIR" -f txt -o "$output_file"; then
@@ -527,9 +527,9 @@ validate_target() {
 }
 ```
 
-在前面的代码中，我们使用 **bandit** 执行扫描。Bandit 是一个 **静态应用安全测试**（**SAST**）工具，用于检查 Python 代码中的漏洞。然后，它根据 **bandit** 命令的成功或失败设置返回码。
+在前面的代码中，我们使用 `bandit` 执行扫描。Bandit 是一个 **静态应用安全测试**（**SAST**）工具，用于检查 Python 代码中的漏洞。然后，它根据 `bandit` 命令的成功或失败设置返回码。
 
-在 **perform_dependency_scan** 函数中，我们运行 **dependency-check** 测试软件依赖中的已知漏洞，并根据返回码记录消息：
+在 `perform_dependency_scan` 函数中，我们运行 `dependency-check` 测试软件依赖中的已知漏洞，并根据返回码记录消息：
 
 ```
  perform_dependency_scan() {
@@ -545,7 +545,7 @@ validate_target() {
 }
 ```
 
-**perform_container_scan** 函数扫描 Docker 容器镜像中的安全漏洞。它会查找目录中的所有 Dockerfile，从中构建容器镜像，并使用 Trivy（漏洞扫描工具）检查每个镜像的安全问题。
+`perform_container_scan` 函数扫描 Docker 容器镜像中的安全漏洞。它会查找目录中的所有 Dockerfile，从中构建容器镜像，并使用 Trivy（漏洞扫描工具）检查每个镜像的安全问题。
 
 以下代码块负责生成报告摘要，并包括控制代码执行流程的主函数：
 
@@ -574,19 +574,19 @@ validate_target() {
 }
 ```
 
-最后，执行结果处理函数**generate_summary** 和 **main** 函数。
+最后，执行结果处理函数`generate_summary` 和 `main` 函数。
 
-**generate_summary** 函数执行以下步骤：
+`generate_summary` 函数执行以下步骤：
 
 1.  创建一个 Markdown 格式的摘要报告
 
 1.  提取每种扫描类型的关键发现
 
-1.  使用 **tail** 显示最新的 SAST 发现
+1.  使用 `tail` 显示最新的 SAST 发现
 
-1.  使用 **grep** 查找关键依赖项漏洞
+1.  使用 `grep` 查找关键依赖项漏洞
 
-1.  使用 **jq** 解析容器扫描的 JSON，显示高危和严重问题
+1.  使用 `jq` 解析容器扫描的 JSON，显示高危和严重问题
 
 1.  当没有发现问题时提供后备消息
 
@@ -625,9 +625,9 @@ validate_target() {
 }
 ```
 
-唯一没有在前面的代码中看到的就是 Markdown 格式。在 Markdown 中，代码块以三反引号（ **```** ), followed by lines of code, and closed out by another line starting with three backticks. Headings are formatted with one or more hash symbols ( **#** ) preceding the heading title. For example, an H1 header would have one, **#** , and an H2 header would have two, **##** , followed by the section title.
+唯一没有在前面的代码中看到的就是 Markdown 格式。在 Markdown 中，代码块以三反引号（ ````** ), followed by lines of code, and closed out by another line starting with three backticks. Headings are formatted with one or more hash symbols ( **#** ) preceding the heading title. For example, an H1 header would have one, **#** , and an H2 header would have two, **##` , followed by the section title.
 
-Finally, we have the **main** function, which calls the other functions:
+Finally, we have the `main` function, which calls the other functions:
 
 ```）开头
 
@@ -691,7 +691,7 @@ The following are example commands for executing this script in your DevSecOps e
 
     ```
 
-The script integrates with the GitLab CI/CD environment we set up earlier. You can add it to your **.** **gitlab-ci.yml** pipeline:
+The script integrates with the GitLab CI/CD environment we set up earlier. You can add it to your `.** **gitlab-ci.yml` pipeline:
 
 ```
 
@@ -726,29 +726,29 @@ Before we run our scanner script, we need to configure our system with some vuln
 
 Let’s go through the vulnerabilities that our scanning script will detect:
 
-*   **SAST vulnerabilities (detectable** **by Bandit)** :
-    *   Use of **subprocess.check_output** with **shell=True** ( command injection)
-    *   Unsafe YAML loading with **yaml.load**
+*   `SAST vulnerabilities (detectable** **by Bandit)` :
+    *   Use of `subprocess.check_output** with **shell=True` ( command injection)
+    *   Unsafe YAML loading with `yaml.load`
     *   Unsafe Pickle deserialization
     *   SQL injection vulnerability in the login route
     *   Template injection in the home route
     *   Debug mode enabled in Flask
-*   **Dependency vulnerabilities (detectable by** **OWASP Dependency-Check)** :
+*   `Dependency vulnerabilities (detectable by** **OWASP Dependency-Check)` :
     *   Flask 2.0.1 has known vulnerabilities
     *   PyYAML 5.3.1 has deserialization vulnerabilities
     *   Werkzeug 2.0.2 has path traversal vulnerabilities
     *   Cryptography 3.3.2 has buffer overflow vulnerabilities
     *   Jinja2 2.11.2 has sandbox escape vulnerabilities
-*   **Container vulnerabilities (detectable** **by Trivy)** :
-    *   The Python **3.8-slim-buster** base image has known CVEs
-    *   OpenSSL **1.1.1d** has multiple CVEs
-    *   Running as the **root** user
+*   `Container vulnerabilities (detectable** **by Trivy)` :
+    *   The Python `3.8-slim-buster` base image has known CVEs
+    *   OpenSSL `1.1.1d` has multiple CVEs
+    *   Running as the `root` user
     *   An old version of curl with known vulnerabilities
 
 To set this up in your GitLab environment, follow these steps:
 
 1.  Authenticate to GitLab:
-    1.  Execute this command to find the GitLab **root** password:
+    1.  Execute this command to find the GitLab `root` password:
 
     ```
 
@@ -756,30 +756,30 @@ To set this up in your GitLab environment, follow these steps:
 
     ```
 
-    1.  Log in to GitLab at **http://localhost** in the DevSecOps virtual machine using **root** for the username and the password found from the previous command.
+    1.  Log in to GitLab at `http://localhost** in the DevSecOps virtual machine using **root` for the username and the password found from the previous command.
 2.  Create a new user:
-    1.  Click **Add people** . See *Figure 16* *.1* :
+    1.  Click `Add people` . See *Figure 16* *.1* :
 
 ![Figure 16.1 – Adding our first GitLab user account](img/B22229_16_01.jpg) 
 
 Figure 16.1 – Adding our first GitLab user account
 
 1.  Specify your new user’s name, username, and email address. Any email address will work. We’re not going to verify the email address.
-2.  Click the **Create** **user** button.
-3.  Set the user’s password: To the right of the username, click the **Edit** button. See *Figure 16* *.2* :
+2.  Click the `Create** **user` button.
+3.  Set the user’s password: To the right of the username, click the `Edit` button. See *Figure 16* *.2* :
 
 ![Figure 16.2 – The location of the button is shown here](img/B22229_16_02.jpg) 
 
 Figure 16.2 – The location of the button is shown here
 
-1.  Set the user’s password, confirm the password, and click the **Save** **Changes** button.
+1.  Set the user’s password, confirm the password, and click the `Save** **Changes` button.
 2.  Log in as the user you just created. When you log in, you will be prompted to enter your current password and change it.
 
-1.  Create a **Personal Access** **Token** ( **PAT** ):
-    1.  Navigate to **http://localhost/-/user_settings/personal_access_tokens** .
-    2.  Click **Add** **new token** .
+1.  Create a `Personal Access** **Token** ( **PAT` ):
+    1.  Navigate to `http://localhost/-/user_settings/personal_access_tokens` .
+    2.  Click `Add** **new token` .
     3.  Provide a name and expiration date.
-    4.  Select all scope checkboxes and click the **Create** button.
+    4.  Select all scope checkboxes and click the `Create` button.
     5.  Click the button to copy the token:
 
 ![Figure 16.3 – Copying your token value](img/B22229_16_03.jpg) 
@@ -789,20 +789,20 @@ Figure 16.3 – Copying your token value
 1.  Save your PAT to a file before continuing.
 
 1.  Create a repository:
-    1.  After logging in, click **Create** **a project** .
-    2.  Click **Create** **blank project** .
-    3.  Enter **vulnerable-flask-app** for the project name.
-    4.  Click the **Create project** button at the bottom.
+    1.  After logging in, click `Create** **a project` .
+    2.  Click `Create** **blank project` .
+    3.  Enter `vulnerable-flask-app` for the project name.
+    4.  Click the `Create project` button at the bottom.
 2.  Copy project CI/CD runner token (shown in *Figure 16* *.4* ):
     1.  Navigate to the project’s CI/CD settings.
-    2.  Click the three vertical dots next to the **New project** **runner** button.
+    2.  Click the three vertical dots next to the `New project** **runner` button.
     3.  Copy the token and save it to the file:
 
 ![Figure 16.4 – Copying your project runner token](img/B22229_16_04.jpg) 
 
 Figure 16.4 – Copying your project runner token
 
-1.  Register the new runner with your token (replace **YOUR_TOKEN** with the actual token you copied). You can find this command in the book’s GitHub repository as **ch16_register_runner.sh** . After running the command, you’ll be prompted for values. You’ll find that the values entered in the command will be the default, so simply press the *Enter* key until complete. Here’s the code of **ch16_register_runner.sh** :
+1.  Register the new runner with your token (replace `YOUR_TOKEN` with the actual token you copied). You can find this command in the book’s GitHub repository as `ch16_register_runner.sh` . After running the command, you’ll be prompted for values. You’ll find that the values entered in the command will be the default, so simply press the *Enter* key until complete. Here’s the code of `ch16_register_runner.sh` :
 
     ```
 
@@ -833,7 +833,7 @@ Figure 16.4 – Copying your project runner token
     ```
 
 2.  Set up the scan script:
-    1.  Create a **s cripts** directory if it doesn’t exist:
+    1.  Create a `s cripts` directory if it doesn’t exist:
 
     ```
 
@@ -841,7 +841,7 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-    1.  Copy the security scanner to the **scripts** directory: Copy the **ch16_devsecops_scanner.sh** file from GitHub to the direct ory:
+    1.  Copy the security scanner to the `scripts** directory: Copy the **ch16_devsecops_scanner.sh` file from GitHub to the direct ory:
 
     ```
 
@@ -868,7 +868,7 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-    1.  Restart **gitlab-runner** :
+    1.  Restart `gitlab-runner` :
 
     ```
 
@@ -884,7 +884,7 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-4.  Clone the repository: Run the following command, replacing **<username>** with your actual GitLab username. You’ll be prompted for your username and password. Use your GitLab username, and paste the PAT that you copied in *Step 5* for the password:
+4.  Clone the repository: Run the following command, replacing `<username>` with your actual GitLab username. You’ll be prompted for your username and password. Use your GitLab username, and paste the PAT that you copied in *Step 5* for the password:
 
     ```
 
@@ -892,11 +892,11 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-5.  Add the files: Copy the following files from this chapter’s GitHub directory into the **vulnerable_flask_app** directory:
-    *   **app.py**
-    *   **requirements.txt**
-    *   **Dockerfile**
-    *   **.** **gitlab-ci.yml**
+5.  Add the files: Copy the following files from this chapter’s GitHub directory into the `vulnerable_flask_app` directory:
+    *   `app.py`
+    *   `requirements.txt`
+    *   `Dockerfile`
+    *   `.** **gitlab-ci.yml`
 6.  Configure our Git user:
     1.  Run this command to set the Git username for this repo sitory, using your GitLab account name:
 
@@ -914,7 +914,7 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-    1.  Issue the following commands to add the **rep orts** directory and track the new files:
+    1.  Issue the following commands to add the `rep orts` directory and track the new files:
 
     ```
 
@@ -928,7 +928,7 @@ Figure 16.4 – Copying your project runner token
 
     ```
 
-7.  Push to GitLab: Run the following command to push the repository to GitLab, replacing **<youruser>** with the username you created in *Step 2* . You will be prompted for your GitLab username and password. Use the GitLab PA T you generated earlier as the password:
+7.  Push to GitLab: Run the following command to push the repository to GitLab, replacing `<youruser>` with the username you created in *Step 2* . You will be prompted for your GitLab username and password. Use the GitLab PA T you generated earlier as the password:
 
     ```
 
@@ -947,8 +947,8 @@ Figure 16.4 – Copying your project runner token
     To view the results, follow these steps:
 
     1.  Go to your GitLab project
-    2.  Click on **Build** in the left sidebar
-    3.  Click on **Jobs** .
+    2.  Click on `Build` in the left sidebar
+    3.  Click on `Jobs` .
     4.  View the job output and download artifacts
 
     The following figure shows a sample of the scan output:
@@ -963,7 +963,7 @@ This section introduced you to implementing security checks into a DevSecOps pip
 
 Security monitoring is essential for detecting and responding to threats in DevSecOps environments. While many commercial monitoring solutions exist, Bash scripting provides security specialists with the flexibility to create free custom monitoring systems tailored to their specific needs. By combining standard Linux tools with security-focused applications, you can build monitoring solutions that collect metrics, analyze logs, and alert you to suspicious activities.
 
-Let’s build a monitoring system that watches our DevSecOps environment for security ev ents. This script can be found in GitHub as **ch16_sec_monitor.sh** . Our script will monitor GitLab authentication logs for failed login attempts and send email alerts when a threshold is exceeded. Let’s examine the script, section by section.
+Let’s build a monitoring system that watches our DevSecOps environment for security ev ents. This script can be found in GitHub as `ch16_sec_monitor.sh` . Our script will monitor GitLab authentication logs for failed login attempts and send email alerts when a threshold is exceeded. Let’s examine the script, section by section.
 
 First, here is the initial setup and configuration:
 
@@ -989,7 +989,7 @@ GITLAB_LOG="/srv/gitlab/logs/gitlab-rails/application_json.log"
 
 ```
 
-This section verifies root privileges and sets key variables. The script checks every five minutes for failed logins exceeding a threshold of five attempts. Be sure to change the email address username to your own before running the script. Replace **<user>** with your username.
+This section verifies root privileges and sets key variables. The script checks every five minutes for failed logins exceeding a threshold of five attempts. Be sure to change the email address username to your own before running the script. Replace `<user>` with your username.
 
 As shown here, the alert function handles email notifications:
 
@@ -1070,7 +1070,7 @@ fi
 This code performs the following functions:
 
 1.  Searches for failed login entries
-2.  Uses **jq** to parse the JSON log format
+2.  Uses `jq` to parse the JSON log format
 3.  Filters entries within the time window
 4.  Counts failures and triggers alerts if above the threshold
 
@@ -1090,7 +1090,7 @@ done
 
 This creates a continuous monitoring cycle, running checks every five minutes. The script never exits unless manually stopped or an error occurs.
 
-After repeatedly entering failed login attempts in the GitLab login at **http://localhost/** , I check my mail and find alerts, as shown in the following figure:
+After repeatedly entering failed login attempts in the GitLab login at `http://localhost/` , I check my mail and find alerts, as shown in the following figure:
 
 ![Figure 16.6: An email alert reveals failed login attempts](img/B22229_16_06.jpg) 
 
@@ -1109,7 +1109,7 @@ For pentesters who perform consulting work for external customers, every project
 
 This section will focus on building Kali ISO image installers using Bash scripting. The resulting ISO image will automate the installation of Kali on virtual machines or bare metal. The image file can be connected to a virtual machine or to a laptop or other device using USB storage. From there, you simply boot the system, and your custom image is installed.
 
-Your system will need a few gigabytes of free disk space to create the image. The amount of free disk space needed depends on the options you choose and whether you choose to install all or a subset of packages. To begin building custom Kali Linux ISOs, first, install the required packages and clone the **build** repository using the following commands:
+Your system will need a few gigabytes of free disk space to create the image. The amount of free disk space needed depends on the options you choose and whether you choose to install all or a subset of packages. To begin building custom Kali Linux ISOs, first, install the required packages and clone the `build` repository using the following commands:
 
 ```
 
@@ -1125,10 +1125,10 @@ $ cd live-build-config
 
 The build process supports two types of images:
 
-*   **Live images** : For running Kali directly from USB without installation. Use the **--live** command-line option with the **build** script.
-*   **Installer images** : For performing customized system installations. Use the **--installer** command-line option with the **build** script.
+*   `Live images** : For running Kali directly from USB without installation. Use the **--live** command-line option with the **build` script.
+*   `Installer images** : For performing customized system installations. Use the **--installer** command-line option with the **build` script.
 
-To build with different desktop environments, use the **--variant** flag. Here are some examples:
+To build with different desktop environments, use the `--variant` flag. Here are some examples:
 
 *   Build with the GNOME desktop:
 
@@ -1154,7 +1154,7 @@ To build with different desktop environments, use the **--variant** flag. Here a
 
     ```
 
-You may also want to specify different architectures, for example, x86-64 for Intel/AMD CPUs, or ARM64 for running in a virtual machine on macOS. Specify the target architecture using the **--** **arch** flag:
+You may also want to specify different architectures, for example, x86-64 for Intel/AMD CPUs, or ARM64 for running in a virtual machine on macOS. Specify the target architecture using the `--** **arch` flag:
 
 *   Build for x86-64:
 
@@ -1172,7 +1172,7 @@ You may also want to specify different architectures, for example, x86-64 for In
 
     ```
 
-Here’s a complete automated build script that sets common options. You can find this in the GitHub directory for this chapter as **ch16_build_kali.sh** . Note that this must be run on a Kali Linux system:
+Here’s a complete automated build script that sets common options. You can find this in the GitHub directory for this chapter as `ch16_build_kali.sh` . Note that this must be run on a Kali Linux system:
 
 ```
 
@@ -1214,24 +1214,24 @@ echo 'LIVE_USER_PASSWORD=kali' >> kali-config/common/includes.chroot/etc/live/co
 
 The build system offers several customization options:
 
-*   **Package selection** : Edit package lists in **kali-config/variant-*/package-lists/kali.list.chroot** . Default packages come from the **kali-linux-default** metapackage. I highly recommend that you review these options to customize what gets installed. This will affect the resulting ISO image size. You can simply comment or uncomment lines to achieve the desired effect, as shown in the following figure:
+*   `Package selection** : Edit package lists in **kali-config/variant-*/package-lists/kali.list.chroot** . Default packages come from the **kali-linux-default` metapackage. I highly recommend that you review these options to customize what gets installed. This will affect the resulting ISO image size. You can simply comment or uncomment lines to achieve the desired effect, as shown in the following figure:
 
 ![Figure 16.7 – You may comment or uncomment lines to choose metapackages](img/B22229_16_07.jpg) 
 
 Figure 16.7 – You may comment or uncomment lines to choose metapackages
 
-*   **File overlays** : Place custom files in **kali-config/common/includes.chroot/** . Files will be copied to corresponding locations in the final image.
-*   **Build parameters** :
-    *   **--distribution** : Specify the Kali version (e.g., **kali-rolling** , **kali-last-snapshot** )
-    *   **--version** : Set a custom version string
-    *   **--subdir** : Define the output directory structure
-    *   **--verbose** : Show detailed build output
-    *   **--debug** : Display maximum debug information
-*   **Preseeding** : You can fully customize and automate the installation process using a preseed file. Kali is based on Debian Linux. You can find Debian documentation on all preseed options at [`www.debian.org/releases/stable/amd64/apbs01.en.html`](https://www.debian.org/releases/stable/amd64/apbs01.en.html) . For guidance on how to use the preseed file for the Kali build process, see step *0x05* at [`www.kali.org/docs/development/dojo-mastering-live-build/`](https://www.kali.org/docs/development/dojo-mastering-live-build/) .
+*   `File overlays** : Place custom files in **kali-config/common/includes.chroot/` . Files will be copied to corresponding locations in the final image.
+*   `Build parameters` :
+    *   `--distribution** : Specify the Kali version (e.g., **kali-rolling** , **kali-last-snapshot` )
+    *   `--version` : Set a custom version string
+    *   `--subdir` : Define the output directory structure
+    *   `--verbose` : Show detailed build output
+    *   `--debug` : Display maximum debug information
+*   `Preseeding` : You can fully customize and automate the installation process using a preseed file. Kali is based on Debian Linux. You can find Debian documentation on all preseed options at [`www.debian.org/releases/stable/amd64/apbs01.en.html`](https://www.debian.org/releases/stable/amd64/apbs01.en.html) . For guidance on how to use the preseed file for the Kali build process, see step *0x05* at [`www.kali.org/docs/development/dojo-mastering-live-build/`](https://www.kali.org/docs/development/dojo-mastering-live-build/) .
 
-Once you have customized the build to your needs, including editing variables at the top of the **ch16_build_kali.sh** script, make the script executable and run it.
+Once you have customized the build to your needs, including editing variables at the top of the `ch16_build_kali.sh` script, make the script executable and run it.
 
-Once the build is complete, you can test the built image using QEMU, provided you have at least 20 GB of free disk space. Otherwise, you’ll need to test it on another system. The build process will create an ISO file in the **images/** subdirectory. The exact filename will depend on the build options selected.
+Once the build is complete, you can test the built image using QEMU, provided you have at least 20 GB of free disk space. Otherwise, you’ll need to test it on another system. The build process will create an ISO file in the `images/` subdirectory. The exact filename will depend on the build options selected.
 
 Caution
 
@@ -1265,13 +1265,13 @@ How can we test drive the new image using QEMU? Let’s take a look at the steps
 
 你可以在[`gitlab.com/kalilinux/build-scripts/live-build-config`](https://gitlab.com/kalilinux/build-scripts/live-build-config)上阅读更多关于创建定制 Kali 镜像的过程。
 
-作为顾问，我每周都会开始与不同客户的新项目。每个客户都会得到一个新的虚拟机，以防止客户之间的数据交叉污染。本节中概述的构建过程使得快速创建一个定制化的 Kali 镜像变得容易，能够满足你的需求和偏好。如果你为不同类型的渗透测试依赖不同的工具集，只需复制**ch16_build_kali.sh**脚本并根据需要定制软件包和元包的选择。
+作为顾问，我每周都会开始与不同客户的新项目。每个客户都会得到一个新的虚拟机，以防止客户之间的数据交叉污染。本节中概述的构建过程使得快速创建一个定制化的 Kali 镜像变得容易，能够满足你的需求和偏好。如果你为不同类型的渗透测试依赖不同的工具集，只需复制`ch16_build_kali.sh`脚本并根据需要定制软件包和元包的选择。
 
 # 总结
 
 在本章中，你学习了如何通过在 Kali Linux 上使用 Bash 脚本创建一个简单的 DevSecOps 环境。示范的 Bash 脚本展示了安全 shell 脚本的基本模式，包括正确的错误处理、日志记录、输入验证和环境验证。你还了解了如何集成多个安全工具，包括 OWASP Dependency-Check 和 Trivy。你还学习了如何创建简单的（且免费的）自动化安全监控 Bash 脚本。
 
-通过这些脚本，你了解了专业的日志记录实践、模块化的函数设计以及正确的系统设置验证。这些示例涵盖了实际的安全考虑因素，例如安全地以 **root** 身份运行、检查先决条件、优雅地处理错误，并创建具有适当权限的干净工作空间。
+通过这些脚本，你了解了专业的日志记录实践、模块化的函数设计以及正确的系统设置验证。这些示例涵盖了实际的安全考虑因素，例如安全地以 `root` 身份运行、检查先决条件、优雅地处理错误，并创建具有适当权限的干净工作空间。
 
 阅读完本书后，你应该已经全面了解如何将 Bash 集成到你的渗透测试工作流中。在 Bash 中，有很多方法可以完成任何特定的任务。我在示例中小心地展示了最直接的方式，并尽量避免复杂性，使这一主题更易于学习。如果任何代码无法正常工作或需要进一步解释，请在本书的 GitHub 仓库中创建一个 *issue*。
 
