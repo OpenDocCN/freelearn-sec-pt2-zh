@@ -124,7 +124,7 @@ Windows 操作系统容易受到各种攻击，可能导致漏洞利用或特权
 
     **使用 /exploit/windows/local/bypassuac_eventvwr**
 
-    这个内核漏洞利用模块将绕过 **用户访问控制` (`UAC**)，并在 Windows 注册表中插入一个命令，该命令将在启动 Windows 事件查看器时执行，并将启动一个系统 shell——在这种情况下，是一个 Meterpreter 会话。
+    这个内核漏洞利用模块将绕过 **用户访问控制**(**UAC**)，并在 Windows 注册表中插入一个命令，该命令将在启动 Windows 事件查看器时执行，并将启动一个系统 shell——在这种情况下，是一个 Meterpreter 会话。
 
     注意
 

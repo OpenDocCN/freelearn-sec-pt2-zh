@@ -372,7 +372,7 @@ NickiSpy 在 2011 年左右获得了相当大的声誉。它将通话记录保�
 
     ```
 
-1.  导航到`app` | `manifests` | `AndroidManifest.xml`并在`</application>`标签下添加以下行：
+1.  导航到`app** | **manifests** | **AndroidManifest.xml`并在`</application>`标签下添加以下行：
 
     ```
     <uses-permission android:name="android.permission.WRITE_SMS"/> 
@@ -539,7 +539,7 @@ if (cursor1.getCount() > 0) {
 
 1.  我们现在将添加代码来读取`sensitive.txt`并将其数据上传到远程服务器。
 
-1.  在左侧窗口中，导航到并打开`MainActivity.java`文件，路径为`app` | `java` | `com."your_package_name"` | `MainActivity`。
+1.  在左侧窗口中，导航到并打开`MainActivity.java`文件，路径为`app** | **java** | **com."your_package_name"** | **MainActivity`。
 
 1.  将以下代码添加到`protected void onCreate(Bundle savedInstanceState)`函数内，`setContentView(R.layout.activity_main);`行下方：
 

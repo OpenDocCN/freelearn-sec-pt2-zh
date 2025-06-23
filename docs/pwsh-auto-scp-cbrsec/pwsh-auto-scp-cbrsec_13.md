@@ -229,7 +229,7 @@ AuditLogon
 
 ## 安全基线
 
-加强 Windows 系统安全的一个良好开端——无论是服务器、域控制器还是客户端——就是微软提供的所谓安全基线。这些安全基线是微软 **安全合规工具包` (`SCT**) 1.0 的一部分，可以从这里下载：https://www.microsoft.com/en-us/download/details.aspx?id=55319。
+加强 Windows 系统安全的一个良好开端——无论是服务器、域控制器还是客户端——就是微软提供的所谓安全基线。这些安全基线是微软 **安全合规工具包**(**SCT**) 1.0 的一部分，可以从这里下载：https://www.microsoft.com/en-us/download/details.aspx?id=55319。
 
 在应用安全基线时请务必小心！
 

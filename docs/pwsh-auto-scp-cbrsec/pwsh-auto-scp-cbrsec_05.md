@@ -6,7 +6,7 @@
 
 我们将从 Windows 注册表开始，了解如何利用 PowerShell 轻松访问其键和值。接着，我们将深入 .NET 框架和 Windows API，你将学习如何直接从 PowerShell 执行 C# 代码。
 
-接下来，我们将探索 **Windows 管理工具` (`WMI**)，它可以用来通过标准接口访问和管理各种系统资源，包括硬件、软件、网络组件以及其他对象。PowerShell 使得与 WMI 交互、自动化任务和操作数据变得简单。
+接下来，我们将探索 **Windows 管理工具**(**WMI**)，它可以用来通过标准接口访问和管理各种系统资源，包括硬件、软件、网络组件以及其他对象。PowerShell 使得与 WMI 交互、自动化任务和操作数据变得简单。
 
 在本章中，你还将学习如何在不执行 `powershell.exe` 的情况下运行 PowerShell 命令。你将学习如何直接在其他应用程序中，甚至在内存中运行 PowerShell 代码。
 
@@ -18,9 +18,9 @@
 
 +   探索 .NET 框架
 
-+   了解 **组件对象模型` (`COM**) 和 COM 劫持
++   了解 **组件对象模型**(**COM**) 和 COM 劫持
 
-+   **通用信息模型` (`CIM**)/WMI
++   **通用信息模型**(**CIM**)/WMI
 
 +   无需 `powershell.exe` 运行 PowerShell
 
@@ -230,29 +230,29 @@ PowerShell Core 的`ExecutionPolicy`定义在以下文件中：`C:\Program Files
 
 根据你为其配置此策略的机器类型，你可能需要限制本地登录或通过远程桌面登录的能力，只允许用户和/或特定的管理员帐户：
 
-+   **从网络访问此计算机` (`SeNetworkLogonRight**)：对于**域控制器**（**DC**），所有经过身份验证的用户都需要访问域控制器以应用组策略，因此需要配置**管理员**和**已验证用户**访问域控制器。移除内建组。
++   **从网络访问此计算机**(**SeNetworkLogonRight**)：对于**域控制器**（**DC**），所有经过身份验证的用户都需要访问域控制器以应用组策略，因此需要配置**管理员**和**已验证用户**访问域控制器。移除内建组。
 
 移除**所有人**、**用户**以及成员服务器的内建组。对于客户端计算机，仅允许用户和管理员登录。
 
-+   **允许本地登录` (`SeInteractiveLogonRight**)：移除**访客**和内建组。如果是域控制器或成员服务器，还需要移除**用户**。
++   **允许本地登录**(**SeInteractiveLogonRight**)：移除**访客**和内建组。如果是域控制器或成员服务器，还需要移除**用户**。
 
-+   **允许通过远程桌面` `服务` (`SeRemoteInteractiveLogonRight**) 登录
++   **允许通过远程桌面` `服务**(**SeRemoteInteractiveLogonRight**) 登录
 
-+   **作为批处理作业登录` (`SeBatchLogonRight**)
++   **作为批处理作业登录**(**SeBatchLogonRight**)
 
-+   **作为服务登录` (`SeServiceLogonRight**)
++   **作为服务登录**(**SeServiceLogonRight**)
 
 *拒绝*规则会覆盖*允许*权限：无论你配置了什么样的*允许*规则，如果*拒绝*规则禁止访问，相关用户将无法登录或访问机器：
 
-+   **拒绝通过网络访问此计算机` (`SeDenyNetworkLogonRight**)
++   **拒绝通过网络访问此计算机**(**SeDenyNetworkLogonRight**)
 
-+   **拒绝作为批处理作业登录` (`SeDenyBatchLogonRight**)
++   **拒绝作为批处理作业登录**(**SeDenyBatchLogonRight**)
 
-+   **拒绝作为服务登录` (`SeDenyServiceLogonRight**)
++   **拒绝作为服务登录**(**SeDenyServiceLogonRight**)
 
-+   **拒绝本地登录` (`SeDenyInteractiveLogonRight**)
++   **拒绝本地登录**(**SeDenyInteractiveLogonRight**)
 
-+   **拒绝通过远程桌面` `服务` (`SeDenyRemoteInteractiveLogonRight**) 登录
++   **拒绝通过远程桌面` `服务**(**SeDenyRemoteInteractiveLogonRight**) 登录
 
 这些规则可以帮助你在环境中建立一个稳固的分层概念。
 
@@ -262,9 +262,9 @@ PowerShell Core 的`ExecutionPolicy`定义在以下文件中：`C:\Program Files
 
 备份和恢复权限非常强大，因为它们允许用户访问和修改通常无法访问的文件和目录。在关键系统（如域控制器）上，仔细评估哪些用户配置了这些权限非常重要。这些权限可能会让攻击者提取敏感信息，具体如下：
 
-+   **备份文件和` `目录` (`SeBackupPrivilege**)
++   **备份文件和` `目录**(**SeBackupPrivilege**)
 
-+   **恢复文件和` `目录` (`SeRestorePrivilege**)
++   **恢复文件和` `目录**(**SeRestorePrivilege**)
 
 重要的是要注意，备份权限允许用户读取任何文件，无论他们的正常权限是什么。这意味着拥有备份权限的用户也可能访问敏感信息，例如，在 DC 上的`ntds.dit`数据库文件中存储的密码哈希。另一方面，恢复权限允许用户写入任何文件，这可能被用来植入恶意代码或修改关键系统文件。
 
@@ -274,13 +274,13 @@ PowerShell Core 的`ExecutionPolicy`定义在以下文件中：`C:\Program Files
 
 拥有委派权限的人可以将权限委派给另一个帐户。身份冒充允许冒充另一个帐户，通常由 Web 服务器在用户上下文中访问资源。如果配置错误，这两者可能会带来严重后果：
 
-+   **启用计算机和用户帐户信任委派` (`SeEnableDelegationPrivilege**): 如果一个帐户被信任进行委派，这意味着该帐户可以设置*信任委派*设置。一旦设置，这项设置将允许在保持原始帐户凭证的情况下连接到多个服务器或服务。Web 服务器需要使用原始凭证连接到数据库或数据共享，这是一个合理的*信任* *委派*的用例。
++   **启用计算机和用户帐户信任委派**(**SeEnableDelegationPrivilege**): 如果一个帐户被信任进行委派，这意味着该帐户可以设置*信任委派*设置。一旦设置，这项设置将允许在保持原始帐户凭证的情况下连接到多个服务器或服务。Web 服务器需要使用原始凭证连接到数据库或数据共享，这是一个合理的*信任* *委派*的用例。
 
 然而，除非某些软件确实需要，否则你应该避免配置此项权限。
 
-+   **身份冒充客户端（身份验证后）` (`SeImpersonatePrivilege**): 身份冒充允许服务或线程在不同的安全上下文下运行。如果配置错误，这种能力可能使攻击者欺骗客户端连接到攻击者创建的服务，然后冒充连接的客户端来提升攻击者的权限。
++   **身份冒充客户端（身份验证后）**(**SeImpersonatePrivilege**): 身份冒充允许服务或线程在不同的安全上下文下运行。如果配置错误，这种能力可能使攻击者欺骗客户端连接到攻击者创建的服务，然后冒充连接的客户端来提升攻击者的权限。
 
-+   **作为操作系统的一部分` (`SeTcbPrivilege**): 该权限允许帐户控制系统并充当任何用户。此设置决定一个进程是否可以获得任何用户的身份，从而访问该用户可以使用的资源。
++   **作为操作系统的一部分**(**SeTcbPrivilege**): 该权限允许帐户控制系统并充当任何用户。此设置决定一个进程是否可以获得任何用户的身份，从而访问该用户可以使用的资源。
 
 ## 防止事件日志篡改
 
@@ -358,7 +358,7 @@ Mimikatz 和其他用于凭证窃取的工具通常需要调试程序的权限�
 
 你还可以使用组策略配置环境中多个计算机和/或服务器的用户权限分配。
 
-创建一个新的**组策略对象**（**GPO**），并导航至**计算机配置` | `Windows 设置` | `安全设置` | `本地策略` | `用户权限分配**。
+创建一个新的**组策略对象**（**GPO**），并导航至**计算机配置** | **Windows 设置** | **安全设置** | **本地策略** | **用户权限分配**。
 
 ![图 5.12 – 通过组策略配置用户权限分配](img/B16679_05_012.jpg)
 
@@ -596,7 +596,7 @@ C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe /out:MyProgram.exe MyProgr
 > [System.Reflection.Assembly]::Load($DllBytes)
 ```
 
-在 .NET 中，程序集是应用程序部署的最小基本单元。它可以是 `.dll` 文件或 `.exe` 文件。如果程序集是多个应用程序共享的，它通常存储在 **全局程序集缓存` (`GAC**) 中。
+在 .NET 中，程序集是应用程序部署的最小基本单元。它可以是 `.dll` 文件或 `.exe` 文件。如果程序集是多个应用程序共享的，它通常存储在 **全局程序集缓存**(**GAC**) 中。
 
 一旦 DLL 成功加载，你就可以从 PowerShell 访问它的方法，如下图所示：
 
@@ -726,13 +726,13 @@ COM 通过使用版本控制来解决 DLL 地狱问题。每个组件都有一�
 
 由于我们正在寻找一个可以被当前用户访问和更改的过期 `InprocServer32` CLSID，我们正在使用以下过滤器参数在 HKCU 中查找未使用但已注册的 CLSID：
 
-+   **包含**：**操作` | `是` | **RegOpenKey`
++   **包含**：**操作** | **是` | **RegOpenKey`
 
-+   **包含**：**结果` | `是` | `未找到名称**
++   **包含**：**结果** | **是** | **未找到名称**
 
-+   **包含**：**路径` | `以...结尾` | **InprocServer32`
++   **包含**：**路径** | **以...结尾` | **InprocServer32`
 
-+   **排除**：**路径` | `以...开头` | **HKLM`
++   **排除**：**路径** | **以...开头` | **HKLM`
 
 请注意，在这个示例中，我们使用的是一个过期的 `InprocServer32` CLSID，但通过滥用 `InprocServer`、`LocalServer`、`LocalServer32`、`TreatAs` 或 `ProgId`，或者替换现有的 COM 对象，也有可能进行 COM 劫持。
 
@@ -1125,7 +1125,7 @@ $CimDefenderBinding = New-CimInstance -ClassName __FilterToConsumerBinding -Name
 
 +   **日志` `路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-WMI-Activity%4Operational.evtx`
 
-+   **UI 中的路径**：**应用和服务` | **Microsoft** | **Windows** | `WMI 活动` | `操作性**
++   **UI 中的路径**：**应用和服务` | **Microsoft** | **Windows** | `WMI 活动** | **操作性**
 
 此事件日志中与 PowerShell 安全日志相关的 *最有趣的事件 ID* 如下：
 
@@ -1200,7 +1200,7 @@ Set-CimInstance -InputObject $UserAccount
 
 ## 枚举
 
-WMI 使用 SQL 的一个子集，称为 **WMI 查询语言` (`WQL**)。WQL 仅支持一部分命令，相关文档请参见：[`docs.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi`](https://docs.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi)。
+WMI 使用 SQL 的一个子集，称为 **WMI 查询语言**(**WQL**)。WQL 仅支持一部分命令，相关文档请参见：[`docs.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi`](https://docs.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi)。
 
 查询有不同的类型——数据查询、事件查询和模式查询。在本书中，我们主要关注最常用的类型：数据查询。
 

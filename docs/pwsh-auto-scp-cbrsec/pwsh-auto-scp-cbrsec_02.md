@@ -1321,15 +1321,15 @@ PowerShell 配置文件是配置文件，用于个性化您的 PowerShell 环境
 
 配置文件有几种不同的类型，PowerShell 可以处理多个配置文件。PowerShell 配置文件作为纯文本文件保存在您的系统中，并且有多种类型的配置文件可用：
 
-+   **所有用户，所有主机` (`$profile.AllUsersAllHosts**)：该配置文件适用于所有用户的所有 PowerShell 主机。
++   **所有用户，所有主机**(**$profile.AllUsersAllHosts**)：该配置文件适用于所有用户的所有 PowerShell 主机。
 
-+   **所有用户，当前主机` (`$profile.AllUsersCurrentHost**)：该配置文件适用于当前 PowerShell 主机的所有用户。
++   **所有用户，当前主机**(**$profile.AllUsersCurrentHost**)：该配置文件适用于当前 PowerShell 主机的所有用户。
 
-+   **当前用户，所有主机` (`$profile.CurrentUserAllHosts**)：该配置文件适用于当前用户的所有 PowerShell 主机。
++   **当前用户，所有主机**(**$profile.CurrentUserAllHosts**)：该配置文件适用于当前用户的所有 PowerShell 主机。
 
-+   **当前用户，当前主机` (`$profile.CurrentUserCurrentHost**)：该配置文件仅适用于当前用户和当前 PowerShell 主机。
++   **当前用户，当前主机**(**$profile.CurrentUserCurrentHost**)：该配置文件仅适用于当前用户和当前 PowerShell 主机。
 
-**PowerShell 主机**是托管 PowerShell 引擎的应用程序。PowerShell 主机的示例包括 Windows PowerShell 控制台、PowerShell **集成脚本环境` (`ISE**)以及 Visual Studio Code 中的 PowerShell 终端。
+**PowerShell 主机**是托管 PowerShell 引擎的应用程序。PowerShell 主机的示例包括 Windows PowerShell 控制台、PowerShell **集成脚本环境**(**ISE**)以及 Visual Studio Code 中的 PowerShell 终端。
 
 您的 PowerShell 配置文件的位置取决于您的系统和配置，但您可以通过在 PowerShell 中运行以下命令轻松找到它们存储的位置：
 
@@ -1404,7 +1404,7 @@ PowerShell 中有几个内置的 PSDrives，包括以下几种：
 
 +   `Cert:\LocalMachine`：提供对本地计算机证书存储中的证书的访问
 
-+   `WSMan`：提供对 **Windows 远程管理` (`WinRM**) 配置数据的访问
++   `WSMan`：提供对 **Windows 远程管理**(**WinRM**) 配置数据的访问
 
 +   `C:` 和 `D:`（*以及其他驱动器字母*）：用于访问文件系统，就像在 Windows 资源管理器中一样
 

@@ -357,7 +357,7 @@ SQL 注入漏洞在页面或参数（例如 Juice Shop 登录页面）连接到�
 
 +   `')** `或 ('1'='1–-**
 
-除了常见的 SQL 数据库之外，**轻量级目录访问协议` (`LDAP**) 也以类似于 SQL 注入的方式进行攻击。LDAP 是一种基于客户端-服务器模型的目录服务，类似于数据库，但包含基于属性的数据。可以采用类似于 SQL 注入的绕过技术来进行 LDAP 注入：
+除了常见的 SQL 数据库之外，**轻量级目录访问协议**(**LDAP**) 也以类似于 SQL 注入的方式进行攻击。LDAP 是一种基于客户端-服务器模型的目录服务，类似于数据库，但包含基于属性的数据。可以采用类似于 SQL 注入的绕过技术来进行 LDAP 注入：
 
 ```
  user=*)(uid=*))(|(uid=*
@@ -366,6 +366,6 @@ pass=password
 
 ## 另见
 
-有许多工具专门用于发现和利用 SQL 注入漏洞。其中一个著名的工具（也是我个人的最爱）是 SQLMap。SQLMap 允许你指纹识别**数据库管理系统` (`DBMS**)，获取用户名和数据库表或列，并列举和利用潜在存在的 SQL 漏洞。有关 SQLMap 的更多信息，请访问 Kali Linux 网站 [www.kali.org/tools/sqlmap/](https://www.kali.org/tools/sqlmap/)。
+有许多工具专门用于发现和利用 SQL 注入漏洞。其中一个著名的工具（也是我个人的最爱）是 SQLMap。SQLMap 允许你指纹识别**数据库管理系统**(**DBMS**)，获取用户名和数据库表或列，并列举和利用潜在存在的 SQL 漏洞。有关 SQLMap 的更多信息，请访问 Kali Linux 网站 [www.kali.org/tools/sqlmap/](https://www.kali.org/tools/sqlmap/)。
 
 关于 LDAP 注入攻击的更多信息，请访问 [`owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/06-Testing_for_LDAP_Injection`](https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/07-Input_Validation_Testing/06-Testing_for_LDAP_Injection)。

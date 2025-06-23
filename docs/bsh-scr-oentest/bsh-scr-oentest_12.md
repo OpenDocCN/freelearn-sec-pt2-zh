@@ -337,7 +337,7 @@ fi
 
 如果在网络中检测到使用默认的 HSRP 密码，我建议您不要尝试对其执行 MITM 攻击。如果您不在现场与运行攻击的系统一起并且失去了网络连接，您可能会导致网络拒绝服务，而您也不在那里停止它。这是非常危险的利用。最好是报告并继续前进。
 
-在下一个代码块中，我们开始测试 **IP 第六版` (`IPv6**) 网络流量：
+在下一个代码块中，我们开始测试 **IP 第六版**(**IPv6**) 网络流量：
 
 ```
  echo "[+] Testing for DHCPv6." echo "[+] If detected, try mitm6!" tcpdump -r packetcapture.pcap '(udp port 546 or 547) or icmp6'

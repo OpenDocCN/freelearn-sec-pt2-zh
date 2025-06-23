@@ -218,7 +218,7 @@ Login()
 
 ### Java 中的参数化查询
 
-在 Java 中处理任何数据库时，最常用的框架之一是 **Java 数据库连接` (`JDBC**) 框架。它是原生提供的，支持独立于所使用数据库技术的数据库连接，提供连接数据库的有用功能。其中之一就是 `PreparedStatement` 类，它允许使用以下代码：
+在 Java 中处理任何数据库时，最常用的框架之一是 **Java 数据库连接**(**JDBC**) 框架。它是原生提供的，支持独立于所使用数据库技术的数据库连接，提供连接数据库的有用功能。其中之一就是 `PreparedStatement` 类，它允许使用以下代码：
 
 Connection con = DriverManager.getConnection(connectionString);
 

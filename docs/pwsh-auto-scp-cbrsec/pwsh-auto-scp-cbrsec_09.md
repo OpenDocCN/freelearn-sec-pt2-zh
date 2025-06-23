@@ -414,7 +414,7 @@ Get-CimInstance -ClassName Win32_Product -ComputerName $ComputerName | Sort-Obje
 
 ### 解决方案
 
-在您希望跟踪 PowerShell 会话中发生的事情的机器上启用转录。这可以通过通过组策略启用转录来实现，方法是配置**开启 PowerShell 转录**选项，路径为**Windows 组件` | `管理模板` | **Windows PowerShell`，或者通过 PowerShell 配置注册表来实现，如博客文章*PowerShell* *♥* *the Blue* *Team* 中所示：[`devblogs.microsoft.com/powershell/powershell-the-blue-team/`](https://devblogs.microsoft.com/powershell/powershell-the-blue-team/)
+在您希望跟踪 PowerShell 会话中发生的事情的机器上启用转录。这可以通过通过组策略启用转录来实现，方法是配置**开启 PowerShell 转录**选项，路径为**Windows 组件** | **管理模板` | **Windows PowerShell`，或者通过 PowerShell 配置注册表来实现，如博客文章*PowerShell* *♥* *the Blue* *Team* 中所示：[`devblogs.microsoft.com/powershell/powershell-the-blue-team/`](https://devblogs.microsoft.com/powershell/powershell-the-blue-team/)
 
 以下代码片段展示了`Enable-PSTranscription`功能，源自本文：
 
@@ -439,7 +439,7 @@ function Enable-PSTranscription {
 > Enable-PSTranscription -OutputDirectory "C:\tmp\"
 ```
 
-你还可以使用 **通用命名约定` (`UNC**) 路径将转录保存到网络文件夹。确保保护该路径，以防潜在的攻击者访问和/或删除它。
+你还可以使用 **通用命名约定**(**UNC**) 路径将转录保存到网络文件夹。确保保护该路径，以防潜在的攻击者访问和/或删除它。
 
 要集中管理 PowerShell 转录并保持安全的审计跟踪，你可以，例如，将转录目标配置为一个带有动态文件名的 UNC 路径。这涉及将转录目录设置为具有写入权限的网络共享，并使用 PowerShell 配置文件将所有活动记录到一个基于系统和用户变量的唯一文件名中，如下所示：
 

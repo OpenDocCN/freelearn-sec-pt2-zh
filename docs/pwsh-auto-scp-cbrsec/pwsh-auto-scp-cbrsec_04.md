@@ -92,9 +92,9 @@ Import-Module <Module-Name>
 
 创建一个新的**组策略对象**（**GPO**）。由于 Windows PowerShell 和 PowerShell Core 被设计为共存并可以单独配置，因此取决于您想要配置哪个 PowerShell 版本：
 
-+   要配置 Windows PowerShell，请导航至**计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell`
++   要配置 Windows PowerShell，请导航至**计算机配置** | **策略** | **管理模板** | **Windows 组件` | **Windows PowerShell`
 
-+   要配置 PowerShell Core，请导航至**计算机配置` | `管理模板` | **PowerShell Core`
++   要配置 PowerShell Core，请导航至**计算机配置** | **管理模板` | **PowerShell Core`
 
 我的 PowerShell Core .admx 模板在哪里？
 
@@ -200,9 +200,9 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 
 创建一个新的 GPO。根据您要配置的 PowerShell 版本，导航到以下任一项：
 
-+   **计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell` 用于 Windows PowerShell
++   **计算机配置** | **策略** | **管理模板** | **Windows 组件` | **Windows PowerShell` 用于 Windows PowerShell
 
-+   **计算机配置` | `管理模板` | **PowerShell Core` 用于 PowerShell Core
++   **计算机配置** | **管理模板` | **PowerShell Core` 用于 PowerShell Core
 
 选择并编辑**启用 PowerShell 脚本块日志记录**策略。会打开一个窗口来配置模块日志记录。
 
@@ -269,7 +269,7 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Scr
 > Enable-ProtectedEventLogging –Certificate $cert
 ```
 
-您还可以通过组策略启用受保护的事件日志记录。创建一个新的 GPO 或重复使用现有的 GPO，然后导航到**计算机配置` | `策略` | `管理模板` | `Windows 组件` | `事件日志记录**。
+您还可以通过组策略启用受保护的事件日志记录。创建一个新的 GPO 或重复使用现有的 GPO，然后导航到**计算机配置** | **策略** | **管理模板** | **Windows 组件** | **事件日志记录**。
 
 打开**启用受保护事件` `日志记录**策略。
 
@@ -369,7 +369,7 @@ HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription
 
 在 Active Directory 管理的环境中，配置转录的最简单方法是使用组策略。
 
-创建一个新的 GPO 或重用现有的 GPO。然后，导航至**计算机配置` | `策略` | `管理模板` | `Windows 组件` | **Windows PowerShell`。
+创建一个新的 GPO 或重用现有的 GPO。然后，导航至**计算机配置** | **策略** | **管理模板** | **Windows 组件` | **Windows PowerShell`。
 
 双击并打开**启用 PowerShell 转录**策略来配置 PowerShell 转录：
 
@@ -769,7 +769,7 @@ EventList 是用 PowerShell 构建的；因此，即使你只想使用用户界�
 
 如果你想选择一个 SIEM 系统，选择非常多——适应各种预算和场景。多年来，我见过许多不同的 SIEM 系统，每一个都非常适合各自的组织。
 
-我见过的最流行的 SIEM 系统包括`Splunk`、`Azure Sentinel`、`ArcSight`、`qRadar`和**“ELK 堆栈” (Elastic, LogStash, 和 Kibana)**，仅举几例。我还使用过**Windows 事件转发` (`WEF**) 来实现事件日志监控。
+我见过的最流行的 SIEM 系统包括`Splunk`、`Azure Sentinel`、`ArcSight`、`qRadar`和**“ELK 堆栈” (Elastic, LogStash, 和 Kibana)**，仅举几例。我还使用过**Windows 事件转发**(**WEF**) 来实现事件日志监控。
 
 当然，也可以分析本地机器上的事件，但这并不实际——根据配置，如果达到最大日志大小，旧事件会被删除，且很难将其与其他系统的日志相关联。
 
@@ -879,7 +879,7 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 +   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-WinRM%4Operational.evtx`
 
-+   **UI 路径**：**应用程序和服务` | **Microsoft** | **Windows** | `Windows 远程管理` | `操作日志**
++   **UI 路径**：**应用程序和服务` | **Microsoft** | **Windows** | `Windows 远程管理** | **操作日志**
 
 在使用 PowerShell 和 WinRM 时，以下是*最值得关注的事件*，它们通常会出现在 WinRM 事件日志中。
 
@@ -905,7 +905,7 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 +   **日志路径**：`%SystemRoot%\System32\Winevt\Logs\Security.evtx`
 
-+   **UI 路径**：**Windows 日志` | `安全性**
++   **UI 路径**：**Windows 日志** | **安全性**
 
 虽然并非所有的安全日志中的事件 ID 都是默认生成的，但最重要的事件 ID 旨在帮助识别安全问题。如果您想实现全面的安全日志记录，我建议将 Microsoft 安全工具包中的 Microsoft 安全基准应用到您的系统中。然而，重要的是要注意，安全基准中的设置应与您组织的资源和能力相匹配。因此，在应用基准之前，建议评估哪些日志设置适合您组织的需求和能力。
 
@@ -939,7 +939,7 @@ Microsoft Windows PowerShell 操作日志包含有关 PowerShell 使用的所有
 
 +   **日志` `路径**：`%SystemRoot%\System32\Winevt\Logs\System.evtx`
 
-+   **UI 中的路径**：**Windows 日志` | `系统**
++   **UI 中的路径**：**Windows 日志** | **系统**
 
 在此事件日志中，*最有趣的事件 ID* 如下：
 

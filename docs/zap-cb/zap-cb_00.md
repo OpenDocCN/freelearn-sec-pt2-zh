@@ -44,7 +44,7 @@ OWASP ZAP 主要面向 Web 应用程序安全专家、开发人员、教育工�
 
 为了充分利用《Zed Attack Proxy Cookbook》，你应该保持信息更新并利用社区资源。OWASP ZAP 是一个开源工具，不断进行更新和改进，因此保持与最新版本同步非常重要。此外，OWASP 社区非常活跃，提供了许多资源，可以帮助你充分利用该工具。
 
-| **本书中涵盖的软件/硬件` | `操作系统要求** |
+| **本书中涵盖的软件/硬件** | **操作系统要求** |
 | --- | --- |
 | Java | Windows、macOS 或 Linux |
 | Docker Desktop/Docker Compose | Windows、macOS 或 Linux |
