@@ -1,3 +1,4 @@
++   [面向网络安全的 Powershell 自动化和脚本编程](README.md)
 +   [前言](pwsh-auto-scp-cbrsec_00.md)
 +   [第一章：PowerShell 入门](pwsh-auto-scp-cbrsec_01.md)
 +   [第二章：PowerShell 脚本基础](pwsh-auto-scp-cbrsec_02.md)

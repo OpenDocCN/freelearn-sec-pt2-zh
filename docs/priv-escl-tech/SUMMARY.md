@@ -1,3 +1,4 @@
++   [权限维持技术](README.md)
 +   [前言](priv-escl-tech_00_0.md)
 +   [第一部分：获得访问权限和本地枚举](priv-escl-tech_00_1.md)
 +   [第一章: 权限提升介绍](priv-escl-tech_00_2.md)

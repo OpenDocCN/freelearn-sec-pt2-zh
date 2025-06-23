@@ -1,3 +1,4 @@
++   [面向渗透测试者的 Bash 脚本编程](README.md)
 +   [前言](bsh-scr-oentest_00.md)
 +   [第一部分：开始学习 Bash Shell 脚本编写](bsh-scr-oentest_01.md)
 +   [第一章：Bash 命令行及其黑客环境](bsh-scr-oentest_02.md)

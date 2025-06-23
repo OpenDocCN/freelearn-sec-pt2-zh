@@ -1,3 +1,4 @@
++   [成为黑客](README.md)
 +   [序言](bcm-hkr_00.md)
 +   [第一章：Web 应用程序攻击概述](bcm-hkr_01.md)
 +   [第二章 高效发现](bcm-hkr_02.md)

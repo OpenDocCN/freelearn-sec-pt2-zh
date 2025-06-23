@@ -1,3 +1,4 @@
++   [道德黑客的侦查指南](README.md)
 +   [前言](rcn-eth-hck_00.md)
 +   [第一章：侦察基础知识](rcn-eth-hck_01.md)
 +   [第二章：设置侦察实验室](rcn-eth-hck_02.md)

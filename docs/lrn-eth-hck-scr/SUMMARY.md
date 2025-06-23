@@ -1,3 +1,4 @@
++   [从零开始的道德黑客学习指南](README.md)
 +   [前言](lrn-eth-hck-scr_00.md)
 +   [第一章：介绍](lrn-eth-hck-scr_01.md)
 +   [第二章：建立实验室](lrn-eth-hck-scr_02.md)

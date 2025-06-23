@@ -1,3 +1,4 @@
++   [SQL 注入策略](README.md)
 +   [序言](sqlinj-stg_00_0.md)
 +   [第一部分：理论上的(SQL)注入](sqlinj-stg_00_1.md)
 +   [第一章：用于 SQL 注入的结构化查询语言](sqlinj-stg_00_2.md)

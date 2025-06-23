@@ -1,3 +1,4 @@
++   [从零开始的 Python 道德黑客](README.md)
 +   [前言](py-eth-hck-scr_00_0.md)
 +   [第一章：道德黑客的基本构成 – 基础知识](py-eth-hck-scr_00_1.md)
 +   [第一章：黑客入门](py-eth-hck-scr_00_2.md)
